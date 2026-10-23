@@ -356,19 +356,23 @@ function MetricStrip({ rows, span, filter, set, sel, items }: { rows: Row[]; spa
   const [mid, setMid] = useState(set[0].id)
   const [asTable, setAsTable] = useState(false)
   const m = set.find((x) => x.id === mid) ?? set[0]
+  // each tile has its own colour from the chart palette; the chart draws in the chosen tile's colour
+  const colorOf = (id: string) => SERIES[Math.max(0, set.findIndex((x) => x.id === id)) % SERIES.length]
+  const mc = colorOf(m.id)
   const c = filter.country
   const t = sum(rows, c)
   const labels = buckets(span)
   const picks = sel.sel
   const lines: Line[] = picks.length
     ? picks.map((s) => ({ name: s.name, color: s.color, values: series(rows.filter(s.pred), span, c, m.v), area: false }))
-    : [{ name: spanName(span, filter.range), color: "var(--series-1)", values: series(rows, span, c, m.v) }]
+    : [{ name: spanName(span, filter.range), color: mc, values: series(rows, span, c, m.v) }]
   const by = hourly(span) ? "hour" : "day"
   return (
     <Card className="gap-0 overflow-hidden py-0 shadow-none">
       <div role="tablist" aria-label="Metrics" className={cn("grid grid-cols-2 gap-px border-b bg-foreground/5", set.length === 5 ? "lg:grid-cols-5" : "lg:grid-cols-4")}>
         {set.map((x) => {
           const on = x.id === m.id
+          const xc = colorOf(x.id)
           return (
             <button
               key={x.id}
@@ -376,10 +380,12 @@ function MetricStrip({ rows, span, filter, set, sel, items }: { rows: Row[]; spa
               role="tab"
               aria-selected={on}
               onClick={() => setMid(x.id)}
-              className={cn("relative flex flex-col gap-1 bg-card p-4 text-left outline-none transition-colors last:odd:col-span-2 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring lg:last:odd:col-span-1", on ? "bg-[color-mix(in_oklch,var(--primary)_5%,var(--card))]" : "hover:bg-muted/50")}
+              className={cn("relative flex flex-col gap-1 bg-card p-4 text-left outline-none transition-colors last:odd:col-span-2 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring lg:last:odd:col-span-1", !on && "hover:bg-muted/50")}
+              style={on ? { background: `color-mix(in srgb, ${xc} 7%, var(--card))` } : undefined}
             >
-              {on && <span aria-hidden className="absolute inset-x-0 top-0 h-0.5 bg-primary" />}
-              <span className={cn("flex items-center gap-1 text-sm", on ? "font-medium text-foreground" : "text-muted-foreground")}>
+              <span aria-hidden className={cn("absolute inset-x-0 top-0 h-0.5 transition-opacity", on ? "opacity-100" : "opacity-0")} style={{ background: xc }} />
+              <span className={cn("flex items-center gap-1.5 text-sm", on ? "font-medium text-foreground" : "text-muted-foreground")}>
+                <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: xc }} />
                 {x.label}
                 <Tooltip>
                   <TooltipTrigger asChild>
