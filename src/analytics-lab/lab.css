@@ -1,0 +1,23 @@
+/* Analytics experiment: chart tokens. Categorical slots are the validated reference palette (light and dark
+   stepped separately); text never wears a series colour. */
+:root {
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --viz-prev: color-mix(in oklch, var(--muted-foreground) 55%, transparent);
+  --viz-grid: color-mix(in oklch, var(--foreground) 8%, transparent);
+  --viz-axis: color-mix(in oklch, var(--foreground) 18%, transparent);
+  /* sequential: one hue (the brand orange), light to dark */
+  --seq-lo: color-mix(in oklch, var(--primary) 8%, var(--card));
+  --seq-hi: var(--primary);
+}
+.dark {
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --seq-lo: color-mix(in oklch, var(--primary) 10%, var(--card));
+}

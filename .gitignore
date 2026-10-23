@@ -1,0 +1,6 @@
+node_modules/
+dist/
+dist-*/
+*.tsbuildinfo
+/ed*.png
+.DS_Store

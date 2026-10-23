@@ -1,0 +1,472 @@
+{
+ "start": [
+  {
+   "file": "start-1",
+   "caption": "Describe the video you want in the prompt box on Create.",
+   "x": 58.8,
+   "y": 30,
+   "w": 58,
+   "h": 9
+  },
+  {
+   "file": "start-2",
+   "caption": "Pick its length and size. The credits it costs show as you type.",
+   "x": 69.9,
+   "y": 36.5,
+   "w": 11.5,
+   "h": 4
+  },
+  {
+   "file": "start-3",
+   "caption": "Click Generate.",
+   "x": 81.8,
+   "y": 36.5,
+   "w": 11.3,
+   "h": 4
+  },
+  {
+   "file": "start-4",
+   "caption": "The editor opens and makes your reference video. It names the project for you.",
+   "x": 38.9,
+   "y": 55.5,
+   "w": 49.4,
+   "h": 79
+  }
+ ],
+ "templates": [
+  {
+   "file": "templates-1",
+   "caption": "Scroll to Start with templates and pick one. Filter by industry or size.",
+   "x": 49.1,
+   "y": 29.8,
+   "w": 17.7,
+   "h": 35.3
+  },
+  {
+   "file": "templates-2",
+   "caption": "Try its variations, then click Use template.",
+   "x": 83.5,
+   "y": 26,
+   "w": 26.6,
+   "h": 4.5
+  },
+  {
+   "file": "templates-3",
+   "caption": "A new project opens with everything already made. Change anything you like.",
+   "x": 38.9,
+   "y": 47.1,
+   "w": 21.9,
+   "h": 62.3
+  }
+ ],
+ "assets": [
+  {
+   "file": "assets-1",
+   "caption": "Every video you generate is kept in Assets. Open one.",
+   "x": 26.7,
+   "y": 26.6,
+   "w": 11.9,
+   "h": 19
+  },
+  {
+   "file": "assets-2",
+   "caption": "Click Use in Flicks to start a new project with it as the reference video.",
+   "x": 81.3,
+   "y": 94.5,
+   "w": 18.8,
+   "h": 5
+  }
+ ],
+ "variations": [
+  {
+   "file": "variations-1",
+   "caption": "Below the canvas: the reference video, then your variations. Click + to add one.",
+   "x": 53,
+   "y": 90.2,
+   "w": 3.8,
+   "h": 10.6
+  },
+  {
+   "file": "variations-2",
+   "caption": "Describe how it differs, like “the same scene, in black lenses”, then Generate.",
+   "x": 86.8,
+   "y": 89.3,
+   "w": 23.1,
+   "h": 9
+  },
+  {
+   "file": "variations-3",
+   "caption": "Each variation costs credits and takes a moment. You can keep working meanwhile.",
+   "x": 93,
+   "y": 95.5,
+   "w": 10.4,
+   "h": 3.5
+  },
+  {
+   "file": "variations-4",
+   "caption": "It generates in the strip. Make 2 to 5 variations; you need 2 to export.",
+   "x": 38.9,
+   "y": 47.1,
+   "w": 21.9,
+   "h": 62.3
+  }
+ ],
+ "starting": [
+  {
+   "file": "starting-1",
+   "caption": "Hover a variation and click the play button to make it the one viewers see first.",
+   "x": 40.6,
+   "y": 86.6,
+   "w": 1.6,
+   "h": 2.5
+  },
+  {
+   "file": "starting-2",
+   "caption": "A solid play button marks the starting variation.",
+   "x": 40.6,
+   "y": 86.6,
+   "w": 1.6,
+   "h": 2.5
+  }
+ ],
+ "design": [
+  {
+   "file": "design-1",
+   "caption": "Open Text in the left rail.",
+   "x": 2.1,
+   "y": 10.8,
+   "w": 2.8,
+   "h": 4.5
+  },
+  {
+   "file": "design-2",
+   "caption": "Pick a style to add it to the canvas.",
+   "x": 15.6,
+   "y": 16.1,
+   "w": 20.5,
+   "h": 6.2
+  },
+  {
+   "file": "design-3",
+   "caption": "Drag to move, use the handles to resize, and style it from the toolbar. It shows on every variation.",
+   "x": 38.9,
+   "y": 11,
+   "w": 32.1,
+   "h": 5
+  }
+ ],
+ "links": [
+  {
+   "file": "links-1",
+   "caption": "Select a button on the canvas.",
+   "x": 38.9,
+   "y": 59.6,
+   "w": 4.9,
+   "h": 3.4
+  },
+  {
+   "file": "links-2",
+   "caption": "Click the link icon in its toolbar.",
+   "x": 22.9,
+   "y": 11,
+   "w": 2.5,
+   "h": 4
+  },
+  {
+   "file": "links-3",
+   "caption": "Paste a link, or link a feed so each variation goes somewhere different.",
+   "x": 39.1,
+   "y": 56.5,
+   "w": 5.2,
+   "h": 1.8
+  }
+ ],
+ "feeds": [
+  {
+   "file": "feeds-1",
+   "caption": "Open Feeds in the left rail. A feed is a value each variation sets for itself.",
+   "x": 2.1,
+   "y": 37.9,
+   "w": 2.8,
+   "h": 4.5
+  },
+  {
+   "file": "feeds-2",
+   "caption": "Add one with +, or open one. Here, @price.",
+   "x": 15.7,
+   "y": 20.3,
+   "w": 15.7,
+   "h": 2.5
+  },
+  {
+   "file": "feeds-3",
+   "caption": "Fill its value for each variation. Link it to text or a button from their toolbar.",
+   "x": 17.1,
+   "y": 24.8,
+   "w": 17.4,
+   "h": 4
+  },
+  {
+   "file": "feeds-4",
+   "caption": "Switch variation: the text shows that variation’s value.",
+   "x": 50.2,
+   "y": 28.4,
+   "w": 2.4,
+   "h": 2.2
+  }
+ ],
+ "thumbnails": [
+  {
+   "file": "thumbnails-1",
+   "caption": "Select the thumbnail strip on the canvas. Viewers tap it to switch variations.",
+   "x": 38.9,
+   "y": 72.4,
+   "w": 8.5,
+   "h": 4.2
+  },
+  {
+   "file": "thumbnails-2",
+   "caption": "Pick a thumbnail, then upload an image for that variation from the toolbar.",
+   "x": 38.9,
+   "y": 72.4,
+   "w": 2.6,
+   "h": 4.2
+  },
+  {
+   "file": "thumbnails-3",
+   "caption": "Every included variation needs one before you export.",
+   "x": 38.9,
+   "y": 11,
+   "w": 32,
+   "h": 5
+  }
+ ],
+ "preview": [
+  {
+   "file": "preview-1",
+   "caption": "Switch to Preview at the top.",
+   "x": 87.4,
+   "y": 3.4,
+   "w": 7.7,
+   "h": 4
+  },
+  {
+   "file": "preview-2",
+   "caption": "It plays as viewers get it. Tap the thumbnails to switch, try the buttons. Switch back to Design to edit.",
+   "x": 50,
+   "y": 55.5,
+   "w": 27.8,
+   "h": 79
+  }
+ ],
+ "versions": [
+  {
+   "file": "versions-1",
+   "caption": "Open the file menu next to the project name.",
+   "x": 16.4,
+   "y": 3.4,
+   "w": 2.2,
+   "h": 3.5
+  },
+  {
+   "file": "versions-2",
+   "caption": "Choose Version history. Save as template is here too.",
+   "x": 23.4,
+   "y": 20.3,
+   "w": 15.6,
+   "h": 4
+  },
+  {
+   "file": "versions-3",
+   "caption": "Versions save as you work; exports are marked. Restore any of them.",
+   "x": 79.1,
+   "y": 21.3,
+   "w": 10.2,
+   "h": 3
+  }
+ ],
+ "export": [
+  {
+   "file": "export-1",
+   "caption": "Click Export at the top right.",
+   "x": 95.4,
+   "y": 3.4,
+   "w": 6.7,
+   "h": 4.5
+  },
+  {
+   "file": "export-2",
+   "caption": "Name the Flick (it starts with the project name) and click Export.",
+   "x": 62.9,
+   "y": 66.8,
+   "w": 5.4,
+   "h": 4
+  },
+  {
+   "file": "export-3",
+   "caption": "Its page opens and it prepares in the background. You can leave and come back.",
+   "x": 81.2,
+   "y": 22.9,
+   "w": 31.3,
+   "h": 13.5
+  },
+  {
+   "file": "export-4",
+   "caption": "Ready: share the link, add it to placements and embeds, and see its views.",
+   "x": 68.2,
+   "y": 19.9,
+   "w": 2.1,
+   "h": 2.5
+  }
+ ],
+ "remix": [
+  {
+   "file": "remix-1",
+   "caption": "Flicks don’t change once made. Open one from Flicks.",
+   "x": 68.4,
+   "y": 39.6,
+   "w": 18.1,
+   "h": 34.9
+  },
+  {
+   "file": "remix-2",
+   "caption": "Click Remix to start a new project from it. The Flick, its link and placements stay as they are.",
+   "x": 90.2,
+   "y": 8.1,
+   "w": 6.8,
+   "h": 4
+  }
+ ],
+ "link": [
+  {
+   "file": "link-1",
+   "caption": "Copy the link from its Flick page, or open it.",
+   "x": 91.3,
+   "y": 25.4,
+   "w": 2.2,
+   "h": 3.5
+  },
+  {
+   "file": "link-2",
+   "caption": "Edit link changes its ending and how it looks when shared: image, title and description.",
+   "x": 50,
+   "y": 50,
+   "w": 35,
+   "h": 90
+  }
+ ],
+ "embeds": [
+  {
+   "file": "embeds-1",
+   "caption": "On a Flick’s page, click Add to embed.",
+   "x": 89.7,
+   "y": 69.2,
+   "w": 11.1,
+   "h": 3.5
+  },
+  {
+   "file": "embeds-2",
+   "caption": "Put it in an embed of its size, or make a new one. Embeds are free.",
+   "x": 50,
+   "y": 50,
+   "w": 35,
+   "h": 33.8
+  },
+  {
+   "file": "embeds-3",
+   "caption": "All your embeds are in Embeds. Open one.",
+   "x": 27.9,
+   "y": 40.8,
+   "w": 12.6,
+   "h": 2.5
+  },
+  {
+   "file": "embeds-4",
+   "caption": "Copy its code into your website or app once. Replace the Flick any time; the code stays the same.",
+   "x": 82.7,
+   "y": 71.1,
+   "w": 25,
+   "h": 4
+  }
+ ],
+ "ads": [
+  {
+   "file": "ads-1",
+   "caption": "Campaigns hold placements. Open a campaign, or make a new one.",
+   "x": 30.1,
+   "y": 20.5,
+   "w": 18.8,
+   "h": 5.6
+  },
+  {
+   "file": "ads-2",
+   "caption": "A placement is a fixed-size slot. Open one, or add a placement.",
+   "x": 29.7,
+   "y": 55.6,
+   "w": 16.2,
+   "h": 2.5
+  },
+  {
+   "file": "ads-3",
+   "caption": "Its page shows the Flick in it, its numbers and history. Replace the Flick any time.",
+   "x": 54.7,
+   "y": 29.4,
+   "w": 6.1,
+   "h": 3.5
+  }
+ ],
+ "tags": [
+  {
+   "file": "tags-1",
+   "caption": "Choose your ad platform. Not listed? Pick Other and type its name.",
+   "x": 82.7,
+   "y": 41.9,
+   "w": 25,
+   "h": 5.5
+  },
+  {
+   "file": "tags-2",
+   "caption": "Choose the format: VAST 4.2, SIMID or MRAID 3.0.",
+   "x": 82.7,
+   "y": 51.4,
+   "w": 8.2,
+   "h": 3.1
+  },
+  {
+   "file": "tags-3",
+   "caption": "Copy the tag into your ad platform. It stays the same when you replace the Flick.",
+   "x": 82.7,
+   "y": 83.4,
+   "w": 25,
+   "h": 4
+  }
+ ],
+ "balance": [
+  {
+   "file": "balance-1",
+   "caption": "Ad Balance pays for impressions, per 1,000, at the CPM of the viewer’s country.",
+   "x": 26.8,
+   "y": 38.4,
+   "w": 9.1,
+   "h": 4
+  },
+  {
+   "file": "balance-2",
+   "caption": "Add funds from $100. Tags show once funds are in; if the balance runs negative, ads keep running and the next top-up settles it.",
+   "x": 50,
+   "y": 50,
+   "w": 35,
+   "h": 46.5
+  }
+ ],
+ "credits": [
+  {
+   "file": "credits-1",
+   "caption": "Credits pay for generating videos. Get more any time from the sidebar.",
+   "x": 50,
+   "y": 50,
+   "w": 35,
+   "h": 58.8
+  }
+ ]
+}

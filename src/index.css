@@ -1,0 +1,270 @@
+@import "./font.css";
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/*
+  shadcn preset b3mPrj55k
+  style: rhea · baseColor: zinc · theme: amber · font: DM Sans
+  iconLibrary: hugeicons · radius: medium (0.625rem) · menuAccent: subtle · menuColor: default · chart: orange
+  Values copied from shadcn registry themes.ts (zinc + amber).
+*/
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  /* shadows: dark ink in light mode, pure black in dark mode (never a light glow) */
+  --shadow-ink: oklch(0.2 0 0);
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.141 0.005 285.823);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.141 0.005 285.823);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.141 0.005 285.823);
+  --primary: oklch(0.555 0.163 48.998);
+  --primary-foreground: oklch(0.987 0.022 95.277);
+  --secondary: oklch(0.967 0.001 286.375);
+  --secondary-foreground: oklch(0.21 0.006 285.885);
+  --muted: oklch(0.967 0.001 286.375);
+  --muted-foreground: oklch(0.552 0.016 285.938);
+  --accent: oklch(0.967 0.001 286.375);
+  --accent-foreground: oklch(0.21 0.006 285.885);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.92 0.004 286.32);
+  --input: oklch(0.92 0.004 286.32);
+  --ring: oklch(0.705 0.015 286.067);
+  --chart-1: oklch(0.837 0.128 66.29);
+  --chart-2: oklch(0.705 0.213 47.604);
+  --chart-3: oklch(0.646 0.222 41.116);
+  --chart-4: oklch(0.553 0.195 38.402);
+  --chart-5: oklch(0.47 0.157 37.304);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.141 0.005 285.823);
+  --sidebar-primary: oklch(0.666 0.179 58.318);
+  --sidebar-primary-foreground: oklch(0.987 0.022 95.277);
+  --sidebar-accent: oklch(0.967 0.001 286.375);
+  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
+  --sidebar-border: oklch(0.92 0.004 286.32);
+  --sidebar-ring: oklch(0.705 0.015 286.067);
+}
+
+.dark {
+  --shadow-ink: oklch(0 0 0);
+  --background: oklch(0.141 0.005 285.823);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.21 0.006 285.885);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.21 0.006 285.885);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.473 0.137 46.201);
+  --primary-foreground: oklch(0.987 0.022 95.277);
+  --secondary: oklch(0.274 0.006 286.033);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.274 0.006 286.033);
+  --muted-foreground: oklch(0.705 0.015 286.067);
+  --accent: oklch(0.274 0.006 286.033);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.552 0.016 285.938);
+  --chart-1: oklch(0.837 0.128 66.29);
+  --chart-2: oklch(0.705 0.213 47.604);
+  --chart-3: oklch(0.646 0.222 41.116);
+  --chart-4: oklch(0.553 0.195 38.402);
+  --chart-5: oklch(0.47 0.157 37.304);
+  --sidebar: oklch(0.21 0.006 285.885);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.769 0.188 70.08);
+  --sidebar-primary-foreground: oklch(0.279 0.077 45.635);
+  --sidebar-accent: oklch(0.274 0.006 286.033);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.552 0.016 285.938);
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  html, body, #root { height: 100%; }
+  body { @apply bg-background text-foreground font-sans antialiased; }
+  * { scrollbar-width: none; }
+  *::-webkit-scrollbar { display: none; }
+}
+
+/* ---------- Page-specific (not part of the preset) ---------- */
+.hero-mesh {
+  background-image: linear-gradient(120deg,
+    color-mix(in oklch, var(--chart-1) 14%, var(--background)),
+    var(--muted),
+    color-mix(in oklch, var(--chart-2) 16%, var(--background)),
+    color-mix(in oklch, var(--chart-1) 14%, var(--background)));
+}
+
+/* Static gradient glows, built from the preset's amber/chart scale */
+.blob { position: absolute; border-radius: 9999px; filter: blur(80px); pointer-events: none; }
+.blob-1 { background: color-mix(in oklch, var(--chart-2) 55%, transparent); width: 46%; height: 70%; left: -6%; top: -18%; }
+.blob-2 { background: color-mix(in oklch, var(--chart-3) 40%, transparent); width: 40%; height: 64%; right: -4%; top: -22%; }
+.blob-3 { background: color-mix(in oklch, var(--chart-1) 35%, transparent); width: 38%; height: 60%; left: 34%; top: 10%; }
+.blob-4 { background: color-mix(in oklch, var(--muted-foreground) 30%, transparent); width: 55%; height: 60%; left: 20%; bottom: -30%; }
+.dark .blob { opacity: .45; }
+.grain::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .18; mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+@keyframes fade-up { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+.animate-fade-up { animation: fade-up .35s ease-out both; }
+@media (prefers-reduced-motion: reduce) { .animate-fade-up { animation: none; } }
+
+/* Shimmer loading state for uploads */
+.shimmer {
+  position: relative; overflow: hidden;
+  background: color-mix(in oklch, var(--foreground) 9%, transparent);
+}
+.shimmer::after {
+  content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, color-mix(in oklch, var(--background) 85%, transparent), transparent);
+  animation: shimmer 1.2s ease-in-out infinite;
+}
+@keyframes shimmer { to { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) { .shimmer::after { animation: none; } }
+
+/* Pointer cursor on everything clickable (unlayered, so it wins over component utilities) */
+button, a[href], summary, label[for], select,
+[role="button"], [role="link"], [role="tab"], [role="combobox"], [role="option"],
+[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"], [role="switch"], [role="checkbox"],
+[data-slot="dropdown-menu-trigger"], [data-slot="select-trigger"], [data-slot="dialog-trigger"], [data-slot="dialog-close"] {
+  cursor: pointer;
+}
+button:disabled, [aria-disabled="true"], [data-disabled] {
+  cursor: not-allowed;
+}
+textarea, input[type="text"] { cursor: text; }
+:has(> button:disabled) { cursor: not-allowed; }
+
+/* Prompt box: grows with text up to 200px, then scrolls with a slim visible scrollbar */
+textarea { scrollbar-width: thin; scrollbar-color: color-mix(in oklch, var(--foreground) 20%, transparent) transparent; }
+textarea::-webkit-scrollbar { display: block; width: 6px; }
+textarea::-webkit-scrollbar-thumb { background: color-mix(in oklch, var(--foreground) 20%, transparent); border-radius: 9999px; }
+
+/* Generation canvas: animated gradient inside the generating frame */
+.generating-frame { background: var(--muted); }
+/* Very light tints of the preset chart colors, drifting slowly */
+.generating-gradient {
+  background:
+    radial-gradient(35% 35% at 30% 30%, color-mix(in oklch, var(--chart-1) 22%, transparent), transparent 70%),
+    radial-gradient(40% 40% at 70% 45%, color-mix(in oklch, var(--chart-2) 16%, transparent), transparent 70%),
+    radial-gradient(45% 45% at 45% 75%, color-mix(in oklch, var(--chart-3) 12%, transparent), transparent 70%);
+  filter: blur(30px);
+  animation: generating-drift 8s ease-in-out infinite alternate;
+}
+@keyframes generating-drift {
+  0% { transform: rotate(0deg) scale(1); }
+  100% { transform: rotate(180deg) scale(1.12); }
+}
+/* Soft light band passing across the frame to show work in progress */
+.generating-sweep {
+  background: linear-gradient(110deg, transparent 30%, color-mix(in oklch, var(--background) 55%, transparent) 50%, transparent 70%);
+  background-size: 250% 100%;
+  animation: generating-sweep 2.4s ease-in-out infinite;
+}
+@keyframes generating-sweep {
+  0% { background-position: 120% 0; }
+  100% { background-position: -20% 0; }
+}
+@media (prefers-reduced-motion: reduce) { .generating-gradient, .generating-sweep { animation: none; } }
+
+/* login showcase: time until the next product */
+@keyframes showcase-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.showcase-progress {
+  animation-name: showcase-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+/* Help Center walkthrough: a click ripple where the cursor lands, and the step timer */
+@keyframes help-click { 0% { transform: translate(-50%, -50%) scale(.3); opacity: .9 } 100% { transform: translate(-50%, -50%) scale(2.4); opacity: 0 } }
+@keyframes help-press { 0%, 100% { transform: scale(1) } 50% { transform: scale(.82) } }
+@keyframes help-timer { from { transform: scaleX(0) } to { transform: scaleX(1) } }
+
+/* Welcome gift: the card floats until opened; a sheen; a confetti burst on claim */
+@keyframes gift-float { 0%, 100% { transform: translateY(0) rotateX(6deg) rotateY(-8deg) } 50% { transform: translateY(-8px) rotateX(2deg) rotateY(6deg) } }
+@keyframes gift-sheen { 0% { transform: translateX(0) rotate(12deg) } 60%, 100% { transform: translateX(520%) rotate(12deg) } }
+@keyframes gift-confetti {
+  0% { transform: translate(0, 0) rotate(0) scale(.6); opacity: 1 }
+  70% { opacity: 1 }
+  100% { transform: translate(var(--x), calc(var(--y) + 90px)) rotate(var(--r)) scale(1); opacity: 0 }
+}
+
+/* Create in dark mode: the welcome gift's background (soft warm glows on the plain page, no mesh or grain) */
+.dark .hero-mesh { background-image: none; background-color: var(--background); }
+.dark .hero-mesh .blob-4 { display: none; }
+.dark .hero-mesh.grain::after { display: none; }
+
+/* Analytics chart tokens: validated categorical palette (light and dark stepped separately); text never wears a series colour. */
+:root {
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --viz-prev: color-mix(in oklch, var(--muted-foreground) 55%, transparent);
+  --viz-grid: color-mix(in oklch, var(--foreground) 8%, transparent);
+  --viz-axis: color-mix(in oklch, var(--foreground) 18%, transparent);
+  /* sequential: one hue (the brand orange), light to dark */
+  --seq-lo: color-mix(in oklch, var(--primary) 8%, var(--card));
+  --seq-hi: var(--primary);
+}
+.dark {
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --seq-lo: color-mix(in oklch, var(--primary) 10%, var(--card));
+}
