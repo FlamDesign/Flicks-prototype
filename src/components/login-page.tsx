@@ -384,7 +384,9 @@ export function FlickShowcase() {
 
   return (
     <div className="relative flex h-full min-h-[560px] flex-col overflow-hidden rounded-[28px] bg-neutral-950">
-      <div className="relative min-h-0 flex-1">
+      {/* the whole square shows, head to the items on the bottom step, whatever the panel shape */}
+      <div className="flex min-h-0 flex-1 items-center justify-center px-6 pt-6" style={{ containerType: "size" }}>
+        <div className="relative overflow-hidden rounded-2xl" style={{ width: "min(100cqw, 100cqh)", height: "min(100cqw, 100cqh)" }}>
         {LOOKS.map((l, i) => (
           <video
             key={l.name}
@@ -404,10 +406,10 @@ export function FlickShowcase() {
             <source src={l.video} type="video/mp4" />
           </video>
         ))}
-        <div aria-hidden className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-neutral-950" />
+        </div>
       </div>
 
-      <div className="flex shrink-0 flex-col items-center gap-4 px-8 pb-8 pt-2">
+      <div className="flex shrink-0 flex-col items-center gap-4 px-8 pb-8 pt-5">
         {/* the looks: the same strip viewers tap in a Flick */}
         <div role="radiogroup" aria-label="Looks in this Flick" className="flex gap-3">
           {LOOKS.map((l, i) => (
