@@ -383,55 +383,71 @@ export function FlickShowcase() {
   }, [auto, active])
 
   return (
-    <div className="relative flex h-full min-h-[560px] flex-col overflow-hidden rounded-[28px] bg-neutral-950">
-      {/* the whole square shows, head to the items on the bottom step, whatever the panel shape */}
-      <div className="flex min-h-0 flex-1 items-center justify-center px-6 pt-6" style={{ containerType: "size" }}>
-        <div className="relative overflow-hidden rounded-2xl" style={{ width: "min(100cqw, 100cqh)", height: "min(100cqw, 100cqh)" }}>
-        {LOOKS.map((l, i) => (
-          <video
-            key={l.name}
-            ref={(el) => {
-              videos.current[i] = el
-            }}
-            poster={l.poster}
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="auto"
-            aria-hidden
-            className={cn("absolute inset-0 size-full object-cover transition-opacity duration-300", i === active ? "opacity-100" : "opacity-0")}
-          >
-            <source src={l.webm} type="video/webm" />
-            <source src={l.video} type="video/mp4" />
-          </video>
-        ))}
+    <div className="relative h-full min-h-[560px] overflow-hidden rounded-[28px] bg-neutral-200 dark:bg-neutral-800">
+      {/* behind the square: the same scene, blurred, so any panel shape is filled without black bars */}
+      {LOOKS.map((l, i) => (
+        <img
+          key={l.name}
+          src={l.poster}
+          alt=""
+          aria-hidden
+          className={cn("absolute inset-0 size-full scale-110 object-cover blur-2xl transition-opacity duration-500", i === active ? "opacity-100" : "opacity-0")}
+        />
+      ))}
+      <div aria-hidden className="absolute inset-0 bg-black/10" />
+
+      {/* the Flick: the whole square shows, head to the items on the bottom step, whatever the panel shape */}
+      <div className="absolute inset-0 flex items-center justify-center" style={{ containerType: "size" }}>
+        <div
+          className="relative overflow-hidden"
+          // soft edges so the square melts into the blurred scene instead of a hard line
+          style={{ width: "min(100cqw, 100cqh)", height: "min(100cqw, 100cqh)", maskImage: "linear-gradient(to bottom, transparent, black 5%, black 95%, transparent), linear-gradient(to right, transparent, black 5%, black 95%, transparent)", maskComposite: "intersect", WebkitMaskComposite: "source-in" }}
+        >
+          {LOOKS.map((l, i) => (
+            <video
+              key={l.name}
+              ref={(el) => {
+                videos.current[i] = el
+              }}
+              poster={l.poster}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+              aria-hidden
+              className={cn("absolute inset-0 size-full object-cover transition-opacity duration-300", i === active ? "opacity-100" : "opacity-0")}
+            >
+              <source src={l.webm} type="video/webm" />
+              <source src={l.video} type="video/mp4" />
+            </video>
+          ))}
         </div>
       </div>
 
-      <div className="flex shrink-0 flex-col items-center gap-4 px-8 pb-8 pt-5">
-        {/* the looks: the same strip viewers tap in a Flick */}
-        <div role="radiogroup" aria-label="Looks in this Flick" className="flex gap-3">
-          {LOOKS.map((l, i) => (
-            <button
-              key={l.name}
-              type="button"
-              role="radio"
-              aria-checked={i === active}
-              aria-label={l.name}
-              onClick={() => (show(i), setAuto(false))}
-              className={cn(
-                "relative size-16 overflow-hidden rounded-2xl bg-neutral-800 outline-none transition-all duration-300 focus-visible:ring-2 focus-visible:ring-white",
-                i === active ? "scale-105 ring-2 ring-white ring-offset-2 ring-offset-neutral-950" : "opacity-60 hover:opacity-100",
-              )}
-            >
-              <img src={l.thumb} alt="" className="size-full object-cover" />
-              {/* time until it moves on */}
-              {i === active && auto && <span key={active} className="showcase-progress absolute inset-x-0 bottom-0 h-0.5 origin-left bg-primary" style={{ animationDuration: `${CYCLE}ms` }} />}
-            </button>
-          ))}
-        </div>
-        <p className="max-w-sm text-balance text-center text-sm text-white/85">One Flick, every look. Viewers tap and the video changes with them, mid-move.</p>
+      {/* what it is, small, top left */}
+      <p className="absolute left-4 top-4 max-w-[60%] rounded-full bg-black/35 px-3 py-1.5 text-xs text-white backdrop-blur-md">One Flick, every look. Tap one.</p>
+
+      {/* the looks: the same strip viewers tap in a Flick, floating over the steel on the right */}
+      <div role="radiogroup" aria-label="Looks in this Flick" className="absolute right-4 top-1/2 flex -translate-y-1/2 flex-col gap-2 rounded-[22px] bg-white/20 p-1.5 ring-1 ring-white/30 backdrop-blur-xl">
+        {LOOKS.map((l, i) => (
+          <button
+            key={l.name}
+            type="button"
+            role="radio"
+            aria-checked={i === active}
+            aria-label={l.name}
+            onClick={() => (show(i), setAuto(false))}
+            className={cn(
+              "relative size-14 overflow-hidden rounded-2xl outline-none transition-all duration-300 focus-visible:ring-2 focus-visible:ring-white",
+              i === active ? "ring-2 ring-white" : "opacity-70 hover:opacity-100",
+            )}
+          >
+            <img src={l.thumb} alt="" className="size-full object-cover" />
+            {/* time until it moves on */}
+            {i === active && auto && <span key={active} className="showcase-progress absolute inset-x-0 bottom-0 h-0.5 origin-left bg-primary" style={{ animationDuration: `${CYCLE}ms` }} />}
+          </button>
+        ))}
       </div>
     </div>
   )
