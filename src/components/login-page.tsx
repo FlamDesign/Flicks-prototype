@@ -6,14 +6,25 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { FlicksLogo } from "@/components/brand"
-import { GENERATED_VIDEOS } from "@/components/editor/elements"
 import { useDevState } from "@/dev/state"
 import { useDevAction } from "@/dev/dev-actions"
 import { cn } from "@/lib/utils"
-import vanguardBlack from "@/assets/uploads/vanguard-black.jpg"
-import vanguardWhiteBlue from "@/assets/uploads/vanguard-white-blue.jpg"
-import hstnWhiteOrange from "@/assets/uploads/hstn-white-orange.jpg"
-import hstnBlackClear from "@/assets/uploads/hstn-black-clear.jpg"
+import softPink from "@/assets/flicks/escalator/soft-pink.mp4"
+import softPinkWebm from "@/assets/flicks/escalator/soft-pink.webm"
+import softPinkPoster from "@/assets/flicks/escalator/soft-pink-poster.webp"
+import softPinkThumb from "@/assets/flicks/escalator/soft-pink-thumb.webp"
+import street from "@/assets/flicks/escalator/street.mp4"
+import streetWebm from "@/assets/flicks/escalator/street.webm"
+import streetPoster from "@/assets/flicks/escalator/street-poster.webp"
+import streetThumb from "@/assets/flicks/escalator/street-thumb.webp"
+import office from "@/assets/flicks/escalator/office.mp4"
+import officeWebm from "@/assets/flicks/escalator/office.webm"
+import officePoster from "@/assets/flicks/escalator/office-poster.webp"
+import officeThumb from "@/assets/flicks/escalator/office-thumb.webp"
+import court from "@/assets/flicks/escalator/court.mp4"
+import courtWebm from "@/assets/flicks/escalator/court.webm"
+import courtPoster from "@/assets/flicks/escalator/court-poster.webp"
+import courtThumb from "@/assets/flicks/escalator/court-thumb.webp"
 
 type Step = "email" | "sent" | "expired"
 const RESEND_AFTER = 30
@@ -41,7 +52,7 @@ function checkEmail(raw: string): { error?: string; suggestion?: string } {
 
 /**
  * Sign in: any email gets a one-time sign-in link (no passwords), or Google.
- * The right half is a live Flick: the same ad switching between products.
+ * The other half is a live Flick: one escalator shot, four people, switching in sync.
  */
 export function LoginPage({
   onSignIn,
@@ -334,22 +345,34 @@ function Problem({ children, className }: { children: React.ReactNode; className
   )
 }
 
-/** Each product with the video that shows it. */
-const PRODUCTS = [
-  { name: "Gold lens", image: vanguardBlack, video: 0 },
-  { name: "Sapphire lens", image: vanguardWhiteBlue, video: 2 },
-  { name: "White frame", image: hstnWhiteOrange, video: 3 },
-  { name: "Black frame", image: hstnBlackClear, video: 4 },
+/** The escalator Flick: one shot, four people. Every variation has the same moves at the same moment, so a tap swaps who is in it, not where they are. */
+const LOOKS = [
+  { name: "Soft pink", video: softPink, webm: softPinkWebm, poster: softPinkPoster, thumb: softPinkThumb },
+  { name: "Street", video: street, webm: streetWebm, poster: streetPoster, thumb: streetThumb },
+  { name: "Office", video: office, webm: officeWebm, poster: officePoster, thumb: officeThumb },
+  { name: "Court", video: court, webm: courtWebm, poster: courtPoster, thumb: courtThumb },
 ]
-const CYCLE = 4500
+const CYCLE = 4000
 
-/** One ad, every product: tap a product and the video switches; it moves on by itself until tapped. */
+/** One Flick, every look: tap a look and the video switches in place, in sync; it moves on by itself until tapped. */
 export function FlickShowcase() {
   const [active, setActive] = useState(0)
   const [auto, setAuto] = useState(true)
+  const videos = useRef<(HTMLVideoElement | null)[]>([])
+  // keep the incoming video on the same frame as the one showing, so the swap is seamless
+  const show = (i: number) =>
+    setActive((cur) => {
+      const from = videos.current[cur]
+      const to = videos.current[i]
+      if (from && to && i !== cur) {
+        to.currentTime = from.currentTime
+        void to.play().catch(() => {})
+      }
+      return i
+    })
   useEffect(() => {
     if (!auto) return
-    const t = setTimeout(() => setActive((a) => (a + 1) % PRODUCTS.length), CYCLE)
+    const t = setTimeout(() => show((active + 1) % LOOKS.length), CYCLE)
     return () => clearTimeout(t)
   }, [active, auto])
   // after a tap, wait a while before moving on again
@@ -360,53 +383,53 @@ export function FlickShowcase() {
   }, [auto, active])
 
   return (
-    <div className="relative h-full min-h-[560px] overflow-hidden rounded-[28px] bg-neutral-900">
-      {PRODUCTS.map((p, i) => {
-        const v = GENERATED_VIDEOS[p.video]
-        return (
+    <div className="relative flex h-full min-h-[560px] flex-col overflow-hidden rounded-[28px] bg-neutral-950">
+      <div className="relative min-h-0 flex-1">
+        {LOOKS.map((l, i) => (
           <video
-            key={p.name}
+            key={l.name}
+            ref={(el) => {
+              videos.current[i] = el
+            }}
+            poster={l.poster}
             autoPlay
             muted
             loop
             playsInline
-            poster={v.poster}
+            preload="auto"
             aria-hidden
-            className={cn("absolute inset-0 size-full object-cover transition-opacity duration-700", i === active ? "opacity-100" : "opacity-0")}
+            className={cn("absolute inset-0 size-full object-cover transition-opacity duration-300", i === active ? "opacity-100" : "opacity-0")}
           >
-            {v.webm && <source src={v.webm} type="video/webm" />}
-            <source src={v.mp4} type="video/mp4" />
+            <source src={l.webm} type="video/webm" />
+            <source src={l.video} type="video/mp4" />
           </video>
-        )
-      })}
-      <div aria-hidden className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-black/65" />
+        ))}
+        <div aria-hidden className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-neutral-950" />
+      </div>
 
-
-      <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-5 px-8 pb-9">
-        {/* the products: the same strip viewers tap in a Flick */}
-        <div role="radiogroup" aria-label="Products in this ad" className="flex gap-3">
-          {PRODUCTS.map((p, i) => (
+      <div className="flex shrink-0 flex-col items-center gap-4 px-8 pb-8 pt-2">
+        {/* the looks: the same strip viewers tap in a Flick */}
+        <div role="radiogroup" aria-label="Looks in this Flick" className="flex gap-3">
+          {LOOKS.map((l, i) => (
             <button
-              key={p.name}
+              key={l.name}
               type="button"
               role="radio"
               aria-checked={i === active}
-              aria-label={p.name}
-              onClick={() => (setActive(i), setAuto(false))}
+              aria-label={l.name}
+              onClick={() => (show(i), setAuto(false))}
               className={cn(
-                "relative size-16 overflow-hidden rounded-2xl bg-white outline-none transition-all duration-300 focus-visible:ring-2 focus-visible:ring-white",
-                i === active ? "scale-105 ring-2 ring-white ring-offset-2 ring-offset-black/40" : "opacity-75 hover:opacity-100",
+                "relative size-16 overflow-hidden rounded-2xl bg-neutral-800 outline-none transition-all duration-300 focus-visible:ring-2 focus-visible:ring-white",
+                i === active ? "scale-105 ring-2 ring-white ring-offset-2 ring-offset-neutral-950" : "opacity-60 hover:opacity-100",
               )}
             >
-              <img src={p.image} alt="" className="size-full object-contain p-1.5" />
+              <img src={l.thumb} alt="" className="size-full object-cover" />
               {/* time until it moves on */}
               {i === active && auto && <span key={active} className="showcase-progress absolute inset-x-0 bottom-0 h-0.5 origin-left bg-primary" style={{ animationDuration: `${CYCLE}ms` }} />}
             </button>
           ))}
         </div>
-        <p className="max-w-sm text-balance text-center text-sm text-white/85">
-          One ad, every option. Viewers tap a product and the video changes with it.
-        </p>
+        <p className="max-w-sm text-balance text-center text-sm text-white/85">One Flick, every look. Viewers tap and the video changes with them, mid-move.</p>
       </div>
     </div>
   )

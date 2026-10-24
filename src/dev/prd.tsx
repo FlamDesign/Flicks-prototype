@@ -5,7 +5,7 @@ import { DevBadge } from "@/dev/state-manager"
 import { cn } from "@/lib/utils"
 
 /** Bump when the PRD changes. */
-export const PRD_UPDATED = "Oct 22, 2026, 4:30 pm"
+export const PRD_UPDATED = "Oct 23, 2026, 7:00 pm"
 
 /* ---------- small writing helpers ---------- */
 
@@ -145,7 +145,7 @@ const SECTIONS: Section[] = [
             "Signing back in with the same email keeps the name; until a name is known, the greeting uses the email\u2019s first part, capitalised.",
             "An expired or used link opens \u201cThis link has expired\u201d with \u201cEmail me a new link\u201d and \u201cUse a different email\u201d.",
             "Google shows \u201cConnecting to Google\u2026\u201d, then signs in.",
-            "Live Flick: the sample ad plays full-bleed with four product tiles at the bottom. Tapping one crossfades to that product\u2019s video; on its own it moves to the next every few seconds (a thin bar shows when), pausing for a while after a tap. Caption: \u201cOne ad, every option. Viewers tap a product and the video changes with it.\u201d",
+            "Live Flick: an 8-second escalator shot, square, above four look tiles (Soft pink, Street, Office, Court). Every look has the same person pose, moves and timing; only the person, their drink and the three items on the bottom step change. Tapping a tile swaps the video on the same frame, so the move carries on with someone new; on its own it moves to the next every few seconds (a thin bar shows when), pausing for a while after a tap. Caption: \u201cOne Flick, every look. Viewers tap and the video changes with them, mid-move.\u201d",
             "A light/dark toggle sits at the top right. Log out on the Account page returns here.",
           ]}
         />
