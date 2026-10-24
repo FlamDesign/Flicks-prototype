@@ -391,7 +391,7 @@ export function FlickShowcase() {
           src={l.poster}
           alt=""
           aria-hidden
-          className={cn("absolute inset-0 size-full scale-110 object-cover blur-2xl transition-opacity duration-500", i === active ? "opacity-100" : "opacity-0")}
+          className={cn("absolute inset-0 size-full scale-110 object-cover blur-2xl", i === active ? "opacity-100" : "opacity-0")}
         />
       ))}
       <div aria-hidden className="absolute inset-0 bg-black/10" />
@@ -416,7 +416,7 @@ export function FlickShowcase() {
               playsInline
               preload="auto"
               aria-hidden
-              className={cn("absolute inset-0 size-full object-cover transition-opacity duration-300", i === active ? "opacity-100" : "opacity-0")}
+              className={cn("absolute inset-0 size-full object-cover", i === active ? "opacity-100" : "opacity-0")}
             >
               <source src={l.webm} type="video/webm" />
               <source src={l.video} type="video/mp4" />
