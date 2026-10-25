@@ -98,28 +98,29 @@ export function EditorPanel({
   return (
     <div className="flex h-full shrink-0">
       {/* Icon rail */}
-      <nav aria-label="Add to canvas" className="flex w-14 flex-col items-center gap-1 border-r bg-background py-3">
+      <nav aria-label="Add to canvas" className="flex w-[72px] flex-col items-center gap-1 border-r bg-background px-1.5 py-3">
         {ALL.map((s) => {
           const active = !picker && open === s.id
           return (
             <div key={s.id} className="contents">
             {/* Layers sits apart from the things you add */}
             {s.id === "layers" && <span aria-hidden className="my-1.5 h-px w-7 bg-border" />}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-lg"
-                  aria-label={s.label}
-                  aria-pressed={active}
-                  onClick={() => (picker?.onClose(), setOpen(active ? null : s.id))}
-                  className={cn("rounded-xl text-muted-foreground", active && "bg-muted text-foreground")}
-                >
-                  <HugeiconsIcon icon={s.icon} className="size-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={6} className={PLAIN_TIP}>{s.label}</TooltipContent>
-            </Tooltip>
+            {/* icon with its name under it, so the tools read at a glance */}
+            <button
+              type="button"
+              aria-label={s.label}
+              aria-pressed={active}
+              onClick={() => (picker?.onClose(), setOpen(active ? null : s.id))}
+              className={cn(
+                "group flex w-full flex-col items-center gap-1 rounded-xl py-1.5 text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring",
+                active && "text-foreground",
+              )}
+            >
+              <span className={cn("grid size-9 place-items-center rounded-xl transition-colors group-hover:bg-muted", active && "bg-muted")}>
+                <HugeiconsIcon icon={s.icon} className="size-5" />
+              </span>
+              <span className={cn("text-[11px] leading-none", active && "font-medium")}>{s.label}</span>
+            </button>
             </div>
           )
         })}

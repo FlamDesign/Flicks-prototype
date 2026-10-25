@@ -5,7 +5,7 @@ import { DevBadge } from "@/dev/state-manager"
 import { cn } from "@/lib/utils"
 
 /** Bump when the PRD changes. */
-export const PRD_UPDATED = "Oct 23, 2026, 7:00 pm"
+export const PRD_UPDATED = "Oct 24, 2026, 7:15 pm"
 
 /* ---------- small writing helpers ---------- */
 
@@ -247,7 +247,7 @@ const SECTIONS: Section[] = [
           rows={[
             ["Prompts panel", "Far right, after the canvas: a shade darker with a thicker left edge, resizable from that edge (drag left to widen, double-click resets). Generation history as a chat, with the prompt box at the bottom."],
             ["Top bar", "Back, project name with file menu, size badge; on the right the video play/pause, Design/Preview switch and Export."],
-            ["Left rail", "Text, Images, Buttons (a finger tapping a button), Layouts; a divider; Layers, then Feeds. Each opens a panel next to the rail."],
+            ["Left rail", "Text, Images, Buttons (a finger tapping a button), Layouts; a divider; Layers, then Feeds. Each shows its icon with its name underneath, and opens a panel next to the rail."],
             ["Canvas", "The frame at the Flick's exact size, centred, with pan and zoom. Element toolbars float above it."],
             ["Slides strip", "Reference video, a divider, then the variations and Add. Below the canvas."],
           ]}
