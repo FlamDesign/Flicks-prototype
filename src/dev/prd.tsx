@@ -5,7 +5,7 @@ import { DevBadge } from "@/dev/state-manager"
 import { cn } from "@/lib/utils"
 
 /** Bump when the PRD changes. */
-export const PRD_UPDATED = "Oct 24, 2026, 7:15 pm"
+export const PRD_UPDATED = "Oct 25, 2026, 6:30 pm"
 
 /* ---------- small writing helpers ---------- */
 
@@ -798,10 +798,11 @@ const SECTIONS: Section[] = [
         <H>Welcome gift</H>
         <UL
           items={[
-            "Once per account, right after workspace setup: a full page granting 1,000 credits. New accounts start at 0 until it\u2019s claimed.",
-            "A gift card (Flicks, 1,000 Credits) floats with a sheen and a ribbon. Below: About 20 videos (8 seconds, 1080\u00d71920), 4 complete Flicks (a reference video and 4 variations each), Share for free (links and embeds cost nothing).",
-            "Claim 1,000 credits (or clicking the card): the ribbon drops, confetti bursts, the number counts up, the card shows Added with a tick, and the heading becomes \u201cIt\u2019s in your balance\u201d. Then Start creating opens Create with the welcome toast.",
-            "No way to skip it: it\u2019s free. Reduced motion: no float, confetti or count-up.",
+            "Once per account, as a popup card on Create right after How Flicks work closes. New accounts start at 0 until it\u2019s claimed.",
+            "The top is the gift itself: a full-bleed orange panel with the Flicks logo, a big 1,000 that sharpens into focus out of a soft blur, character by character, then glows once, \u201ccredits\u201d, a breathing glow, a slow sheen and sparkles drifting up.",
+            "Below: \u201c{Name}, your first 1,000 credits are on us\u201d, \u201cThat\u2019s about 20 videos. Go make something great.\u201d and one button, Claim and start creating.",
+            "One step: the button\u2019s label turns into a tick with \u201cCredits added\u201d, then it closes into Create (about a second) and shows the welcome toast.",
+            "Closing it without claiming still adds the credits: it\u2019s free. Reduced motion: no float, confetti or count-up.",
           ]}
         />
         <H>Editor tour</H>

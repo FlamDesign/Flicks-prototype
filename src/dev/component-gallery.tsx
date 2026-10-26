@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
-import { WelcomeGiftPage } from "@/components/welcome-gift-page"
+import { WelcomeGiftDialog } from "@/components/welcome-gift-page"
+import { HowFlicksWork } from "@/components/how-flicks-work"
 import { WalkthroughDemo } from "@/help/help-center"
 import { openHelp } from "@/help/open"
 import { ALL_DATES, DateFilter, type DateFilterValue } from "@/components/ui-extra/date-filter"
@@ -245,14 +246,16 @@ const ENTRIES: Entry[] = [
     ),
   },
   {
+    name: "How Flicks work",
+    kind: "Feedback",
+    about: "Feature intro popup on Create: four animated steps (one video, variations, one Flick, run it anywhere). New users see it once, then the welcome gift.",
+    render: () => <PopupDemo kind="intro" />,
+  },
+  {
     name: "Welcome gift",
     kind: "Feedback",
-    about: "Once, after workspace setup: the 1,000-credit welcome gift page. Click the card or Claim to see it open.",
-    render: () => (
-      <div className="h-[640px] w-full overflow-auto rounded-2xl ring-1 ring-foreground/10">
-        <WelcomeGiftPage name="Alex" onClaim={() => {}} onDone={() => {}} dark={false} onToggleTheme={() => {}} />
-      </div>
-    ),
+    about: "Once, right after How Flicks work on a new account: the 1,000-credit welcome gift as a popup card. Click the card or Claim to see it open.",
+    render: () => <PopupDemo kind="gift" />,
   },
   {
     name: "Export Flick",
@@ -865,5 +868,23 @@ function FontPickerDemo() {
       <FontPicker font={font} onPick={setFont} />
       <span className="text-sm text-muted-foreground">{font}</span>
     </div>
+  )
+}
+
+/** Opens a popup from the gallery. */
+function PopupDemo({ kind }: { kind: "intro" | "gift" }) {
+  const [open, setOpen] = useState(false)
+  const [n, setN] = useState(0)
+  return (
+    <>
+      <Button variant="outline" size="sm" className="self-start" onClick={() => (setN((x) => x + 1), setOpen(true))}>
+        Open {kind === "intro" ? "How Flicks work" : "Welcome gift"}
+      </Button>
+      {kind === "intro" ? (
+        <HowFlicksWork open={open} onOpenChange={setOpen} />
+      ) : (
+        <WelcomeGiftDialog key={n} open={open} name="Alex" onClaim={() => {}} onDone={() => setOpen(false)} />
+      )}
+    </>
   )
 }

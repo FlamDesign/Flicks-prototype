@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useMemo, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { ArrowRight01Icon, GiftIcon, Layers01Icon, Moon02Icon, Share08Icon, Sun03Icon, Tick02Icon, Video01Icon } from "@hugeicons/core-free-icons"
+import { GiftIcon, Tick02Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { FlicksLogo } from "@/components/brand"
 import { VIDEO_COST } from "@/components/credits-card"
 import { cn } from "@/lib/utils"
@@ -10,198 +10,142 @@ import { cn } from "@/lib/utils"
 export const WELCOME_CREDITS = 1000
 const reduced = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches
 
+/** How long the celebration plays before it closes into Create. */
+const CELEBRATE_MS = 1200
+
+const CSS = `
+@keyframes wg-float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-5px) } }
+@keyframes wg-breathe { 0%,100% { opacity: .55 } 50% { opacity: 1 } }
+@keyframes wg-sheen { 0% { transform: translateX(-60%) rotate(12deg) } 55%,100% { transform: translateX(520%) rotate(12deg) } }
+@keyframes wg-rise { 0% { opacity: 0; transform: translateY(0) scale(.5) } 20% { opacity: .9 } 100% { opacity: 0; transform: translateY(-140px) scale(1) } }
+@keyframes wg-focus { from { opacity: 0; filter: blur(14px); transform: translateY(10px) scale(1.18) } 60% { opacity: 1 } to { opacity: 1; filter: blur(0); transform: none } }
+@keyframes wg-glow { 0%,100% { filter: drop-shadow(0 0 0 oklch(1 0 0 / 0)) } 45% { filter: drop-shadow(0 0 22px oklch(1 0 0 / .55)) } }
+@keyframes wg-tick { from { opacity: 0; transform: scale(.4) } to { opacity: 1; transform: none } }
+@keyframes wg-label { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+@media (prefers-reduced-motion: reduce) { .wg *, .wg, .wg-b, .wg-b * { animation: none !important; transition: none !important; } }
+`
+
 /**
- * Once, right after workspace setup: a 1,000-credit welcome gift. The gift card waits to be opened;
- * Claim adds it to the balance (the number counts up, confetti), then Start creating goes to Create.
+ * Once, right after How Flicks work on a new account: a 1,000-credit welcome gift, as a popup card.
+ * One step: Claim and start creating adds the credits, the button shows a tick, then it closes into Create.
  */
-export function WelcomeGiftPage({ name, onClaim, onDone, dark, onToggleTheme }: { name: string; onClaim: () => void; onDone: () => void; dark: boolean; onToggleTheme: () => void }) {
+export function WelcomeGiftDialog({ open, name, onClaim, onDone }: { open: boolean; name: string; onClaim: () => void; onDone: () => void }) {
   const [claimed, setClaimed] = useState(false)
-  const shown = useCount(claimed ? WELCOME_CREDITS : 0, 1100)
   const videos = Math.floor(WELCOME_CREDITS / VIDEO_COST)
-  const flicks = Math.floor(videos / 5)
-  const cta = useRef<HTMLButtonElement>(null)
 
   const claim = () => {
     if (claimed) return
     setClaimed(true)
     onClaim()
+    setTimeout(onDone, reduced() ? 250 : CELEBRATE_MS)
   }
-  useEffect(() => {
-    if (claimed) setTimeout(() => cta.current?.focus(), 50)
-  }, [claimed])
+
+  // closing without claiming still claims: it's free, and it's one per account
+  const close = () => {
+    if (!claimed) onClaim()
+    onDone()
+  }
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-hidden bg-background px-6 py-5 text-foreground sm:px-10">
-      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="blob blob-1" />
-        <div className="blob blob-2" />
-        <div className="blob blob-3" />
-      </div>
-
-      <header className="relative flex items-center justify-between">
-        <FlicksLogo className="h-7 text-foreground" />
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label={dark ? "Light theme" : "Dark theme"} onClick={onToggleTheme} className="text-muted-foreground">
-              <HugeiconsIcon icon={dark ? Sun03Icon : Moon02Icon} className="size-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{dark ? "Light theme" : "Dark theme"}</TooltipContent>
-        </Tooltip>
-      </header>
-
-      <main className="relative mx-auto flex w-full max-w-[520px] flex-1 flex-col items-center justify-center gap-8 py-10 text-center">
-        <div className="flex flex-col items-center gap-3 animate-in fade-in-0 slide-in-from-bottom-2 duration-500">
-          <span className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-            <HugeiconsIcon icon={GiftIcon} className="size-3.5" />
-            Welcome gift
-          </span>
-          <h1 className="text-balance text-[32px] font-medium leading-[1.1] tracking-tight sm:text-[40px]">
-            {claimed ? "It’s in your balance" : `${name ? `${name}, here’s` : "Here’s"} 1,000 credits on us`}
-          </h1>
-          <p className="max-w-sm text-pretty text-sm text-muted-foreground">
-            {claimed ? "Make your first video. The cost shows before you generate." : `Enough for about ${videos} videos, or ${flicks} complete Flicks. Make something and see how it works.`}
-          </p>
-        </div>
-
-        {/* the gift card */}
-        <div className="relative [perspective:1200px]">
-          {claimed && <Confetti />}
-          <button
-            type="button"
-            onClick={claim}
-            disabled={claimed}
-            aria-label={claimed ? `${WELCOME_CREDITS.toLocaleString()} credits added` : `Claim ${WELCOME_CREDITS.toLocaleString()} credits`}
-            className={cn(
-              "group relative block aspect-[1.6] w-[min(360px,82vw)] overflow-hidden rounded-[28px] text-left text-white outline-none transition-transform duration-700 ease-[cubic-bezier(.2,.9,.3,1.2)] focus-visible:ring-4 focus-visible:ring-ring/40",
-              "bg-[radial-gradient(120%_140%_at_0%_0%,oklch(0.78_0.17_55),oklch(0.6_0.2_38)_45%,oklch(0.36_0.13_30))] shadow-[0_30px_60px_-20px_oklch(0.5_0.18_40/0.55),0_0_0_1px_oklch(1_0_0/0.12)_inset]",
-              claimed ? "scale-[1.04] [transform:rotateX(0deg)]" : "animate-[gift-float_5s_ease-in-out_infinite] hover:scale-[1.02] cursor-pointer",
-            )}
-          >
-            {/* sheen and texture */}
-            <span aria-hidden className="absolute inset-0 bg-[repeating-linear-gradient(115deg,transparent_0_18px,oklch(1_0_0/0.04)_18px_19px)]" />
-            <span aria-hidden className={cn("absolute -inset-y-6 -left-1/2 w-1/3 rotate-12 bg-gradient-to-r from-transparent via-white/35 to-transparent", claimed ? "animate-[gift-sheen_900ms_ease-out_1]" : "animate-[gift-sheen_3.6s_ease-in-out_infinite]")} />
-            {/* a ribbon until it's opened */}
-            <span aria-hidden className={cn("absolute inset-y-0 right-[22%] w-7 bg-white/20 shadow-[inset_1px_0_0_oklch(1_0_0/0.25),inset_-1px_0_0_oklch(1_0_0/0.25)] transition-all duration-500", claimed && "translate-y-full opacity-0")} />
-
-            <span className="absolute inset-0 flex flex-col justify-between p-6">
-              <span className="flex items-center justify-between">
-                <FlicksLogo className="h-6 text-white" />
-                <span className="rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-medium backdrop-blur">{claimed ? "Added" : "Welcome gift"}</span>
-              </span>
-              <span className="flex flex-col">
-                <span className="text-[64px] font-semibold leading-none tracking-tight tabular-nums">{(claimed ? shown : WELCOME_CREDITS).toLocaleString()}</span>
-                <span className="mt-1.5 text-sm text-white/80">Credits</span>
-              </span>
-            </span>
-
-            {claimed && (
-              <span aria-hidden className="absolute right-5 bottom-5 grid size-10 place-items-center rounded-full bg-white text-primary shadow-lg animate-in zoom-in-50 fade-in-0 duration-300">
-                <HugeiconsIcon icon={Tick02Icon} className="size-5" />
-              </span>
-            )}
-          </button>
-        </div>
-
-        {/* what it makes */}
-        <ul className="grid w-full gap-2 text-left sm:grid-cols-3">
-          <Perk icon={Video01Icon} title={`About ${videos} videos`} text="8 seconds, 1080×1920" />
-          <Perk icon={Layers01Icon} title={`${flicks} complete Flicks`} text="A reference video and 4 variations each" />
-          <Perk icon={Share08Icon} title="Share for free" text="Links and embeds cost nothing" />
-        </ul>
-
-        <div className="flex w-full flex-col items-center gap-2" aria-live="polite">
-          {claimed ? (
-            <Button ref={cta} size="lg" className="h-11 w-full max-w-xs gap-2 animate-in fade-in-0 duration-300" onClick={onDone}>
-              Start creating
-              <HugeiconsIcon icon={ArrowRight01Icon} className="size-4" />
-            </Button>
-          ) : (
-            <Button size="lg" className="h-11 w-full max-w-xs gap-2" onClick={claim}>
-              <HugeiconsIcon icon={GiftIcon} className="size-4" />
-              Claim 1,000 credits
-            </Button>
+    <Dialog open={open} onOpenChange={(o) => !o && close()}>
+      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-[600px]">
+        <style>{CSS}</style>
+        {/* stage: the gift fills the whole area; it stays calm, the button carries the moment */}
+        <div
+          className={cn(
+            "wg relative grid aspect-[520/280] w-full place-items-center overflow-hidden text-white",
+            "bg-[radial-gradient(120%_140%_at_0%_0%,oklch(0.78_0.17_55),oklch(0.6_0.2_38)_45%,oklch(0.36_0.13_30))]",
           )}
-          <p className="text-xs text-muted-foreground">{claimed ? `Balance: ${WELCOME_CREDITS.toLocaleString()} credits. Get more any time from the sidebar.` : "One per account. Added to your credits balance."}</p>
+        >
+          {/* texture, a breathing glow and a slow sheen */}
+          <span aria-hidden className="absolute inset-0 bg-[repeating-linear-gradient(115deg,transparent_0_22px,oklch(1_0_0/0.045)_22px_23px)]" />
+          <span aria-hidden className="absolute inset-0 bg-[radial-gradient(55%_60%_at_50%_45%,oklch(1_0_0/0.22),transparent_70%)]" style={{ animation: "wg-breathe 4s ease-in-out infinite" }} />
+          <span aria-hidden className="absolute -inset-y-10 left-0 w-1/5 bg-gradient-to-r from-transparent via-white/25 to-transparent" style={{ animation: "wg-sheen 5s cubic-bezier(.4,0,.2,1) 1.6s infinite" }} />
+          <Sparkles />
+          <FlicksLogo className="absolute left-6 top-5 h-5 text-white" />
+          <span className="relative flex flex-col items-center" style={{ animation: "wg-float 5s ease-in-out 1.8s infinite" }}>
+            <FocusNumber value={WELCOME_CREDITS.toLocaleString()} className="text-[clamp(72px,22vw,128px)] font-semibold tracking-[-0.04em] drop-shadow-[0_8px_24px_oklch(0.3_0.12_30/0.45)]" />
+            <span className="mt-2 text-sm font-medium tracking-wide text-white/85" style={{ animation: "wg-label .5s ease-out .75s both" }}>
+              credits
+            </span>
+          </span>
         </div>
-      </main>
-    </div>
+
+        {/* copy */}
+        <div className="flex flex-col gap-5 px-6 pb-5 pt-5">
+          <div className="space-y-1.5">
+            <DialogTitle className="text-xl font-medium tracking-tight">{`${name ? `${name}, your` : "Your"} first 1,000 credits are on us`}</DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground">{`That\u2019s about ${videos} videos. Go make something great.`}</DialogDescription>
+          </div>
+
+          <div className="flex justify-end" aria-live="polite">
+            <ClaimButton claimed={claimed} onClick={claim} />
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
-function Perk({ icon, title, text }: { icon: typeof GiftIcon; title: string; text: string }) {
+/** Claiming swaps the label for a tick; the width stays put. */
+function ClaimButton({ claimed, onClick }: { claimed: boolean; onClick: () => void }) {
   return (
-    <li className="flex items-start gap-3 rounded-2xl bg-card/70 p-3 ring-1 ring-foreground/5 backdrop-blur sm:flex-col sm:gap-2">
-      <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-        <HugeiconsIcon icon={icon} className="size-4" />
+    <Button onClick={onClick} disabled={claimed} aria-label={claimed ? "1,000 credits added" : undefined} className="wg-b disabled:opacity-100">
+      <span className="grid">
+        <span className={cn("col-start-1 row-start-1 flex items-center justify-center gap-1.5 transition-opacity duration-150", claimed && "opacity-0")}>
+          <HugeiconsIcon icon={GiftIcon} className="size-4" />
+          Claim and start creating
+        </span>
+        {claimed && (
+          <span className="col-start-1 row-start-1 flex items-center justify-center gap-1.5">
+            <HugeiconsIcon icon={Tick02Icon} className="size-4" strokeWidth={2.5} style={{ animation: "wg-tick .4s cubic-bezier(.34,1.56,.64,1) .1s both" }} />
+            <span style={{ animation: "wg-label .35s ease-out .2s both" }}>Credits added</span>
+          </span>
+        )}
       </span>
-      <span className="flex flex-col gap-0.5">
-        <span className="text-sm font-medium">{title}</span>
-        <span className="text-xs text-muted-foreground">{text}</span>
-      </span>
-    </li>
+    </Button>
   )
 }
 
-/** Counts up to `to` over `ms` (eased); instant with reduced motion. */
-function useCount(to: number, ms: number) {
-  const [n, setN] = useState(to)
-  const from = useRef(to)
-  useEffect(() => {
-    if (reduced()) return setN(to)
-    const start = performance.now()
-    const a = from.current
-    let raf = 0
-    const tick = (t: number) => {
-      const k = Math.min(1, (t - start) / ms)
-      const e = 1 - Math.pow(1 - k, 3)
-      setN(Math.round(a + (to - a) * e))
-      if (k < 1) raf = requestAnimationFrame(tick)
-      else from.current = to
-    }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [to, ms])
-  return n
+/** The number comes into focus: each character sharpens out of a soft blur, then one gentle glow. */
+function FocusNumber({ value, className }: { value: string; className?: string }) {
+  return (
+    <span className={cn("flex tabular-nums", className)} style={{ lineHeight: 1 }} aria-label={value}>
+      <span className="flex" style={{ animation: "wg-glow 1.6s ease-in-out 1s both" }}>
+        {value.split("").map((ch, i) => (
+          <span key={i} aria-hidden className="inline-block" style={{ animation: `wg-focus 1s cubic-bezier(.2,.7,.2,1) ${0.18 + i * 0.07}s both` }}>
+            {ch}
+          </span>
+        ))}
+      </span>
+    </span>
+  )
 }
 
-/** A one-off burst from behind the card. */
-function Confetti() {
+/** Small sparkles drifting up through the panel. */
+function Sparkles() {
   const bits = useMemo(
     () =>
-      Array.from({ length: 36 }, (_, i) => {
-        const angle = (i / 36) * Math.PI * 2 + Math.random() * 0.3
-        const dist = 160 + Math.random() * 140
-        return {
-          x: Math.cos(angle) * dist,
-          y: Math.sin(angle) * dist * 0.75 - 40,
-          r: Math.random() * 720 - 360,
-          c: ["var(--primary)", "oklch(0.82 0.15 75)", "oklch(0.72 0.17 30)", "var(--chart-2)", "var(--foreground)"][i % 5],
-          w: 6 + Math.random() * 6,
-          d: Math.random() * 120,
-        }
-      }),
+      Array.from({ length: 9 }, (_, i) => ({
+        left: 6 + ((i * 37) % 88),
+        bottom: 4 + ((i * 23) % 30),
+        size: 4 + (i % 3) * 2,
+        dur: 3.6 + (i % 5) * 0.7,
+        delay: -((i * 0.83) % 5),
+      })),
     [],
   )
-  if (reduced()) return null
   return (
-    <span aria-hidden className="pointer-events-none absolute inset-0 z-10 grid place-items-center">
+    <span aria-hidden className="pointer-events-none absolute inset-0">
       {bits.map((b, i) => (
-        <span
+        <svg
           key={i}
-          className="absolute rounded-[2px]"
-          style={
-            {
-              width: b.w,
-              height: b.w * 0.45,
-              background: b.c,
-              "--x": `${b.x}px`,
-              "--y": `${b.y}px`,
-              "--r": `${b.r}deg`,
-              animation: `gift-confetti 1300ms cubic-bezier(.15,.7,.3,1) ${b.d}ms both`,
-            } as React.CSSProperties
-          }
-        />
+          viewBox="0 0 16 16"
+          className="absolute text-white/60"
+          style={{ left: `${b.left}%`, bottom: `${b.bottom}%`, width: b.size, height: b.size, animation: `wg-rise ${b.dur}s ease-out ${b.delay}s infinite` }}
+        >
+          <path d="M8 0l2 6 6 2-6 2-2 6-2-6-6-2 6-2z" fill="currentColor" />
+        </svg>
       ))}
     </span>
   )

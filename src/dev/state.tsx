@@ -40,6 +40,7 @@ export type DevState = {
   adsEmpty: boolean
   adPaymentFails: boolean
   largeAccount: boolean
+  featureIntro: boolean
 }
 
 /** A brand-new user: signed out, nothing made yet, no credits or ad funds, and realistic but short waits. */
@@ -73,6 +74,8 @@ export const NEW_USER: DevState = {
   adsEmpty: true,
   adPaymentFails: false,
   largeAccount: false,
+  // new users see How Flicks work once they reach Create
+  featureIntro: true,
 }
 
 /** The default for now: a returning user, signed in, with sample projects, Flicks, credits and ad funds, and the same realistic waits. */
@@ -89,6 +92,7 @@ export const DEFAULTS: DevState = {
   onboarded: true,
   adBalance: 2747,
   adsEmpty: false,
+  featureIntro: false,
 }
 /** Help Center captures: the returning user with no waits. */
 const CAPTURE_STATE: DevState = { ...DEFAULTS, pageLoadMs: 0, generationSeconds: 1, publishSeconds: 5 }
@@ -114,7 +118,8 @@ export type Field =
 export const FIELDS: Field[] = [
   { key: "loggedIn", tab: "Account", group: "Session", label: "Signed in", type: "boolean", hint: "Off shows the sign-in page." },
   { key: "onboarded", tab: "Account", group: "Session", label: "Finished onboarding", type: "boolean", hint: "Off: the next sign-in (or now, if signed in) shows workspace setup, like a new user." },
-  { key: "welcomeGift", tab: "Account", group: "Session", label: "Welcome gift to claim", type: "boolean", hint: "On shows the 1,000-credit welcome gift page. New users see it once, right after workspace setup." },
+  { key: "welcomeGift", tab: "Account", group: "Session", label: "Welcome gift to claim", type: "boolean", hint: "On shows the 1,000-credit welcome gift popup on Create (after How Flicks work, if that is on). New users see it once." },
+  { key: "featureIntro", tab: "Account", group: "Session", label: "How Flicks work popup", type: "boolean", hint: "On shows the feature intro on Create. New users see it once, then the welcome gift; it also opens from How Flicks work under the prompt box." },
   { key: "signinSendFails", tab: "Account", group: "Sign-in errors", label: "Sign-in email fails to send", type: "boolean", hint: "Sending (and resending) the link fails, with Try again." },
   { key: "googleFails", tab: "Account", group: "Sign-in errors", label: "Google sign-in fails", type: "boolean" },
   { key: "linkExpired", tab: "Account", group: "Sign-in errors", label: "Sign-in link expired", type: "boolean", hint: "Opening the emailed link shows the expired screen." },

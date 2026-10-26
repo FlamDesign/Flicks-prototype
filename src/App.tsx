@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { FlicksLogo } from "@/components/brand"
+import { HowFlicksWork } from "@/components/how-flicks-work"
+import { Button } from "@/components/ui/button"
 import { TutorialVideo } from "@/components/tutorial-video"
 import { AppSidebar, type Appearance } from "@/components/app-sidebar"
 import { PromptComposer } from "@/components/prompt-composer"
@@ -15,7 +17,7 @@ import { SAMPLE_ID, sampleProject } from "@/onboarding/sample"
 import { useDevAction } from "@/dev/dev-actions"
 import { AccountSkeleton, DetailSkeleton, FlickPageSkeleton, GridSkeleton, PageLoader, TableSkeleton } from "@/components/page-skeletons"
 import { CreditsPage } from "@/components/credits-page"
-import { WelcomeGiftPage, WELCOME_CREDITS } from "@/components/welcome-gift-page"
+import { WelcomeGiftDialog, WELCOME_CREDITS } from "@/components/welcome-gift-page"
 import { GenerationCanvas, type Generation } from "@/components/generation-canvas"
 import { REFERENCE_VIDEOS } from "@/components/editor/elements"
 import { type Template } from "@/data"
@@ -208,29 +210,10 @@ export default function App() {
               setProfile(p)
               setWelcome(p.name.split(" ")[0])
               setPage("Create")
-              // a new account starts at 0 and gets the welcome gift next
-              setDev({ onboarded: true, welcomeGift: true, credits: 0 })
+              // a new account starts at 0: How Flicks work, then the welcome gift, open on Create
+              setDev({ onboarded: true, welcomeGift: true, featureIntro: true, credits: 0 })
             }}
             onSignOut={signOut}
-            dark={dark}
-            onToggleTheme={toggleTheme}
-          />
-          {devLayer}
-        </Toaster>
-      </TooltipProvider>
-    )
-
-  if (dev.loggedIn && dev.welcomeGift)
-    return (
-      <TooltipProvider delayDuration={300}>
-        <Toaster>
-          <WelcomeGiftPage
-            name={name.split(" ")[0]}
-            onClaim={() => addCredits(WELCOME_CREDITS)}
-            onDone={() => {
-              setDev({ welcomeGift: false })
-              setPage("Create")
-            }}
             dark={dark}
             onToggleTheme={toggleTheme}
           />
@@ -264,7 +247,7 @@ export default function App() {
     <OpenAnalytics.Provider value={openAnalytics}>
     <TooltipProvider delayDuration={300}>
       <Toaster>
-      {welcome && <Welcome name={welcome} onShown={() => setWelcome(null)} />}
+      {welcome && !dev.featureIntro && !dev.welcomeGift && <Welcome name={welcome} onShown={() => setWelcome(null)} />}
       <div className="flex h-screen bg-sidebar text-foreground">
         <AppSidebar page={page === "Flick" ? "Flicks" : page} onNavigate={(p) => { setAdsTarget(null); setEmbedTarget(null); setAnalyticsTarget(null); setNavCount((n) => n + 1); setPage(p); scroller.current?.scrollTo({ top: 0 }) }} credits={credits} onAddCredits={addCredits} buyOpen={buyOpen} onBuyOpenChange={setBuyOpen} autoOpen={autoOpen} onAutoOpenChange={setAutoOpen} appearance={appearance} onAppearanceChange={setAppearance} name={name} email={account.email} photo={photo} />
 
@@ -386,7 +369,22 @@ export default function App() {
                   setSize={setSize}
                   pulse={pulse}
                 />
-                <TutorialVideo />
+                <div className="flex flex-wrap items-center justify-center gap-1">
+                  <Button variant="ghost" size="sm" onClick={() => setDev({ featureIntro: true })} className="rounded-full font-normal text-muted-foreground hover:bg-transparent hover:text-foreground">
+                    How Flicks work
+                  </Button>
+                  <span aria-hidden className="text-muted-foreground/50">·</span>
+                  <TutorialVideo />
+                </div>
+                <HowFlicksWork open={dev.featureIntro} onOpenChange={(o) => setDev({ featureIntro: o })} />
+                {/* the welcome gift follows How Flicks work */}
+                <WelcomeGiftDialog
+                  key={String(dev.welcomeGift)}
+                  open={dev.welcomeGift && !dev.featureIntro}
+                  name={name.split(" ")[0]}
+                  onClaim={() => addCredits(WELCOME_CREDITS)}
+                  onDone={() => setDev({ welcomeGift: false })}
+                />
               </div>
             </section>
 
