@@ -1,6 +1,6 @@
 import { useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Add01Icon, Loading03Icon, SparklesIcon } from "@hugeicons/core-free-icons"
+import { Add01Icon, Loading03Icon, PlayIcon, SparklesIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -23,9 +23,12 @@ export function SlidePrompt({
   fixedRef,
   disabled,
   onGenerate,
+  onOpenFixed,
   locked,
   cost,
 }: {
+  /** opens the attached reference video full screen */
+  onOpenFixed?: () => void
   /** credits this video costs (its size and length) */
   cost: number
   /** read-only, with the reason shown in place of Generate (a template's reference video) */
@@ -73,11 +76,22 @@ export function SlidePrompt({
           {fixedRef && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="relative size-14 shrink-0">
-                  <img src={fixedRef.url} alt={fixedRef.name} className="size-14 rounded-xl object-cover ring-1 ring-foreground/10" />
-                </div>
+                <button
+                  type="button"
+                  onClick={onOpenFixed}
+                  disabled={!onOpenFixed}
+                  aria-label={`View ${fixedRef.name}`}
+                  className="group/ref relative size-14 shrink-0 overflow-hidden rounded-xl outline-none ring-1 ring-foreground/10 focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
+                >
+                  <img src={fixedRef.url} alt="" className="size-full object-cover transition-transform duration-200 group-hover/ref:scale-105" />
+                  <span className="absolute inset-0 grid place-items-center bg-black/0 transition-colors group-hover/ref:bg-black/25">
+                    <span className="grid size-6 place-items-center rounded-full bg-black/45 text-white backdrop-blur-sm">
+                      <HugeiconsIcon icon={PlayIcon} className="size-3" />
+                    </span>
+                  </span>
+                </button>
               </TooltipTrigger>
-              <TooltipContent>{fixedRef.name} · added automatically</TooltipContent>
+              <TooltipContent>{fixedRef.name}</TooltipContent>
             </Tooltip>
           )}
           {refs.map((r) => (

@@ -52,6 +52,8 @@ export function LayersPanel({
   if (!elements.length) return <p className="px-1 py-2 text-sm text-muted-foreground">Nothing on the canvas yet.</p>
 
   return (
+    <div className="flex flex-col gap-2">
+    {rows.length > 1 && <p className="px-1 text-xs text-muted-foreground">Drag layers to reorder them. The top one shows in front.</p>}
     <ul className="flex flex-col gap-0.5" aria-label="Layers" onMouseLeave={() => onHover(null)} data-keep-selection>
       {rows.map((el, i) => {
         const isSel = selected.includes(el.id)
@@ -95,6 +97,8 @@ export function LayersPanel({
               <HugeiconsIcon icon={DragDropVerticalIcon} className="size-3.5 shrink-0 text-muted-foreground/60 opacity-0 group-hover/layer:opacity-100" />
               <HugeiconsIcon icon={ICON[el.kind]} className={cn("size-4 shrink-0", isSel ? "text-foreground" : "text-muted-foreground")} />
               <span className={cn("min-w-0 flex-1 truncate", el.hidden && "text-muted-foreground/60")}>{labelOf(el)}</span>
+              {/* the thumbnail strip is how viewers switch, so it can't be hidden (or deleted) */}
+              {(el.kind !== "strip" || el.hidden) && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -109,7 +113,7 @@ export function LayersPanel({
                 </TooltipTrigger>
                 <TooltipContent>{el.hidden ? "Show" : "Hide"}</TooltipContent>
               </Tooltip>
-              {/* the thumbnail strip is part of every video, so it can't be deleted */}
+              )}
               {el.kind !== "strip" && (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -136,5 +140,6 @@ export function LayersPanel({
         )
       })}
     </ul>
+    </div>
   )
 }

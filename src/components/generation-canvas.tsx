@@ -1140,6 +1140,7 @@ export function GenerationCanvas({
               fixedRef={activeIndex === 0 ? undefined : { url: GENERATED_VIDEOS[slides[0].video!].poster, name: nameOf(slides[0]) }}
               disabled={busyReason}
               onGenerate={() => requestGenerate(activeSlide.id)}
+              onOpenFixed={status(slides[0]) === "done" ? () => setPreview("main") : undefined}
               cost={VIDEO_COST}
             />
               )

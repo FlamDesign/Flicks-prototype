@@ -105,15 +105,15 @@ export function FeedsPanel({
         <span className="grid size-9 place-items-center rounded-xl bg-muted text-muted-foreground">
           <HugeiconsIcon icon={BracesIcon} className="size-5" />
         </span>
-        <p className="text-sm font-medium">Make anything change per variation</p>
+        <p className="text-sm font-medium">Different content for each variation</p>
+        <p className="text-xs leading-relaxed text-muted-foreground">Show a different price, label or link in each variation.</p>
         <p className="text-xs leading-relaxed text-muted-foreground">
-          A feed gives text, a button or its link a different value in each variation, like a price or a product page. Select it on the canvas and click{" "}
+          Select text or a button and click{" "}
           <span className="inline-flex translate-y-0.5 items-center rounded bg-neutral-800 px-1 text-white">
             <HugeiconsIcon icon={BracesIcon} className="size-3" />
-          </span>{" "}
-          on its top edge.
+          </span>
+          . Then pick a variation and type.
         </p>
-        <p className="text-xs leading-relaxed text-muted-foreground">Then switch variations below the canvas and type each one in place.</p>
       </div>
     )
 
@@ -215,7 +215,7 @@ export function FeedsPanel({
         </>
       ) : (
         <>
-          <p className="px-1 pb-1 text-xs text-muted-foreground">Values that change per variation. Switch variations below the canvas and type in place, or open a feed to fill them here.</p>
+          <p className="px-1 pb-1 text-xs text-muted-foreground">Content that changes in each variation. Open a feed to edit it.</p>
           <ul className="flex flex-col gap-0.5" aria-label="Feeds">
             {feeds.map((f) => {
               const uses = usedBy[f.id] ?? []
