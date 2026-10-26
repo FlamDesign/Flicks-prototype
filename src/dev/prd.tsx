@@ -382,7 +382,7 @@ const SECTIONS: Section[] = [
           items={[
             "Click to select; Shift-click to add or remove. Several selected show a group toolbar (count, duplicate, delete) and a group box.",
             "Click a selected text or button again to edit its text in place. The outline follows the text instantly as it wraps.",
-            "Delete or Backspace removes the selection (never the thumbnail strip). Esc clears it.",
+            "Delete or Backspace removes the selection (never the thumbnail strip). Esc clears it. Switching variations keeps the selection.",
           ]}
         />
         <H>Moving</H>
@@ -808,7 +808,7 @@ const SECTIONS: Section[] = [
           items={[
             "Starts once, the first time a project\u2019s video is ready (or from the Help Center). The page dims, with a soft cut-out around what each stop is about; the cut-out and card glide from stop to stop.",
             "Each card: a small looping illustration made from the escalator Flick\u2019s stills, a title, one line, step dots, Skip, Back and Next (Done on the last). Esc skips.",
-            "1 Your reference video (the canvas): every variation is made from it; change it and they need regenerating. 2 Add variations (the strip and the chat): add one in the strip, describe it in the chat, it generates in the strip. 3 Design once (Text, Buttons, Layouts): what you add shows on every variation. 4 Preview, then export (Preview and Export): an exported Flick can\u2019t be changed; Remix makes a new one.",
+            "1 Your reference video (the canvas): every variation is made from it; change it and they need regenerating. 2 Add variations (the strip and the chat): add one in the strip, describe it in the chat, it generates in the strip. 3 Design once (Text, Images, Buttons and Layouts, lit as one rectangle): what you add shows on every variation. 4 Preview, then export (the Design/Preview switch and Export, lit as one rectangle): an exported Flick can\u2019t be changed; to make edits, export again.",
           ]}
         />
         <H>One-time tips</H>
@@ -817,7 +817,8 @@ const SECTIONS: Section[] = [
             "Shown once each, by the thing they\u2019re about (beside it, so it isn\u2019t covered), with Got it; never over the tour.",
             "Feeds: the first time text, a button or a layout is added, by its { } tab: \u201cDifferent content for each variation\u201d, with an illustration of a price changing per variation.",
             "Needs regenerating: by the red dot after the reference changes, with an illustration of the reference changing and its variation regenerating.",
-            "Also: the thumbnail strip selected, the first Preview, the first ready Flick page (Remix).",
+            "Thumbnails: the first time the thumbnail strip is selected: \u201cThumbnails\u201d, with an illustration: the thumbnails start empty; picking one shows its variation and the strip toolbar, and Add thumbnail fills it (twice, one per variation).",
+            "Also: the first Preview, the first ready Flick page (Remix).",
           ]}
         />
         <H>Help Center</H>

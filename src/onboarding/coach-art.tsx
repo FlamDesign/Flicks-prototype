@@ -6,9 +6,7 @@ import softPink from "@/assets/flicks/escalator/soft-pink-poster.webp"
 import street from "@/assets/flicks/escalator/street-poster.webp"
 import office from "@/assets/flicks/escalator/office-poster.webp"
 import court from "@/assets/flicks/escalator/court-poster.webp"
-import refModel from "@/assets/intro/ref-model.webp"
 import refBag from "@/assets/intro/ref-bag.webp"
-import refShades from "@/assets/intro/ref-shades.webp"
 
 /**
  * Small looping illustrations for the editor tour and tips: neutral shapes, one accent, CSS only.
@@ -62,9 +60,18 @@ const CSS = `
 @keyframes ca-x-label2 { 0%,70% { opacity: 0; transform: scale(.5) } 74%,96% { opacity: 1; transform: none } 100% { opacity: 0 } }
 @keyframes ca-x-lock { 0%,72% { opacity: 0 } 78%,96% { opacity: 1 } 100% { opacity: 0 } }
 @keyframes ca-x-note { 0%,74% { opacity: 0; transform: translateY(4px) } 80%,96% { opacity: 1; transform: none } 100% { opacity: 0 } }
-@keyframes ca-s-cursor { 0%,6% { transform: translate(240px, 120px); opacity: 0 } 10% { opacity: 1 } 22% { transform: translate(126px, 66px) } 25% { transform: translate(126px, 66px) scale(.85) } 28% { transform: translate(126px, 66px) scale(1) } 50% { transform: translate(126px, 94px) } 53% { transform: translate(126px, 94px) scale(.85) } 56%,88% { transform: translate(126px, 94px) scale(1); opacity: 1 } 100% { opacity: 0 } }
-@keyframes ca-s-fill1 { 0%,26% { opacity: 0; transform: scale(.6) } 32%,92% { opacity: 1; transform: none } 100% { opacity: 0 } }
-@keyframes ca-s-fill2 { 0%,54% { opacity: 0; transform: scale(.6) } 60%,92% { opacity: 1; transform: none } 100% { opacity: 0 } }
+@keyframes ca-s-cursor { 0%,3% { transform: translate(250px, 130px); opacity: 0 } 6% { opacity: 1 } 13% { transform: translate(128px, 115px) } 14.5% { transform: translate(128px, 115px) scale(.85) } 16% { transform: translate(128px, 115px) scale(1) } 26% { transform: translate(112px, 17px) } 27.5% { transform: translate(112px, 17px) scale(.85) } 29% { transform: translate(112px, 17px) scale(1) } 43% { transform: translate(148px, 115px) } 44.5% { transform: translate(148px, 115px) scale(.85) } 46% { transform: translate(148px, 115px) scale(1) } 56% { transform: translate(112px, 17px) } 57.5% { transform: translate(112px, 17px) scale(.85) } 59% { transform: translate(112px, 17px) scale(1) } 70%,90% { transform: translate(236px, 70px); opacity: 1 } 95%,100% { transform: translate(236px, 70px); opacity: 0 } }
+@keyframes ca-s-v0 { 0%,45% { opacity: 1 } 45.5%,100% { opacity: 0 } }
+@keyframes ca-s-v1 { 0%,45% { opacity: 0 } 45.5%,100% { opacity: 1 } }
+@keyframes ca-s-on0 { 0%,15% { opacity: 0 } 15.5%,45% { opacity: 1 } 45.5%,100% { opacity: 0 } }
+@keyframes ca-s-on1 { 0%,45% { opacity: 0 } 45.5%,95% { opacity: 1 } 100% { opacity: 0 } }
+@keyframes ca-s-bar { 0%,15% { opacity: 0; transform: translateY(4px) } 19%,95% { opacity: 1; transform: none } 100% { opacity: 0 } }
+@keyframes ca-s-fill0 { 0%,29% { opacity: 0; transform: scale(.5) } 33%,95% { opacity: 1; transform: none } 100% { opacity: 0 } }
+@keyframes ca-s-fill1 { 0%,59% { opacity: 0; transform: scale(.5) } 63%,95% { opacity: 1; transform: none } 100% { opacity: 0 } }
+@keyframes ca-s-tb0 { 0%,29% { opacity: 0 } 31%,45% { opacity: 1 } 45.5%,100% { opacity: 0 } }
+@keyframes ca-s-tb1 { 0%,59% { opacity: 0 } 61%,95% { opacity: 1 } 100% { opacity: 0 } }
+@keyframes ca-s-add { 0%,29% { opacity: 1 } 29.5%,45% { opacity: 0 } 45.5%,59% { opacity: 1 } 59.5%,100% { opacity: 0 } }
+@keyframes ca-s-chg { 0%,29% { opacity: 0 } 29.5%,45% { opacity: 1 } 45.5%,59% { opacity: 0 } 59.5%,100% { opacity: 1 } }
 @media (prefers-reduced-motion: reduce) { .ca *, .ca *::before { animation-duration: .01s !important; animation-iteration-count: 1 !important; animation-delay: 0s !important; } }
 `
 
@@ -227,35 +234,48 @@ function Export() {
   )
 }
 
-/** Thumbnail strip: pick a thumbnail, give it an image; viewers tap these to switch. */
+/** Thumbnail strip: the thumbnails start empty; pick one, then add its image from the toolbar. Picking one shows its variation. */
 function Strip() {
-  const thumbs = [refModel, refBag, refShades]
+  const D = 8
+  const t = (name: string): CSSProperties => ({ animation: `${name} ${D}s linear infinite both` })
   return (
     <>
-      <div className="absolute left-[30px] top-[10px] h-[112px] w-[64px] overflow-hidden rounded-md shadow-sm ring-1 ring-black/5">
-        <img src={SHOTS[0]} alt="" className="absolute inset-0 size-full object-cover" />
-        {/* the strip on the frame */}
-        <div className="absolute inset-x-0 bottom-1.5 flex justify-center gap-1">
-          {thumbs.map((src, i) => (
-            <span key={i} className="relative size-[15px] overflow-hidden rounded-[3px] bg-white/30 ring-1 ring-white/80">
-              <img src={src} alt="" className="absolute inset-0 size-full object-cover" style={i ? loop(`ca-s-fill${i}`) : undefined} />
+      {/* the strip's toolbar, as on the canvas */}
+      <div className="absolute left-[148px] top-[6px] -translate-x-1/2">
+      <div className="flex h-6 items-center gap-1 whitespace-nowrap rounded-lg bg-background pl-0.5 pr-1.5 shadow-sm ring-1 ring-foreground/10" style={t("ca-s-bar")}>
+        <span className="relative grid size-5 place-items-center overflow-hidden rounded-[5px] bg-muted text-muted-foreground ring-1 ring-foreground/10">
+          <HugeiconsIcon icon={ImageAdd01Icon} className="size-3" />
+          <img src={SHOTS[0]} alt="" className="absolute inset-0 size-full object-cover object-[50%_25%]" style={t("ca-s-tb0")} />
+          <img src={SHOTS[1]} alt="" className="absolute inset-0 size-full object-cover object-[50%_25%]" style={t("ca-s-tb1")} />
+        </span>
+        <span className="relative h-3 w-[88px] text-[10px] leading-3">
+          <span className="absolute inset-0" style={t("ca-s-add")}>Add thumbnail</span>
+          <span className="absolute inset-0" style={t("ca-s-chg")}>Change thumbnail</span>
+        </span>
+        <span className="mx-0.5 h-3 w-px bg-foreground/15" />
+        <span className="size-2.5 rounded-full bg-foreground/20" />
+        <span className="size-2.5 rounded-[3px] bg-foreground/20" />
+      </div>
+      </div>
+      <div className="absolute left-[116px] top-[34px] h-[94px] w-[64px] overflow-hidden rounded-md bg-muted shadow-sm ring-1 ring-black/5">
+        {/* picking a thumbnail shows its variation */}
+        {[0, 1].map((i) => (
+          <img key={i} src={SHOTS[i]} alt="" className="absolute inset-0 size-full object-cover" style={t(`ca-s-v${i}`)} draggable={false} />
+        ))}
+        {/* the strip on the frame: empty to start */}
+        <div className="absolute inset-x-0 bottom-[5px] flex justify-center gap-1">
+          {[0, 1, 2].map((i) => (
+            <span key={i} className="relative grid size-4 place-items-center rounded-[3px] border border-dashed border-white/85 bg-black/35 text-white">
+              <HugeiconsIcon icon={ImageAdd01Icon} className="size-2.5" />
+              {i < 2 && <img src={SHOTS[i]} alt="" className="absolute -inset-px size-[calc(100%+2px)] max-w-none rounded-[3px] object-cover object-[50%_25%]" style={t(`ca-s-fill${i}`)} draggable={false} />}
+              {i < 2 && <span className="absolute -inset-[3px] rounded-[5px] ring-[1.5px] ring-white" style={t(`ca-s-on${i}`)} />}
             </span>
           ))}
         </div>
       </div>
-      {/* one row per variation: pick, then upload */}
-      <div className="absolute left-[112px] top-[18px] flex flex-col gap-1.5">
-        {thumbs.map((src, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <span className="relative grid size-7 place-items-center overflow-hidden rounded-md border border-dashed border-foreground/25 bg-background text-muted-foreground">
-              <HugeiconsIcon icon={ImageAdd01Icon} className="size-3.5" />
-              <img src={src} alt="" className="absolute inset-0 size-full object-cover" style={i ? loop(`ca-s-fill${i}`) : undefined} />
-            </span>
-            <span className="text-[10px] text-muted-foreground">{["Pink", "Street", "Office"][i]} thumbnail</span>
-          </div>
-        ))}
-      </div>
-      <Cursor name="ca-s-cursor" />
+      <svg viewBox="0 0 14 20" className="absolute left-0 top-0 h-[18px] w-[13px] drop-shadow" style={{ transformOrigin: "0 0", ...t("ca-s-cursor") }}>
+        <path d="M1 1 L1 17 L5.4 12.8 L8.4 19.2 L11 18.1 L8 11.8 L13.6 11.8 Z" className="fill-foreground stroke-background" strokeWidth={1.3} strokeLinejoin="round" />
+      </svg>
     </>
   )
 }

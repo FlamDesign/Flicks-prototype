@@ -43,6 +43,12 @@ export function CoachLayer() {
         const r = el?.getBoundingClientRect()
         if (r && r.width > 0) found.push({ left: r.left, top: r.top, width: r.width, height: r.height })
       }
+      // merged stops light one rectangle around all their targets
+      if (coach && "merge" in coach && coach.merge && found.length > 1) {
+        const l = Math.min(...found.map((b) => b.left)), t = Math.min(...found.map((b) => b.top))
+        const r = Math.max(...found.map((b) => b.left + b.width)), btm = Math.max(...found.map((b) => b.top + b.height))
+        found.splice(0, found.length, { left: l, top: t, width: r - l, height: btm - t })
+      }
       if (found.length) seen.current = true
       else if (seen.current && mode === "tip") return onboarding.closeTip()
       setBoxes((prev) => (JSON.stringify(prev) === JSON.stringify(found) ? prev : found))

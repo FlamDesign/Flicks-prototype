@@ -437,11 +437,11 @@ export function GenerationCanvas({
     setMode(on ? "preview" : "design")
     setPickFor(null)
     // preview opens on the starting variation
-    if (on) select(start)
+    if (on) (select(start), setSelected([]))
   }
+  // switching variations keeps the selected elements selected (they're on every variation); typing stops
   const select = (id: string) => {
     setActive(id)
-    setSelected([])
     setEditing(null)
   }
 

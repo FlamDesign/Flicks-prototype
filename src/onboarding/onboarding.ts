@@ -13,8 +13,8 @@ export type Art = "reference" | "variations" | "design" | "export" | "feed" | "s
 export const TOUR = [
   { target: ['[data-tour="frame"]'], title: "Your reference video", text: "Every variation uses this as its reference. If you change it, you need to regenerate the variations.", art: "reference" },
   { target: ['[data-tour="strip"]', 'aside[aria-label="Prompts"]'], title: "Add variations", text: "Add up to 5 variations. Add prompts and reference images in chat to generate videos for variations.", art: "variations" },
-  { target: ['nav[aria-label="Add to canvas"] [aria-label="Text"]', 'nav[aria-label="Add to canvas"] [aria-label="Images"]', 'nav[aria-label="Add to canvas"] [aria-label="Buttons"]', 'nav[aria-label="Add to canvas"] [aria-label="Layouts"]'], title: "Design once", text: "Text, images, buttons and layouts you add show on every variation.", art: "design" },
-  { target: ['[aria-label="Mode"]', '[data-tour="export"]'], title: "Preview, then export", text: "Preview it first: an exported Flick can’t be changed. To make edits, you need to export again.", art: "export" },
+  { target: ['nav[aria-label="Add to canvas"] [aria-label="Text"]', 'nav[aria-label="Add to canvas"] [aria-label="Images"]', 'nav[aria-label="Add to canvas"] [aria-label="Buttons"]', 'nav[aria-label="Add to canvas"] [aria-label="Layouts"]'], title: "Design once", text: "Text, images, buttons and layouts you add show on every variation.", art: "design", merge: true },
+  { target: ['[aria-label="Mode"]', '[data-tour="export"]'], title: "Preview, then export", text: "Preview it first: an exported Flick can’t be changed. To make edits, you need to export again.", art: "export", merge: true },
 ] as const satisfies readonly Coach[]
 
 /** One-time tips, right when they matter. */
@@ -38,7 +38,8 @@ type State = {
   /** a spotlight: one thing pointed at, with a line on what to do */
   spot: Coach | null
 }
-export type Coach = { target: string | readonly string[]; title: string; text: string; art?: Art }
+/** merge: light the targets as one rectangle around them all, not one hole each */
+export type Coach = { target: string | readonly string[]; title: string; text: string; art?: Art; merge?: boolean }
 /** #capture (screenshots for the Help Center): no tour, tips or intros */
 export const CAPTURE = typeof location !== "undefined" && location.hash.includes("capture")
 const initial = (): State =>
