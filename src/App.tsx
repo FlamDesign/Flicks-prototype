@@ -1,9 +1,11 @@
+import { Skeleton } from "@/components/ui/skeleton"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { HelpCircleIcon } from "@hugeicons/core-free-icons"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { FlicksLogo } from "@/components/brand"
 import { HowFlicksWork } from "@/components/how-flicks-work"
 import { Button } from "@/components/ui/button"
-import { TutorialVideo } from "@/components/tutorial-video"
 import { AppSidebar, type Appearance } from "@/components/app-sidebar"
 import { PromptComposer } from "@/components/prompt-composer"
 import { TemplateGallery } from "@/components/template-gallery"
@@ -15,7 +17,7 @@ import { CoachLayer } from "@/onboarding/coach"
 import { CAPTURE, onboarding } from "@/onboarding/onboarding"
 import { SAMPLE_ID, sampleProject } from "@/onboarding/sample"
 import { useDevAction } from "@/dev/dev-actions"
-import { AccountSkeleton, DetailSkeleton, FlickPageSkeleton, GridSkeleton, PageLoader, TableSkeleton } from "@/components/page-skeletons"
+import { AccountSkeleton, DetailSkeleton, EditorSkeleton, FlickPageSkeleton, GridSkeleton, PageLoader, TableSkeleton } from "@/components/page-skeletons"
 import { CreditsPage } from "@/components/credits-page"
 import { WelcomeGiftDialog, WELCOME_CREDITS } from "@/components/welcome-gift-page"
 import { GenerationCanvas, type Generation } from "@/components/generation-canvas"
@@ -369,13 +371,10 @@ export default function App() {
                   setSize={setSize}
                   pulse={pulse}
                 />
-                <div className="flex flex-wrap items-center justify-center gap-1">
-                  <Button variant="ghost" size="sm" onClick={() => setDev({ featureIntro: true })} className="rounded-full font-normal text-muted-foreground hover:bg-transparent hover:text-foreground">
-                    How Flicks work
-                  </Button>
-                  <span aria-hidden className="text-muted-foreground/50">·</span>
-                  <TutorialVideo />
-                </div>
+                <Button variant="outline" size="sm" onClick={() => setDev({ featureIntro: true })} className="gap-1.5 rounded-full border-foreground/20 bg-transparent font-normal shadow-none hover:bg-foreground/5 dark:bg-transparent">
+                  <HugeiconsIcon icon={HelpCircleIcon} className="size-4" />
+                  How Flicks work
+                </Button>
                 <HowFlicksWork open={dev.featureIntro} onOpenChange={(o) => setDev({ featureIntro: o })} />
                 {/* the welcome gift follows How Flicks work */}
                 <WelcomeGiftDialog
@@ -400,6 +399,8 @@ export default function App() {
       {/* Full-screen generation canvas, above the app shell */}
       {page === "Generate" && generation && (
         <div className="fixed inset-0 z-40 bg-background">
+          {/* the editor loads its project first */}
+          <Loaded k={generation.id} ms={dev.pageLoadMs} s={<div className="flex h-full flex-col"><div className="flex h-14 shrink-0 items-center gap-3 border-b px-4"><Skeleton className="h-5 w-40 rounded-md" /><Skeleton className="ml-auto h-9 w-48 rounded-xl" /><Skeleton className="h-9 w-24 rounded-xl" /></div><EditorSkeleton /></div>}>
           <GenerationCanvas key={generation.id} generation={generation} onBack={() => setPage(generation.back === "Flick" && !flickId ? "Flicks" : (generation.back ?? "Create"))} onGetCredits={() => setBuyOpen(true)} onOpenFlick={openFlickPage}
             onSaveTemplate={(t) => setSavedTemplates((list) => [t, ...list])}
             onDuplicate={(copy) => setGeneration((g) => (g ? { ...g, id: crypto.randomUUID(), copy, resume: undefined, sample: false, remixOf: undefined } : g))}
@@ -408,6 +409,7 @@ export default function App() {
               setTimeout(() => document.getElementById("templates")?.scrollIntoView({ behavior: "smooth" }), 50)
             }}
           />
+          </Loaded>
         </div>
       )}
       <ExportWatcher onOpen={openFlickPage} />

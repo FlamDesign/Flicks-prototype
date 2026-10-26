@@ -278,7 +278,7 @@ export function EmbedSection({ link }: { link: string }) {
   const [copied, setCopied] = useState(false)
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-muted-foreground">Paste this where the Flick should play. It fits the space it’s placed in and keeps viewers on your page.</p>
+      <p className="text-sm text-muted-foreground">Paste this in your website where you want to show Flick.</p>
       <div className="overflow-hidden rounded-xl bg-muted/70">
           <div className="flex items-center justify-between border-b border-foreground/5 py-1.5 pl-4 pr-1.5">
             <span className="text-xs text-muted-foreground">Script tag</span>

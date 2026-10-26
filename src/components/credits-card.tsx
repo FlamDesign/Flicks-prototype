@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { PendingButton } from "@/components/page-skeletons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   SparklesIcon,
@@ -389,7 +390,7 @@ function AutoTopUpDialog({
               Not now
             </Button>
           )}
-          <Button
+          <PendingButton
             disabled={!ok || (value.enabled && !changed)}
             onClick={() => {
               onSave({ enabled: true, threshold: t, target: g })
@@ -397,7 +398,7 @@ function AutoTopUpDialog({
             }}
           >
             {value.enabled ? "Save" : "Turn on"}
-          </Button>
+          </PendingButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

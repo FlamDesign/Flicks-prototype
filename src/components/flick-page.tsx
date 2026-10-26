@@ -153,7 +153,7 @@ export function FlickPage({
                 Preparing… {Math.round(progress * 100)}%
               </span>
               <Progress value={progress * 100} />
-              <p className="text-xs text-muted-foreground">Link, ads and embeds show here when it’s ready.</p>
+              <p className="text-xs text-muted-foreground">You can share the link, serve it in ads or embed it on your website when it’s ready.</p>
             </section>
           </div>
         ) : (
@@ -209,10 +209,10 @@ export function FlickPage({
               rows={inEmbeds.map((x) => ({ id: x.id, name: x.name, sub: `${compact(x.views)} views`, onOpen: () => onOpenEmbed(x.id) }))}
             />
             <div className="flex items-center justify-between gap-3 border-t pt-3">
-              <p className="text-xs text-muted-foreground">The Flick as one .ifl file, for players that load it directly.</p>
+              <p className="text-xs text-muted-foreground">The Flick as one .ifl file. Compatible with the Flicks player SDK.</p>
               <Button variant="ghost" size="sm" className="shrink-0 gap-1.5" onClick={() => downloadIfl(f)}>
                 <HugeiconsIcon icon={Download01Icon} className="size-4" />
-                Download .ifl
+                Download Flick (.ifl)
               </Button>
             </div>
           </Card>
@@ -224,7 +224,7 @@ export function FlickPage({
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>Edit link</DialogTitle>
-            <DialogDescription>Changes how the link looks and where it lives. The Flick stays the same.</DialogDescription>
+            <DialogDescription>This is how your link would look on supported platforms.</DialogDescription>
           </DialogHeader>
           <ShareSection live share={f.link} setShare={(patch) => library.updateLink(f.id, patch)} link={link} fallbackTitle={f.name} fallbackImage={startPoster} onToast={toast} />
           <DialogFooter>
@@ -244,7 +244,7 @@ export function FlickPage({
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Add to embed</DialogTitle>
-            <DialogDescription>Embeds keep their code; the site shows this Flick from the next view. Embeds are free.</DialogDescription>
+            <DialogDescription>Create an embed to show Flicks on your website. You can replace Flick later.</DialogDescription>
           </DialogHeader>
           <AddToEmbed flick={flickRef(f)} onOpenEmbed={(id) => (setAdding(null), onOpenEmbed(id))} />
         </DialogContent>
@@ -311,7 +311,7 @@ function Analytics({ f, onAnalytics }: { f: FlickRecord; onAnalytics: () => void
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-medium">Analytics</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">Views of each variation, all time</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Views on each variation</p>
         </div>
         <Button variant="ghost" size="sm" className="-mr-2 gap-1 text-primary hover:text-primary" onClick={onAnalytics}>
           Full analytics

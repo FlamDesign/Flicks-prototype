@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { Loading, RowsSkeleton } from "@/components/page-skeletons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowUpRight01Icon, Cancel01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
@@ -46,6 +47,7 @@ export function VersionHistoryPanel<S>({
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
         <p className="mb-3 px-1 text-xs text-muted-foreground">Saved as you work. Exports are marked.</p>
+<Loading skeleton={<RowsSkeleton rows={6} thumb={false} />}>
         {versions.length ? (
           <ul className="flex flex-col gap-1.5">
             {[...versions].reverse().map((v) => (
@@ -55,6 +57,7 @@ export function VersionHistoryPanel<S>({
         ) : (
           <Empty text="Versions show here as you work." />
         )}
+        </Loading>
       </div>
     </aside>
   )

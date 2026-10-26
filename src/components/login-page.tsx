@@ -1,3 +1,4 @@
+import { WELCOME_CREDITS } from "@/components/welcome-gift-page"
 import { useEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Alert02Icon, ArrowLeft01Icon, Loading03Icon, MailOpen01Icon, Moon02Icon, Sun03Icon, TimeQuarterPassIcon } from "@hugeicons/core-free-icons"
@@ -169,9 +170,9 @@ export function LoginPage({
         <main className="mx-auto flex w-full max-w-[380px] flex-1 flex-col justify-center py-12">
           {step === "email" && (
             <div key="email" className="animate-in fade-in-0 slide-in-from-bottom-1 flex flex-col duration-300">
-              <h1 className="text-balance text-[28px] font-medium leading-[1.15] tracking-tight">Make ads people want to tap</h1>
+              <h1 className="text-balance text-[28px] font-medium leading-[1.15] tracking-tight">Welcome to Flicks</h1>
               <p className="mt-2.5 text-pretty text-sm text-muted-foreground">
-                Turn one product video into an interactive ad with every variation inside it. Sign in to start or pick up where you left off.
+                Sign up and get {WELCOME_CREDITS.toLocaleString()} free credits.
               </p>
 
               {/* not a <form>: sandboxed previews block form submits, so Enter and the button call send directly */}

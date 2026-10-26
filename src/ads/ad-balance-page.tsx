@@ -44,7 +44,7 @@ export function AdBalancePage({ onCampaigns, email }: { onCampaigns: () => void;
   const invoices: InvoiceRow[] = ledger.filter((t) => t.kind === "funds").map((t) => ({ id: t.id, title: "Funds added", number: t.invoice, at: t.at, amount: t.amount }))
 
   return (
-    <PageShell title="Ad Balance" description="Pays for your ads, per 1,000 impressions. Separate from AI credits.">
+    <PageShell title="Ad Balance" description="Pays for your ads. Separate from AI credits.">
       <div className="grid gap-3 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         {/* the balance */}
         <Card className="shadow-none">
@@ -196,7 +196,7 @@ function SpendByDay({ onCampaigns }: { onCampaigns: () => void }) {
         </div>
       ) : (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
-          <p>{dates.preset === "all" ? "No spend yet. It shows here, day by day, as your placements serve." : "No spend in this period. Try another date."}</p>
+          <p>{dates.preset === "all" ? "No spend yet. Your daily spend shows here once you start serving ads." : "No spend in this period. Try another date."}</p>
           {dates.preset !== "all" && (
             <Button variant="outline" size="sm" onClick={() => (setDates(ALL_DATES), setShownDays(DAYS_PAGE))}>
               Clear filters

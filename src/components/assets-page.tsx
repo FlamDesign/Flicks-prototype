@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
+import { CardsSkeleton, Loading, PendingButton } from "@/components/page-skeletons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Download01Icon, Video01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
@@ -192,6 +193,8 @@ export function AssetsPage({ onCreate, onUse }: { onCreate: () => void; onUse: (
         )}
       </div>
 
+      {/* filtering fetches again */}
+      <Loading k={[sizeFilter, dates]} skipFirst skeleton={<div className="mt-6"><CardsSkeleton count={12} cols="grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6" aspect="aspect-[9/16]" lines={0} /></div>}>
       {assets.length === 0 ? (
         <div className="mt-6 flex flex-col items-center gap-2 rounded-xl border border-dashed py-20 text-center">
           <span className="grid size-12 place-items-center rounded-2xl bg-muted text-muted-foreground">
@@ -227,6 +230,7 @@ export function AssetsPage({ onCreate, onUse }: { onCreate: () => void; onUse: (
           ))}
         </div>
       )}
+      </Loading>
 
       <MediaViewer
         items={viewerItems}
@@ -247,15 +251,15 @@ export function AssetsPage({ onCreate, onUse }: { onCreate: () => void; onUse: (
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Delete this video?</DialogTitle>
-            <DialogDescription>It’s removed from Assets. Flicks already using it keep playing it.</DialogDescription>
+            <DialogDescription>It’s removed from Assets. Flicks using this video won’t be affected.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirm(null)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={() => confirm && remove(confirm)}>
+            <PendingButton variant="destructive" onClick={() => confirm && remove(confirm)}>
               Delete
-            </Button>
+            </PendingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

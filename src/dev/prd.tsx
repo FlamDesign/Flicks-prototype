@@ -5,7 +5,7 @@ import { DevBadge } from "@/dev/state-manager"
 import { cn } from "@/lib/utils"
 
 /** Bump when the PRD changes. */
-export const PRD_UPDATED = "Oct 25, 2026, 6:30 pm"
+export const PRD_UPDATED = "Oct 25, 2026, 8:45 pm"
 
 /* ---------- small writing helpers ---------- */
 
@@ -116,7 +116,7 @@ const SECTIONS: Section[] = [
           ["Starting variation", "The variation a viewer sees first. In the UI: \u201cStart the Flick here\u201d a solid play button on its thumbnail (\u201cThe Flick starts here\u201d)."],
           ["Element", "Anything placed on the canvas: text, button, icon button, image, thumbnail strip. Elements are shared by all variations."],
           ["Thumbnail strip", "The row (or column, or free arrangement) of thumbnails viewers tap to switch variation. Always present, cannot be deleted."],
-          ["Feed", "A named value (text or link) that each variation sets for itself, e.g. @price or @shop-link. Linked to text or buttons."],
+          ["Feed", "A named value (text or link) that each variation sets for itself, e.g. price or shop-link. Made from the { } tab on text, a button or its link."],
           ["Template", "A ready-made Flick (built-in) or a saved copy of a user's project (Your templates)."],
           ["Version", "A checkpoint of a project, saved a few seconds after changes settle; exports are marked. Can be named and restored."],
           ["Placement", "A fixed-size slot in a campaign with one tag (VAST 4.2, SIMID, MRAID 3.0). Holds one Flick of its size at a time; replacing it keeps the tag."],
@@ -136,7 +136,7 @@ const SECTIONS: Section[] = [
         <UL
           items={[
             "Layout: on wide screens a live Flick fills the left half and the form sits on the right; on small screens only the form shows. The form stays first in the page order. Mirror it for right-to-left languages.",
-            "Copy: \u201cMake ads people want to tap\u201d, then \u201cTurn one product video into an interactive ad with every variation inside it. Sign in to start or pick up where you left off.\u201d",
+            "Copy: \u201cWelcome to Flicks\u201d, then \u201cSign up and get 1,000 free credits.\u201d",
             "Email field (placeholder you@example.com) with the hint \u201cNo password needed. We\u2019ll email you a link to sign in.\u201d, then \u201cEmail me a sign-in link\u201d, \u201cor\u201d, and \u201cContinue with Google\u201d. Terms of Use (flamapp.ai/legal/terms) and Privacy Policy (flamapp.ai/legal/privacy-policy) links sit at the bottom and open in a new tab.",
             "Email checks run on Continue and when leaving the field (not when moving to Google). The message replaces the hint in red: empty (\u201cEnter your email.\u201d), spaces (\u201cEmail addresses can\u2019t have spaces.\u201d), no @ (\u201cAdd the @ and the rest of the address, like you@example.com.\u201d), incomplete (\u201cThat doesn\u2019t look like a full email.\u201d), a domain typo (\u201cCheck the end of the address.\u201d with a one-click \u201cUse you@company.com\u201d for .con, .cmo, .nte and similar). Personal addresses (Gmail, Outlook and so on) are welcome.",
             "Problems after the email is fine show as a red note with a warning icon under the button: the link couldn\u2019t be sent (\u201cWe couldn\u2019t send the link. Check your connection and try again.\u201d), offline (\u201cYou\u2019re offline. Reconnect, then try again.\u201d), too many links (after 4: \u201cYou\u2019ve asked for several links. Wait 10 minutes, or use the most recent one.\u201d). The same notes appear on Check your inbox and the expired screen when resending.",
@@ -153,7 +153,7 @@ const SECTIONS: Section[] = [
         <UL
           items={[
             "New users answer three short steps once, before the app. Same layout as sign-in: the live Flick on the left, questions on the right. A segmented progress bar and \u201c2 of 3\u201d sit on top; Back on every step after the first; Enter continues. Each step starts with its first field focused.",
-            "1 \u2014 \u201cLet\u2019s set up your workspace\u201d: Your name (filled from Google), Company or brand (\u201cWorking for yourself? Use your own name or your studio\u2019s.\u201d), Company website (filled from the email\u2019s domain unless it\u2019s a personal inbox like gmail.com; https:// shown as a prefix).",
+            "1 \u2014 \u201cLet\u2019s set up your account\u201d: Your name (filled from Google), Company or brand (\u201cWorking for yourself? Use your own name or your studio\u2019s.\u201d), Company website (filled from the email\u2019s domain unless it\u2019s a personal inbox like gmail.com; https:// shown as a prefix).",
             "2 \u2014 \u201cWhat brings you to Flicks?\u201d, pick all that apply, as rows with an icon, title, one-line hint and a checkbox: Run interactive ads, Create product videos, Add Flicks to my website, Make videos for social, Just exploring. At least one is needed (\u201cPick at least one.\u201d).",
             "3 \u2014 \u201cTell us about <Company>\u201d: \u201c<Company> is a\u201d Brand, Agency, Publisher, or Freelancer or creator; \u201cHow many people work there?\u201d Just me, 2\u201310, 11\u201350, 51\u2013200, 200+; Industry.",
             "Every field is required.",
@@ -184,6 +184,9 @@ const SECTIONS: Section[] = [
             </>,
             <>
               <B>Loading:</B> Projects, Flicks, a Flick, Assets, Campaigns (and a placement opened from elsewhere), Embeds (and an embed), Credits and Ad Balance show a skeleton matching their layout while they load (square cards with two lines; table rows; the Flick stage with its cards; numbers, stage and code; stat cards and lists), then the content in place, with no jump.
+            </>,
+            <>
+              <B>Loading everywhere else:</B> anything that would fetch shows a skeleton for the same moment: the workspace setup form (progress, title, fields and Continue) before it appears; the editor while a project opens (rail, canvas, strip and prompts); the templates on Create (on arrival and when filtered); searching or filtering Projects, Flicks and Assets; changing Analytics\u2019 tab, period, country, source or what\u2019s open (a chart and lists); Usage history filters and pages; the editor\u2019s Images, Layouts and Feeds panels and the image picker; Version history; CPM rates; the Flick picker for a placement; embeds in Add to embed. Buttons that save, create, delete, restore or add show a spinner in place of their label (same width, disabled) before they act. All of it follows Page load time; 0 turns it off.
             </>,
             <>
               <B>Account menu:</B> Account, Credits, Ad Balance, Help Center (opens in a new tab), Theme (light, dark, system), Log out.
@@ -228,7 +231,7 @@ const SECTIONS: Section[] = [
         <H>Template page</H>
         <UL
           items={[
-            "Try it: in place of a still thumbnail, a live Flick at the template's size (on a grey stage, as large as fits): its videos, headline and button, and the thumbnail strip. Tapping a thumbnail switches the video; on its own it moves to the next every few seconds (a thin bar shows when), pausing for a while after a tap. Below: \u201cTry it: tap a thumbnail to switch the video, as viewers will.\u201d",
+            "Try it: in place of a still thumbnail, a live Flick at the template's size (on a grey stage, as large as fits): its videos, headline and button, and the thumbnail strip. Tapping a thumbnail switches the video; on its own it moves to the next every few seconds (a thin bar shows when), pausing for a while after a tap. Below: \u201cTap a thumbnail to switch the video.\u201d",
             "Beside it: title, description, industry and size badges, and Use template. No variation tags, prompt or what\u2019s-included list. More templates below.",
             "Use template opens the editor with everything generated: the reference video plus 3 variations, with the template's headline and call to action placed. The reference video of a built-in template is fixed (no prompt box). A saved template or a brand template opens exactly as it was built, at its videos’ length, and stays fully editable.",
             "For a brand or saved template, Try it shows the real design (text, buttons, logo and strip) with each product’s feed values, instead of the generic headline and button.",
@@ -422,10 +425,11 @@ const SECTIONS: Section[] = [
         <Table
           head={["Element", "Controls"]}
           rows={[
-            ["Text", "Feed (@), style, font (100+, searchable, grouped by type, incl. Japanese, Korean, Chinese, Arabic, Devanagari and Thai; loaded on demand), size, colour, align (cycles), bold / italic / underline, duplicate, delete"],
-            ["Button", "Feed for the label (@), style, font, size, text colour, bold / italic / underline, background colour (incl. transparent), border, radius, background image, link, duplicate, delete"],
-            ["Icon button", "Replace icon image, link, duplicate, delete. No text, no feed for a label."],
-            ["Image", "Radius, aspect lock, fit or fill, replace, duplicate, delete"],
+            ["Layout", "Canva-style: one 44px row; text controls show their value (the font name in its own font with a chevron; the size between \u2212 and +), the rest are icons with tooltips; dividers group them. No style, duplicate or delete: Delete/Backspace deletes and Cmd/Ctrl+D duplicates."],
+            ["Text", "Font (name in its own font \u2304; 100+, searchable, grouped by type, incl. Japanese, Korean, Chinese, Arabic, Devanagari and Thai; loaded on demand), size, colour, align (cycles), bold, italic and underline as three toggles"],
+            ["Button", "Font, size, text colour, bold / italic / underline, background colour (incl. transparent), border, radius, background image"],
+            ["Icon button", "Replace (text button) (the link floats under it). No text, no feed for a label."],
+            ["Image", "Replace (text button), radius, aspect lock (lock icon), fit or fill"],
             ["Thumbnail strip", "Layout (horizontal → vertical → free), size, gap, highlight colour and width, background, radius"],
           ]}
         />
@@ -464,10 +468,10 @@ const SECTIONS: Section[] = [
     body: (
       <UL
         items={[
-          "Adding a button opens its link options straight away. Any button without a link opens them with the URL field focused and outlined, ready to paste.",
-          "One view, no tabs: the URL field at the top, then “Or a different link for each variation” with link feeds, New link feed and suggestions.",
-          "Once linked to a feed, the URL field hides and the feed shows with an edit (pencil) and an Unlink icon. Unlinking brings the URL field back, filled with the link of the video in view.",
-          "In the button toolbar, the link button sits right next to the label feed (@) button.",
+          "A button\u2019s link floats just under it while it\u2019s selected; it isn\u2019t in the toolbar.",
+          "No link yet: a link box opens on its own, the cursor in it (\u201cPaste or type a link\u201d), with a tick to finish. Enter (or Esc) finishes too.",
+          "With a link: a slim dark chip showing where it goes (e.g. shop.example.com/boots, opens in a new tab) and a pencil that turns it back into the link box.",
+          "A link that comes from a feed edits this variation\u2019s value.",
           "In Preview and the exported Flick, buttons open their link (or this variation's feed value).",
         ]}
       />
@@ -479,41 +483,27 @@ const SECTIONS: Section[] = [
     body: (
       <>
         <P>
-          Feeds hold values that change per variation. Text feeds fill text or button labels; link feeds fill button links. Names are lowercase with hyphens
-          (“Product Name” becomes @product-name).
+          A feed is a value that\u2019s different in each variation, like a price or a product page. There are no kinds: any feed can fill text, a button label or a button link.
+          The idea is to change things where they are: switch variations below the canvas and type in place. The side panel opens only when asked.
         </P>
-        <H>Linking from the toolbar</H>
-        <UL
-          items={[
-            "The @ button opens “Link to a feed” with “Different text in each variation.” (or “A different label…” for buttons).",
-            "Linked feed on top: name, a pencil to edit its value, and an Unlink icon (labels in tooltips).",
-            "Other feeds to switch to, New text feed, and while there are fewer than two feeds of that type, up to three suggestions, each with a sample value: text @product-name (Arc Lamp), @price ($129), @offer (20% off today), @headline, @colour; for a button label @button-label (Shop the lamp) comes first; links @product-page, @buy-link, @landing-page. One click creates and links.",
-            "Creating a feed takes you straight to editing its value: text feeds start editing on the canvas; link feeds open Feeds in the left panel and focus that video's value.",
-            "Linking fills every variation that has no value yet with the element's current text, so nothing goes blank. Unlinking keeps what's on screen as typed text.",
-          ]}
-        />
         <H>On the canvas</H>
         <UL
           items={[
-            "Linked text is edited in place like normal text; the edit is this variation's value.",
-            "A small @name badge shows on linked elements while hovered, selected or edited. Clicking it opens Feeds in the left panel and focuses this video's value.",
+            "Feeds aren\u2019t in the element toolbars. A selected text or button has a dark tab on the top-left edge of its outline (under the corner handle), and the button\u2019s link box has one on its top edge. The feeds icon is { }.",
+            "No feeds in the project yet: the tab is a small { } (tip: \u201cMake a feed: a different text in each variation\u201d, or label, link). One click makes a feed named text, label or link (then text-2\u2026), fills every variation with what\u2019s there now and links it. The panel doesn\u2019t open.",
+            "Feeds already exist: the { } opens a menu: New feed, then Link to and the existing feeds.",
+            "Linked: the tab shows only the feed\u2019s name (tip: \u201cDifferent for each variation\u201d). Its menu: Open Feeds panel, New feed, Link to another Feed, Unlink (keeps what\u2019s on screen). Deleting is only in the Feeds panel.",
+            "Linked text is edited in place like normal text; the edit is this variation's value. An empty value shows {name}. Hovering an unselected linked element shows its name on a small tab.",
           ]}
         />
-        <H>In the left panel (Feeds)</H>
-        <P>Feeds sits in the left rail below Layers and has two levels, so the list stays short however many feeds and variations there are.</P>
+        <H>Feeds (left panel)</H>
         <UL
           items={[
-            "Opening Feeds from the rail always shows the list, never a feed left open from before. A feed opens only by clicking its row, its @chip on the canvas, or selecting text or a button that uses it while the panel is open.",
-            "List: \u201cValues that change per variation\u201d with a + (Add feed), then one row per feed: type icon, @name and a chevron. Click a row to open it. With no feeds, an empty state suggests one like @price.",
-            "Feed: the panel title becomes a breadcrumb, \u201cFeeds \u203a @price\u201d. Click \u201cFeeds\u201d (or press Esc outside a field) to go back; click @price to rename it (empty or duplicate names keep the old one).",
-            "Under the title: the type (\u201cText feed\u201d or \u201cLink feed\u201d), a button that selects the elements using it on the canvas (its tooltip says what; disabled when nothing uses it), and Delete.",
-            "Then one row per video in the Flick: its frame (name in a tooltip) and the value. The video on the canvas has an outlined frame; focusing a value or clicking a frame switches the canvas to that video.",
-            "Opening Feeds shows the list, unless a linked text or button is selected: then its feed opens. Selecting linked elements later opens their feed too.",
-            "The + opens a small form: a Text / Link switch and a name field whose placeholder rotates through suggested names (\u201cFeed name, like @product-name\u201d), and below it up to three suggested names to click (@product-name, @price, @offer, @headline; for links @product-page, @buy-link, @landing-page). Once typing, the hint reads \u201cName it now, add values next.\u201d Then Cancel and Create feed. Enter creates, Esc cancels.",
-            "If what\u2019s typed looks like a value (a price, a URL, a number or a sentence), the hint turns amber: \u201cLooks like a value. Use a name, like @price.\u201d",
-            "Creating a feed opens it with the cursor in the first value. The canvas @ badge opens the feed with the cursor in the value for the video in view.",
-            "Delete asks first (\u201cDelete @price?\u201d), then removes the feed from every variation and returns to the list. Like Unlink, linked text, labels and button links keep the value of the video in view (if that\u2019s empty, what they had before linking).",
-            "The reference video has values only once it is included in the Flick.",
+            "A list; feeds can\u2019t be made here. Each row: { }, the name and a \u22ef menu: Rename (in place) and Delete (asks first; anything using it keeps the value of the variation in view).",
+            "Clicking a feed selects what uses it on the canvas and opens it in the panel, titled \u201cFeeds \u203a price\u201d (Feeds goes back). Inside: the feed\u2019s name large, with \u2197 (select on canvas) and \u22ee (Rename, Delete); Rename (or double-clicking the name) makes the name editable in place. Then \u201cIts value in each variation\u201d and a card per variation: a round image and the variation\u2019s name on top, a full-width value field below. The variation on the canvas has an outlined card and \u201cOn canvas\u201d; focusing a value or clicking the name switches the canvas to it.",
+            "Selecting a linked element while the panel is open opens its feed. Open Feeds panel (from the canvas) opens it with the cursor in the value for the variation in view.",
+            "Empty: \u201cMake anything change per variation. A feed gives text, a button or its link a different value in each variation, like a price or a product page. Select it on the canvas and click { } on its top edge. Then switch variations below the canvas and type each one in place.\u201d",
+            "The reference video has values only once it is included in the Flick. Empty values are flagged before export.",
           ]}
         />
       </>
@@ -591,7 +581,7 @@ const SECTIONS: Section[] = [
         <H>Projects</H>
         <UL
           items={[
-            "Title and description (\u201cDrafts you\u2019re working on. Export one to make a Flick.\u201d), then search, a last-edited date filter (see Assets) and a size filter.",
+            "Title and description (\u201cDrafts you\u2019re working on.\u201d), then search, a last-edited date filter (see Assets) and a size filter.",
             "Cards: a square (1:1) thumbnail (the starting variation), the name, last edited and size. 4 to a row on wide screens (3 on medium, 2 on phones).",
             "A project saves as you work: anything started from Create, a template, Assets or Remix shows up here, and reopens as it was left.",
             "\u22ef and right-click: Duplicate, Delete (confirms; its Flicks stay).",
@@ -601,11 +591,11 @@ const SECTIONS: Section[] = [
         <H>Export Flick</H>
         <UL
           items={[
-            "Export (top right of the editor) opens a dialog: what it does (\u201cMakes a Flick from this project, ready to share, embed and serve in ads.\u201d), the starting variation\u2019s frame with the number of variations and size, and Flick name, prefilled with the project name.",
+            "Export (top right of the editor) opens a dialog: what it does (\u201cMakes a Flick from this project, ready to share, embed in websites or serve in ads.\u201d), the starting variation\u2019s frame with the number of variations and size, and Flick name, prefilled with the project name.",
             "When the project was exported before: \u201cLast exported 2 hr ago as \u201cX\u201d.\u201d",
-            "Checks, one line each: \u201cCreate at least two variations to export.\u201d or \u201cGenerate every variation to export.\u201d, and a reference video thumbnail when it\u2019s included (these block); feeds empty on some variations or variations made from an old reference video (warnings).",
+            "Checks, one line each: \u201cCreate at least two variations to export.\u201d or \u201cGenerate videos for every variation before export.\u201d, and a reference video thumbnail when it\u2019s included (these block); feeds empty on some variations or variations made from an old reference video (warnings).",
             "Export closes the dialog and opens the new Flick\u2019s page right away; it prepares there in the background (about 5 seconds here). The project stays as it was; going back to it, the Export button shows a spinner while one prepares (it can export again).",
-            "While preparing: the header says \u201cPreparing\u2026 n%\u201d (no Remix or \u22ef); the preview plays; the right side is one card, \u201cPreparing\u2026 n%\u201d with a bar and \u201cLink, ads and embeds show here when it\u2019s ready.\u201d; Analytics is hidden. In Flicks it\u2019s first, its card faded with \u201cPreparing\u2026 n%\u201d and a bar. It isn\u2019t offered in placement or embed pickers yet.",
+            "While preparing: the header says \u201cPreparing\u2026 n%\u201d (no Remix or \u22ef); the preview plays; the right side is one card, \u201cPreparing\u2026 n%\u201d with a bar and \u201cYou can share the link, serve it in ads or embed it on your website when it\u2019s ready.\u201d; Analytics is hidden. In Flicks it\u2019s first, its card faded with \u201cPreparing\u2026 n%\u201d and a bar. It isn\u2019t offered in placement or embed pickers yet.",
             "When it finishes, wherever the user is: the toast \u201c\u201cX\u201d is ready\u201d (\u201cShare it, embed it or serve it in ads.\u201d) with View Flick.",
           ]}
         />
@@ -620,7 +610,7 @@ const SECTIONS: Section[] = [
         <H>Flicks</H>
         <UL
           items={[
-            "Title and description (\u201cFlicks ready to share, embed and serve in ads. Remix one to change it.\u201d), then search, a created-date filter and a size filter.",
+            "Title and description (\u201cFlicks ready to share, embed in website or serve in ads.\u201d), then search, a created-date filter and a size filter.",
             "Cards like Projects, with \u201cCreated 2h ago\u201d. \u22ef and right-click: Remix, Copy link, Delete.",
             "Delete confirms (its link and embeds stop working). Not while a placement serves it: \u201cIt\u2019s serving in 2 placements. Replace it there first.\u201d",
             "Empty: \u201cNo Flicks yet. Export a project to make a Flick.\u201d with Go to Projects.",
@@ -636,9 +626,9 @@ const SECTIONS: Section[] = [
             "Link: flamapp.ai/f/<ending> with copy and visit; how it unfurls (image, title, description); Edit link.",
             "Edit link (dialog): link preview (1200\u00d7630 image with add / replace / remove, title, description); link ending with a live availability check; preview title and description. It changes the link only, never the Flick.",
             "Serve in ads: the placements this Flick is in (name, campaign, impressions; each opens its placement), or \u201cNot in any placement yet.\u201d Add to placement (top right) opens a dialog: placements in the Flick\u2019s size with Add or Replace (View when it\u2019s there), and New placement for this Flick.",
-            "Embed: the embeds this Flick is in (name, views; each opens its embed), or \u201cNot embedded anywhere yet.\u201d Add to embed opens the same kind of dialog for embeds (\u201cEmbeds keep their code; the site shows this Flick from the next view. Embeds are free.\u201d). Below: Download .ifl (the Flick as one file, for players that load it directly: name, size, variations, starting variation, link).",
+            "Embed: the embeds this Flick is in (name, views; each opens its embed), or \u201cNot embedded anywhere yet.\u201d Add to embed opens the same kind of dialog for embeds (\u201cCreate an embed to show Flicks on your website. You can replace Flick later.\u201d). Below: Download Flick (.ifl) (the Flick as one file for the Flicks player SDK: name, size, variations, starting variation, link).",
             
-            "Remix: a new project from the Flick\u2019s exact state, named \u201c<Flick>_copy\u201d; the editor opens with \u201cRemix started\u201d. Back returns to the Flick.",
+            "Remix: a new project from the Flick\u2019s exact state, named \u201c<Flick>_copy\u201d; the editor opens with \u201cRemix created\u201d. Back returns to the Flick.",
           ]}
         />
       </>
@@ -673,7 +663,7 @@ const SECTIONS: Section[] = [
             "Date filter (shared by Assets, Projects, Flicks and Replace Flick): a pill showing the choice (\u201cLast 7 days\u201d, or a range like \u201cOct 3 \u2013 Oct 9\u201d) that opens a short list: All period, Today, Last 7 days, Last 30 days and Custom range (the current one ticked). The calendar appears beside the list only after choosing Custom range (or when a custom range is already set): pick a start and end, future days disabled; a full range closes it. It stays within the window.",
             "Each card: a square (1:1) tile with the video filling it; it plays on hover. On hover, the length (\u201c0:09\u201d) and size show bottom-right, and Download top-right. No text below the tile.",
             "Click a card to open it in the viewer (below), with previous/next arrows and arrow keys across all videos.",
-            "Delete asks first (\u201cDelete this video? It\u2019s removed from Assets. Flicks already using it keep playing it.\u201d), then shows \u201cVideo deleted\u201d.",
+            "Delete asks first (\u201cDelete this video? It\u2019s removed from Assets. Flicks using this video won\u2019t be affected.\u201d), then shows \u201cVideo deleted\u201d.",
             "Empty: \u201cNo videos yet\u201d, \u201cEvery video you generate shows up here, with the prompt and references it was made from.\u201d and Create a video.",
           ]}
         />
@@ -686,7 +676,7 @@ const SECTIONS: Section[] = [
             "Prompt block (generated videos): the references as thumbnails, then the prompt, up to six lines with See more (opens the rest in a scroll area with no scrollbar) and a Copy button (shows \u201cCopied\u201d).",
             "Details block: Type, Size, Length, Created for videos in Assets; Type, Size, Created for other generated videos; Source, Type, Format for uploads.",
             "References open in place of the video: a Back pill at the top left (Esc also goes back), and the panel shows that reference\u2019s Source (Uploaded or Generated), Type and Format.",
-            "Actions at the bottom: in Assets, Use in Flicks is the primary button (starts a new project with this video as its reference video, already made, at its size and length; the editor says \u201cNew project started\u201d, and Back returns to Assets), then Download and Delete as icons. Elsewhere, Download is primary; images also have Copy image (a toast explains if the browser blocks the clipboard). Videos have no copy action.",
+            "Actions at the bottom: in Assets, Use in Flicks is the primary button (starts a new project with this video as its reference video, already made, at its size and length; the editor says \u201cNew project created\u201d, and Back returns to Assets), then Download and Delete as icons. Elsewhere, Download is primary; images also have Copy image (a toast explains if the browser blocks the clipboard). Videos have no copy action.",
           ]}
         />
       </>
@@ -776,7 +766,7 @@ const SECTIONS: Section[] = [
         <P>Embeds work like placements without the charges: a fixed-size spot on a website or app with one code snippet. The Flick in it can be replaced any time and the site shows the new one from the next view; the code never changes. Under Manage in the sidebar.</P>
         <UL
           items={[
-            "List: title, \u201cSpots on your website or app. Replace the Flick in one any time; the code stays the same. Embeds are free.\u201d, New embed; cards with the Flick (square), size, name, the Flick\u2019s name and views. Empty: \u201cNo embeds yet\u201d with New embed.",
+            "List: title, \u201cCreate an embed to show Flick on your website. You can replace the Flick in embed any time.\u201d, New embed; cards with the Flick (square), size, name, the Flick\u2019s name and views. Empty: \u201cNo embeds yet\u201d with New embed.",
             "New embed: name and size (can\u2019t change later; locked to the Flick\u2019s size when made from a Flick page).",
             "A new, empty embed: \u201cAdd a Flick to this embed\u201d, \u201cPick a Flick in {size}. Then you\u2019ll get the code for your website or app.\u201d and Choose a Flick.",
             "Header: breadcrumb (Embeds \u203a name) with the locked size; Created date and \u22ef (Rename, Delete embed; confirms, its code stops working).",
@@ -794,7 +784,15 @@ const SECTIONS: Section[] = [
       <>
         <P>New users learn in place: a short tour in the editor, one-time tips at tricky moments, a Help Center with a sample project, and a first-run explainer on Campaigns. All of it can be skipped; the tour and the sample come back from the Help Center.</P>
         <H>Sample project</H>
-        <P>\u201cSample: Sport lens switch\u201d (1080\u00d71920): a reference video, three colourways named Gold, Sapphire and White with thumbnails, a heading, a price from @price, a Shop now button linked to @shop-link, and the strip. Opened from the Help Center; it saves to Projects like any other.</P>
+        <P>\u201cSample: Sport lens switch\u201d (1080\u00d71920): a reference video, three colourways named Gold, Sapphire and White with thumbnails, a heading, a price from the price feed, a Shop now button whose link comes from the shop-link feed, and the strip. Opened from the Help Center; it saves to Projects like any other.</P>
+        <H>How Flicks work</H>
+        <UL
+          items={[
+            "A feature intro popup on Create, shown once to new users right after workspace setup (the welcome gift follows it), and any time from the outlined \u201c? How Flicks work\u201d button under the prompt box.",
+            "Four steps, each with a short scene built from the escalator Flick (real clips and stills) above the copy: Start with one video (a prompt types, three reference images drop in, Generate, and the video plays); Create variations (Streetwear, Office and Tennis slide out of the Original: same motion, new person and outfit); Export as one Flick (they fly into one Flick with its thumbnail rail; a tap switches who is in it, instantly); Run it anywhere (the Flick branches to Ads, Website and Link, playing inside each).",
+            "Progress bars that also jump to a step, Skip (first step) or Back, Next, and Start creating at the end. Each step stays 8 to 10 seconds; it plays on its own until the viewer clicks. Esc or the close button dismisses it. Reduced motion: scenes show their end state.",
+          ]}
+        />
         <H>Welcome gift</H>
         <UL
           items={[
@@ -808,14 +806,18 @@ const SECTIONS: Section[] = [
         <H>Editor tour</H>
         <UL
           items={[
-            "Starts once, the first time a project\u2019s video is ready (or from the Help Center). Six stops, each pointing at its part with the rest dimmed: Your prompts, The reference video, Add variations, Design once, Dynamic content, Export.",
-            "Each stop: title, one or two lines, \u201cn of 6\u201d, Skip tour, Back, Next (Done on the last). Esc skips.",
+            "Starts once, the first time a project\u2019s video is ready (or from the Help Center). The page dims, with a soft cut-out around what each stop is about; the cut-out and card glide from stop to stop.",
+            "Each card: a small looping illustration made from the escalator Flick\u2019s stills, a title, one line, step dots, Skip, Back and Next (Done on the last). Esc skips.",
+            "1 Your reference video (the canvas): every variation is made from it; change it and they need regenerating. 2 Add variations (the strip and the chat): add one in the strip, describe it in the chat, it generates in the strip. 3 Design once (Text, Buttons, Layouts): what you add shows on every variation. 4 Preview, then export (Preview and Export): an exported Flick can\u2019t be changed; Remix makes a new one.",
           ]}
         />
         <H>One-time tips</H>
         <UL
           items={[
-            "Shown once each, pointing at the thing, with Got it; never over the tour: the first feed (fill it on each variation); a variation needing regenerating; the thumbnail strip selected (upload a thumbnail per variation); the first Preview; the first ready Flick page (Flicks don\u2019t change; Remix to change one).",
+            "Shown once each, by the thing they\u2019re about (beside it, so it isn\u2019t covered), with Got it; never over the tour.",
+            "Feeds: the first time text, a button or a layout is added, by its { } tab: \u201cDifferent content for each variation\u201d, with an illustration of a price changing per variation.",
+            "Needs regenerating: by the red dot after the reference changes, with an illustration of the reference changing and its variation regenerating.",
+            "Also: the thumbnail strip selected, the first Preview, the first ready Flick page (Remix).",
           ]}
         />
         <H>Help Center</H>
@@ -829,8 +831,6 @@ const SECTIONS: Section[] = [
             "Search matches titles first, then summaries, tips and steps.",
           ]}
         />
-        <H>Campaigns, first visit</H>
-        <P>\u201cHow serving in ads works\u201d in three steps (Campaigns hold placements; Copy its tag into your ad platform; Pay per 1,000 impressions), with Back, Next, and at the end Got it or Create a campaign.</P>
         <P>Dev tools: Reset onboarding (in the dev bar) starts all of it over.</P>
       </>
     ),

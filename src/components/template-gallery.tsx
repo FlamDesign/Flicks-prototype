@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { TemplateCard } from "@/components/template-card"
 import { INDUSTRIES, SIZES, TEMPLATES, type Template } from "@/data"
 import { useDevState } from "@/dev/state"
+import { CardsSkeleton, Loading } from "@/components/page-skeletons"
 
 export function TemplateGallery({ onUse, saved = [] }: { onUse: (t: Template) => void; saved?: Template[] }) {
   const [industry, setIndustry] = useState("all")
@@ -46,6 +47,8 @@ export function TemplateGallery({ onUse, saved = [] }: { onUse: (t: Template) =>
         </div>
 
         <div className="mt-5">
+          {/* loads on arrival and whenever the filters change */}
+          <Loading k={[industry, size]} skeleton={<CardsSkeleton count={8} cols="grid-cols-2 gap-x-5 sm:grid-cols-3 lg:grid-cols-4" aspect="aspect-square" />}>
           {list.length ? (
             // square cards in rows: 4 on wide screens, fewer as it narrows
             <div className="grid grid-cols-2 gap-x-5 sm:grid-cols-3 lg:grid-cols-4">
@@ -62,6 +65,7 @@ export function TemplateGallery({ onUse, saved = [] }: { onUse: (t: Template) =>
             />
             )
           )}
+          </Loading>
         </div>
       </CardContent>
 

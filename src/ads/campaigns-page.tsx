@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { PendingButton } from "@/components/page-skeletons"
 import { createPortal } from "react-dom"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Add01Icon, Alert02Icon, ArrowRight01Icon, ArrowUpRight01Icon, Copy01Icon, Delete02Icon, InformationCircleIcon, LockIcon, GitForkIcon, MoreHorizontalIcon, PencilEdit01Icon, Tick02Icon } from "@hugeicons/core-free-icons"
@@ -14,7 +15,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { useToast } from "@/components/ui-extra/toaster"
 import { useDevState } from "@/dev/state"
 import { useDevAction } from "@/dev/dev-actions"
-import { onboarding, useOnboarding } from "@/onboarding/onboarding"
 import { cn } from "@/lib/utils"
 import { AnalyticsHeading } from "@/analytics/open-analytics"
 import { PlaceAnalyticsCard } from "@/analytics/place-analytics-card"
@@ -53,7 +53,6 @@ export function CampaignsPage({ onAdBalance, openPlacement, onRemixFlick, onOpen
   const [newCampaign, setNewCampaign] = useState(false)
   const [actionsEl, setActionsEl] = useState<HTMLDivElement | null>(null)
   const [funds, setFunds] = useState(false)
-  const ob = useOnboarding()
 
   // dev tools: serve a batch of impressions on a live placement
   const live = placements.filter((p) => p.flick)
@@ -116,7 +115,6 @@ export function CampaignsPage({ onAdBalance, openPlacement, onRemixFlick, onOpen
 
       <NewCampaignDialog open={newCampaign} onOpenChange={setNewCampaign} onCreated={(id) => setView({ kind: "campaign", id })} />
       {/* first visit: how ads work, in three steps */}
-      <AdsIntro open={!ob.adsIntro && view.kind === "list"} onDone={(create) => (onboarding.seeAdsIntro(), create && setNewCampaign(true))} />
       <AddFundsDialog open={funds} onOpenChange={setFunds} />
     </div>
   )
@@ -259,9 +257,9 @@ function NewCampaignDialog({ open, onOpenChange, onCreated }: { open: boolean; o
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={create} onMouseDown={(e) => e.preventDefault()}>
+          <PendingButton onClick={create} onMouseDown={(e) => e.preventDefault()}>
             Create campaign
-          </Button>
+          </PendingButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -351,9 +349,9 @@ function CampaignView({ id, actionsEl, onOpen, onDeleted }: { id: string; action
             <Button variant="outline" onClick={() => setRenaming(false)}>
               Cancel
             </Button>
-            <Button disabled={!name.trim()} onClick={() => (ads.renameCampaign(id, name.trim()), setRenaming(false))}>
+            <PendingButton disabled={!name.trim()} onClick={() => (ads.renameCampaign(id, name.trim()), setRenaming(false))}>
               Save
-            </Button>
+            </PendingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -370,9 +368,9 @@ function CampaignView({ id, actionsEl, onOpen, onDeleted }: { id: string; action
             <Button variant="outline" onClick={() => setConfirm(false)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={() => (ads.deleteCampaign(id), setConfirm(false), onDeleted(), toast("Campaign deleted"))}>
+            <PendingButton variant="destructive" onClick={() => (ads.deleteCampaign(id), setConfirm(false), onDeleted(), toast("Campaign deleted"))}>
               Delete
-            </Button>
+            </PendingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -533,9 +531,9 @@ function PlacementView({
             <Button variant="outline" onClick={() => setRenaming(false)}>
               Cancel
             </Button>
-            <Button disabled={!name.trim()} onClick={rename}>
+            <PendingButton disabled={!name.trim()} onClick={rename}>
               Save
-            </Button>
+            </PendingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -555,7 +553,7 @@ function PlacementView({
             <Button variant="outline" onClick={() => setPreview(null)}>
               Back
             </Button>
-            {preview && preview.flick.id !== p.flick?.id && <Button onClick={() => doRestore(preview.flick)}>Restore this Flick</Button>}
+            {preview && preview.flick.id !== p.flick?.id && <PendingButton onClick={() => doRestore(preview.flick)}>Restore this Flick</PendingButton>}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -569,7 +567,7 @@ function PlacementView({
             <Button variant="outline" onClick={() => setRestore(null)}>
               Cancel
             </Button>
-            <Button onClick={() => restore && doRestore(restore)}>Restore</Button>
+            <PendingButton onClick={() => restore && doRestore(restore)}>Restore</PendingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -583,9 +581,9 @@ function PlacementView({
             <Button variant="outline" onClick={() => setConfirm(false)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={() => (ads.deletePlacement(p.id), setConfirm(false), onDeleted(p.campaignId), toast("Placement deleted"))}>
+            <PendingButton variant="destructive" onClick={() => (ads.deletePlacement(p.id), setConfirm(false), onDeleted(p.campaignId), toast("Placement deleted"))}>
               Delete
-            </Button>
+            </PendingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -785,55 +783,4 @@ function PlacementView({
 
 const range = (h: HistoryEntry) => `${dateLabel(h.from)} – ${dateLabel(h.to ?? h.from)}`
 
-const ADS_STEPS = [
-  { title: "Campaigns hold placements", text: "A placement is a fixed-size slot, like a 300×250 on a news site. Put a Flick in it." },
-  { title: "Copy its tag into your ad platform", text: "Each placement has one tag (VAST 4.2, SIMID or MRAID 3.0). Replace the Flick any time; the tag stays the same." },
-  { title: "Pay per 1,000 impressions", text: "From your Ad Balance, at the CPM of the viewer’s country. Tags show once you’ve added funds." },
-]
 
-/** First visit to Campaigns: how serving in ads works, in three short steps. */
-function AdsIntro({ open, onDone }: { open: boolean; onDone: (create: boolean) => void }) {
-  const [i, setI] = useState(0)
-  const last = i === ADS_STEPS.length - 1
-  return (
-    <Dialog open={open} onOpenChange={(o) => !o && onDone(false)}>
-      <DialogContent className="gap-5 sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>How serving in ads works</DialogTitle>
-          <DialogDescription>
-            Step {i + 1} of {ADS_STEPS.length}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="flex gap-4 rounded-2xl bg-muted/60 p-4">
-          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-sm font-medium text-primary-foreground">{i + 1}</span>
-          <div className="space-y-1">
-            <p className="text-sm font-medium">{ADS_STEPS[i].title}</p>
-            <p className="text-sm text-muted-foreground">{ADS_STEPS[i].text}</p>
-          </div>
-        </div>
-        <div className="flex justify-center gap-1.5" aria-hidden>
-          {ADS_STEPS.map((_, k) => (
-            <span key={k} className={cn("h-1.5 rounded-full transition-all", k === i ? "w-5 bg-primary" : "w-1.5 bg-foreground/20")} />
-          ))}
-        </div>
-        <DialogFooter>
-          {i > 0 && (
-            <Button variant="outline" onClick={() => setI(i - 1)}>
-              Back
-            </Button>
-          )}
-          {last ? (
-            <>
-              <Button variant="outline" onClick={() => onDone(false)}>
-                Got it
-              </Button>
-              <Button onClick={() => onDone(true)}>Create a campaign</Button>
-            </>
-          ) : (
-            <Button onClick={() => setI(i + 1)}>Next</Button>
-          )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}

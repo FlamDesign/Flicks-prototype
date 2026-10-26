@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react"
+import { Loading, RowsSkeleton, CardsSkeleton } from "@/components/page-skeletons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   TextFontIcon,
@@ -12,7 +13,7 @@ import {
   Cancel01Icon,
   Tick02Icon,
   LayerIcon,
-  AtIcon,
+  BracesIcon,
   RefreshIcon,
 } from "@hugeicons/core-free-icons"
 import { LayersPanel } from "@/components/editor/layers-panel"
@@ -51,7 +52,7 @@ const SECTIONS: { id: Section; label: string; icon: typeof TextFontIcon }[] = [
 ]
 /** kept apart from the add sections in the rail */
 const LAYERS = { id: "layers" as Section, label: "Layers", icon: LayerIcon }
-const FEEDS = { id: "feeds" as Section, label: "Feeds", icon: AtIcon }
+const FEEDS = { id: "feeds" as Section, label: "Feeds", icon: BracesIcon }
 const ALL = [...SECTIONS, LAYERS, FEEDS]
 
 /** Icon rail + collapsible panel with elements to add to the canvas. */
@@ -144,7 +145,9 @@ export function EditorPanel({
             </Tooltip>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
-            <PickerList picker={picker} uploads={uploads} setUploads={setUploads} />
+            <Loading k={picker.title} skeleton={<CardsSkeleton count={6} cols="grid-cols-2" aspect="aspect-square" lines={0} />}>
+              <PickerList picker={picker} uploads={uploads} setUploads={setUploads} />
+            </Loading>
           </div>
         </div>
       )}
@@ -172,10 +175,18 @@ export function EditorPanel({
             {/* adding something closes the panel so the canvas has room */}
             {open === "text" && <TextList disabled={disabled} onAdd={(v) => (onAddText(v), setOpen(null))} />}
             {open === "buttons" && <ButtonList disabled={disabled} onAdd={(v) => (onAddButton(v), setOpen(null))} />}
-            {open === "images" && <ImageList disabled={disabled} onAdd={(src) => (onAddImage(src), setOpen(null))} uploads={uploads} setUploads={setUploads} />}
+            {open === "images" && (
+              <Loading k="images" skeleton={<CardsSkeleton count={6} cols="grid-cols-2" aspect="aspect-square" lines={0} />}>
+                <ImageList disabled={disabled} onAdd={(src) => (onAddImage(src), setOpen(null))} uploads={uploads} setUploads={setUploads} />
+              </Loading>
+            )}
             {open === "layers" && <LayersPanel {...layers} />}
-            {open === "feeds" && feeds}
-            {open === "layouts" && <LayoutList disabled={disabled} onAdd={(els) => (onAddLayout(els), setOpen(null))} />}
+            {open === "feeds" && <Loading k="feeds" skeleton={<RowsSkeleton rows={3} right={false} />}>{feeds}</Loading>}
+            {open === "layouts" && (
+              <Loading k="layouts" skeleton={<CardsSkeleton count={4} cols="grid-cols-2" aspect="aspect-[9/16]" lines={1} />}>
+                <LayoutList disabled={disabled} onAdd={(els) => (onAddLayout(els), setOpen(null))} />
+              </Loading>
+            )}
           </div>
         </div>
       )}
@@ -359,7 +370,7 @@ function ImageList({
         <DialogContent className="sm:max-w-sm" data-keep-selection>
           <DialogHeader>
             <DialogTitle>Delete this image?</DialogTitle>
-            <DialogDescription>“{confirmDel?.name}” is removed from your uploads. Anywhere it’s already used on the canvas keeps it.</DialogDescription>
+            <DialogDescription>“{confirmDel?.name}” is removed from your uploads. It is not removed from canvas.</DialogDescription>
           </DialogHeader>
           {confirmDel && <img src={confirmDel.src} alt="" className="h-32 w-full rounded-xl object-cover" />}
           <DialogFooter>

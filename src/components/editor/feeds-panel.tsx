@@ -1,20 +1,22 @@
 import { useEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Add01Icon, ArrowRight01Icon, AtIcon, CursorPointer02Icon, Delete02Icon, Link04Icon, TextIcon } from "@hugeicons/core-free-icons"
+import { ArrowRight01Icon, ArrowUpRight01Icon, BracesIcon, Delete02Icon, MoreHorizontalIcon, MoreVerticalIcon, PencilEdit01Icon } from "@hugeicons/core-free-icons"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import type { Feed } from "@/components/editor/elements"
-import { NewFeed, type FeedUse } from "@/components/editor/variation-panel"
+import type { FeedUse } from "@/components/editor/variation-panel"
 import { cn } from "@/lib/utils"
 
 /** One video that has feed values. */
 export type FeedVideo = { id: string; name: string; poster?: string; values: Record<string, string> }
 
 /**
- * Feeds in the left panel, two levels: a short list of feeds, and one feed's values for every
- * video (opened from the list). The panel header shows the way back as a breadcrumb.
+ * Feeds in the left panel: one list. Clicking a feed selects what uses it on the canvas and opens its
+ * values underneath, one row per variation (its image, name and value). Each feed has a menu: Rename, Delete.
+ * Feeds are made on the canvas, never here.
  */
 export function FeedsPanel({
   feeds,
@@ -22,7 +24,6 @@ export function FeedsPanel({
   activeId,
   onValue,
   onSelectVideo,
-  onAdd,
   onRename,
   onDelete,
   usedBy,
@@ -34,7 +35,7 @@ export function FeedsPanel({
 }: {
   /** the feed of the selected element: opened */
   activeFeed?: string
-  /** the feed being shown (null: the list) */
+  /** the feed shown open (null: none) */
   openId: string | null
   onOpen: (id: string | null) => void
   feeds: Feed[]
@@ -44,158 +45,202 @@ export function FeedsPanel({
   activeId: string
   onValue: (videoId: string, feedId: string, value: string) => void
   onSelectVideo: (videoId: string) => void
-  onAdd: (f: Omit<Feed, "id">) => void
+  /** not used: feeds are made on the canvas */
+  onAdd?: (f: Omit<Feed, "id">) => void
   onRename: (id: string, name: string) => void
   onDelete: (id: string) => void
   usedBy: Record<string, FeedUse[]>
   /** select these elements on the canvas */
   onSelectElements: (ids: string[]) => void
-  /** bring this feed's field for the video in view into focus (n changes on every request) */
+  /** bring this feed's value for the video in view into focus (n changes on every request) */
   focus?: { id: string; n: number }
 }) {
-  const [adding, setAdding] = useState(false)
   const [flash, setFlash] = useState<string | null>(null)
+  const [renaming, setRenaming] = useState<string | null>(null)
+  const [confirmDel, setConfirmDel] = useState<Feed | null>(null)
   const fields = useRef<Record<string, HTMLInputElement | null>>({})
   const key = (feedId: string, videoId: string) => `${feedId}:${videoId}`
 
-  const [confirmDel, setConfirmDel] = useState<Feed | null>(null)
-  // opening Feeds always shows the list; nothing is opened from before
-  const mountedAt = useRef({ activeFeed, focusN: focus?.n })
+  // opening the panel always shows the list (Open in panel then opens its feed)
   useEffect(() => {
     onOpen(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-  // selecting text or a button on the canvas afterwards opens its feed
+  // selecting an element that uses a feed opens it here
+  const seenActive = useRef(activeFeed)
   useEffect(() => {
-    if (activeFeed && activeFeed !== mountedAt.current.activeFeed) onOpen(activeFeed)
-    mountedAt.current.activeFeed = undefined
+    if (activeFeed && activeFeed !== seenActive.current) onOpen(activeFeed)
+    seenActive.current = activeFeed
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeFeed])
-  // the open feed was deleted: back to the list
+  // a feed deleted while open
   useEffect(() => {
     if (openId && !feeds.some((f) => f.id === openId)) onOpen(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [feeds])
-  // Esc (outside a field) goes back to the list
-  useEffect(() => {
-    if (!openId) return
-    const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement
-      // only from the panel itself (or nothing focused), never while typing or from the canvas
-      if (e.key !== "Escape" || !(t === document.body || t.closest("[data-feeds-panel]")) || t.closest("input, textarea, [contenteditable=true]")) return
-      onOpen(null)
-    }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openId])
 
-  // open a feed if it's collapsed and put the cursor in a value (the video in view when it has one)
-  const pending = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  const jump = (feedId: string) => {
-    onOpen(feedId)
-    clearTimeout(pending.current)
-    let tries = 0
-    const attempt = () => {
-      // the video in view, or the first one when it has no values (a reference video left out of the Flick)
-      const vid = fields.current[key(feedId, activeId)] ? activeId : videos[0]?.id
-      const el = vid && fields.current[key(feedId, vid)]
-      // a feed that was collapsed or just created takes a moment to render
-      if (!el) {
-        if (tries++ < 20) pending.current = setTimeout(attempt, 16)
-        return
-      }
+  // asked from the canvas (Open in panel): open it and put the cursor in the value for the video in view
+  const seenFocus = useRef(focus?.n)
+  useEffect(() => {
+    if (!focus || focus.n === seenFocus.current) return
+    seenFocus.current = focus.n
+    onOpen(focus.id)
+    const t = setTimeout(() => {
+      const vid = videos.some((v) => v.id === activeId) ? activeId : videos[0]?.id
+      const el = vid && fields.current[key(focus.id, vid)]
+      if (!el) return
       el.scrollIntoView({ block: "nearest", behavior: "smooth" })
       el.focus({ preventScroll: true })
-      setFlash(key(feedId, vid))
-      const k = key(feedId, vid)
+      const k = key(focus.id, vid)
+      setFlash(k)
       setTimeout(() => setFlash((f) => (f === k ? null : f)), 1200)
-    }
-    pending.current = setTimeout(attempt, 0)
-  }
-  // a feed asked for from the canvas (its @chip): only new requests, not one left from before
-  useEffect(() => {
-    if (focus && focus.n !== mountedAt.current.focusN) jump(focus.id)
+    }, 60)
+    return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus])
-  // a feed just created here: go straight to its values
-  const created = useRef<string | null>(null)
-  useEffect(() => {
-    if (!created.current) return
-    const f = feeds.find((x) => x.name === created.current)
-    if (!f) return
-    created.current = null
-    jump(f.id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [feeds])
-  useEffect(() => () => clearTimeout(pending.current), [])
+
+  if (!feeds.length)
+    return (
+      <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-foreground/15 px-5 py-8 text-center" data-keep-selection>
+        <span className="grid size-9 place-items-center rounded-xl bg-muted text-muted-foreground">
+          <HugeiconsIcon icon={BracesIcon} className="size-5" />
+        </span>
+        <p className="text-sm font-medium">Make anything change per variation</p>
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          A feed gives text, a button or its link a different value in each variation, like a price or a product page. Select it on the canvas and click{" "}
+          <span className="inline-flex translate-y-0.5 items-center rounded bg-neutral-800 px-1 text-white">
+            <HugeiconsIcon icon={BracesIcon} className="size-3" />
+          </span>{" "}
+          on its top edge.
+        </p>
+        <p className="text-xs leading-relaxed text-muted-foreground">Then switch variations below the canvas and type each one in place.</p>
+      </div>
+    )
 
   const open = openId ? feeds.find((f) => f.id === openId) : undefined
+  const menu = (f: Feed, vertical?: boolean) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon-xs" aria-label={`${f.name} options`} className="size-7 shrink-0 text-muted-foreground">
+          <HugeiconsIcon icon={vertical ? MoreVerticalIcon : MoreHorizontalIcon} className="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      {/* don't hand focus back to ⋮: the rename field takes it */}
+      <DropdownMenuContent align="end" className="w-44" data-keep-selection onCloseAutoFocus={(e) => e.preventDefault()}>
+        <DropdownMenuItem onSelect={() => setTimeout(() => setRenaming(f.id), 50)}>
+          <HugeiconsIcon icon={PencilEdit01Icon} className="size-4" />
+          Rename
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem variant="destructive" onSelect={() => setConfirmDel(f)}>
+          <HugeiconsIcon icon={Delete02Icon} className="size-4" />
+          Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
 
   return (
-    <div className="flex flex-col gap-3" data-keep-selection data-feeds-panel>
+    <div className="flex flex-col gap-1" data-keep-selection data-feeds-panel>
       {open ? (
-        <FeedDetail
-          feed={open}
-          videos={videos}
-          activeId={activeId}
-          uses={usedBy[open.id] ?? []}
-          flash={flash}
-          fields={fields}
-          fieldKey={key}
-          onValue={onValue}
-          onSelectVideo={onSelectVideo}
-          onSelectElements={onSelectElements}
-          onDelete={() => setConfirmDel(open)}
-        />
+        // one feed: a row per variation, its image on the left, its name above its value
+        <>
+          {/* the feed's name (editable on Rename), select on canvas, and its menu */}
+          <div className="flex h-9 items-center gap-1 pl-1">
+            {renaming === open.id ? (
+              <RenameInput name={open.name} taken={feeds.map((x) => x.name)} onDone={(n) => (n && onRename(open.id, n), setRenaming(null))} />
+            ) : (
+              <button
+                type="button"
+                onDoubleClick={() => setRenaming(open.id)}
+                title="Double-click to rename"
+                className="min-w-0 flex-1 truncate text-left text-base font-medium outline-none"
+              >
+                {open.name}
+              </button>
+            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex">
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label="Select on canvas"
+                    disabled={!(usedBy[open.id]?.length)}
+                    onClick={() => onSelectElements((usedBy[open.id] ?? []).map((u) => u.id))}
+                    className="size-7 shrink-0 text-muted-foreground"
+                  >
+                    <HugeiconsIcon icon={ArrowUpRight01Icon} className="size-4" />
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>{usedBy[open.id]?.length ? "Select on canvas" : "Not linked to any element yet"}</TooltipContent>
+            </Tooltip>
+            {menu(open, true)}
+          </div>
+          <p className="-mt-1 px-1 text-xs text-muted-foreground">Its value in each variation</p>
+          <ul className="flex flex-col gap-2.5 pt-1">
+            {videos.map((v) => {
+              const k = key(open.id, v.id)
+              const active = v.id === activeId
+              return (
+                <li
+                  key={v.id}
+                  className={cn(
+                    "flex flex-col gap-2.5 rounded-2xl bg-card p-3 shadow-[0_1px_2px_rgb(0_0_0/0.04)] ring-1 transition-shadow",
+                    active ? "ring-primary/50" : "ring-foreground/10 hover:ring-foreground/20",
+                  )}
+                >
+                  <button type="button" onClick={() => onSelectVideo(v.id)} aria-label={`Show ${v.name}`} aria-pressed={active} className="flex min-w-0 items-center gap-2.5 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+                    <span className="relative size-8 shrink-0 overflow-hidden rounded-full bg-muted ring-1 ring-foreground/10">
+                      {v.poster && <img src={v.poster} alt="" className="absolute inset-0 size-full object-cover" />}
+                    </span>
+                    <span className="min-w-0 truncate text-sm font-medium">{v.name}</span>
+                  </button>
+                  <Input
+                    ref={(el) => {
+                      fields.current[k] = el
+                    }}
+                    value={v.values[open.id] ?? ""}
+                    onChange={(e) => onValue(v.id, open.id, e.target.value)}
+                    onFocus={() => !active && onSelectVideo(v.id)}
+                    placeholder="Value"
+                    aria-label={`${open.name} for ${v.name}`}
+                    className={cn("h-9 text-sm transition-shadow", flash === k && "ring-2 ring-primary")}
+                  />
+                </li>
+              )
+            })}
+          </ul>
+        </>
       ) : (
         <>
-          <div className="flex h-7 items-center gap-2 pl-1">
-            <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">Values that change per variation</p>
-            {!adding && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon-xs" aria-label="Add feed" onClick={() => setAdding(true)} className="size-7 shrink-0">
-                    <HugeiconsIcon icon={Add01Icon} className="size-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Add feed</TooltipContent>
-              </Tooltip>
-            )}
-          </div>
-
-          {adding && <NewFeed feeds={feeds} onAdd={(f) => ((created.current = f.name), onAdd(f), setAdding(false))} onCancel={() => setAdding(false)} />}
-
-          {feeds.length === 0 && !adding && (
-            <div className="flex flex-col items-center gap-1 rounded-xl border border-dashed border-foreground/15 px-3 py-6 text-center">
-              <HugeiconsIcon icon={AtIcon} className="size-5 text-muted-foreground/60" />
-              <p className="text-sm font-medium">No feeds yet</p>
-              <p className="text-xs text-muted-foreground">Add one like @price, then link it to text or a button.</p>
-              <Button variant="secondary" size="xs" className="mt-2 gap-1" onClick={() => setAdding(true)}>
-                <HugeiconsIcon icon={Add01Icon} className="size-3.5" />
-                Add feed
-              </Button>
-            </div>
-          )}
-
-          {/* one row per feed: open it to see its values */}
-          {feeds.length > 0 && (
-            <ul className="flex flex-col gap-0.5" aria-label="Feeds">
-              {feeds.map((f) => (
-                <li key={f.id}>
-                  <button
-                    type="button"
-                    onClick={() => onOpen(f.id)}
-                    className="group/row flex h-9 w-full items-center gap-2 rounded-lg px-2 text-left text-sm outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50"
-                  >
-                    <HugeiconsIcon icon={f.type === "link" ? Link04Icon : TextIcon} className="size-4 shrink-0 text-muted-foreground" />
-                    <span className="min-w-0 flex-1 truncate font-medium">@{f.name}</span>
-                    <HugeiconsIcon icon={ArrowRight01Icon} className="size-3.5 shrink-0 text-muted-foreground/60 group-hover/row:text-muted-foreground" />
-                  </button>
+          <p className="px-1 pb-1 text-xs text-muted-foreground">Values that change per variation. Switch variations below the canvas and type in place, or open a feed to fill them here.</p>
+          <ul className="flex flex-col gap-0.5" aria-label="Feeds">
+            {feeds.map((f) => {
+              const uses = usedBy[f.id] ?? []
+              return (
+                <li key={f.id} className="flex h-9 items-center gap-1 rounded-lg pl-2 pr-1 hover:bg-muted">
+                  {renaming === f.id ? (
+                    <RenameInput name={f.name} taken={feeds.map((x) => x.name)} onDone={(n) => (n && onRename(f.id, n), setRenaming(null))} />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onOpen(f.id)
+                        if (uses.length) onSelectElements(uses.map((u) => u.id))
+                      }}
+                      className="flex h-full min-w-0 flex-1 items-center gap-2 rounded-lg text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                    >
+                      <HugeiconsIcon icon={BracesIcon} className="size-4 shrink-0 text-muted-foreground" />
+                      <span className="min-w-0 flex-1 truncate font-medium">{f.name}</span>
+                    </button>
+                  )}
+                  {menu(f)}
                 </li>
-              ))}
-            </ul>
-          )}
+              )
+            })}
+          </ul>
         </>
       )}
 
@@ -203,10 +248,10 @@ export function FeedsPanel({
       <Dialog open={!!confirmDel} onOpenChange={(o) => !o && setConfirmDel(null)}>
         <DialogContent className="sm:max-w-sm" data-keep-selection>
           <DialogHeader>
-            <DialogTitle>Delete @{confirmDel?.name}?</DialogTitle>
+            <DialogTitle>Delete {confirmDel?.name}?</DialogTitle>
             <DialogDescription>
               Its values in every variation are removed.
-              {confirmDel && (usedBy[confirmDel.id]?.length ?? 0) > 0 && ` Linked ${confirmDel.type === "link" ? "buttons keep the link" : "text keeps the value"} of the video in view.`}
+              {confirmDel && (usedBy[confirmDel.id]?.length ?? 0) > 0 && " Anything using it keeps the value of the variation in view."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -229,162 +274,45 @@ export function FeedsPanel({
   )
 }
 
-/** One feed: what it is, what uses it, and its value for every video. */
-function FeedDetail({
-  feed: f,
-  videos,
-  activeId,
-  uses,
-  flash,
-  fields,
-  fieldKey,
-  onValue,
-  onSelectVideo,
-  onSelectElements,
-  onDelete,
-}: {
-  feed: Feed
-  videos: FeedVideo[]
-  activeId: string
-  uses: FeedUse[]
-  flash: string | null
-  fields: React.RefObject<Record<string, HTMLInputElement | null>>
-  fieldKey: (feedId: string, videoId: string) => string
-  onValue: (videoId: string, feedId: string, value: string) => void
-  onSelectVideo: (videoId: string) => void
-  onSelectElements: (ids: string[]) => void
-  onDelete: () => void
-}) {
+function RenameInput({ name, taken, onDone }: { name: string; taken: string[]; onDone: (name: string | null) => void }) {
+  const [draft, setDraft] = useState(name)
+  const done = useRef(false)
+  const finish = (save: boolean) => {
+    if (done.current) return
+    done.current = true
+    const clean = draft.trim().replace(/\s+/g, "-").toLowerCase()
+    onDone(save && clean && clean !== name && !taken.includes(clean) ? clean : null)
+  }
   return (
-    <div className="flex flex-col gap-3">
-      {/* type, then actions: select what uses it, delete */}
-      <div className="flex h-7 items-center gap-1.5 pl-1">
-        <HugeiconsIcon icon={f.type === "link" ? Link04Icon : TextIcon} className="size-3.5 shrink-0 text-muted-foreground" />
-        <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-          {f.type === "link" ? "Link feed" : "Text feed"}
-        </span>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="inline-flex">
-              <Button
-                size="icon-xs"
-                variant="ghost"
-                aria-label={`Select what uses @${f.name}`}
-                disabled={!uses.length}
-                onClick={() => onSelectElements(uses.map((u) => u.id))}
-                className="size-7 text-muted-foreground"
-              >
-                <HugeiconsIcon icon={CursorPointer02Icon} className="size-3.5" />
-              </Button>
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>{uses.length ? `Select ${uses.length === 1 ? (uses[0].kind === "button" ? "the button" : "the text") : `the ${uses.length} elements`} using it` : "Not linked to anything yet"}</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button size="icon-xs" variant="ghost" aria-label={`Delete @${f.name}`} onClick={onDelete} className="size-7 text-muted-foreground hover:text-destructive">
-              <HugeiconsIcon icon={Delete02Icon} className="size-3.5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Delete</TooltipContent>
-        </Tooltip>
-      </div>
-
-      {/* one row per video: its frame, then the value */}
-      <ul className="flex flex-col gap-1.5">
-        {videos.map((v) => {
-          const k = fieldKey(f.id, v.id)
-          const active = v.id === activeId
-          return (
-            <li key={v.id} className="flex items-center gap-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => onSelectVideo(v.id)}
-                    aria-label={`Show ${v.name}`}
-                    aria-pressed={active}
-                    className={cn(
-                      "relative size-8 shrink-0 overflow-hidden rounded-md bg-muted outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-ring/50",
-                      active ? "ring-2 ring-primary" : "opacity-70 ring-1 ring-foreground/10 hover:opacity-100",
-                    )}
-                  >
-                    {v.poster && <img src={v.poster} alt="" className="absolute inset-0 size-full object-cover" />}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>{v.name}</TooltipContent>
-              </Tooltip>
-              <Input
-                ref={(el) => {
-                  fields.current[k] = el
-                }}
-                value={v.values[f.id] ?? ""}
-                onChange={(e) => onValue(v.id, f.id, e.target.value)}
-                onFocus={() => !active && onSelectVideo(v.id)}
-                placeholder={f.type === "link" ? "https://" : "Value"}
-                inputMode={f.type === "link" ? "url" : undefined}
-                aria-label={`@${f.name} for ${v.name}`}
-                className={cn("h-8 min-w-0 flex-1 text-sm transition-shadow", flash === k && "ring-2 ring-primary")}
-              />
-            </li>
-          )
-        })}
-      </ul>
-    </div>
+    <input
+      autoFocus
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onFocus={(e) => e.currentTarget.select()}
+      onBlur={() => finish(true)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") finish(true)
+        if (e.key === "Escape") (e.stopPropagation(), finish(false))
+      }}
+      aria-label="Feed name"
+      className="h-8 min-w-0 flex-1 rounded-md bg-background px-2 text-sm font-medium outline-none ring-2 ring-ring/50"
+    />
   )
 }
 
-/** The Feeds panel's title: "Feeds", or "Feeds › @name" with the name renamable in place. */
-export function FeedsTitle({ feeds, openId, onOpen, onRename }: { feeds: Feed[]; openId: string | null; onOpen: (id: string | null) => void; onRename: (id: string, name: string) => void }) {
+/** The Feeds panel's title: "Feeds", or "Feeds › name" inside a feed (Feeds goes back). */
+export function FeedsTitle({ feeds = [], openId, onOpen }: { feeds?: Feed[]; openId?: string | null; onOpen?: (id: string | null) => void; onRename?: (id: string, name: string) => void }) {
   const f = openId ? feeds.find((x) => x.id === openId) : undefined
-  const [renaming, setRenaming] = useState(false)
-  const [draft, setDraft] = useState("")
-  useEffect(() => setRenaming(false), [openId])
   if (!f) return <h2 className="text-sm font-medium">Feeds</h2>
-  const save = () => {
-    const clean = draft.trim().replace(/^@/, "").replace(/\s+/g, "-").toLowerCase()
-    if (clean && clean !== f.name && !feeds.some((x) => x.name === clean)) onRename(f.id, clean)
-    setRenaming(false)
-  }
   return (
-    <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-0.5 text-sm" data-keep-selection data-feeds-panel>
-      <button type="button" onClick={() => onOpen(null)} className="-ml-1.5 h-7 shrink-0 rounded-md px-1.5 text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50">
+    <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-0.5 text-sm" data-keep-selection>
+      <button type="button" onClick={() => onOpen?.(null)} className="-ml-1.5 h-7 shrink-0 rounded-md px-1.5 text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50">
         Feeds
       </button>
       <HugeiconsIcon icon={ArrowRight01Icon} className="size-3.5 shrink-0 text-muted-foreground/60" />
-      {renaming ? (
-        <span className="flex h-7 min-w-0 flex-1 items-center rounded-md bg-background pl-1.5 font-medium ring-2 ring-ring/50">
-          <span className="text-muted-foreground">@</span>
-          <input
-            autoFocus
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onFocus={(e) => e.currentTarget.select()}
-            onBlur={save}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") e.currentTarget.blur()
-              if (e.key === "Escape") (e.stopPropagation(), setRenaming(false))
-            }}
-            aria-label={`Rename @${f.name}`}
-            className="h-full w-32 min-w-0 flex-1 bg-transparent outline-none"
-          />
-        </span>
-      ) : (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              aria-current="page"
-              aria-label={`Rename @${f.name}`}
-              onClick={() => (setDraft(f.name), setRenaming(true))}
-              className="h-7 min-w-0 cursor-text truncate rounded-md px-1.5 font-medium outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50"
-            >
-              @{f.name}
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>Rename</TooltipContent>
-        </Tooltip>
-      )}
+      <span aria-current="page" className="min-w-0 truncate px-1 font-medium">
+        {f.name}
+      </span>
     </nav>
   )
 }

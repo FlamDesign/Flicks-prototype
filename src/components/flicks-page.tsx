@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
+import { CardsSkeleton, Loading, PendingButton } from "@/components/page-skeletons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Loading03Icon, Search01Icon, MoreHorizontalIcon, Copy01Icon, Delete02Icon, GitForkIcon, Link01Icon } from "@hugeicons/core-free-icons"
 import { Input } from "@/components/ui/input"
@@ -26,7 +27,7 @@ export function ProjectsPage({ onOpen, onCreate }: { onOpen: (p: Project) => voi
     <>
       <LibraryList
         title="Projects"
-        description="Drafts you’re working on. Export one to make a Flick."
+        description="Drafts you’re working on."
         searchLabel="Search projects"
         dateLabel="Last edited"
         items={projects.map((p) => ({ id: p.id, name: p.name, size: p.size, at: p.editedAt, image: p.image }))}
@@ -37,23 +38,23 @@ export function ProjectsPage({ onOpen, onCreate }: { onOpen: (p: Project) => voi
           { label: "Duplicate", icon: Copy01Icon, onSelect: () => (library.duplicateProject(it.id), toast(`“${it.name} copy” added to Projects`)) },
           { label: "Delete", icon: Delete02Icon, destructive: true, onSelect: () => setPendingDelete(projects.find((p) => p.id === it.id) ?? null) },
         ]}
-        empty={{ title: "No projects yet", text: "Start one from Create, a template or a video in Assets.", action: <Button size="sm" className="mt-2" onClick={onCreate}>Create</Button> }}
+        empty={{ title: "No projects yet", text: "Start creating from templates or describe your idea.", action: <Button size="sm" className="mt-2" onClick={onCreate}>Create</Button> }}
       />
       <Dialog open={!!pendingDelete} onOpenChange={(o) => !o && setPendingDelete(null)}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Delete project?</DialogTitle>
             <DialogDescription>
-              “{pendingDelete?.name}” will be deleted. {pendingDelete?.exports.length ? "Flicks you’ve exported from it stay in Flicks. " : ""}This can’t be undone.
+              “{pendingDelete?.name}” will be deleted. {pendingDelete?.exports.length ? "Flicks exported from this project will not be deleted. " : ""}This can’t be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
             </DialogClose>
-            <Button variant="destructive" onClick={() => (pendingDelete && library.deleteProject(pendingDelete.id), setPendingDelete(null), toast("Project deleted"))}>
+            <PendingButton variant="destructive" onClick={() => (pendingDelete && library.deleteProject(pendingDelete.id), setPendingDelete(null), toast("Project deleted"))}>
               Delete
-            </Button>
+            </PendingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -73,7 +74,7 @@ export function FlicksPage({ onOpen, onRemix, onProjects }: { onOpen: (f: FlickR
     <>
       <LibraryList
         title="Flicks"
-        description="Flicks ready to share, embed and serve in ads. Remix one to change it."
+        description="Flicks ready to share, embed in website or serve in ads."
         searchLabel="Search flicks"
         dateLabel="Created"
         items={flicks.map((f) => ({ id: f.id, name: f.name, size: f.size, at: f.editedAt, image: f.image, exporting: f.exporting }))}
@@ -110,9 +111,9 @@ export function DeleteFlickDialog({ flick, inUse, onClose, onDeleted }: { flick:
             <Button variant="outline">{inUse ? "OK" : "Cancel"}</Button>
           </DialogClose>
           {!inUse && (
-            <Button variant="destructive" onClick={() => (flick && library.deleteFlick(flick.id), onClose(), onDeleted())}>
+            <PendingButton variant="destructive" onClick={() => (flick && library.deleteFlick(flick.id), onClose(), onDeleted())}>
               Delete
-            </Button>
+            </PendingButton>
           )}
         </DialogFooter>
       </DialogContent>
@@ -184,6 +185,8 @@ function LibraryList({
       </div>
 
       <div className="mt-6">
+        {/* searching or filtering fetches again */}
+        <Loading k={[query.trim(), size, dates]} skipFirst skeleton={<CardsSkeleton count={8} cols="grid-cols-2 gap-x-4 sm:grid-cols-3 lg:grid-cols-4" />}>
         {list.length ? (
           <div className="grid grid-cols-2 gap-x-4 sm:grid-cols-3 lg:grid-cols-4">
             {list.map((it) => (
@@ -203,6 +206,7 @@ function LibraryList({
             )}
           </div>
         )}
+        </Loading>
       </div>
     </div>
   )

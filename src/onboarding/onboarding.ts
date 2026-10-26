@@ -6,24 +6,25 @@ import { useSyncExternalStore } from "react"
  * Everything here is remembered for the session; the dev widget's "Reset onboarding" starts it over.
  */
 
-/** Editor tour stops: a selector for what it points at, and what it says. */
-export const TOUR = [
-  { target: 'aside[aria-label="Prompts"]', title: "Your prompts", text: "Describe the video here. Every generation is kept, so you can go back to any of them." },
-  { target: '[data-tour="reference"]', title: "The reference video", text: "Variations are made from it. Viewers only see it if you include it." },
-  { target: '[aria-label="Add variation"]', title: "Add variations", text: "Colours, models or scenes, 2 to 5 of them. You need 2 to export." },
-  { target: '[data-tour="frame"]', title: "Design once", text: "Text, buttons and the thumbnail strip are shared by every variation. Change one, change all." },
-  { target: 'nav[aria-label="Add to canvas"] [aria-label="Feeds"]', title: "Dynamic content", text: "Feeds like @price or a shop link change per variation. Link them to text or a button." },
-  { target: '[data-tour="export"]', title: "Export", text: "Makes a Flick you can share, embed and serve in ads. Keep editing and export again any time." },
-] as const
+/** What a coach mark's illustration shows (see coach-art.tsx). */
+export type Art = "reference" | "variations" | "design" | "export" | "feed" | "stale" | "strip"
 
-/** One-time tips at tricky moments. */
+/** Editor tour stops: what they spotlight (one or more selectors, lit together), what they say, and their illustration. */
+export const TOUR = [
+  { target: ['[data-tour="frame"]'], title: "Your reference video", text: "Every variation uses this as its reference. If you change it, you need to regenerate the variations.", art: "reference" },
+  { target: ['[data-tour="strip"]', 'aside[aria-label="Prompts"]'], title: "Add variations", text: "Add up to 5 variations. Add prompts and reference images in chat to generate videos for variations.", art: "variations" },
+  { target: ['nav[aria-label="Add to canvas"] [aria-label="Text"]', 'nav[aria-label="Add to canvas"] [aria-label="Images"]', 'nav[aria-label="Add to canvas"] [aria-label="Buttons"]', 'nav[aria-label="Add to canvas"] [aria-label="Layouts"]'], title: "Design once", text: "Text, images, buttons and layouts you add show on every variation.", art: "design" },
+  { target: ['[aria-label="Mode"]', '[data-tour="export"]'], title: "Preview, then export", text: "Preview it first: an exported Flick can’t be changed. To make edits, you need to export again.", art: "export" },
+] as const satisfies readonly Coach[]
+
+/** One-time tips, right when they matter. */
 export const TIPS = {
-  feed: { target: 'nav[aria-label="Add to canvas"] [aria-label="Feeds"]', title: "Your first feed", text: "Fill its value on each variation (select a variation below the canvas). Empty ones are flagged before export." },
-  stale: { target: '[aria-label="Needs regenerating"]', title: "This variation needs regenerating", text: "It was made from the old reference video. Regenerate it so it matches." },
-  strip: { target: '[aria-label="Element options"]', title: "The thumbnail strip", text: "Pick a thumbnail in the strip, then upload an image for that variation. Viewers tap these to switch." },
-  preview: { target: '[aria-label="Mode"]', title: "Previewing", text: "This is what viewers get. Tap the thumbnails and buttons; switch back to Design to edit." },
-  remix: { target: '[data-tour="remix"]', title: "Flicks don’t change", text: "To change this one, Remix it into a new project. Its link, embeds and placements stay as they are." },
-} as const
+  feed: { target: ['[aria-label="Make a feed"]', '[aria-label="Feed"]'], title: "Different content for each variation", text: "Click { } to connect a feed. Select a variation and edit content.", art: "feed" },
+  stale: { target: ['[aria-label="Needs regenerating"]'], title: "This variation needs regenerating", text: "It was made from the old reference video. Regenerate to match new reference video.", art: "stale" },
+  strip: { target: ['[aria-label="Element options"]'], title: "Thumbnails", text: "Add thumbnail image for each variation. Viewers can click thumbnails to switch variation.", art: "strip" },
+  preview: { target: ['[aria-label="Mode"]'], title: "Preview", text: "Tap the thumbnails to switch variations; switch back to Design to edit." },
+  remix: { target: ['[data-tour="remix"]'], title: "Flicks don\u2019t change", text: "To change this one, Remix it into a new project. Its link, embeds and placements stay as they are." },
+} as const satisfies Record<string, Coach>
 export type TipId = keyof typeof TIPS
 
 type State = {
@@ -37,7 +38,7 @@ type State = {
   /** a spotlight: one thing pointed at, with a line on what to do */
   spot: Coach | null
 }
-export type Coach = { target: string; title: string; text: string }
+export type Coach = { target: string | readonly string[]; title: string; text: string; art?: Art }
 /** #capture (screenshots for the Help Center): no tour, tips or intros */
 export const CAPTURE = typeof location !== "undefined" && location.hash.includes("capture")
 const initial = (): State =>

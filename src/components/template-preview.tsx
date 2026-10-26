@@ -249,7 +249,7 @@ function TryFlick({ t }: { t: Template }) {
         </div>
       </div>
       <p className="text-center text-sm text-muted-foreground">
-        Try it: tap a thumbnail to switch the video, as viewers will.
+        Tap a thumbnail to switch the video.
       </p>
     </div>
   );

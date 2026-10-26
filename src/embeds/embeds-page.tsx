@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { PendingButton } from "@/components/page-skeletons"
 import { createPortal } from "react-dom"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Add01Icon, ArrowRight01Icon, ArrowUpRight01Icon, Copy01Icon, Delete02Icon, GitForkIcon, LockIcon, MoreHorizontalIcon, PencilEdit01Icon, Tick02Icon } from "@hugeicons/core-free-icons"
@@ -63,7 +64,7 @@ export function EmbedsPage({ openEmbed, onRemixFlick, onOpenFlick }: { openEmbed
         ) : (
           <div className="space-y-1">
             <h1 className="text-2xl font-medium tracking-tight">Embeds</h1>
-            <p className="text-sm text-muted-foreground">Spots on your website or app. Replace the Flick in one any time; the code stays the same. Embeds are free.</p>
+            <p className="text-sm text-muted-foreground">Create an embed to show Flick on your website. You can replace the Flick in embed any time.</p>
           </div>
         )}
         <div className="flex items-center gap-2">
@@ -101,7 +102,7 @@ export function EmbedsPage({ openEmbed, onRemixFlick, onOpenFlick }: { openEmbed
         ) : (
           <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed px-6 py-16 text-center">
             <p className="text-sm font-medium">No embeds yet</p>
-            <p className="max-w-sm text-sm text-muted-foreground">Make an embed, add its code to your site once, then change the Flick in it from here whenever you like.</p>
+            <p className="max-w-sm text-sm text-muted-foreground">Make an embed, add embed code to your website once, then change the Flick in it from here whenever you like.</p>
             <Button size="sm" className="mt-2" onClick={() => setCreating(true)}>
               New embed
             </Button>
@@ -203,9 +204,9 @@ function EmbedView({ e, actionsEl, onDeleted, onRemixFlick, onOpenFlick }: { e: 
             <Button variant="outline" onClick={() => setRenaming(false)}>
               Cancel
             </Button>
-            <Button disabled={!name.trim()} onClick={rename}>
+            <PendingButton disabled={!name.trim()} onClick={rename}>
               Save
-            </Button>
+            </PendingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -224,7 +225,7 @@ function EmbedView({ e, actionsEl, onDeleted, onRemixFlick, onOpenFlick }: { e: 
             <Button variant="outline" onClick={() => setPreview(null)}>
               Back
             </Button>
-            {preview && preview.flick.id !== e.flick?.id && <Button onClick={() => doRestore(preview.flick)}>Restore this Flick</Button>}
+            {preview && preview.flick.id !== e.flick?.id && <PendingButton onClick={() => doRestore(preview.flick)}>Restore this Flick</PendingButton>}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -232,13 +233,13 @@ function EmbedView({ e, actionsEl, onDeleted, onRemixFlick, onOpenFlick }: { e: 
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Restore “{restore?.name}”?</DialogTitle>
-            <DialogDescription>It replaces “{e.flick?.name}” from the next view. The code on your site stays the same.</DialogDescription>
+            <DialogDescription>It replaces “{e.flick?.name}” from the next view. No update on website required.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRestore(null)}>
               Cancel
             </Button>
-            <Button onClick={() => restore && doRestore(restore)}>Restore</Button>
+            <PendingButton onClick={() => restore && doRestore(restore)}>Restore</PendingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -246,15 +247,15 @@ function EmbedView({ e, actionsEl, onDeleted, onRemixFlick, onOpenFlick }: { e: 
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Delete “{e.name}”?</DialogTitle>
-            <DialogDescription>Its code stops working and shows nothing wherever it’s placed. Remove it from your site too. This can’t be undone.</DialogDescription>
+            <DialogDescription>Embed will stop working on your website. This can’t be undone.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirm(false)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={() => (embeds.delete(e.id), setConfirm(false), onDeleted(), toast("Embed deleted"))}>
+            <PendingButton variant="destructive" onClick={() => (embeds.delete(e.id), setConfirm(false), onDeleted(), toast("Embed deleted"))}>
               Delete
-            </Button>
+            </PendingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

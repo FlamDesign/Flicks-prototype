@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { CardsSkeleton, Loading, PendingButton, RowsSkeleton } from "@/components/page-skeletons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Alert02Icon, Loading03Icon, PlayIcon, Search01Icon, Wallet01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
@@ -174,6 +175,7 @@ export function RatesDialog({ open, onOpenChange }: { open: boolean; onOpenChang
           <DialogTitle>CPM rates</DialogTitle>
           <DialogDescription>What 1,000 impressions cost, by the country they come from.</DialogDescription>
         </DialogHeader>
+        <Loading skeleton={<RowsSkeleton rows={8} thumb={false} className="rounded-xl p-3 ring-1 ring-foreground/10" />}>
         <div className="max-h-[60vh] overflow-y-auto rounded-xl ring-1 ring-foreground/10 [scrollbar-width:thin]">
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-popover text-xs text-muted-foreground">
@@ -199,6 +201,7 @@ export function RatesDialog({ open, onOpenChange }: { open: boolean; onOpenChang
             </tbody>
           </table>
         </div>
+        </Loading>
       </DialogContent>
     </Dialog>
   )
@@ -368,9 +371,9 @@ export function NewPlacementDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={create} onMouseDown={(e) => e.preventDefault()}>
+          <PendingButton onClick={create} onMouseDown={(e) => e.preventDefault()}>
             Create placement
-          </Button>
+          </PendingButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -438,6 +441,7 @@ export function ReplaceFlickDialog({
 
         <div className="flex min-h-0 flex-1 flex-col">
         <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:thin]">
+          <Loading k={[query.trim(), dates]} skeleton={<CardsSkeleton count={10} cols="grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5" />}>
           {options.length ? (
             <ul className="grid grid-cols-2 gap-3 p-0.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
               {options.map((f) => {
@@ -484,6 +488,7 @@ export function ReplaceFlickDialog({
               {all.length ? "No Flicks match. Try another name or date." : `No Flicks in ${placement.size} yet. Export a project in this size, then come back.`}
             </p>
           )}
+          </Loading>
         </div>
 
         </div>
@@ -494,9 +499,9 @@ export function ReplaceFlickDialog({
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button disabled={!chosen || placement.flick?.id === chosen.id} onClick={() => use()}>
+            <PendingButton disabled={!chosen || placement.flick?.id === chosen.id} onClick={() => use()}>
               {placement.flick ? "Replace" : "Add Flick"}
-            </Button>
+            </PendingButton>
           </div>
         </DialogFooter>
       </DialogContent>
@@ -520,9 +525,9 @@ export function ReplaceFlickDialog({
             <Button variant="outline" onClick={() => setPreview(null)}>
               Back
             </Button>
-            <Button disabled={!previewing || placement.flick?.id === previewing.id} onClick={() => previewing && (setPreview(null), use(previewing))}>
+            <PendingButton disabled={!previewing || placement.flick?.id === previewing.id} onClick={() => previewing && (setPreview(null), use(previewing))}>
               {placement.flick ? "Replace with this Flick" : "Add this Flick"}
-            </Button>
+            </PendingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -549,7 +554,7 @@ export function ServeInAds({ flick, onOpenPlacement }: { flick: FlickRef; onOpen
   return (
     <div className="flex flex-col gap-5">
       <p className="text-sm text-muted-foreground">
-        Put this Flick in a placement. Copy the placement’s tag into your DSP; replacing the Flick later keeps the tag.
+        Put this Flick in a placement. Copy the placement’s tag into your DSP; replacing the Flick later does not change the tag.
       </p>
 
       <section className="flex flex-col gap-2">

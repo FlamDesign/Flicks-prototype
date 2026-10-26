@@ -34,7 +34,7 @@ export function PlaceAnalyticsCard({ kind, id }: { kind: "placement" | "embed"; 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-sm font-medium">Analytics</h2>
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">{meta ? `${meta.name} ${place?.current === fid ? "here" : "when it ran here"}, all time` : "Views of each variation, all time"}</p>
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">{meta ? `${meta.name} ${place?.current === fid ? "here" : "when it ran here"}, all time` : "Views on each variation"}</p>
         </div>
         {open && (
           <Button variant="ghost" size="sm" className="-mr-2 gap-1 text-primary hover:text-primary" onClick={() => open({ kind, id })}>

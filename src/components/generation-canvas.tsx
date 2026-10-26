@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react"
+import { PendingButton } from "@/components/page-skeletons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Copy01Icon, Delete02Icon, Loading03Icon, MinusSignIcon, PlusSignIcon, SparklesIcon, BubbleChatIcon } from "@hugeicons/core-free-icons"
 import { useCanvasView, MIN_ZOOM, MAX_ZOOM } from "@/components/editor/use-canvas-view"
@@ -176,11 +177,11 @@ export function GenerationCanvas({
     if (announced.current) return
     if (generation.fromAsset) {
       announced.current = true
-      return void toast({ title: "New project started", description: "Your video is the reference video. Add variations next." })
+      return void toast({ title: "New project created", description: "Your video is the reference video. Add variations next." })
     }
     if (generation.remixOf) {
       announced.current = true
-      return void toast({ title: "Remix started", description: `A new project from “${generation.remixOf}”. The Flick stays as it is.` })
+      return void toast({ title: "Remix created", description: `A new project from “${generation.remixOf}”. The Flick does not change.` })
     }
     if (!generation.copy) return
     announced.current = true
@@ -374,6 +375,26 @@ export function GenerationCanvas({
   // a feed just linked to an element starts with that element's text wherever it's empty
   const seedFeed = (id: string, text: string) =>
     setSlides((l) => l.map((s) => (s.feeds?.[id]?.trim() ? s : { ...s, feeds: { ...s.feeds, [id]: text } })))
+  // a feed removed everywhere: anything that used it keeps what's on screen now (the value for the video in view)
+  const deleteFeed = (id: string) => {
+                setFeeds((list) => list.filter((f) => f.id !== id))
+                // unlink anything that used it, keeping what's on screen now (the value for the video in view)
+                const shown = activeSlide.feeds?.[id]?.trim() || undefined
+                setElements((els) =>
+                  els.map((e) =>
+                    e.kind === "text" && e.feed === id
+                      ? { ...e, feed: undefined, text: shown ?? e.text }
+                      : e.kind === "button" && (e.feed === id || e.linkFeed === id)
+                        ? {
+                            ...e,
+                            ...(e.feed === id && { feed: undefined, text: shown ?? e.text }),
+                            ...(e.linkFeed === id && { linkFeed: undefined, link: shown ?? e.link }),
+                          }
+                        : e,
+                  ),
+                )
+  }
+  const renameFeed = (id: string, name: string) => setFeeds((list) => list.map((f) => (f.id === id ? { ...f, name } : f)))
   // which text and buttons use each feed (for the right panel)
   const feedUses: Record<string, { id: string; label: string; kind: "text" | "button" }[]> = {}
   for (const e of elements) {
@@ -516,13 +537,13 @@ export function GenerationCanvas({
     ...(variationsDone < 2
       ? [{ text: "Create at least two variations to export.", blocking: true }]
       : included.some((s) => status(s) !== "done")
-      ? [{ text: "Generate every variation to export.", blocking: true }]
+      ? [{ text: "Generate videos for every variation before export.", blocking: true }]
       : []),
-    ...(includeRef && !slides[0].thumb ? [{ text: "Add a thumbnail for the reference video in the canvas strip to export.", blocking: true }] : []),
+    ...(includeRef && !slides[0].thumb ? [{ text: "Add a thumbnail for the reference video to export.", blocking: true }] : []),
     ...included.filter(stale).map((s) => ({ text: `${nameOf(s)} was made from the old reference video` })),
     ...feeds
       .filter((f) => included.some((s) => !s.feeds?.[f.id]?.trim()))
-      .map((f) => ({ text: `@${f.name} is empty on some variations` })),
+      .map((f) => ({ text: `Feed ${f.name} is empty on some variations` })),
   ]
   // everything viewers see; the name isn't part of it
   const sig = JSON.stringify({ elements, feeds, start, includeRef, slides: slides.map(({ refs, ...s }) => ({ ...s, refs: refs?.map((r) => r.id) })) })
@@ -599,9 +620,16 @@ export function GenerationCanvas({
     const t = setTimeout(() => onboarding.startTour(0), 600)
     return () => clearTimeout(t)
   }, [mainDone, ob.toured, ob.tour, ob.spot])
+  // the first text, button or layout added: show how to make it change per variation
+  const designed = elements.filter((e) => (e.kind === "text" || (e.kind === "button" && e.variant !== "icon")) && !e.hidden).length
+  const designedBefore = useRef(designed)
   useEffect(() => {
-    if (feeds.length) onboarding.tip("feed")
-  }, [feeds.length])
+    const grew = designed > designedBefore.current
+    designedBefore.current = designed
+    if (!grew) return
+    const t = setTimeout(() => onboarding.tip("feed"), 500)
+    return () => clearTimeout(t)
+  }, [designed])
   useEffect(() => {
     if (anyStale) onboarding.tip("stale")
   }, [anyStale])
@@ -719,16 +747,16 @@ export function GenerationCanvas({
           <DialogHeader>
             <DialogTitle>Delete “{title}”?</DialogTitle>
             <DialogDescription>
-              {project?.exports.length ? "Flicks you’ve exported from it stay in Flicks. " : ""}This can’t be undone.
+              {project?.exports.length ? "Flicks exported from this project will not be deleted. " : ""}This can’t be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmDelete(false)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={() => (setConfirmDelete(false), (deleted.current = true), library.deleteProject(generation.id), onBack(), toast("Project deleted"))}>
+            <PendingButton variant="destructive" onClick={() => (setConfirmDelete(false), (deleted.current = true), library.deleteProject(generation.id), onBack(), toast("Project deleted"))}>
               Delete
-            </Button>
+            </PendingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -762,24 +790,7 @@ export function GenerationCanvas({
               onSelectVideo={setActive}
               onAdd={addFeed}
               onRename={(id, name) => setFeeds((list) => list.map((f) => (f.id === id ? { ...f, name } : f)))}
-              onDelete={(id) => {
-                setFeeds((list) => list.filter((f) => f.id !== id))
-                // unlink anything that used it, keeping what's on screen now (the value for the video in view)
-                const shown = activeSlide.feeds?.[id]?.trim() || undefined
-                setElements((els) =>
-                  els.map((e) =>
-                    e.kind === "text" && e.feed === id
-                      ? { ...e, feed: undefined, text: shown ?? e.text }
-                      : e.kind === "button" && (e.feed === id || e.linkFeed === id)
-                        ? {
-                            ...e,
-                            ...(e.feed === id && { feed: undefined, text: shown ?? e.text }),
-                            ...(e.linkFeed === id && { linkFeed: undefined, link: shown ?? e.link }),
-                          }
-                        : e,
-                  ),
-                )
-              }}
+              onDelete={deleteFeed}
               usedBy={feedUses}
               onSelectElements={(ids) => (setEditing(null), setSelected(ids))}
               focus={focusFeed}
@@ -869,6 +880,7 @@ export function GenerationCanvas({
                 onEditFeed={editFeed}
                 onLinkFeed={seedFeed}
                 feedValue={(id) => activeSlide.feeds?.[id]}
+                onFeedValue={setFeedValue}
                 openLink={freshButton === selectedEl.id}
                 onEditText={() => setEditing(selectedEl.id)}
                 onDelete={() => (setElements((els) => els.filter((x) => x.id !== selectedEl.id)), setSelected([]))}
@@ -953,7 +965,7 @@ export function GenerationCanvas({
                       playing={videoPlaying}
                     />
                   </div>
-                  <CanvasStage elements={elements} setElements={setElements} selected={selected} setSelected={setSelected} editing={editing} setEditing={setEditing} ratio={ratio} thumbs={thumbs} activeThumb={activeThumb} feedOf={feedOf} onEditFeed={editFeed} onFeedValue={setFeedValue} hovered={hovered} selectedThumb={thumbSel} onSelectThumb={pickThumb} readOnly={previewing} onThumb={(n) => included[n] && select(included[n].id)} />
+                  <CanvasStage elements={elements} setElements={setElements} selected={selected} setSelected={setSelected} editing={editing} setEditing={setEditing} ratio={ratio} thumbs={thumbs} activeThumb={activeThumb} feedOf={feedOf} onEditFeed={editFeed} onFeedValue={setFeedValue} feeds={feeds} onAddFeed={addFeed} onSeedFeed={seedFeed} onRenameFeed={renameFeed} onDeleteFeed={deleteFeed} hovered={hovered} selectedThumb={thumbSel} onSelectThumb={pickThumb} readOnly={previewing} onThumb={(n) => included[n] && select(included[n].id)} />
                 </>
               ) : activeStatus === "empty" ? (
                 <>
@@ -974,7 +986,7 @@ export function GenerationCanvas({
                   <div className="absolute inset-0 overflow-hidden bg-muted">
                     <img src={GENERATED_VIDEOS[slides[0].video!].poster} alt="" className="absolute inset-0 size-full object-cover opacity-25 blur-[2px]" />
                   </div>
-                  <CanvasStage elements={elements} setElements={setElements} selected={selected} setSelected={setSelected} editing={editing} setEditing={setEditing} ratio={ratio} thumbs={thumbs} activeThumb={activeThumb} feedOf={feedOf} onEditFeed={editFeed} onFeedValue={setFeedValue} hovered={hovered} selectedThumb={thumbSel} onSelectThumb={pickThumb} readOnly={previewing} onThumb={(n) => included[n] && select(included[n].id)} />
+                  <CanvasStage elements={elements} setElements={setElements} selected={selected} setSelected={setSelected} editing={editing} setEditing={setEditing} ratio={ratio} thumbs={thumbs} activeThumb={activeThumb} feedOf={feedOf} onEditFeed={editFeed} onFeedValue={setFeedValue} feeds={feeds} onAddFeed={addFeed} onSeedFeed={seedFeed} onRenameFeed={renameFeed} onDeleteFeed={deleteFeed} hovered={hovered} selectedThumb={thumbSel} onSelectThumb={pickThumb} readOnly={previewing} onThumb={(n) => included[n] && select(included[n].id)} />
                 </>
               ) : (
                 <>

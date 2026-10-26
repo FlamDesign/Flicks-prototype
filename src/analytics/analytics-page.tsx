@@ -26,6 +26,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { saveFile } from "@/components/page-kit"
 import { DateFilter, type DateFilterValue } from "@/components/ui-extra/date-filter"
 import { cn } from "@/lib/utils"
+import { ChartSkeleton, Loading, RowsSkeleton } from "@/components/page-skeletons"
 import {
   ago,
   AGGREGATE_MINUTES,
@@ -134,6 +135,20 @@ export function AnalyticsPage({ data, target }: { data: Dataset; target?: Analyt
 
         <Filters data={data} filter={filter} setFilter={setFilter} source={showSource ? source : null} setSource={setSource} onExport={() => exportCsv(exportRef.current, filter)} disabled={!data.flicks.length} />
 
+        {/* changing the tab, period, country, source or what's open fetches again */}
+        <Loading
+          k={[tab, open, filter, source]}
+          skipFirst
+          skeleton={
+            <div className="flex flex-col gap-4">
+              <ChartSkeleton />
+              <div className="grid gap-4 lg:grid-cols-2">
+                <RowsSkeleton rows={5} className="rounded-2xl p-5 ring-1 ring-foreground/10" />
+                <RowsSkeleton rows={5} thumb={false} className="rounded-2xl p-5 ring-1 ring-foreground/10" />
+              </div>
+            </div>
+          }
+        >
         {!data.flicks.length ? (
           <EmptyState />
         ) : open?.kind === "flick" ? (
@@ -149,6 +164,7 @@ export function AnalyticsPage({ data, target }: { data: Dataset; target?: Analyt
         ) : (
           <EmbedsTab data={data} filter={filter} setCountry={setCountry} go={go} />
         )}
+        </Loading>
       </div>
     </ExportCtx.Provider>
   )
@@ -342,10 +358,10 @@ function metrics(ad: boolean): Metric[] {
       sub: (t, s) => (s.from === s.to ? `About ${fmtCompact(t.views / Math.max(1, s.to === TODAY ? hoursSoFar() : 24))} an hour` : `About ${fmtCompact(t.views / daysSoFar(s))} a day`),
       fmt: fmtInt,
       axis: fmtCompact,
-      hint: ad ? "Each time the ad loads and plays. One per session." : "Each time a Flick starts playing. One per session.",
+      hint: ad ? "Impression is added each time the ad loads." : "Each time a Flick starts playing.",
     },
-    { id: "interactions", label: "Interactions", v: interactions, tile: (t) => fmtCompact(interactions(t)), sub: (t) => `${rate(interactions(t), t.views).toFixed(2)} per view`, fmt: fmtInt, axis: fmtCompact, hint: "Switches between variations plus clicks." },
-    { id: "clicks", label: "Clicks", v: (t) => t.clicks, tile: (t) => fmtCompact(t.clicks), sub: (t) => `${fmtPct(rate(t.clicks, t.views))} of views`, fmt: fmtInt, axis: fmtCompact, hint: "Taps on a button that opened its link." },
+    { id: "interactions", label: "Interactions", v: interactions, tile: (t) => fmtCompact(interactions(t)), sub: (t) => `${rate(interactions(t), t.views).toFixed(2)} per view`, fmt: fmtInt, axis: fmtCompact, hint: "Switches between variations." },
+    { id: "clicks", label: "Clicks", v: (t) => t.clicks, tile: (t) => fmtCompact(t.clicks), sub: (t) => `${fmtPct(rate(t.clicks, t.views))} of views`, fmt: fmtInt, axis: fmtCompact, hint: "Taps on buttons." },
     { id: "watch", label: "Avg watch time", v: avgWatch, tile: (t) => fmtSec(avgWatch(t)), sub: (t) => `${fmtDuration(t.dwell)} watched in total`, fmt: fmtSec, axis: (n) => `${n.toFixed(0)}s`, hint: "Average time each viewer spent watching." },
   ]
   if (ad) list.push({ id: "spend", label: "Spend", v: (t) => t.spend, tile: (t) => fmtUsdShort(t.spend), sub: (t) => `${fmtUsd(cpm(t))} CPM`, fmt: fmtUsd, axis: (n) => `$${fmtCompact(n)}`, hint: "Charged from your Ad Balance at each country’s CPM (per 1,000 impressions)." })
@@ -959,11 +975,11 @@ function VariationsCard({ data, rows, country, flickIds, current }: { data: Data
             <thead className="text-xs text-muted-foreground">
               <tr className="text-right">
                 <th className="py-2 pl-2 text-left font-normal">Variation</th>
-                <HeadTip label="Views" tip="Sessions that saw this variation: everyone for the one it starts on, plus switches to the others. A session that switches counts for each it saw." />
-                <HeadTip label="Interactions" tip="Switches to this variation plus clicks on it. Adds up to the Flick's interactions." />
-                <HeadTip label="Clicks" tip="Clicks on this variation. Adds up to the Flick's clicks." />
-                <HeadTip label="Click rate" tip="Clicks for each view of this variation." />
-                <HeadTip label="Avg watch time" tip="Average time on this variation for each session that saw it." className="pr-2" />
+                <HeadTip label="Views" tip="Views on this variation." />
+                <HeadTip label="Interactions" tip="Switches to this variation." />
+                <HeadTip label="Clicks" tip="Button clicks on this variation." />
+                <HeadTip label="Click rate" tip="Button clicks with respect to views on this variation." />
+                <HeadTip label="Avg watch time" tip="Average time on this variation" className="pr-2" />
               </tr>
             </thead>
             <tbody>
@@ -1025,7 +1041,7 @@ function CountriesCard({ data, rows, country, setCountry }: { data: Dataset; row
   const picked = items.find((x) => x.c.code === country)
   const needle = q.trim().toLowerCase()
   const list = all ? items.filter((x) => !needle || x.c.name.toLowerCase().includes(needle)) : [...items.slice(0, TOP_COUNTRIES), ...(picked && picked.rank > TOP_COUNTRIES ? [picked] : [])]
-  const description = picked ? `${picked.c.name}: ${fmtPct(picked.t.views / total, 0)} of views, #${picked.rank} of ${items.length} countries` : country !== "all" ? `No views from ${data.countries.find((c) => c.code === country)?.name ?? "this country"} in this period` : "Share of views. Click one to filter by it."
+  const description = picked ? `${picked.c.name}: ${fmtPct(picked.t.views / total, 0)} of views, #${picked.rank} of ${items.length} countries` : country !== "all" ? `No views from ${data.countries.find((c) => c.code === country)?.name ?? "this country"} in this period` : "Share of views."
   const tools = items.length > TOP_COUNTRIES && (
     <Button variant="ghost" size="sm" className="-mr-2 h-7 text-primary hover:text-primary" onClick={() => (setAll((v) => !v), setQ(""))}>
       {all ? "Show top 5" : `Show all ${items.length}`}
@@ -1217,7 +1233,7 @@ function FlickView({ data, meta, filter, setCountry, go }: ViewProps & { meta: F
       {t.views < EARLY && <EarlyNote />}
       <MetricStrip rows={rows} span={span} filter={filter} set={metrics(false)} sel={sel} items={items} />
       <VariationsCard data={data} rows={rows} country={c} flickIds={[meta.id]} />
-      <Section title="Distribution" description="How it did on its link, on each embed and in each ad placement. Open one to see only its numbers there.">
+      <Section title="Distribution" description="View performance across link, embeds and ads.">
         <ListTable
           rows={whereRows}
           cols={VIEW_COLS}
@@ -1309,7 +1325,7 @@ function CampaignsTab({ data, filter, setCountry, go }: ViewProps) {
   return (
     <div className="mt-6 flex flex-col gap-6">
       <MetricStrip rows={rows} span={span} filter={filter} set={metrics(true)} sel={sel} items={items} />
-      <Section title="Campaigns" description="Expand one to see its placements, or open it for the Flicks they served.">
+      <Section title="Campaigns" description="View performance across placements and Flicks.">
         <ListTable
           rows={campRows}
           cols={AD_COLS}
@@ -1339,7 +1355,7 @@ function CampaignView({ data, id, filter, setCountry, go }: ViewProps & { id: st
   return (
     <div className="mt-6 flex flex-col gap-6">
       <MetricStrip rows={rows} span={span} filter={filter} set={metrics(true)} sel={sel} items={items} />
-      <Section title="Placements" description="Open one to see each Flick it has served.">
+      <Section title="Placements" description="View performance across Flicks.">
         <ListTable rows={placeRows} cols={[...AD_COLS, C.cpm]} nameLabel="Placement" noun="placements" sel={sel} exportName="placements" filters={[STATUS, sizeFilter(ps.map((p) => p.size))]} empty="No placements yet." />
       </Section>
       <div className="grid gap-6 lg:grid-cols-2">

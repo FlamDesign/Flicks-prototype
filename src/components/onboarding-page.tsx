@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react"
+import { useLoading } from "@/components/page-skeletons"
+import { Skeleton } from "@/components/ui/skeleton"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowLeft01Icon, Joystick01Icon, Loading03Icon, Megaphone01Icon, Moon02Icon, Share08Icon, Sun03Icon, Tick02Icon, Video01Icon, WebDesign01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
@@ -25,7 +27,7 @@ export type Profile = {
 export const GOALS = [
   { id: "ads", title: "Run interactive ads", hint: "Campaigns people tap through to pick a product", icon: Megaphone01Icon },
   { id: "videos", title: "Create product videos", hint: "From a prompt and a few product photos", icon: Video01Icon },
-  { id: "website", title: "Add Flicks to my website", hint: "Shoppable videos on product and landing pages", icon: WebDesign01Icon },
+  { id: "website", title: "Add Flicks to my website", hint: "Interactive videos on product and landing pages", icon: WebDesign01Icon },
   { id: "social", title: "Make videos for social", hint: "Short videos for feeds and stories", icon: Share08Icon },
   { id: "explore", title: "Just exploring", hint: "Play around and see what it can do", icon: Joystick01Icon },
 ]
@@ -74,11 +76,12 @@ export function OnboardingPage({
   const main = useRef<HTMLDivElement>(null)
   const company = p.company.trim() || "your company"
 
-  // each step starts at its first field
+  const loading = useLoading("onboarding")
+  // each step starts at its first field (once the form has loaded)
   useEffect(() => {
     const first = main.current?.querySelector<HTMLElement>("input:not([type=hidden]), [role=checkbox], [role=radio], button[role=combobox]")
     first?.focus({ preventScroll: true })
-  }, [step])
+  }, [step, loading])
 
   const set = <K extends keyof Profile>(k: K, v: Profile[K]) => {
     setP((x) => ({ ...x, [k]: v }))
@@ -125,9 +128,9 @@ export function OnboardingPage({
     set("goals", p.goals.includes(id) ? p.goals.filter((g) => g !== id) : [...p.goals, id])
 
   const titles = [
-    ["Let’s set up your workspace", "A few quick questions so templates and examples fit your brand. You can change any of this later."],
-    ["What brings you to Flicks?", "Pick all that apply. We’ll start you in the right place."],
-    [`Tell us about ${company}`, "This helps us suggest the right templates and plan."],
+    ["Let’s set up your account", "A few quick questions to customize your experience."],
+    ["What brings you to Flicks?", "Pick all that apply."],
+    [`Tell us about ${company}`, "This helps us suggest the right templates and plans."],
   ]
 
   return (
@@ -148,6 +151,32 @@ export function OnboardingPage({
         </header>
 
         <main className="mx-auto flex w-full max-w-[440px] flex-1 flex-col justify-center py-10">
+          {loading ? (
+            // the form loads first (State manager › Page load time)
+            <div aria-busy="true" aria-label="Loading" className="flex flex-col">
+              <div className="flex items-center gap-3">
+                <div className="flex flex-1 gap-1.5">
+                  {Array.from({ length: STEPS }, (_, i) => (
+                    <Skeleton key={i} className="h-1 flex-1 rounded-full" />
+                  ))}
+                </div>
+                <Skeleton className="h-3 w-10 rounded-full" />
+              </div>
+              <Skeleton className="mt-8 h-8 w-4/5 rounded-lg" />
+              <Skeleton className="mt-3 h-3 w-full rounded-full" />
+              <Skeleton className="mt-2 h-3 w-2/3 rounded-full" />
+              <div className="mt-8 flex flex-col gap-6">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="flex flex-col gap-2">
+                    <Skeleton className="h-3 w-28 rounded-full" />
+                    <Skeleton className="h-11 w-full rounded-2xl" />
+                  </div>
+                ))}
+              </div>
+              <Skeleton className="mt-8 h-11 w-full rounded-2xl" />
+            </div>
+          ) : (
+          <>
           {/* progress: one segment per step */}
           <div className="flex items-center gap-3">
             <div className="flex flex-1 gap-1.5" role="progressbar" aria-valuemin={1} aria-valuemax={STEPS} aria-valuenow={step + 1} aria-label="Setup progress">
@@ -277,6 +306,8 @@ export function OnboardingPage({
               </div>
             </div>
           </div>
+          </>
+          )}
         </main>
 
         <footer className="pb-1 text-xs text-muted-foreground">

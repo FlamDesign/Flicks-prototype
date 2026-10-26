@@ -1,20 +1,14 @@
 import { useLayoutEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  PaintBoardIcon,
   ImageAdd01Icon,
   DragDropVerticalIcon,
-  PencilEdit02Icon,
-  AtIcon,
-  Link04Icon,
   CarouselHorizontalIcon,
   CarouselVerticalIcon,
   Move01Icon,
   DistributeHorizontalCenterIcon,
   DistributeVerticalCenterIcon,
-  TextFontIcon,
   Exchange01Icon,
-  Copy01Icon,
   Delete02Icon,
   MinusSignIcon,
   PlusSignIcon,
@@ -25,13 +19,14 @@ import {
   TextItalicIcon,
   TextUnderlineIcon,
   SquareRoundCornerIcon,
-  Link01Icon,
-  Unlink01Icon,
   FitToScreenIcon,
   MaximizeScreenIcon,
   Image01Icon,
   Search01Icon,
   Tick02Icon,
+  ArrowDown01Icon,
+  SquareLock02Icon,
+  SquareUnlock02Icon,
 } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
@@ -40,15 +35,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ensureFont } from "@/lib/fonts"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
   BUTTON_SIZE,
-  BUTTON_STYLES,
   FONTS,
   FONT_GROUPS,
   SWATCHES,
@@ -65,8 +52,6 @@ import {
 } from "@/components/editor/elements"
 import { freeOffsets, isBold } from "@/components/editor/canvas-stage"
 import { ColorPanel, CHECKER, swatchBg, useColorPopover } from "@/components/editor/color-picker"
-import { BUTTON_LABEL, FEED_SUGGESTIONS } from "@/components/editor/feed-suggestions"
-import { NewFeed } from "@/components/editor/variation-panel"
 import { cn } from "@/lib/utils"
 
 type TextLike = Extract<CanvasElement, { kind: "text" | "button" }>
@@ -90,7 +75,10 @@ export function ElementToolbar({
   onEditText,
   grip,
   thumb,
+  onFeedValue,
 }: {
+  /** sets a feed's value on the video in view */
+  onFeedValue?: (id: string, value: string) => void
   /** thumbnail strip: the thumbnail picked inside it */
   thumb?: { name: string; src?: string; onChoose: () => void; onRemove: () => void }
   /** starts editing the selected text or button label on the canvas */
@@ -122,17 +110,20 @@ export function ElementToolbar({
     <div
       role="toolbar"
       aria-label="Element options"
-      className="flex max-w-full items-center gap-0.5 overflow-x-auto rounded-xl bg-popover p-1 text-popover-foreground shadow-lg ring-1 ring-foreground/10"
+      className="flex h-11 max-w-full items-center gap-1 overflow-x-auto rounded-xl bg-popover px-1.5 text-popover-foreground shadow-lg ring-1 ring-foreground/10"
       onPointerDown={(e) => e.stopPropagation()}
     >
       {grip}
       {el.kind === "button" && el.variant === "icon" ? (
         // icon buttons: just the image and where it goes
         <>
-          <Tool label="Replace icon image" onClick={onPickImage}>
-            <HugeiconsIcon icon={Image01Icon} className="size-4" />
-          </Tool>
-          <LinkPopover el={el} feeds={feeds} onChange={onChange} onAddFeed={onAddFeed} onEdit={onEditFeed} onLinkFeed={onLinkFeed} autoOpen={openLink} feedValue={feedValue} />
+          <IconTip label="Replace icon image">
+            <Button variant="ghost" size="sm" onClick={onPickImage} className="h-8 shrink-0 gap-1.5 rounded-lg px-2.5 font-normal">
+              <HugeiconsIcon icon={Exchange01Icon} className="size-4" />
+              Replace
+            </Button>
+          </IconTip>
+          
         </>
       ) : el.kind === "image" ? (
         <ImageControls el={el} onChange={onChange} onReplace={onPickImage} />
@@ -161,10 +152,6 @@ export function ElementToolbar({
         </>
       ) : (
         <>
-          <FeedPicker el={el} feeds={feeds} onChange={onChange} onAddFeed={onAddFeed} onLinkFeed={onLinkFeed} feedValue={feedValue} onEditText={onEditText} />
-          {/* buttons: where it goes, right next to its label feed */}
-          {el.kind === "button" && <LinkPopover el={el} feeds={feeds} onChange={onChange} onAddFeed={onAddFeed} onEdit={onEditFeed} onLinkFeed={onLinkFeed} autoOpen={openLink} feedValue={feedValue} />}
-          <Divider />
           <FontControls el={el} onChange={onChange} />
         </>
       )}
@@ -172,18 +159,6 @@ export function ElementToolbar({
         <>
           <Divider />
           <ButtonControls el={el} onChange={onChange} onChooseImage={onPickImage} />
-        </>
-      )}
-      {/* the thumbnail strip is part of every video, so it can't be duplicated or deleted */}
-      {el.kind !== "strip" && (
-        <>
-          <Divider />
-          <Tool label="Duplicate" onClick={onDuplicate}>
-            <HugeiconsIcon icon={Copy01Icon} className="size-4" />
-          </Tool>
-          <Tool label="Delete" onClick={onDelete}>
-            <HugeiconsIcon icon={Delete02Icon} className="size-4" />
-          </Tool>
         </>
       )}
     </div>
@@ -228,51 +203,21 @@ function keepPlace(el: TextLike, next: Align): { x: number; w?: number } {
   return el.kind === "text" ? { x, w: el.w ?? width } : { x }
 }
 
-/** Bold, italic and underline behind one button; the options open on hover (or click). */
+/** Bold, italic and underline as three toggles, the standard way. */
 function EmphasisMenu({ el, onChange }: { el: TextLike; onChange: (p: Partial<CanvasElement>) => void }) {
-  const [open, setOpen] = useState(false)
-  const closeT = useRef<ReturnType<typeof setTimeout>>(undefined)
-  const show = () => (clearTimeout(closeT.current), setOpen(true))
-  const hide = () => (clearTimeout(closeT.current), (closeT.current = setTimeout(() => setOpen(false), 150)))
   const opts = [
     { key: "bold", label: "Bold", icon: TextBoldIcon, on: isBold(el), patch: { bold: !isBold(el) } },
     { key: "italic", label: "Italic", icon: TextItalicIcon, on: !!el.italic, patch: { italic: !el.italic } },
     { key: "underline", label: "Underline", icon: TextUnderlineIcon, on: !!el.underline, patch: { underline: !el.underline } },
   ]
-  const active = opts.filter((o) => o.on)
-  // the button shows what's on (bold first), or B when nothing is
-  const face = active[0]?.icon ?? TextBoldIcon
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label={`Bold, italic, underline${active.length ? `: ${active.map((o) => o.label.toLowerCase()).join(", ")}` : ""}`}
-          aria-pressed={active.length > 0}
-          onMouseEnter={show}
-          onMouseLeave={hide}
-          className={cn("size-8 shrink-0 rounded-lg", active.length > 0 && "bg-muted text-foreground")}
-        >
-          <HugeiconsIcon icon={face} className="size-4" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        side="bottom"
-        align="center"
-        sideOffset={6}
-        onOpenAutoFocus={(e) => e.preventDefault()}
-        onMouseEnter={show}
-        onMouseLeave={hide}
-        className="w-auto flex-row gap-0.5 rounded-xl p-1"
-      >
-        {opts.map((o) => (
-          <Tool key={o.key} label={o.label} pressed={o.on} onClick={() => onChange(o.patch as Partial<CanvasElement>)}>
-            <HugeiconsIcon icon={o.icon} className="size-4" />
-          </Tool>
-        ))}
-      </PopoverContent>
-    </Popover>
+    <>
+      {opts.map((o) => (
+        <Tool key={o.key} label={o.label} pressed={o.on} onClick={() => onChange(o.patch as Partial<CanvasElement>)}>
+          <HugeiconsIcon icon={o.icon} className="size-4" />
+        </Tool>
+      ))}
+    </>
   )
 }
 
@@ -306,8 +251,11 @@ export function FontPicker({ font, onPick }: { font: string; onPick: (name: stri
     <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setQ("") }}>
       <IconTip label={`Font: ${font}`}>
         <PopoverTrigger asChild>
-          <Button variant="ghost" size="icon-sm" aria-label={`Font: ${font}`} className="size-8 rounded-lg">
-            <HugeiconsIcon icon={TextFontIcon} className="size-4" />
+          <Button variant="ghost" size="sm" aria-label={`Font: ${font}`} className="h-8 w-[136px] shrink-0 justify-between gap-1 rounded-lg px-2.5 font-normal ring-1 ring-foreground/10">
+            <span className="truncate" style={{ fontFamily: FONTS.find((f) => f.name === font)?.stack }}>
+              {font}
+            </span>
+            <HugeiconsIcon icon={ArrowDown01Icon} className="size-3.5 shrink-0 text-muted-foreground" />
           </Button>
         </PopoverTrigger>
       </IconTip>
@@ -346,51 +294,25 @@ export function FontPicker({ font, onPick }: { font: string; onPick: (name: stri
 
 /* ---------- text + button font options ---------- */
 
-const STYLE_KEYS = ["font", "size", "color", "bold", "italic", "underline", "bg", "radius", "border", "borderWidth", "bgImage", "bgFit", "w", "h"] as const
-/** Picking a style starts it fresh. */
-const RESET = Object.fromEntries(STYLE_KEYS.map((k) => [k, undefined]))
 
 const ALIGN_NEXT: Record<Align, Align> = { left: "center", center: "right", right: "left" }
 const ALIGN_ICON = { left: TextAlignLeftIcon, center: TextAlignCenterIcon, right: TextAlignRightIcon }
 
 function FontControls({ el, onChange }: { el: TextLike; onChange: (p: Partial<CanvasElement>) => void }) {
-  const styles = el.kind === "text" ? TEXT_STYLES : BUTTON_STYLES
-  const current = styles.find((s) => s.variant === el.variant)!
   const size = el.size ?? (el.kind === "text" ? TEXT_STYLES.find((t) => t.variant === el.variant)!.size : BUTTON_SIZE)
   const px = Math.round(size * 10.8) // shown as px at 1080 wide
   const setPx = (v: number) => onChange({ size: Math.min(30, Math.max(1, v / 10.8)) } as Partial<CanvasElement>)
   const align = el.align ?? "center"
   const font = el.font ?? FONTS[0].name
-  // any change on top of the chosen style makes it "Custom"
-  const custom = STYLE_KEYS.some((k) => (el as Record<string, unknown>)[k] !== undefined)
 
   return (
     <>
-      {/* Style */}
-      <DropdownMenu>
-        <IconTip label={`Style: ${custom ? "Custom" : current.name}`}>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-sm" aria-label={`Style: ${custom ? "Custom" : current.name}`} className="size-8 rounded-lg">
-              <HugeiconsIcon icon={PaintBoardIcon} className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
-        </IconTip>
-        <DropdownMenuContent align="start" className="w-44">
-          <DropdownMenuRadioGroup value={custom ? "" : el.variant} onValueChange={(v) => onChange({ variant: v, ...RESET } as Partial<CanvasElement>)}>
-            {styles.map((o) => (
-              <DropdownMenuRadioItem key={o.variant} value={o.variant}>
-                {o.name}
-              </DropdownMenuRadioItem>
-            ))}
-          </DropdownMenuRadioGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
 
       <FontPicker font={font} onPick={(v) => onChange({ font: v } as Partial<CanvasElement>)} />
 
       {/* Size */}
-      <div className="flex items-center rounded-lg ring-1 ring-foreground/10">
-        <Tool label="Decrease size" className="size-7" onClick={() => setPx(px - 2)}>
+      <div className="flex h-8 shrink-0 items-center rounded-lg ring-1 ring-foreground/10">
+        <Tool label="Decrease size" className="h-8 w-7" onClick={() => setPx(px - 2)}>
           <HugeiconsIcon icon={MinusSignIcon} className="size-3.5" />
         </Tool>
         <input
@@ -403,7 +325,7 @@ function FontControls({ el, onChange }: { el: TextLike; onChange: (p: Partial<Ca
           }}
           className="w-9 bg-transparent text-center text-sm tabular-nums outline-none"
         />
-        <Tool label="Increase size" className="size-7" onClick={() => setPx(px + 2)}>
+        <Tool label="Increase size" className="h-8 w-7" onClick={() => setPx(px + 2)}>
           <HugeiconsIcon icon={PlusSignIcon} className="size-3.5" />
         </Tool>
       </div>
@@ -505,267 +427,6 @@ function ButtonControls({
 /* ---------- feeds ---------- */
 
 
-/**
- * Pick a feed for an element: the linked one (with Unlink), the others to switch to,
- * a new one, and suggested names while there are fewer than two.
- */
-function FeedChooser({
-  type,
-  feeds,
-  value,
-  onPick,
-  onUnlink,
-  onAddFeed,
-  onEditValue,
-  editHint,
-  forButton,
-}: {
-  /** choosing for a button's label: its own suggestion comes first */
-  forButton?: boolean
-  /** jump to where this variation's value is edited; also runs right after a feed is created */
-  onEditValue?: (id: string) => void
-  editHint?: string
-  type: Feed["type"]
-  feeds: Feed[]
-  value?: string
-  onPick: (id: string) => void
-  onUnlink: () => void
-  onAddFeed?: (f: Omit<Feed, "id">) => string
-}) {
-  const list = feeds.filter((f) => f.type === type)
-  const linked = list.find((f) => f.id === value)
-  const others = list.filter((f) => f.id !== value)
-  const [creating, setCreating] = useState(false)
-  const pool = forButton && type === "text" ? [BUTTON_LABEL, ...FEED_SUGGESTIONS.text] : FEED_SUGGESTIONS[type]
-  const suggestions = onAddFeed && list.length < 2 ? pool.filter((x) => !feeds.some((f) => f.name === x.name)).slice(0, 3) : []
-  const create = (f: Omit<Feed, "id">) => {
-    if (!onAddFeed) return
-    const id = onAddFeed(f)
-    onPick(id)
-    setCreating(false)
-    onEditValue?.(id)
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      {linked && (
-        <div className="flex items-center gap-2 rounded-lg bg-primary/10 py-1 pl-2.5 pr-1 text-sm text-primary">
-          <span className="min-w-0 flex-1 truncate font-medium">@{linked.name}</span>
-          {onEditValue && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button size="icon-xs" variant="ghost" aria-label={editHint ?? "Edit value"} onClick={() => onEditValue(linked.id)} className="text-primary hover:bg-primary/15 hover:text-primary">
-                  <HugeiconsIcon icon={PencilEdit02Icon} className="size-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{editHint ?? "Edit value"}</TooltipContent>
-            </Tooltip>
-          )}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button size="icon-xs" variant="ghost" aria-label="Unlink" onClick={onUnlink} className="text-primary hover:bg-primary/15 hover:text-primary">
-                <HugeiconsIcon icon={Unlink01Icon} className="size-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Unlink</TooltipContent>
-          </Tooltip>
-        </div>
-      )}
-
-      {others.length > 0 && (
-        <div className="flex flex-col gap-0.5">
-          <p className="px-1 pb-0.5 text-xs text-muted-foreground">{linked ? "Switch to" : "Your feeds"}</p>
-          <div role="radiogroup" aria-label={linked ? "Switch feed" : "Feeds"} className="flex flex-col gap-0.5">
-            {others.map((f) => (
-              <Button key={f.id} role="radio" aria-checked={false} variant="ghost" size="sm" onClick={() => onPick(f.id)} className="justify-start gap-2 rounded-lg font-normal">
-                @{f.name}
-              </Button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {onAddFeed &&
-        (creating ? (
-          <NewFeed feeds={feeds} type={type} onAdd={create} onCancel={() => setCreating(false)} />
-        ) : (
-          <Button size="sm" variant="ghost" className="justify-start gap-2 rounded-lg font-normal text-muted-foreground" onClick={() => setCreating(true)}>
-            <HugeiconsIcon icon={PlusSignIcon} className="size-3.5" />
-            New {type} feed
-          </Button>
-        ))}
-
-      {suggestions.length > 0 && !creating && (
-        <div className="flex flex-col gap-1.5 border-t pt-2">
-          <p className="px-1 text-xs text-muted-foreground">Suggested</p>
-          {/* each with the kind of value it holds, so it's clear what the feed is for */}
-          <div className="flex flex-col gap-0.5">
-            {suggestions.map((x) => (
-              <Button key={x.name} size="sm" variant="ghost" className="h-auto justify-start gap-2 rounded-lg py-1.5 font-normal" onClick={() => create({ name: x.name, type })}>
-                <HugeiconsIcon icon={PlusSignIcon} className="size-3.5 shrink-0 text-muted-foreground" />
-                <span className="shrink-0">@{x.name}</span>
-                <span className="min-w-0 truncate text-xs text-muted-foreground">{x.example}</span>
-              </Button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-/** Links text (or a button label) to a text feed. Linked text is still edited on the canvas: it sets this variation's value. */
-function FeedPicker({
-  el,
-  feeds,
-  onChange,
-  onAddFeed,
-  onLinkFeed,
-  feedValue,
-  onEditText,
-}: {
-  el: TextLike
-  feeds: Feed[]
-  onChange: (p: Partial<CanvasElement>) => void
-  onAddFeed?: (f: Omit<Feed, "id">) => string
-  /** fills empty values of a newly linked feed with the element's text */
-  onLinkFeed?: (id: string, text: string) => void
-  feedValue?: (id: string) => string | undefined
-  /** starts editing the element's text on the canvas */
-  onEditText?: () => void
-}) {
-  const [open, setOpen] = useState(false)
-  const linked = feeds.find((f) => f.type === "text" && f.id === el.feed)
-  const label = linked ? `Feed: @${linked.name}` : el.kind === "button" ? "Link label to a feed" : "Link text to a feed"
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <IconTip label={label}>
-        <PopoverTrigger asChild>
-          <Button variant="ghost" size="icon-sm" aria-label={label} aria-pressed={!!linked} className={cn("size-8 rounded-lg", linked && "bg-primary/10 text-primary hover:bg-primary/15")}>
-            <HugeiconsIcon icon={AtIcon} className="size-4" />
-          </Button>
-        </PopoverTrigger>
-      </IconTip>
-      <PopoverContent align="start" onOpenAutoFocus={(e) => e.preventDefault()} className="w-72 gap-3 p-3">
-        <div className="flex flex-col gap-0.5">
-          <p className="text-xs font-medium text-muted-foreground">Link to a feed</p>
-          <p className="text-xs text-muted-foreground/80">{el.kind === "button" ? "A different label in each variation." : "Different text in each variation."}</p>
-        </div>
-        <FeedChooser
-          type="text"
-          forButton={el.kind === "button"}
-          feeds={feeds}
-          value={el.feed}
-          onAddFeed={onAddFeed}
-          editHint="Edit on canvas"
-          onEditValue={
-            onEditText &&
-            (() => {
-              setOpen(false)
-              // after the popover has closed and handed focus back
-              setTimeout(onEditText, 60)
-            })
-          }
-          onPick={(id) => {
-            onLinkFeed?.(id, linked ? (feedValue?.(linked.id) ?? el.text) : el.text)
-            onChange({ feed: id } as Partial<CanvasElement>)
-          }}
-          // keep what's on screen as typed text
-          onUnlink={() => onChange({ feed: undefined, text: (linked && feedValue?.(linked.id)) || el.text } as Partial<CanvasElement>)}
-        />
-      </PopoverContent>
-    </Popover>
-  )
-}
-
-/** Where a button goes: a typed URL, or a link feed so each variation can go somewhere different. */
-function LinkPopover({
-  el,
-  feeds,
-  onChange,
-  onAddFeed,
-  onEdit,
-  onLinkFeed,
-  autoOpen,
-  feedValue,
-}: {
-  el: Extract<CanvasElement, { kind: "button" }>
-  feeds: Feed[]
-  onChange: (p: Partial<CanvasElement>) => void
-  onAddFeed?: (f: Omit<Feed, "id">) => string
-  onEdit?: (id: string) => void
-  onLinkFeed?: (id: string, text: string) => void
-  /** open as soon as the button is added */
-  autoOpen?: boolean
-  /** a feed's value for the video in view */
-  feedValue?: (id: string) => string | undefined
-}) {
-  const links = feeds.filter((f) => f.type === "link")
-  const linked = links.find((f) => f.id === el.linkFeed)
-  const [open, setOpen] = useState(!!autoOpen)
-  const jumping = useRef(false)
-  const label = linked ? `Link from @${linked.name}` : el.link ? `Link: ${el.link}` : "Button link"
-  return (
-    <Popover
-      open={open}
-      onOpenChange={(o) => {
-        setOpen(o)
-      }}
-    >
-      <IconTip label={label}>
-        <PopoverTrigger asChild>
-          <Button variant="ghost" size="icon-sm" aria-label="Button link" className={cn("size-8 rounded-lg", (linked || el.link) && "bg-primary/10 text-primary hover:bg-primary/15")}>
-            <HugeiconsIcon icon={Link04Icon} className="size-4" />
-          </Button>
-        </PopoverTrigger>
-      </IconTip>
-      <PopoverContent
-        align="center"
-        // jumping to the side panel: don't pull focus back to the toolbar
-        onCloseAutoFocus={(e) => jumping.current && (e.preventDefault(), (jumping.current = false))}
-        className="w-72 gap-3 p-3"
-      >
-        <p className="text-xs font-medium text-muted-foreground">Button link</p>
-        {/* one view: a typed link, or a link feed so each variation goes somewhere different */}
-        {!linked && (
-          <Input
-            value={el.link ?? ""}
-            placeholder="https://"
-            onChange={(e) => onChange({ link: e.target.value } as Partial<CanvasElement>)}
-            aria-label="Button link URL"
-            inputMode="url"
-            // nothing linked yet: put the cursor here and point it out
-            autoFocus={!el.link}
-            className={cn(!el.link && "ring-2 ring-primary/60 focus-visible:ring-primary/60")}
-          />
-        )}
-        {!linked && <p className="-mb-1 text-xs text-muted-foreground">Or a different link for each variation</p>}
-        <FeedChooser
-          type="link"
-          feeds={feeds}
-          value={el.linkFeed}
-          onAddFeed={onAddFeed}
-          editHint="Edit in side panel"
-          onEditValue={
-            onEdit &&
-            ((id) => {
-              jumping.current = true
-              setOpen(false)
-              setTimeout(() => onEdit(id), 60)
-            })
-          }
-          onPick={(id) => {
-            if (el.link) onLinkFeed?.(id, el.link)
-            onChange({ linkFeed: id } as Partial<CanvasElement>)
-          }}
-          // keep where it goes now as the typed link
-          onUnlink={() => onChange({ linkFeed: undefined, link: (el.linkFeed && feedValue?.(el.linkFeed)?.trim()) || el.link } as Partial<CanvasElement>)}
-        />
-      </PopoverContent>
-    </Popover>
-  )
-}
-
 /* ---------- thumbnail strip ---------- */
 
 const LAYOUTS = {
@@ -792,6 +453,7 @@ function StripControls({
       {/* one icon that cycles horizontal → vertical → free */}
       <Tool
         label={`Layout: ${layout.name}`}
+       
         onClick={() =>
           set(
             layout.next === "free"
@@ -839,15 +501,19 @@ function StripControls({
 function ImageControls({ el, onChange, onReplace }: { el: ImageEl; onChange: (p: Partial<CanvasElement>) => void; onReplace: () => void }) {
   return (
     <>
-      <Tool label="Replace image" onClick={onReplace}>
-        <HugeiconsIcon icon={Exchange01Icon} className="size-4" />
-      </Tool>
+      <IconTip label="Replace image">
+        <Button variant="ghost" size="sm" onClick={onReplace} className="h-8 shrink-0 gap-1.5 rounded-lg px-2.5 font-normal">
+          <HugeiconsIcon icon={Exchange01Icon} className="size-4" />
+          Replace
+        </Button>
+      </IconTip>
       <RadiusPopover id={el.id} value={el.radius} onChange={(radius) => onChange({ radius } as Partial<CanvasElement>)} />
       <Tool label={el.lock ? "Unlock aspect ratio" : "Lock aspect ratio"} pressed={el.lock} onClick={() => onChange({ lock: !el.lock } as Partial<CanvasElement>)}>
-        <HugeiconsIcon icon={el.lock ? Link01Icon : Unlink01Icon} className="size-4" />
+        <HugeiconsIcon icon={el.lock ? SquareLock02Icon : SquareUnlock02Icon} className="size-4" />
       </Tool>
       <Tool
         label={el.fit === "cover" ? "Fill (switch to fit)" : "Fit (switch to fill)"}
+       
         onClick={() => onChange({ fit: el.fit === "cover" ? "contain" : "cover" } as Partial<CanvasElement>)}
       >
         <HugeiconsIcon icon={el.fit === "cover" ? MaximizeScreenIcon : FitToScreenIcon} className="size-4" />

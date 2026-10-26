@@ -59,7 +59,7 @@ export function ExportControl({
         <DialogContent className="sm:max-w-md" data-keep-selection>
           <DialogHeader>
             <DialogTitle>Export Flick</DialogTitle>
-            <DialogDescription>Makes a Flick from this project, ready to share, embed and serve in ads.</DialogDescription>
+            <DialogDescription>Makes a Flick from this project, ready to share, embed in websites or serve in ads.</DialogDescription>
           </DialogHeader>
 
           <div className="flex items-center gap-3 rounded-xl bg-muted/60 p-2.5">

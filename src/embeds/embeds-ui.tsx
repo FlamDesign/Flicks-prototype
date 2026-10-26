@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { Loading, PendingButton, RowsSkeleton } from "@/components/page-skeletons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -72,16 +73,16 @@ export function NewEmbedDialog({ open, onOpenChange, flick, onCreated }: { open:
                 </SelectContent>
               </Select>
             )}
-            <p className="text-xs text-muted-foreground">The size can’t be changed later. Only Flicks of this size can go in it.</p>
+            <p className="text-xs text-muted-foreground">The size can’t be changed later.</p>
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={create} onMouseDown={(e) => e.preventDefault()}>
+          <PendingButton onClick={create} onMouseDown={(e) => e.preventDefault()}>
             Create embed
-          </Button>
+          </PendingButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -109,6 +110,7 @@ export function AddToEmbed({ flick, onOpenEmbed, onDone }: { flick: FlickRef; on
     <div className="flex flex-col gap-5">
       <section className="flex flex-col gap-2">
         <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Embeds in {flick.size}</h3>
+        <Loading skeleton={<RowsSkeleton rows={3} className="rounded-2xl p-3 ring-1 ring-foreground/10" />}>
         {same.length ? (
           <ul className="flex flex-col divide-y divide-foreground/5 rounded-2xl ring-1 ring-foreground/10">
             {same.map((e) => {
@@ -125,9 +127,9 @@ export function AddToEmbed({ flick, onOpenEmbed, onDone }: { flick: FlickRef; on
                       View
                     </Button>
                   ) : (
-                    <Button variant="outline" size="sm" onClick={() => (embeds.setFlick(e.id, flick), done(e, false))}>
+                    <PendingButton variant="outline" size="sm" onClick={() => (embeds.setFlick(e.id, flick), done(e, false))}>
                       {e.flick ? "Replace" : "Add"}
-                    </Button>
+                    </PendingButton>
                   )}
                 </li>
               )
@@ -136,6 +138,7 @@ export function AddToEmbed({ flick, onOpenEmbed, onDone }: { flick: FlickRef; on
         ) : (
           <p className="rounded-2xl border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">No embeds in {flick.size} yet.</p>
         )}
+        </Loading>
       </section>
       <Button variant={same.length ? "outline" : "default"} onClick={() => setAdding(true)}>
         New embed for this Flick

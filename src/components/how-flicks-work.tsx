@@ -31,7 +31,7 @@ import refShades from "@/assets/intro/ref-shades.webp"
  */
 
 const STEPS = [
-  { title: "Start with one video", body: "Describe your idea and add reference images. We generate your first video from them.", ms: 9000 },
+  { title: "Start with one video", body: "Describe your idea and add reference images. We will generate your first video.", ms: 9000 },
   { title: "Create variations", body: "Change the person, outfit, product or scene. Everything else remains the same.", ms: 8000 },
   { title: "Export as one Flick", body: "All variations are exported in one Flick. Viewers tap to switch between them.", ms: 8500 },
   { title: "Run it anywhere", body: "Serve it in ads, add it to your website, or share it as a link.", ms: 10000 },
@@ -322,7 +322,7 @@ function MiniFlick({ x, y, size, rail = true }: { x: number; y: number; size: nu
 }
 
 const OUTS = [
-  { y: 22, title: "Ads", sub: "Serve it in your campaigns" },
+  { y: 22, title: "Ads", sub: "Serve it in ad campaigns" },
   { y: 106, title: "Website", sub: "Add it to any page" },
   { y: 190, title: "Link", sub: "Share it anywhere" },
 ]

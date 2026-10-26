@@ -210,7 +210,7 @@ export const FIELDS: Field[] = [
     type: "number",
     min: 0,
     max: 10000,
-    hint: "Pages (Projects, Flicks, a Flick, Assets, Campaigns, Embeds, Credits, Ad Balance) show their skeleton this long when opened.",
+    hint: "Pages, the editor, panels, data dialogs and filtered lists show their skeleton this long; save, create and delete buttons show a spinner for about as long (up to 0.9s). 0 turns all loading off.",
     presets: [
       { label: "Instant", value: 0 },
       { label: "Default", value: 400 },

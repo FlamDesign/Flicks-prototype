@@ -98,7 +98,7 @@ const TEXT: GuideText[] = [
     id: "feeds",
     group: "Editor",
     title: "Dynamic content with feeds",
-    summary: "A feed is a value each variation sets for itself, like @price or @shop-link. Link it to text or a button.",
+    summary: "A feed is a value each variation sets for itself, like a price or a shop link. Make one from the { } tab on text, a button or its link.",
     tips: ["Empty values are flagged before you export.", "Text feeds fill text; link feeds fill button links."],
     tryIt: "sample",
     related: ["design", "links"],

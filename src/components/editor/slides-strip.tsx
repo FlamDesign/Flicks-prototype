@@ -82,7 +82,7 @@ export function SlidesStrip({
   const canRemove = variations.length > MIN_VARIATIONS
 
   return (
-    <div className="shrink-0 border-t bg-background">
+    <div data-tour="strip" className="shrink-0 border-t bg-background">
       {/* centred; scrolls sideways once the slides don't fit */}
       <div className="overflow-x-auto">
       <div className="mx-auto flex w-max items-start gap-3 px-4 pb-2.5 pt-3 md:px-6">

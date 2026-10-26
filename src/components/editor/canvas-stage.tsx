@@ -1,8 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { ensureFont } from "@/lib/fonts"
-import { BUTTON_SIZE, BUTTON_STYLES, defaultBorder, DEFAULT_BOLD, FONTS, TEXT_STYLES, type CanvasElement } from "@/components/editor/elements"
+import { BUTTON_SIZE, BUTTON_STYLES, defaultBorder, DEFAULT_BOLD, FONTS, TEXT_STYLES, type CanvasElement, type Feed } from "@/components/editor/elements"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { parse, toHex } from "@/components/editor/color-picker"
 import { cn } from "@/lib/utils"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { Add01Icon, ArrowUpRight01Icon, BracesIcon, Link04Icon, PencilEdit01Icon, Tick02Icon, Unlink04Icon } from "@hugeicons/core-free-icons"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 type Corner = "nw" | "ne" | "sw" | "se" | "n" | "s" | "e" | "w"
 /** middle-of-side handles: resize one dimension only (images and buttons) */
@@ -50,6 +54,11 @@ export function CanvasStage({
   feedOf,
   onEditFeed,
   onFeedValue,
+  feeds = [],
+  onAddFeed,
+  onSeedFeed,
+  onRenameFeed,
+  onDeleteFeed,
   readOnly,
   onThumb,
   hovered,
@@ -75,6 +84,13 @@ export function CanvasStage({
   thumbs: { poster?: string }[]
   /** which thumbnail is this slide's own video */
   activeThumb: number
+  /** every feed, and how to make and fill one (for the feed buttons on the canvas) */
+  feeds?: Feed[]
+  onAddFeed?: (f: Omit<Feed, "id">) => string
+  /** fills a newly linked feed's empty values */
+  onSeedFeed?: (id: string, value: string) => void
+  onRenameFeed?: (id: string, name: string) => void
+  onDeleteFeed?: (id: string) => void
   /** a feed's name and its value on this video */
   feedOf: (id: string) => { name: string; value: string } | undefined
   elements: CanvasElement[]
@@ -87,6 +103,8 @@ export function CanvasStage({
   const stage = useRef<HTMLDivElement>(null)
   // alignment guides shown while dragging (px from the frame's top-left)
   const [guides, setGuides] = useState<{ v: number[]; h: number[] }>({ v: [], h: [] })
+  // something is being dragged: floating bits (the link box) step aside
+  const [moving, setMoving] = useState(false)
   const update = (id: string, patch: Partial<CanvasElement>) =>
     setElements((els) => els.map((x) => (x.id === id ? ({ ...x, ...patch } as CanvasElement) : x)))
 
@@ -104,6 +122,14 @@ export function CanvasStage({
         setSelected([])
       }
       if (e.key === "Escape") setSelected([])
+      // Cmd/Ctrl+D duplicates (the strip stays one)
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "d") {
+        e.preventDefault()
+        const copies = elements.filter((x) => selected.includes(x.id) && x.kind !== "strip").map((x) => ({ ...x, id: crypto.randomUUID(), x: Math.min(100, x.x + 3), y: Math.min(100, x.y + 3) }) as CanvasElement)
+        if (!copies.length) return
+        setElements((els) => [...els, ...copies])
+        setSelected(copies.map((c) => c.id))
+      }
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
@@ -196,7 +222,7 @@ export function CanvasStage({
 
     const lockMove = makeAxisLock()
     const move = (ev: PointerEvent) => {
-      if (Math.abs(ev.clientX - start.x) + Math.abs(ev.clientY - start.y) > 3) moved = true
+      if (!moved && Math.abs(ev.clientX - start.x) + Math.abs(ev.clientY - start.y) > 3) (moved = true), setMoving(true)
       if (!moved) return
       // a mostly straight drag stays on its axis (Shift locks it fully)
       const [rx, ry] = lockMove(ev.clientX - start.x, ev.clientY - start.y, ev.shiftKey)
@@ -218,6 +244,7 @@ export function CanvasStage({
       window.removeEventListener("pointermove", move)
       window.removeEventListener("pointerup", up)
       setGuides({ v: [], h: [] })
+      setMoving(false)
       // a click on a thumbnail of the already selected strip picks that thumbnail
       if (!moved && wasSelected && !e.shiftKey && el.kind === "strip" && thumb !== undefined) onSelectThumb?.(Number(thumb))
       // a second click on a selected text or button (without dragging) starts editing;
@@ -490,7 +517,7 @@ export function CanvasStage({
             const linked = (el.kind === "text" || el.kind === "button") && el.feed ? feedOf(el.feed) : undefined
             if (!linked) return update(el.id, { text } as Partial<CanvasElement>)
             // left untouched while it still showed the feed's name: keep it empty
-            if (text !== `@${linked.name}`) onFeedValue?.((el as { feed: string }).feed, text)
+            if (text !== `{${linked.name}}`) onFeedValue?.((el as { feed: string }).feed, text)
           }}
           onEndEdit={() => setEditing(null)}
           strip={{ ratio, thumbs, active: activeThumb, editable: !readOnly && selected.length === 1 && selected[0] === el.id, picked: selectedThumb ?? null }}
@@ -503,6 +530,17 @@ export function CanvasStage({
           }}
         />
       ))}
+    </div>
+
+    {/* feed tabs on the top edge of the selected text or button: under the corner handles */}
+    <div data-keep-selection className="pointer-events-none absolute inset-0 z-10">
+      {/* the feed for a text or a button label: a tab on its top edge */}
+      {single && (single.kind === "text" || (single.kind === "button" && single.variant !== "icon")) && !readOnly && !moving && onAddFeed &&
+        boxes.filter((x) => x.id === single.id).map((x) => (
+          <div key={`feed-${single.id}`} className="pointer-events-auto absolute" style={{ left: x.l - 0.5, top: x.t + 0.5, transform: "translateY(-100%)" }}>
+            <FeedTab type="text" el={single} feeds={feeds} feedOf={feedOf} onAddFeed={onAddFeed} onSeed={onSeedFeed} onPatch={(p) => update(single.id, p)} onOpenPanel={onEditFeed} onRename={onRenameFeed} onDelete={onDeleteFeed} />
+          </div>
+        ))}
     </div>
 
     {/* outlines + corner handles, not clipped */}
@@ -547,6 +585,28 @@ export function CanvasStage({
           ))}
         </div>
       )}
+    </div>
+
+    {/* floating link box, outside the aria-hidden outline layer so it can be used */}
+    <div data-keep-selection className="pointer-events-none absolute inset-0 z-30">
+      {/* a button's link, floating by it: the edit card when it has none, a link chip when it does */}
+      {single && single.kind === "button" && !readOnly && editing !== single.id && !moving &&
+        boxes.filter((x) => x.id === single.id).map((x) => (
+          <ButtonLinkFloat
+            key={single.id}
+            el={single}
+            box={x}
+            feedOf={feedOf}
+            onPatch={(p) => update(single.id, p)}
+            onFeedValue={onFeedValue}
+            feedTab={
+              onAddFeed && (
+                <FeedTab type="link" el={single} feeds={feeds} feedOf={feedOf} onAddFeed={onAddFeed} onSeed={onSeedFeed} onPatch={(p) => update(single.id, p)} onOpenPanel={onEditFeed} onRename={onRenameFeed} onDelete={onDeleteFeed} />
+              )
+            }
+          />
+        ))}
+
     </div>
     </>
   )
@@ -625,12 +685,12 @@ function ElementBox({
           radiusPx={radiusPx(el, size)}
           sized={sized}
           // linked text shows this video's feed value (or the feed name until one is set)
-          display={feed ? feed.value || `@${feed.name}` : undefined}
+          display={feed ? feed.value || `{${feed.name}}` : undefined}
         />
       )}
       {(feed || linkFeed) && !readOnly && (
         // feed badges only while the element is hovered or selected
-        <span className={cn("absolute bottom-full left-0 mb-1 gap-1", selected || editing ? "flex" : "hidden group-hover/el:flex")}>
+        <span className={cn("absolute bottom-full left-0 gap-1", selected || editing ? "hidden" : "hidden group-hover/el:flex")}>
           {(
             [
               ["text", feed?.name],
@@ -642,11 +702,11 @@ function ElementBox({
               // click a badge to edit that feed's value
               <span
                 key={which}
-                title={`Edit @${n} value`}
+                title={`Feed: ${n}`}
                 onPointerDown={(e) => (e.stopPropagation(), onBadge(which))}
-                className="cursor-pointer whitespace-nowrap rounded-md bg-primary px-1.5 py-0.5 text-[10px] font-medium leading-none text-primary-foreground shadow-sm hover:bg-primary/90"
+                className="flex cursor-pointer items-center whitespace-nowrap rounded-t-md bg-neutral-800 px-1.5 py-1 text-[10px] font-medium leading-none text-white shadow-sm hover:bg-neutral-700"
               >
-                @{n}
+                {n}
               </span>
             ))}
         </span>
@@ -951,4 +1011,242 @@ function makeStickySnap(enter = 6, exit = 10) {
     held = held ? d < exit : d < enter
     return held ? target : value
   }
+}
+
+
+/**
+ * Floats by a selected button. No link yet: a link box with a tick (Enter works too).
+ * With a link: a slim dark chip showing where it goes, with a pencil to edit.
+ * A link that comes from a feed edits this variation's value.
+ */
+function ButtonLinkFloat({
+  el,
+  box,
+  feedOf,
+  onPatch,
+  onFeedValue,
+  feedTab,
+}: {
+  /** the link's feed tab, on the box's top edge */
+  feedTab?: React.ReactNode
+  el: Extract<CanvasElement, { kind: "button" }>
+  box: { l: number; t: number; w: number; h: number }
+  feedOf: (id: string) => { name: string; value: string } | undefined
+  onPatch: (p: Partial<CanvasElement>) => void
+  onFeedValue?: (id: string, value: string) => void
+}) {
+  const linkFeed = el.linkFeed ? feedOf(el.linkFeed) : undefined
+  const link = (linkFeed ? linkFeed.value : el.link) ?? ""
+  const setLink = (v: string) => (el.linkFeed && linkFeed ? onFeedValue?.(el.linkFeed, v) : onPatch({ link: v } as Partial<CanvasElement>))
+  // no link yet: open the card straight away
+  const [open, setOpen] = useState(!link.trim())
+  const linkInput = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (open) setTimeout(() => linkInput.current?.focus(), 30)
+  }, [open])
+
+  // just under the button, clear of its handles (its feed badge sits above)
+  const style: React.CSSProperties = { left: box.l + box.w / 2, top: box.t + box.h + (feedTab ? 34 : 14), transform: "translateX(-50%)" }
+  const stop = (e: React.SyntheticEvent) => e.stopPropagation()
+  const host = link.replace(/^https?:\/\//, "").replace(/\/$/, "")
+
+  if (!open)
+    return (
+      <div
+        className="pointer-events-auto absolute flex h-9 max-w-80 items-center gap-1 rounded-xl bg-neutral-900 pl-3 pr-1 text-white shadow-lg ring-1 ring-white/10"
+        style={style}
+        onPointerDown={stop}
+        onClick={stop}
+      >
+        {feedTab && <div className="absolute bottom-full left-3">{feedTab}</div>}
+        {link.trim() ? (
+          <a href={/^https?:/.test(link) ? link : `https://${link}`} target="_blank" rel="noreferrer" className="min-w-0 truncate text-sm font-medium text-sky-400 hover:underline" title={link}>
+            {host}
+          </a>
+        ) : (
+          <button type="button" onClick={() => setOpen(true)} className="text-sm font-medium text-white/80 hover:text-white">
+            Add link
+          </button>
+        )}
+        <button
+          type="button"
+          aria-label="Edit link"
+          title="Edit link"
+          onClick={() => setOpen(true)}
+          className="grid size-7 shrink-0 place-items-center rounded-lg text-white/80 hover:bg-white/10 hover:text-white"
+        >
+          <HugeiconsIcon icon={PencilEdit01Icon} className="size-4" />
+        </button>
+      </div>
+    )
+
+  const done = () => setOpen(false)
+  const onKey = (e: React.KeyboardEvent) => {
+    e.stopPropagation()
+    if (e.key === "Enter" || e.key === "Escape") (e.preventDefault(), done())
+  }
+  // just the link and a tick; Enter works too
+  return (
+    <div
+      role="dialog"
+      aria-label="Button link"
+      className="pointer-events-auto absolute flex h-11 w-80 items-center gap-1 rounded-xl bg-popover pl-3 pr-1.5 text-popover-foreground shadow-xl ring-1 ring-foreground/10"
+      style={style}
+      onPointerDown={stop}
+      onClick={stop}
+    >
+      {feedTab && <div className="absolute bottom-full left-3">{feedTab}</div>}
+      <HugeiconsIcon icon={Link04Icon} className="size-4 shrink-0 text-muted-foreground" />
+      <input
+        ref={linkInput}
+        value={link}
+        onChange={(e) => setLink(e.target.value)}
+        onKeyDown={onKey}
+        placeholder="Paste or type a link"
+        inputMode="url"
+        aria-label={linkFeed ? `Link for this variation (feed: ${linkFeed.name})` : "Button link"}
+        title={linkFeed ? `This variation's link (feed: ${linkFeed.name})` : undefined}
+        className="h-full min-w-0 flex-1 bg-transparent px-1.5 text-sm outline-none placeholder:text-muted-foreground"
+      />
+      <button
+        type="button"
+        aria-label="Done"
+        title="Done (Enter)"
+        onClick={done}
+        className="grid size-8 shrink-0 place-items-center rounded-lg bg-foreground text-background hover:bg-foreground/85"
+      >
+        <HugeiconsIcon icon={Tick02Icon} className="size-4" />
+      </button>
+    </div>
+  )
+}
+
+
+/** The feeds icon: { } */
+export const FEED_ICON = BracesIcon
+
+/**
+ * A feed tab on the top edge of a selected text, button or link box (like a label on the outline).
+ * No feed: a small { }. With no feeds yet, one click makes one (text, label or link; then text-2…);
+ * with feeds, it offers New feed or one to link to. Linked: just the feed's name, with a menu:
+ * Open Feeds panel, New feed, Link to another Feed, Unlink. (Deleting a feed happens in the Feeds panel.)
+ * Values are meant to be typed on the canvas, variation by variation; the side panel opens only on demand.
+ */
+function FeedTab({
+  type,
+  el,
+  feeds,
+  feedOf,
+  onAddFeed,
+  onSeed,
+  onPatch,
+  onOpenPanel,
+}: {
+  type: Feed["type"]
+  el: Extract<CanvasElement, { kind: "text" | "button" }>
+  feeds: Feed[]
+  feedOf: (id: string) => { name: string; value: string } | undefined
+  onAddFeed: (f: Omit<Feed, "id">) => string
+  onSeed?: (id: string, value: string) => void
+  onPatch: (p: Partial<CanvasElement>) => void
+  /** shows this feed's values in the side panel */
+  onOpenPanel?: (id: string) => void
+  onRename?: (id: string, name: string) => void
+  onDelete?: (id: string) => void
+}) {
+  const isLink = type === "link"
+  const current = isLink ? (el.kind === "button" ? el.linkFeed : undefined) : el.feed
+  const linked = current ? feedOf(current) : undefined
+  const thing = isLink ? "link" : el.kind === "button" ? "label" : "text"
+  const shownNow = isLink ? (el.kind === "button" ? el.link ?? "" : "") : el.text
+  // any feed can feed any element: no text or link kinds
+  const others = feeds.filter((f) => f.id !== current)
+  const stop = (e: React.SyntheticEvent) => e.stopPropagation()
+
+  const link = (id: string) => {
+    const now = linked ? linked.value : shownNow
+    if (now) onSeed?.(id, now)
+    onPatch((isLink ? { linkFeed: id } : { feed: id }) as Partial<CanvasElement>)
+  }
+  // a new feed named after what it's on: "label", then "label-2"…, filled with what's there now
+  const create = () => {
+    const taken = new Set(feeds.map((f) => f.name))
+    let name = thing
+    for (let n = 2; taken.has(name); n++) name = `${thing}-${n}`
+    link(onAddFeed({ name, type }))
+  }
+  // keep what's on screen
+  const unlink = () =>
+    onPatch((isLink ? { linkFeed: undefined, link: linked?.value.trim() || shownNow } : { feed: undefined, text: linked?.value || el.text }) as Partial<CanvasElement>)
+
+  const tab = "flex h-6 items-center rounded-t-md bg-neutral-800 px-2 text-xs font-medium text-white shadow-sm outline-none hover:bg-neutral-700 focus-visible:ring-2 focus-visible:ring-ring/50 dark:bg-neutral-700 dark:hover:bg-neutral-600"
+  const linkTo = (label: string) =>
+    others.length > 0 && (
+      <>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">{label}</DropdownMenuLabel>
+        {others.map((f) => (
+          <DropdownMenuItem key={f.id} onSelect={() => link(f.id)}>
+            <HugeiconsIcon icon={FEED_ICON} className="size-4" />
+            {f.name}
+          </DropdownMenuItem>
+        ))}
+      </>
+    )
+
+  // nothing to link to yet: one click makes a feed
+  if (!linked && !feeds.length)
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button type="button" aria-label="Make a feed" onPointerDown={stop} onClick={create} className={cn(tab, "px-1.5")}>
+            <HugeiconsIcon icon={FEED_ICON} className="size-3.5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>Connect to feed for different {thing} in each variation</TooltipContent>
+      </Tooltip>
+    )
+
+  return (
+    <DropdownMenu>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <button type="button" aria-label={linked ? `Feed ${linked.name}` : "Feed"} onPointerDown={stop} className={cn(tab, !linked && "px-1.5", "max-w-44")}>
+              {linked ? <span className="truncate">{linked.name}</span> : <HugeiconsIcon icon={FEED_ICON} className="size-3.5" />}
+            </button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent>{linked ? "Different for each variation" : `Connect to feed for different ${thing} in each variation`}</TooltipContent>
+      </Tooltip>
+      <DropdownMenuContent align="start" className="w-52" data-keep-selection onPointerDown={stop}>
+        {linked ? (
+          <>
+            <DropdownMenuItem onSelect={() => setTimeout(() => current && onOpenPanel?.(current), 30)}>
+              <HugeiconsIcon icon={ArrowUpRight01Icon} className="size-4" />
+              Open Feeds panel
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={create}>
+              <HugeiconsIcon icon={Add01Icon} className="size-4" />
+              New feed
+            </DropdownMenuItem>
+            {linkTo("Link to another Feed")}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={unlink}>
+              <HugeiconsIcon icon={Unlink04Icon} className="size-4" />
+              Unlink
+            </DropdownMenuItem>
+          </>
+        ) : (
+          <>
+            <DropdownMenuItem onSelect={create}>
+              <HugeiconsIcon icon={Add01Icon} className="size-4" />
+              New feed
+            </DropdownMenuItem>
+            {linkTo("Link to")}
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
 }

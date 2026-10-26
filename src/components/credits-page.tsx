@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { Loading, RowsSkeleton } from "@/components/page-skeletons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { SparklesIcon } from "@hugeicons/core-free-icons"
 import { PageShell, StatCard, StatAction, ListCard, InvoicesCard, Pager, downloadInvoice } from "@/components/page-kit"
@@ -151,6 +152,7 @@ function UsageHistory({ activity }: { activity: Activity[] }) {
         </>
       }
     >
+        <Loading k={[filter, dates, page]} skipFirst skeleton={<RowsSkeleton rows={6} thumb={false} className="py-2" />}>
         {view.length ? (
           <ul className="divide-y">
             {view.map((a) => (
@@ -176,6 +178,7 @@ function UsageHistory({ activity }: { activity: Activity[] }) {
         ) : (
           <p className="py-10 text-center text-sm text-muted-foreground">No activity found.</p>
         )}
+        </Loading>
         <Pager page={page} pages={pages} total={rows.length} size={HISTORY_PAGE} onPage={setPage} />
     </ListCard>
   )
