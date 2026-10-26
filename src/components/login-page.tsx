@@ -427,7 +427,7 @@ export function FlickShowcase() {
       </div>
 
       {/* what it is, small, top left */}
-      <p className="absolute left-4 top-4 max-w-[60%] rounded-full bg-black/35 px-3 py-1.5 text-xs text-white backdrop-blur-md">One Flick, every look. Tap one.</p>
+      <p className="absolute left-4 top-4 max-w-[60%] rounded-full bg-black/35 px-3 py-1.5 text-xs text-white backdrop-blur-md">Tap a thumbnail to try it</p>
 
       {/* the looks: the same strip viewers tap in a Flick, floating over the steel on the right */}
       <div role="radiogroup" aria-label="Looks in this Flick" className="absolute right-4 top-1/2 flex -translate-y-1/2 flex-col gap-2 rounded-[22px] bg-white/20 p-1.5 ring-1 ring-white/30 backdrop-blur-xl">
