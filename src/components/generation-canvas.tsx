@@ -1060,7 +1060,7 @@ export function GenerationCanvas({
             <DialogHeader>
               <DialogTitle>Regenerate reference video?</DialogTitle>
               <DialogDescription>
-                {made.length === 1 ? "Your variation is" : `Your ${made.length} variations are`} made from it. Regenerate only the reference and {made.length === 1 ? "it" : "they"}’ll be marked “Needs regenerating”.
+                {made.length === 1 ? "Your variation was made from this video. Regenerate it too so it matches." : `Your ${made.length} variations were made from this video. Regenerate them too so they match.`}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="sm:flex-col sm:items-stretch">

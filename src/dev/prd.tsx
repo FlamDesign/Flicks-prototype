@@ -500,7 +500,7 @@ const SECTIONS: Section[] = [
         <UL
           items={[
             "A list; feeds can\u2019t be made here. Each row: { }, the name and a \u22ef menu: Rename (in place) and Delete (asks first; anything using it keeps the value of the variation in view).",
-            "Clicking a feed selects what uses it on the canvas and opens it in the panel, titled \u201cFeeds \u203a price\u201d (Feeds goes back). Inside: the feed\u2019s name large, with \u2197 (select on canvas) and \u22ee (Rename, Delete); Rename (or double-clicking the name) makes the name editable in place. Then \u201cIts value in each variation\u201d and a card per variation: a round image and the variation\u2019s name on top, a full-width value field below. The variation on the canvas has an outlined card and \u201cOn canvas\u201d; focusing a value or clicking the name switches the canvas to it.",
+            "Clicking a feed selects what uses it on the canvas and opens it in the panel, titled \u201cFeeds \u203a price\u201d (Feeds goes back). Inside: the feed\u2019s name large, with \u2197 (select on canvas) and \u22ee (Rename, Delete); Rename (or double-clicking the name) makes the name editable in place. Then \u201cType what each variation shows.\u201d and a card per variation: a round image and the variation\u2019s name on top, a full-width value field below. The variation on the canvas has an outlined card and \u201cOn canvas\u201d; focusing a value or clicking the name switches the canvas to it.",
             "Selecting a linked element while the panel is open opens its feed. Open Feeds panel (from the canvas) opens it with the cursor in the value for the variation in view.",
             "Empty: \u201cDifferent content for each variation. Show a different price, label or link in each variation. Select text or a button and click { }. Then pick a variation and type.\u201d",
             "The reference video has values only once it is included in the Flick. Empty values are flagged before export.",
@@ -525,7 +525,7 @@ const SECTIONS: Section[] = [
             "Variations can generate at the same time: write and send the next variation while another is still generating. A video\u2019s own prompt box is dimmed while that video generates. The reference video can\u2019t be regenerated while any variation is generating (they\u2019re made from it); its box stays dimmed until they finish. Variations wait for the reference video while it generates.",
             "A template's reference video is fixed: the box explains that and asks to pick a variation.",
             "The newest message stays in view.",
-            "When something else sends you to the prompt box (adding a variation, the \u201cGenerate this variation\u201d or \u201cNeeds regenerating\u201d tip), the prompts panel opens if hidden, the cursor lands in the box, and it\u2019s spotlit for a moment: everything else dims and a label above it says what to write (\u201cDescribe Variation 3 here\u201d, or \u201cRegenerate Variation 1 here\u201d). It fades after about 2 seconds, or as soon as you type or click.",
+            "When something else sends you to the prompt box (adding a variation, the \u201cGenerate this variation\u201d or \u201cNeeds regenerating\u201d tip), the prompts panel opens if hidden, the cursor lands in the box, and it\u2019s cued briefly, the rest of the page dims a little: a primary ring on the box and a small primary label above it saying what to write (\u201cDescribe Variation 3 here\u201d, or \u201cRegenerate Variation 1 here\u201d). It fades after about a second, or as soon as you type or click.",
             "The prompts panel has a header, Prompts, with a hide button at its right. While hidden, a Prompts button (chat icon) at the canvas\u2019s top-right brings it back. While hidden, a small spinner on the Prompts button shows something is generating. Clicking a video in the slides strip opens the panel again. Adding a variation opens it too and puts the cursor in the prompt box. Remembered on this device.",
             "Drag the panel's right edge to resize it between 280 and 560px (default 340); double-click the edge to reset. Arrow keys work when the edge is focused. The width is remembered on this device.",
             "A variation\u2019s prompt box shows the reference video it is made from; clicking it opens the reference video full screen. Sending clears the prompt box; the prompt is kept only in the history. Regenerating a video marked \u201cNeeds regenerating\u201d without typing reuses its last prompt.",
@@ -568,7 +568,7 @@ const SECTIONS: Section[] = [
             ["Reference video only (primary)", "Variations keep their videos and are marked “Needs regenerating” (see above)."],
           ]}
         />
-        <P>Copy: “Your N variations are made from it. Regenerate only the reference and they’ll be marked “Needs regenerating”.” No Cancel button; close with ✕ or Esc. Credits for all videos are checked before starting.</P>
+        <P>Copy: “Your N variations were made from this video. Regenerate them too so they match.” Regenerating only the reference marks them “Needs regenerating”. No Cancel button; close with ✕ or Esc. Credits for all videos are checked before starting.</P>
       </>
     ),
   },

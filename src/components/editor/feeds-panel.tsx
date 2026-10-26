@@ -178,7 +178,7 @@ export function FeedsPanel({
             </Tooltip>
             {menu(open, true)}
           </div>
-          <p className="-mt-1 px-1 text-xs text-muted-foreground">Its value in each variation</p>
+          <p className="-mt-1 px-1 text-xs text-muted-foreground">Type what each variation shows.</p>
           <ul className="flex flex-col gap-2.5 pt-1">
             {videos.map((v) => {
               const k = key(open.id, v.id)

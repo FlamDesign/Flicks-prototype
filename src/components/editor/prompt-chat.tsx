@@ -252,12 +252,12 @@ export function focusPromptBox(label?: string) {
     if (!box) return
     box.querySelector<HTMLTextAreaElement>("textarea")?.focus()
     box.dataset.flash = ""
-    setTimeout(() => delete box.dataset.flash, 1400)
+    setTimeout(() => delete box.dataset.flash, 700)
     if (label) window.dispatchEvent(new CustomEvent("flam:prompt-spotlight", { detail: label }))
   }, 80)
 }
 
-/** The prompt box spotlight: everything else dims briefly and a label sits above the box. Fades on its own, or on typing or a click. */
+/** The prompt box cue: the page dims a little, with a ring on the box and a small label above it for about a second. Fades on its own, or on typing or a click. */
 export function PromptSpotlight() {
   const [spot, setSpot] = useState<{ label: string; rect: DOMRect; n: number } | null>(null)
   const [leaving, setLeaving] = useState(false)
@@ -274,27 +274,25 @@ export function PromptSpotlight() {
   useEffect(() => {
     if (!spot) return
     const fade = () => setLeaving(true)
-    const t1 = setTimeout(fade, 1800)
+    const t1 = setTimeout(fade, 700)
     window.addEventListener("keydown", fade, { once: true })
     window.addEventListener("pointerdown", fade, { once: true })
     return () => (clearTimeout(t1), window.removeEventListener("keydown", fade), window.removeEventListener("pointerdown", fade))
   }, [spot?.n])
   useEffect(() => {
     if (!leaving) return
-    const t = setTimeout(() => setSpot(null), 300)
+    const t = setTimeout(() => setSpot(null), 200)
     return () => clearTimeout(t)
   }, [leaving])
   if (!spot) return null
   const r = spot.rect
   const pad = 6
   return (
-    <div aria-hidden className={cn("pointer-events-none fixed inset-0 z-[60] transition-opacity duration-300 animate-in fade-in-0", leaving && "opacity-0")}>
-      <div
-        className="absolute rounded-2xl ring-2 ring-primary"
-        style={{ left: r.left - pad, top: r.top - pad, width: r.width + pad * 2, height: r.height + pad * 2, boxShadow: "0 0 0 9999px rgb(0 0 0 / 0.4)" }}
-      />
+    <div aria-hidden className={cn("pointer-events-none fixed inset-0 z-[60] transition-opacity duration-200 animate-in fade-in-0", leaving && "opacity-0")}>
+      {/* everything else dims a little */}
+      <div className="absolute rounded-[20px]" style={{ left: r.left - pad, top: r.top - pad, width: r.width + pad * 2, height: r.height + pad * 2, boxShadow: "0 0 0 9999px rgb(0 0 0 / 0.2)" }} />
       <span
-        className="absolute flex items-center gap-1.5 whitespace-nowrap rounded-full bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow-lg animate-in slide-in-from-bottom-2 duration-300"
+        className="absolute flex items-center gap-1.5 whitespace-nowrap rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground shadow-md animate-in slide-in-from-bottom-1 duration-200"
         style={{ left: r.left + r.width / 2, top: r.top - pad - 12, transform: "translate(-50%, -100%)" }}
       >
         {spot.label}
