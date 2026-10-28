@@ -353,16 +353,19 @@ export default function App() {
                   credits={credits}
                   onSpend={(n) => addCredits(-n)}
                   onGenerate={(g) => {
+                    const chatFirst = dev.aiChat && !template
                     setGeneration((prev) => {
                       // each new generation shows the next product set's reference video
                       const next = prev ? REFERENCE_VIDEOS[(Math.max(0, REFERENCE_VIDEOS.indexOf(prev.video)) + 1) % REFERENCE_VIDEOS.length] : 0
-                      return { ...g, id: crypto.randomUUID(), startedAt: Date.now(), video: next }
+                      // with the chat on, nothing generates yet: the chat plans the Flick first
+                      return { ...g, id: crypto.randomUUID(), startedAt: chatFirst ? 0 : Date.now(), video: next, ...(chatFirst ? { agent: true } : {}) }
                     })
                     setPage("Generate")
                     // the editor keeps the template's details, so the home box starts fresh
                     setTemplate(null)
                   }}
                   onGetCredits={() => setBuyOpen(true)}
+                  chat={dev.aiChat}
                   template={template}
                   onClearTemplate={() => setTemplate(null)}
                   prompt={prompt}

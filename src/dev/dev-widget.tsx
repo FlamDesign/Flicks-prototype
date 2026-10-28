@@ -1,10 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { DashboardSquare01Icon, DragDropVerticalIcon, File01Icon, Mail01Icon, FlashIcon, TestTubeIcon } from "@hugeicons/core-free-icons"
+import { AiChat02Icon, DashboardSquare01Icon, DragDropVerticalIcon, File01Icon, Mail01Icon, FlashIcon, TestTubeIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { useDevActions } from "@/dev/dev-actions"
+import { useDevState } from "@/dev/state"
 
 const KEY = "flam.devWidget"
 const MARGIN = 8
@@ -99,6 +100,8 @@ export function DevWidget({ onStateManager, onComponents, onPrd, onEmails }: { o
 
   // shortcuts the current screen offers (e.g. opening the emailed sign-in link)
   const actions = useDevActions()
+  // the mode switch: chat first (agent flow) or straight to Generate (current flow)
+  const { state: dev, update } = useDevState()
   const tools = [
     { label: "State manager", icon: TestTubeIcon, onClick: onStateManager },
     { label: "Components", icon: DashboardSquare01Icon, onClick: onComponents },
@@ -158,6 +161,29 @@ export function DevWidget({ onStateManager, onComponents, onPrd, onEmails }: { o
         </Button>
       ))}
       {actions.length > 0 && <span aria-hidden className="mx-0.5 h-4 w-px bg-white/15" />}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            role="switch"
+            aria-checked={dev.aiChat}
+            aria-label="AI chat mode"
+            onClick={() => update({ aiChat: !dev.aiChat })}
+            className={cn(
+              "relative h-7 gap-1.5 rounded-lg text-xs font-normal transition-none hover:bg-white/10 hover:text-white dark:hover:bg-white/10",
+              dev.aiChat ? "bg-white/15 text-white" : "text-white/60",
+              open ? "px-2" : "w-7 px-0",
+            )}
+          >
+            <HugeiconsIcon icon={AiChat02Icon} className="size-3.5" />
+            {open && <span className="animate-in fade-in-0 duration-150">AI chat {dev.aiChat ? "on" : "off"}</span>}
+            <span aria-hidden className={cn("size-1.5 rounded-full", dev.aiChat ? "bg-emerald-400" : "bg-white/30", !open && "absolute right-1 top-1")} />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{dev.aiChat ? "On: a new prompt opens the chat, which plans the Flick first. Click to turn off." : "Off: Generate makes the video straight away. Click to turn on the chat."}</TooltipContent>
+      </Tooltip>
+      <span aria-hidden className="mx-0.5 h-4 w-px bg-white/15" />
       {tools.map((t) => (
         <Button
           key={t.label}

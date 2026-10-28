@@ -23,8 +23,13 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Check for committed secrets
+        run: ./scripts/scan-secrets.sh
       - run: npm ci
       - run: npx vite build -c vite.artifact.config.ts
+        env:
+          # the AI server's address (a repository variable, not a secret); the passcode is typed in dev tools
+          VITE_AI_URL: ${{ vars.AI_SERVER_URL }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

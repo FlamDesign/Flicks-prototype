@@ -5,7 +5,7 @@ import { DevBadge } from "@/dev/state-manager"
 import { cn } from "@/lib/utils"
 
 /** Bump when the PRD changes. */
-export const PRD_UPDATED = "Oct 25, 2026, 8:45 pm"
+export const PRD_UPDATED = "Oct 28, 2026, 3:30 pm"
 
 /* ---------- small writing helpers ---------- */
 
@@ -217,6 +217,23 @@ const SECTIONS: Section[] = [
             "Generate shows the video\u2019s credit cost in a small badge once there\u2019s a prompt (or a template); an empty box shows just Generate. Cost depends on size and length: display ad sizes (250×250 to 300×600) cost 7, 9, 11, 13 or 16 credits for 6, 8, 10, 12 or 15 seconds; social and video sizes (1080×1080, 1080×1920, 1920×1080) cost 36, 48, 59, 71 or 89. Changing size or length updates it live. Without enough credits, Get credits opens instead.",
             "In this prototype a video generates in about a second (real generation takes longer).",
             "Generating opens the editor straight away with the reference video generating. Until that first video is ready, only the prompts panel, the left rail and the canvas show; the slides strip appears once it's ready.",
+            "With the chat on (the default for a new prompt; templates still open ready-made), the button says Start instead of Generate and shows no cost: nothing is charged until the plan is approved.",
+          ]}
+        />
+        <H>Plan with the chat</H>
+        <UL
+          items={[
+            "Start opens the editor with the right panel titled Chat. The prompt (and any images added on Create) is the first message. The canvas shows \u201cPlanning your Flick\u201d until the plan is approved; nothing generates before that.",
+            "The chat asks at most three short rounds of questions as cards with tappable answers (multi-select ones have Continue; most also take a typed answer): what changes between variations, where the Flick runs, look and feel, product details, prices and links. It skips what the prompt already says.",
+            "Images: it can ask for product photos or a logo in a card with a drop zone (Add images or Skip). Images can also be added to any message with + or by dropping or pasting.",
+            "Brand: once it knows the colours, font and tone, a small brand card shows them; the design uses them.",
+            "Plan card, editable in place: project name; the reference video prompt; 2 to 5 variations, each with a name, price, prompt and link; and the on-screen headline and button text, with what changes per variation and the layout. The footer shows the number of videos and total credits (and the balance if it\u2019s short), with Ask for changes (focuses the message box) and Generate all.",
+            "Generate all charges every video, starts the reference video, queues the variations right after it, and places the design: label, headline, price and the button in a stack (top, centre or bottom), with label, price and link as feeds filled per variation, plus the thumbnail strip. The reference video shows the first variation\u2019s values. The project takes the plan\u2019s name.",
+            "Thumbnails: the chat then sets one per variation, from the user\u2019s photos or a generated image (each shows in the chat as \u201cMaking an image\u2026\u201d, then \u201cThumbnail for Gold, Added to the Flick\u201d). Images also land in the Images panel.",
+            "After that, the chat makes changes on request: headline, subheading, button text, colours, button style and font; a variation\u2019s name, label, price, link or prompt (regenerating it); or a new variation. Each change shows a one-line note with a tick.",
+            "Once the plan is approved, a switch above the message box offers Chat or Prompt a video (the per-video prompt box, writing for the video in view). Generation history shows in the same timeline as the chat.",
+            "The chat streams its replies; Stop ends a reply. If a reply fails, an error with Retry shows in the chat. A header badge says Claude (live) or Demo (scripted).",
+            "In this prototype: with an AI server connected, Claude plans and designs and Higgsfield makes the images; videos are always simulated. Without one, a scripted demo follows the same steps with sample images and understands a few edits (button text, headline, button colour, add a variation). The chat isn\u2019t kept when leaving the project.",
           ]}
         />
         <H>Templates</H>

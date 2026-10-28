@@ -21,6 +21,8 @@ export type HistoryItem = {
   startedAt: number
   /** generated together with the reference video (Regenerate all) */
   batch?: boolean
+  /** when it was sent (startedAt can be later: queued after the reference video) */
+  at?: number
 }
 
 const MIN_W = 280
@@ -47,7 +49,21 @@ export function PromptChat({
   busy,
   collapsed,
   onCollapse,
+  title = "Prompts",
+  badge,
+  extra = [],
+  emptyText = "Prompts for the reference video and each variation show up here.",
+  head,
 }: {
+  /** replaces "Creating for" above the composer */
+  head?: React.ReactNode
+  /** panel title: Prompts, or Chat when the chat plans the Flick */
+  title?: string
+  /** shown beside the title (live or demo chat) */
+  badge?: React.ReactNode
+  /** more chat items (the planning chat), merged with the history by time */
+  extra?: { key: string; at: number; node: React.ReactNode }[]
+  emptyText?: string
   history: HistoryItem[]
   /** the video's current name (names can change after the fact) */
   nameOf: (slideId: string) => string | undefined
@@ -107,52 +123,16 @@ export function PromptChat({
   // keep the newest message in view
   useEffect(() => {
     list.current?.scrollTo({ top: list.current.scrollHeight, behavior: "smooth" })
-  }, [history.length, collapsed])
+  }, [history.length, collapsed, extra.length])
+  // keep following a reply as it streams in, unless the user scrolled up
+  const lastNode = extra.at(-1)?.node
+  useEffect(() => {
+    const el = list.current
+    if (el && el.scrollHeight - el.scrollTop - el.clientHeight < 160) el.scrollTop = el.scrollHeight
+  }, [lastNode])
 
   if (collapsed) return null
-
-  return (
-    <aside
-      aria-label="Prompts"
-      style={{ width }}
-      // a shade darker than the editor, with a thicker edge, so it reads as its own space
-      className="relative flex shrink-0 flex-col border-l-2 border-foreground/10 bg-[color-mix(in_oklch,var(--muted),var(--foreground)_4%)]"
-    >
-      {/* drag to resize; double-click resets */}
-      <div
-        role="separator"
-        aria-orientation="vertical"
-        aria-label="Resize prompts panel"
-        aria-valuemin={MIN_W}
-        aria-valuemax={MAX_W}
-        aria-valuenow={width}
-        tabIndex={0}
-        onPointerDown={startResize}
-        onDoubleClick={() => setWidth(DEFAULT_W)}
-        onKeyDown={(e) => {
-          if (e.key === "ArrowLeft") (e.preventDefault(), setWidth((w) => clampW(w + 16)))
-          if (e.key === "ArrowRight") (e.preventDefault(), setWidth((w) => clampW(w - 16)))
-        }}
-        className="group/resize absolute inset-y-0 -left-[5px] z-20 w-2 cursor-col-resize outline-none"
-      >
-        <span className="absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 bg-primary opacity-0 transition-opacity group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100 group-active/resize:opacity-100" />
-      </div>
-      <div className="flex h-11 shrink-0 items-center gap-2 border-b border-foreground/5 pl-4 pr-2">
-        <h2 className="text-sm font-medium">Prompts</h2>
-        {onCollapse && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label="Hide prompts" onClick={onCollapse} className="ml-auto text-muted-foreground">
-                <HugeiconsIcon icon={PanelRightCloseIcon} className="size-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" align="end">Hide prompts</TooltipContent>
-          </Tooltip>
-        )}
-      </div>
-      <div ref={list} className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-3 pb-4 pt-3">
-        {history.length === 0 && <p className="px-1 pt-2 text-sm text-muted-foreground">Prompts for the reference video and each variation show up here.</p>}
-        {history.map((h) => {
+  const historyRow = (h: HistoryItem) => {
           const name = nameOf(h.slideId)
           const generating = isGenerating(h)
           const current = isCurrent(h)
@@ -199,15 +179,67 @@ export function PromptChat({
               </button>
             </div>
           )
-        })}
+  }
+
+
+  return (
+    <aside
+      aria-label="Prompts"
+      style={{ width }}
+      // a shade darker than the editor, with a thicker edge, so it reads as its own space
+      className="relative flex shrink-0 flex-col border-l-2 border-foreground/10 bg-[color-mix(in_oklch,var(--muted),var(--foreground)_4%)]"
+    >
+      {/* drag to resize; double-click resets */}
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize prompts panel"
+        aria-valuemin={MIN_W}
+        aria-valuemax={MAX_W}
+        aria-valuenow={width}
+        tabIndex={0}
+        onPointerDown={startResize}
+        onDoubleClick={() => setWidth(DEFAULT_W)}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowLeft") (e.preventDefault(), setWidth((w) => clampW(w + 16)))
+          if (e.key === "ArrowRight") (e.preventDefault(), setWidth((w) => clampW(w - 16)))
+        }}
+        className="group/resize absolute inset-y-0 -left-[5px] z-20 w-2 cursor-col-resize outline-none"
+      >
+        <span className="absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 bg-primary opacity-0 transition-opacity group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100 group-active/resize:opacity-100" />
+      </div>
+      <div className="flex h-11 shrink-0 items-center gap-2 border-b border-foreground/5 pl-4 pr-2">
+        <h2 className="text-sm font-medium">{title}</h2>
+        {badge}
+        {onCollapse && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon-sm" aria-label="Hide prompts" onClick={onCollapse} className="ml-auto text-muted-foreground">
+                <HugeiconsIcon icon={PanelRightCloseIcon} className="size-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" align="end">Hide prompts</TooltipContent>
+          </Tooltip>
+        )}
+      </div>
+      <div ref={list} className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-3 pb-4 pt-3">
+        {history.length === 0 && extra.length === 0 && <p className="px-1 pt-2 text-sm text-muted-foreground">{emptyText}</p>}
+        {[
+          ...history.map((h) => ({ key: h.id, at: h.at ?? h.startedAt, h })),
+          ...extra.map((x) => ({ ...x, h: undefined })),
+        ]
+          .sort((a, b) => a.at - b.at)
+          .map((row) => (row.h ? historyRow(row.h) : <div key={row.key} className="flex flex-col">{row.node}</div>))}
       </div>
 
       {/* composer: says which video it's writing for */}
       <div className="shrink-0 border-t-2 border-foreground/10 p-3">
-        <div className="flex items-center gap-2 px-1 pb-2 text-xs text-muted-foreground">
-          <span>Creating for</span>
-          <TargetChip name={target.name} poster={target.poster} />
-        </div>
+        {head ?? (
+          <div className="flex items-center gap-2 px-1 pb-2 text-xs text-muted-foreground">
+            <span>Creating for</span>
+            <TargetChip name={target.name} poster={target.poster} />
+          </div>
+        )}
         <div data-composer className={cn("rounded-2xl transition-[opacity,box-shadow] duration-300 data-[flash]:ring-2 data-[flash]:ring-primary data-[flash]:ring-offset-2 data-[flash]:ring-offset-background", busy && "pointer-events-none opacity-60")} aria-disabled={busy}>
           {composer}
         </div>
@@ -222,7 +254,7 @@ export function PromptChat({
   )
 }
 
-function TargetChip({ name, poster, removed, onClick }: { name: string; poster?: string; removed?: boolean; onClick?: () => void }) {
+export function TargetChip({ name, poster, removed, onClick }: { name: string; poster?: string; removed?: boolean; onClick?: () => void }) {
   const body = (
     <>
       {poster ? <img src={poster} alt="" className="size-4 rounded object-cover" /> : <HugeiconsIcon icon={removed ? Alert02Icon : SparklesIcon} className="size-3" />}

@@ -4,3 +4,8 @@ dist-*/
 *.tsbuildinfo
 /ed*.png
 .DS_Store
+
+# local AI server secrets
+.dev.vars
+server/.dev.vars
+server/.wrangler/

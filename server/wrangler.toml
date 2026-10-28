@@ -1,0 +1,16 @@
+# Flicks AI server. Deployed by .github/workflows/ai-server.yml; keys are Worker secrets, never here.
+name = "flicks-ai"
+main = "worker.ts"
+compatibility_date = "2025-09-01"
+workers_dev = true
+
+[vars]
+# browsers on other sites are refused; the passcode is still required from everywhere
+ALLOWED_ORIGINS = "https://flamdesign.github.io,http://localhost:5173,http://localhost:4173"
+DAILY_IMAGE_CAP = "50"
+DAILY_CHAT_CAP = "500"
+HF_IMAGE_PATH = "/higgsfield-ai/soul/standard"
+
+[[kv_namespaces]]
+binding = "USAGE"
+id = "__USAGE_KV_ID__"

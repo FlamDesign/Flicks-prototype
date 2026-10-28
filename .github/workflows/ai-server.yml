@@ -1,0 +1,65 @@
+name: Deploy AI server
+
+# Deploys server/ (a Cloudflare Worker) with the keys from this repo's encrypted secrets.
+# Secrets never enter the code or the logs; pull requests from forks can't read them.
+on:
+  push:
+    branches: [main]
+    paths: ["server/**", ".github/workflows/ai-server.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-server
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check for committed secrets
+        run: ./scripts/scan-secrets.sh
+      - name: Check Cloudflare secrets are set
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::Add CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID in Settings > Secrets and variables > Actions (see server/README.md)."
+            exit 1
+          fi
+      - name: Find or create the usage store (KV)
+        run: |
+          API="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/storage/kv/namespaces"
+          AUTH="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+          ID=$(curl -fsS -H "$AUTH" "$API?per_page=100" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const r=JSON.parse(s).result||[];const n=r.find(x=>x.title==="flicks-ai-usage");process.stdout.write(n?n.id:"")})')
+          if [ -z "$ID" ]; then
+            ID=$(curl -fsS -X POST -H "$AUTH" -H "Content-Type: application/json" -d '{"title":"flicks-ai-usage"}' "$API" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.parse(s).result.id))')
+          fi
+          sed -i "s/__USAGE_KV_ID__/$ID/" server/wrangler.toml
+      - name: Deploy
+        working-directory: server
+        run: npx -y wrangler@4 deploy
+      - name: Set the keys
+        working-directory: server
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          HIGGSFIELD_KEY_ID: ${{ secrets.HIGGSFIELD_KEY_ID }}
+          HIGGSFIELD_KEY_SECRET: ${{ secrets.HIGGSFIELD_KEY_SECRET }}
+          PASSCODE: ${{ secrets.AI_PASSCODE }}
+        run: |
+          umask 077
+          node -e 'const k=["ANTHROPIC_API_KEY","HIGGSFIELD_KEY_ID","HIGGSFIELD_KEY_SECRET","PASSCODE"];const o={};for(const n of k)if(process.env[n])o[n]=process.env[n];require("fs").writeFileSync("/tmp/secrets.json",JSON.stringify(o));console.log("Setting:",Object.keys(o).join(", ")||"none")'
+          npx -y wrangler@4 secret bulk /tmp/secrets.json
+          rm -f /tmp/secrets.json
+      - name: Show the server address
+        run: |
+          SUB=$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.parse(s).result.subdomain||""))')
+          echo "AI server: https://flicks-ai.$SUB.workers.dev" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "Add it as the repository variable AI_SERVER_URL so the site uses it by default." >> "$GITHUB_STEP_SUMMARY"

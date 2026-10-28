@@ -103,7 +103,7 @@ export type Feed = { id: string; name: string; type: "text" | "link" }
 export type Crop = { t: number; r: number; b: number; l: number } // % inset from each side
 
 /** Any element on the canvas; `hidden` keeps it out of the Flick without deleting it (Layers panel). */
-export type CanvasElement = BaseElement & { hidden?: boolean }
+export type CanvasElement = BaseElement & { hidden?: boolean; /** what the chat placed it as (headline, price, cta…) so it can find it again */ role?: string }
 type BaseElement =
   | ({
       id: string

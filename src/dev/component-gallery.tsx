@@ -46,6 +46,9 @@ import { PromptChat, type HistoryItem } from "@/components/editor/prompt-chat"
 import { ReferenceThumb } from "@/components/prompt-composer"
 import { DevBadge } from "@/dev/state-manager"
 import { cn } from "@/lib/utils"
+import { AgentItemView } from "@/components/editor/agent-chat"
+import type { Item } from "@/ai/agent"
+import type { Plan } from "@/ai/design"
 
 /* ---------- forced states ----------
  * Hover, focus and pressed are pseudo-classes, so they can't be set from code.
@@ -593,6 +596,12 @@ const ENTRIES: Entry[] = [
     render: () => <States states={[{ label: "Default", node: <ToolbarGrip onDragStart={() => {}} onReset={() => {}} /> }, { label: "Hover", node: <ToolbarGrip onDragStart={() => {}} onReset={() => {}} />, force: "hover" }]} />,
   },
   {
+    name: "Chat cards",
+    kind: "Editor",
+    about: "What the planning chat shows: a question, an image request, the brand, the plan, images and notes.",
+    render: () => <ChatCardsDemo />,
+  },
+  {
     name: "Layers panel",
     kind: "Editor",
     about: "Rows: normal, selected, hidden. Hover a row for hide and delete.",
@@ -886,5 +895,44 @@ function PopupDemo({ kind }: { kind: "intro" | "gift" }) {
         <WelcomeGiftDialog key={n} open={open} name="Alex" onClaim={() => {}} onDone={() => setOpen(false)} />
       )}
     </>
+  )
+}
+
+/* ---------- chat cards ---------- */
+
+const fakeAgent = { items: [], busy: false, waiting: false, send: async () => {}, answer: async () => {}, addAssets: async () => {}, decidePlan: async () => {}, stop: () => {}, retry: () => {} } as unknown as Parameters<typeof AgentItemView>[0]["agent"]
+const chatCtx = { videoCost: 48, credits: 1000, addToCanvas: () => {}, focusComposer: () => {} }
+const demoPlan: Plan = {
+  title: "Sport lens drop",
+  reference: { prompt: "Athlete against a sunlit concrete wall, slow push-in, golden hour." },
+  variations: [
+    { name: "Gold", prompt: "Same scene, gold mirrored lenses.", price: "$189", link: "https://example.com/gold" },
+    { name: "Sapphire", prompt: "Same scene, sapphire lenses.", price: "$199" },
+  ],
+  design: { headline: "Find your lens", cta: "Shop now", show_price: true, layout: "bottom" },
+}
+function ChatCardsDemo() {
+  const it = (x: Record<string, unknown>) => ({ id: String(Math.random()), at: 0, ...x }) as Item
+  const states = [
+    { label: "Thinking", node: <AgentItemView item={it({ kind: "assistant", text: "", streaming: true })} agent={fakeAgent} ctx={chatCtx} /> },
+    { label: "Question", node: <AgentItemView item={it({ kind: "question", toolId: "q", question: "Where will this Flick run?", options: ["Ads", "My website", "A link"], multi: false, custom: true })} agent={fakeAgent} ctx={chatCtx} /> },
+    { label: "Question, answered", node: <AgentItemView item={it({ kind: "question", toolId: "q", question: "Where will this Flick run?", options: ["Ads", "My website", "A link"], multi: false, custom: true, answer: "Ads" })} agent={fakeAgent} ctx={chatCtx} /> },
+    { label: "Images request", node: <AgentItemView item={it({ kind: "assets", toolId: "a", message: "Add product photos or your logo.", kinds: ["product", "logo"] })} agent={fakeAgent} ctx={chatCtx} /> },
+    { label: "Brand", node: <AgentItemView item={it({ kind: "brand", brand: { name: "Lumen", primary_color: "#ea580c", text_color: "#ffffff", font: "Montserrat", tone: "Bold" } })} agent={fakeAgent} ctx={chatCtx} /> },
+    { label: "Plan", node: <AgentItemView item={it({ kind: "plan", toolId: "p", plan: demoPlan, state: "open" })} agent={fakeAgent} ctx={chatCtx} /> },
+    { label: "Image, making", node: <AgentItemView item={it({ kind: "image", prompt: "Gold lens close-up", purpose: "thumbnail", target: "Gold", state: "working" })} agent={fakeAgent} ctx={chatCtx} /> },
+    { label: "Image, added", node: <AgentItemView item={it({ kind: "image", prompt: "Gold lens close-up", purpose: "thumbnail", target: "Gold", state: "done", url: GENERATED_VIDEOS[1].poster, placed: true })} agent={fakeAgent} ctx={chatCtx} /> },
+    { label: "Note", node: <AgentItemView item={it({ kind: "note", text: "Changed the button text." })} agent={fakeAgent} ctx={chatCtx} /> },
+    { label: "Error", node: <AgentItemView item={it({ kind: "error", text: "Couldn't reach the AI server." })} agent={fakeAgent} ctx={chatCtx} /> },
+  ]
+  return (
+    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+      {states.map((x) => (
+        <figure key={x.label} className="flex flex-col overflow-hidden rounded-xl ring-1 ring-foreground/10">
+          <div className="flex flex-1 flex-col justify-center bg-[color-mix(in_oklch,var(--muted),var(--foreground)_4%)] p-3">{x.node}</div>
+          <figcaption className="border-t px-2.5 py-1.5 text-[11px] text-muted-foreground">{x.label}</figcaption>
+        </figure>
+      ))}
+    </div>
   )
 }

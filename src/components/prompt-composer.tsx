@@ -59,7 +59,10 @@ export function PromptComposer({
   onSpend,
   onGetCredits,
   onGenerate,
+  chat,
 }: {
+  /** the chat plans the Flick first: Start opens it, nothing is charged yet (not for templates) */
+  chat?: boolean
   onGenerate: (g: { prompt: string; size: string; duration: number; references: number; refs: Reference[] }) => void
   credits: number
   onSpend: (n: number) => void
@@ -124,14 +127,15 @@ export function PromptComposer({
   // what this video costs: depends on its size and length
   const COST = videoCost(size, duration)
   // shown on Generate once there's something to generate
-  const showCost = prompt.trim().length > 0 || !!template
+  const planFirst = !!chat && !template
+  const showCost = !planFirst && (prompt.trim().length > 0 || !!template)
   const short = credits < COST
 
   const send = () => {
     if (!canSend) return
-    if (short) return onGetCredits() // not enough credits: open Get credits instead
+    if (short && !planFirst) return onGetCredits() // not enough credits: open Get credits instead
     setSending(true)
-    onSpend(COST)
+    if (!planFirst) onSpend(COST)
     // brief spinner on the button, then hand off to the generation canvas
     setTimeout(() => {
       setSending(false)
@@ -311,9 +315,9 @@ export function PromptComposer({
           <Tooltip>
             <TooltipTrigger asChild>
               <span tabIndex={canSend ? -1 : 0}>
-                <Button disabled={!canSend || sending} onClick={send} className={cn("gap-2 pl-3", showCost ? "pr-1.5" : "pr-3")} aria-label={showCost ? `Generate video, uses ${COST} credits` : "Generate video"}>
+                <Button disabled={!canSend || sending} onClick={send} className={cn("gap-2 pl-3", showCost ? "pr-1.5" : "pr-3")} aria-label={planFirst ? "Start" : showCost ? `Generate video, uses ${COST} credits` : "Generate video"}>
                   <HugeiconsIcon icon={sending ? Loading03Icon : SparklesIcon} className={cn("size-4", sending && "animate-spin")} />
-                  {sending ? "Generating…" : "Generate"}
+                  {planFirst ? (sending ? "Starting…" : "Start") : sending ? "Generating…" : "Generate"}
                   {showCost && (
                     <span className="flex items-center gap-1 rounded-full bg-primary-foreground/20 px-2 py-0.5 text-xs font-medium tabular-nums leading-none animate-in fade-in zoom-in-95">
                       {COST}
@@ -322,7 +326,7 @@ export function PromptComposer({
                 </Button>
               </span>
             </TooltipTrigger>
-            <TooltipContent>{uploading ? "Uploading images" : failedRefs ? "Retry or remove the images that didn’t upload" : "Generate video"}</TooltipContent>
+            <TooltipContent>{uploading ? "Uploading images" : failedRefs ? "Retry or remove the images that didn’t upload" : planFirst ? "Plan it in the chat first. Credits are used when you generate." : "Generate video"}</TooltipContent>
           </Tooltip>
         </div>
 

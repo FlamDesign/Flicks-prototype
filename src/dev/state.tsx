@@ -41,6 +41,7 @@ export type DevState = {
   adPaymentFails: boolean
   largeAccount: boolean
   featureIntro: boolean
+  aiChat: boolean
 }
 
 /** A brand-new user: signed out, nothing made yet, no credits or ad funds, and realistic but short waits. */
@@ -76,6 +77,8 @@ export const NEW_USER: DevState = {
   largeAccount: false,
   // new users see How Flicks work once they reach Create
   featureIntro: true,
+  // a new prompt on Create opens the chat, which plans the Flick before anything generates
+  aiChat: true,
 }
 
 /** The default for now: a returning user, signed in, with sample projects, Flicks, credits and ad funds, and the same realistic waits. */
@@ -95,12 +98,12 @@ export const DEFAULTS: DevState = {
   featureIntro: false,
 }
 /** Help Center captures: the returning user with no waits. */
-const CAPTURE_STATE: DevState = { ...DEFAULTS, pageLoadMs: 0, generationSeconds: 1, publishSeconds: 5 }
+const CAPTURE_STATE: DevState = { ...DEFAULTS, pageLoadMs: 0, generationSeconds: 1, publishSeconds: 5, aiChat: false }
 const CAPTURING = typeof location !== "undefined" && location.hash.includes("capture")
 
 type Preset<V> = { label: string; value: V }
 /** Tabs in the State manager, in display order. */
-export const TABS = ["Account", "Credits", "History", "Create", "Flicks", "Ads"] as const
+export const TABS = ["Account", "Credits", "History", "Create", "AI", "Flicks", "Ads"] as const
 export type Tab = (typeof TABS)[number]
 
 type Base<K extends keyof DevState> = { key: K; tab: Tab; group: string; label: string; hint?: string }
@@ -199,6 +202,7 @@ export const FIELDS: Field[] = [
       { label: "Slow", value: 120 },
     ],
   },
+  { key: "aiChat", tab: "AI", group: "Chat", label: "Plan with the chat", type: "boolean", hint: "On: a prompt on Create opens the chat, which asks a few questions, plans the variations and design, then generates everything. Off: Generate makes the video straight away." },
   { key: "uploadsFail", tab: "Create", group: "Image uploads", label: "Uploads fail", type: "boolean", hint: "Reference images and uploads fail, with Retry." },
   { key: "uploadsTooLarge", tab: "Create", group: "Image uploads", label: "Images are too large", type: "boolean", hint: "Every picked image is rejected as over 20 MB." },
   { key: "templatesEmpty", tab: "Create", group: "Templates", label: "No templates", type: "boolean" },

@@ -6,9 +6,9 @@ import { useCanvasView, MIN_ZOOM, MAX_ZOOM } from "@/components/editor/use-canva
 import { videoCost } from "@/components/credits-card"
 import type { Reference } from "@/components/prompt-composer"
 import { TEMPLATES, type Template } from "@/data"
-import { SlidesStrip, slideName, type Slide, type SlideStatus } from "@/components/editor/slides-strip"
+import { MAX_VARIATIONS, SlidesStrip, slideName, type Slide, type SlideStatus } from "@/components/editor/slides-strip"
 import { SlidePrompt } from "@/components/editor/slide-prompt"
-import { focusPromptBox, PromptChat, PromptSpotlight, refsOf, type HistoryItem } from "@/components/editor/prompt-chat"
+import { focusPromptBox, PromptChat, PromptSpotlight, refsOf, TargetChip, type HistoryItem } from "@/components/editor/prompt-chat"
 import { FeedsPanel, FeedsTitle } from "@/components/editor/feeds-panel"
 import { VideoLightbox } from "@/components/editor/video-lightbox"
 import { ExportControl } from "@/components/editor/export-flick"
@@ -29,6 +29,10 @@ import { EditorPanel, type Picker } from "@/components/editor/editor-panel"
 import { GeneratedVideo } from "@/components/editor/generated-video"
 import { CanvasStage } from "@/components/editor/canvas-stage"
 import { ElementToolbar, ToolbarGrip } from "@/components/editor/element-toolbar"
+import { useAgent, type EditorApi } from "@/ai/agent"
+import { buildDesign, describeDesign, patchDesign, type Brand } from "@/ai/design"
+import { isLive, useAiConfig } from "@/ai/client"
+import { AgentComposer, AgentItemView } from "@/components/editor/agent-chat"
 import { BUTTON_TEXT, DEFAULT_ICON, GENERATED_VIDEOS, SAMPLE_UPLOADS, inSet, clampStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload } from "@/components/editor/elements"
 
 export type Generation = {
@@ -55,6 +59,8 @@ export type Generation = {
   back?: string
   /** a remix: the name of the Flick it started from */
   remixOf?: string
+  /** started from Create with the chat on: nothing is generated until the chat's plan is approved */
+  agent?: boolean
 }
 type Snap = { elements: CanvasElement[]; slides: Slide[]; feeds: Feed[]; start: string; includeRef: boolean }
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never
@@ -119,7 +125,8 @@ export function GenerationCanvas({
       prompt: "",
       refs: [],
       video: generation.video,
-      startedAt: generation.startedAt,
+      // with the chat, the reference video waits for the plan
+      startedAt: generation.agent ? undefined : generation.startedAt,
       used: { prompt: generation.prompt, refs: generation.refs ?? [], fromReference: false },
     }
     if (savedSnap) return savedSnap.slides.map((x, i) => ({ ...x, n: x.n ?? (i || undefined), startedAt: x.startedAt ? 1 : undefined }))
@@ -530,6 +537,191 @@ export function GenerationCanvas({
     if (id === "main" && slides.some((s) => s.id !== "main" && s.startedAt)) return setConfirmRegen(true)
     generate(id)
   }
+  /* ---------- the chat that plans the Flick (started from Create with the chat on) ---------- */
+  const agentMode = !!generation.agent
+  const [brand, setBrand] = useState<Brand | undefined>()
+  // tools can run before React re-renders: they read the latest slides from here
+  const slidesNow = useRef(slides)
+  slidesNow.current = slides
+  const findSlide = (target: string) => {
+    const t = target.trim().toLowerCase()
+    const list = slidesNow.current
+    if (["reference", "reference video", "main"].includes(t)) return list[0]
+    return list.find((x) => slideName(x, list.indexOf(x)).toLowerCase() === t) ?? list.find((x) => t && slideName(x, list.indexOf(x)).toLowerCase().includes(t))
+  }
+  const feedId = (name: string) => feeds.find((f) => f.name === name)?.id
+  const feedVal = (sl: Slide, name: string) => {
+    const id = feedId(name)
+    return (id && sl.feeds?.[id]) || undefined
+  }
+  const keepImage = (src: string, name: string) =>
+    setUploads((u) => (u.some((x) => x.src === src) ? u : [{ id: crypto.randomUUID(), name: `${name.slice(0, 40)}.jpg`, src, loading: false }, ...u]))
+  /** starts one video now (or right after the reference video), charged and logged like the prompt box does */
+  const startVideo = (id: string, prompt: string) => {
+    if (dev.credits < VIDEO_COST) return void onGetCredits()
+    setDev((d) => ({ credits: d.credits - VIDEO_COST }))
+    const now = Date.now()
+    const main = slidesNow.current[0]
+    const startedAt = id === "main" ? now : main.startedAt && now < main.startedAt + ms ? main.startedAt + ms + 1 : now
+    const video = inSet(generation.video ?? 0, nextVideo.current++)
+    setSlides((list) => list.map((x) => (x.id === id ? { ...x, video, startedAt, prompt: "", refs: [], used: { prompt, refs: [], fromReference: id !== "main" } } : x)))
+    setHistory((h) => [...h, { id: crypto.randomUUID(), slideId: id, prompt, refs: [], fromReference: id !== "main", video, startedAt, at: now }])
+    return true
+  }
+  const agentApi: EditorApi = {
+    state: () => ({
+      flick_size: generation.size,
+      video_seconds: generation.duration ?? 8,
+      credits: dev.credits,
+      video_cost: VIDEO_COST,
+      title,
+      planned: !!slidesNow.current[0].startedAt,
+      brand,
+      videos: slidesNow.current.map((x, i) => ({
+        name: slideName(x, i),
+        role: i ? "variation" : "reference",
+        status: status(x),
+        prompt: x.used?.prompt || x.prompt || undefined,
+        label: feedVal(x, "label"),
+        price: feedVal(x, "price"),
+        link: feedVal(x, "link"),
+        has_thumbnail: !!x.thumb,
+      })),
+      design: describeDesign(elements, (id) => feeds.find((f) => f.id === id)?.name),
+      sample_set: GENERATED_VIDEOS[generation.video]?.set ?? "sunglasses",
+    }),
+    approvePlan(plan) {
+      const vars = plan.variations.filter((v) => v.name?.trim()).slice(0, 5)
+      if (vars.length < 2) return "Error: The plan needs at least two variations."
+      const cost = VIDEO_COST * (1 + vars.length)
+      if (dev.credits < cost) {
+        onGetCredits()
+        return `Error: This needs ${cost.toLocaleString()} credits and you have ${dev.credits.toLocaleString()}. Get credits, then press Generate all again.`
+      }
+      setDev((d) => ({ credits: d.credits - cost }))
+      const now = Date.now()
+      const base = generation.video ?? 0
+      const mk = (name: string, type: Feed["type"], on: boolean): Feed | undefined => (on ? { id: crypto.randomUUID(), name, type } : undefined)
+      const fLabel = mk("label", "text", vars.some((v) => v.label?.trim()))
+      const fPrice = mk("price", "text", vars.some((v) => v.price?.trim()))
+      const fLink = mk("link", "link", vars.some((v) => v.link?.trim()))
+      const main: Slide = { id: "main", prompt: "", refs: [], video: base, startedAt: now, used: { prompt: plan.reference.prompt, refs: generation.refs ?? [], fromReference: false } }
+      // the reference video shows the first variation's values, so the design never shows empty {placeholders}
+      const firstValues = (v: (typeof vars)[number]) => ({
+        ...(fLabel && v.label ? { [fLabel.id]: v.label } : {}),
+        ...(fPrice && v.price ? { [fPrice.id]: v.price } : {}),
+        ...(fLink && v.link ? { [fLink.id]: v.link } : {}),
+      })
+      main.feeds = firstValues(vars[0])
+      const vs: Slide[] = vars.map((v, i) => ({
+        id: crypto.randomUUID(),
+        n: i + 1,
+        name: v.name.trim(),
+        prompt: "",
+        refs: [],
+        video: inSet(base, i + 1),
+        // made from the reference video, so they start once it's ready
+        startedAt: now + ms + 1,
+        used: { prompt: v.prompt, refs: [], fromReference: true },
+        feeds: firstValues(v),
+      }))
+      nextN.current = vs.length + 1
+      slidesNow.current = [main, ...vs]
+      setSlides([main, ...vs])
+      setHistory([main, ...vs].map((x) => ({ id: crypto.randomUUID(), slideId: x.id, prompt: x.used!.prompt, refs: refsOf(x.used!.refs), fromReference: x.id !== "main", video: x.video!, startedAt: x.startedAt!, batch: x.id !== "main", at: now })))
+      setFeeds([fLabel, fPrice, fLink].filter((f): f is Feed => !!f))
+      stripAdded.current = true
+      setShared(buildDesign(plan.design ?? {}, { ratio, count: vs.length, feeds: { label: fLabel?.id, price: fPrice?.id, link: fLink?.id }, brand }))
+      setIncludeRef(false)
+      setStart(vs[0].id)
+      setActive("main")
+      setSelected([])
+      if (plan.title?.trim()) setTitle(plan.title.trim())
+      const per = [fLabel && "label", fPrice && "price", fLink && "link"].filter(Boolean)
+      return `Generating the reference video and ${vs.length} variations (${cost.toLocaleString()} credits); they take about ${dev.generationSeconds * 2} seconds. The design is on the canvas${per.length ? `, with ${per.join(", ")} set per variation` : ""}. Thumbnails are empty until set.`
+    },
+    updateDesign(d) {
+      if (!slidesNow.current[0].startedAt) return "Error: Approve the plan first."
+      const { elements: next, changed } = patchDesign(elements, d, brand)
+      // a headline or button the design doesn't have yet is added
+      const extra: CanvasElement[] = []
+      if (d.headline && !elements.some((e) => e.role === "headline"))
+        extra.push({ id: crypto.randomUUID(), kind: "text", variant: "heading", text: d.headline, x: 50, y: 14, align: "center", role: "headline" }), changed.push("headline")
+      if (d.cta && !elements.some((e) => e.kind === "button"))
+        extra.push({ id: crypto.randomUUID(), kind: "button", variant: "pill", text: d.cta, x: 50, y: 74, align: "center", role: "cta", ...(feedId("link") ? { linkFeed: feedId("link") } : {}) }), changed.push("button")
+      if (!changed.length) return "Nothing to change."
+      setElements([...next, ...extra])
+      return `Changed the ${changed.join(", ")}.`
+    },
+    setBrand: (b) => setBrand((x) => ({ ...x, ...b })),
+    setVariation(target, p) {
+      const sl = findSlide(target)
+      if (!sl) return `Error: No variation called “${target}”.`
+      const name = slideName(sl, slidesNow.current.indexOf(sl))
+      const values: Record<string, string> = {}
+      const newFeeds: Feed[] = []
+      for (const [key, type] of [["label", "text"], ["price", "text"], ["link", "link"]] as const) {
+        const v = p[key]
+        if (v === undefined) continue
+        let fid = feedId(key)
+        if (!fid) newFeeds.push({ id: (fid = crypto.randomUUID()), name: key, type })
+        values[fid] = v
+      }
+      if (newFeeds.length) setFeeds((f) => [...f, ...newFeeds])
+      setSlides((list) => list.map((x) => (x.id === sl.id ? { ...x, ...(p.name ? { name: p.name } : {}), feeds: { ...x.feeds, ...values } } : x)))
+      const parts = [p.name && `renamed it ${p.name}`, ...Object.keys(values).length ? ["updated its " + (["label", "price", "link"] as const).filter((k) => p[k] !== undefined).join(", ")] : []].filter(Boolean)
+      if (p.regenerate && p.prompt) {
+        if (!startVideo(sl.id, p.prompt)) return "Error: Not enough credits to regenerate."
+        parts.push("regenerating with the new prompt")
+      }
+      return parts.length ? `${name}: ${parts.join(", ")}.` : `Nothing changed on ${name}.`
+    },
+    addVariation(v, gen) {
+      if (slidesNow.current.length > MAX_VARIATIONS) return `Error: A Flick has at most ${MAX_VARIATIONS} variations.`
+      const id = crypto.randomUUID()
+      const n = nextN.current++
+      const values: Record<string, string> = {}
+      for (const key of ["label", "price", "link"] as const) {
+        const fid = feedId(key)
+        if (fid && v[key]) values[fid] = v[key]!
+      }
+      const sl: Slide = { id, n, name: v.name?.trim() || undefined, prompt: v.prompt ?? "", refs: [], feeds: values }
+      slidesNow.current = [...slidesNow.current, sl]
+      setSlides((l) => [...l, sl])
+      if (gen && v.prompt && slidesNow.current[0].startedAt) startVideo(id, v.prompt)
+      return `Added ${v.name || `Variation ${n}`}${gen ? " and started its video" : ""}.`
+    },
+    setThumbnail(target, url) {
+      const sl = findSlide(target)
+      if (!sl) return `Error: No variation called “${target}”.`
+      patchSlide(sl.id, { thumb: url })
+      keepImage(url, `${slideName(sl, slidesNow.current.indexOf(sl))} thumbnail`)
+      return `Set ${slideName(sl, slidesNow.current.indexOf(sl))}'s thumbnail.`
+    },
+    addImageToCanvas(url) {
+      if (!slidesNow.current[0].startedAt) return "Error: Approve the plan first."
+      addImage(url)
+      keepImage(url, "image")
+      return "Added the image to the canvas."
+    },
+    sampleImage(purpose, target) {
+      const sl = target ? findSlide(target) : undefined
+      if (sl?.video !== undefined) return GENERATED_VIDEOS[sl.video % GENERATED_VIDEOS.length].poster
+      void purpose
+      return GENERATED_VIDEOS[generation.video ?? 0].poster
+    },
+  }
+  const agent = useAgent(agentApi, { prompt: agentMode ? generation.prompt : undefined, imageUrls: agentMode ? (generation.refs ?? []).filter((r) => !r.failed).map((r) => ({ url: r.url, name: r.name })) : [], autoStart: agentMode })
+  const live = isLive(useAiConfig())
+  // the composer in chat mode: talk to the chat, or write a video's prompt yourself
+  const [composeMode, setComposeMode] = useState<"chat" | "prompt">("chat")
+  const chatting = agentMode && (composeMode === "chat" || !slides[0].startedAt)
+  // the chat is where a chat project starts, so it's always open at first
+  useEffect(() => {
+    if (agentMode) setChatHidden(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // what to fix before publishing (blocking) or worth a look (warnings)
   const variationsDone = slides.slice(1).filter((s) => status(s) === "done").length
   const publishIssues: Issue[] = [
@@ -939,7 +1131,17 @@ export function GenerationCanvas({
               className="generating-frame relative shadow-[0_24px_60px_-24px_color-mix(in_oklch,var(--shadow-ink)_35%,transparent)] ring-1 ring-foreground/10"
               style={{ width: box.w * view.s, height: box.h * view.s, containerType: "size", transform: `translate(${view.x}px, ${view.y}px)`, flexShrink: 0 }}
             >
-              {done ? (
+              {agentMode && !slides[0].startedAt ? (
+                // the chat is still planning: nothing generated yet
+                <div className="absolute inset-0 grid place-items-center overflow-hidden bg-muted">
+                  <div aria-hidden className="generating-gradient absolute inset-[-50%] opacity-30" />
+                  <div className="relative flex max-w-[75%] flex-col items-center gap-2 text-center">
+                    <HugeiconsIcon icon={SparklesIcon} className="size-5 text-primary" />
+                    <p className="text-sm font-medium">Planning your Flick</p>
+                    <p className="text-xs leading-relaxed text-muted-foreground">Answer a few questions in the chat. Your videos and design show up here once you approve the plan.</p>
+                  </div>
+                </div>
+              ) : done ? (
                 <>
                   {/* made from an older reference video: faded, and flagged above the frame */}
                   {stale(activeSlide) && (
@@ -1121,11 +1323,50 @@ export function GenerationCanvas({
             isCurrent={(h) => slides.find((x) => x.id === h.slideId)?.startedAt === h.startedAt}
             onSelect={select}
             target={{ id: activeSlide.id, name: nameOf(activeSlide), poster: activeStatus === "done" ? GENERATED_VIDEOS[activeSlide.video!].poster : undefined, isReference: activeIndex === 0 }}
-            busy={busy}
+            busy={chatting ? false : busy}
             collapsed={chatHidden}
             onCollapse={() => setChatHidden(true)}
+            {...(agentMode && {
+              title: "Chat",
+              badge: (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-medium", live ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "bg-muted text-muted-foreground")}>{live ? "Claude" : "Demo"}</span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">{live ? "Live: Claude plans and designs, Higgsfield makes images" : "Scripted demo. Connect AI in dev tools for live Claude and Higgsfield."}</TooltipContent>
+                </Tooltip>
+              ),
+              extra: agent.items.map((it) => ({
+                key: it.id,
+                at: it.at,
+                node: <AgentItemView item={it} agent={agent} ctx={{ videoCost: VIDEO_COST, credits: dev.credits, addToCanvas: (u) => agentApi.addImageToCanvas(u), focusComposer: () => (setComposeMode("chat"), focusPromptBox()) }} />,
+              })),
+              // once the plan is made, the box can also write one video's prompt directly
+              head: slides[0].startedAt ? (
+                <div className="flex items-center gap-2 px-1 pb-2 text-xs text-muted-foreground">
+                  <div role="tablist" aria-label="Write to" className="flex rounded-lg bg-foreground/5 p-0.5">
+                    {(["chat", "prompt"] as const).map((m) => (
+                      <button
+                        key={m}
+                        role="tab"
+                        aria-selected={composeMode === m}
+                        onClick={() => setComposeMode(m)}
+                        className={cn("rounded-md px-2 py-0.5 font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring", composeMode === m ? "bg-background text-foreground shadow-xs" : "hover:text-foreground")}
+                      >
+                        {m === "chat" ? "Chat" : "Prompt a video"}
+                      </button>
+                    ))}
+                  </div>
+                  {composeMode === "prompt" && <TargetChip name={nameOf(activeSlide)} poster={activeStatus === "done" ? GENERATED_VIDEOS[activeSlide.video!].poster : undefined} />}
+                </div>
+              ) : (
+                <div />
+              ),
+            })}
             composer={
-              // a template's reference video is fixed, so it has no prompt
+              chatting ? (
+                <AgentComposer agent={agent} placeholder={agent.waiting ? "Pick an answer above, or type your own" : slides[0].startedAt ? "Ask for a change: a headline, a colour, another variation" : undefined} />
+              ) : // a template's reference video is fixed, so it has no prompt
               fixedRef && activeIndex === 0 ? (
                 <p className="rounded-2xl bg-background p-3 text-sm text-muted-foreground ring-1 ring-foreground/5">The reference video comes with this template. Pick a variation to write its prompt.</p>
               ) : (
