@@ -67,7 +67,7 @@ const MESSAGES: Record<string, string> = {
   claude_not_set_up: "The AI server has no Claude key yet.",
   images_not_set_up: "The AI server has no Higgsfield key yet.",
   server_not_set_up: "The AI server isn't set up yet (no passcode).",
-  network: "Couldn't reach the AI server.",
+  network: "Couldn't reach the AI server. Check your connection and try again.",
 }
 async function fail(res: Response): Promise<never> {
   const body = (await res.json().catch(() => ({}))) as { error?: string; message?: string; what?: string }
@@ -163,14 +163,26 @@ export async function streamChat(req: ChatRequest, onText: (text: string) => voi
 /* ---------- images ---------- */
 
 /** Starts a Higgsfield image and waits for it (polling with backoff, up to about 3 minutes). */
+/** a call that rides out a dropped connection (a server redeploy, flaky wifi): up to 3 tries */
+async function steady(path: string, init?: RequestInit) {
+  for (let i = 0; ; i++) {
+    try {
+      return await call(path, init)
+    } catch (e) {
+      if (!(e instanceof AiError && e.code === "network") || i >= 2 || init?.signal?.aborted) throw e
+      await new Promise((r) => setTimeout(r, 1500 * (i + 1)))
+    }
+  }
+}
+
 export async function generateImage(prompt: string, aspect: string, signal?: AbortSignal): Promise<string> {
-  const { id } = (await (await call("/image", { method: "POST", body: JSON.stringify({ prompt, aspect_ratio: aspect }), signal })).json()) as { id: string }
+  const { id } = (await (await steady("/image", { method: "POST", body: JSON.stringify({ prompt, aspect_ratio: aspect }), signal })).json()) as { id: string }
   const until = Date.now() + 180_000
   let wait = 2000
   while (Date.now() < until) {
     await new Promise((r) => setTimeout(r, wait))
     if (signal?.aborted) throw new AiError("aborted", "Stopped.")
-    const s = (await (await call(`/image/${id}`, { signal })).json()) as { status: string; url?: string }
+    const s = (await (await steady(`/image/${id}`, { signal })).json()) as { status: string; url?: string }
     if (s.status === "completed" && s.url) return s.url
     if (s.status === "failed" || s.status === "canceled") throw new AiError("image_failed", "The image didn't generate. Try again.")
     if (s.status === "nsfw") throw new AiError("image_blocked", "Higgsfield blocked this image. Try a different description.")
