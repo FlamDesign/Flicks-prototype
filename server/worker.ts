@@ -59,6 +59,8 @@ export default {
             ok: true,
             claude: !!env.ANTHROPIC_API_KEY,
             images: !!(env.HIGGSFIELD_KEY_ID && env.HIGGSFIELD_KEY_SECRET),
+            // asks Higgsfield about a request that doesn't exist: 401 means the key is wrong
+            images_key: env.HIGGSFIELD_KEY_ID && env.HIGGSFIELD_KEY_SECRET ? await hfKeyCheck(env) : "missing",
             models: MODELS,
             caps,
             used: { images: await count(env, `img:${day}`), chats: await count(env, `chat:${day}`) },
@@ -170,15 +172,33 @@ function json(data: unknown, status = 200, headers: Record<string, string> = {})
   return new Response(JSON.stringify(data), { status, headers: { ...headers, "content-type": "application/json" } })
 }
 
-/** a readable reason for a Higgsfield failure */
+/** a readable reason for a Higgsfield failure (codes per docs.higgsfield.ai: 401 bad key, 403 no balance) */
 function hfMessage(status: number, text: string) {
-  if (status === 401 || status === 403) return "Higgsfield refused the key. Check HIGGSFIELD_KEY_ID and HIGGSFIELD_KEY_SECRET."
-  if (status === 402) return "The Higgsfield account is out of balance."
-  if (status === 429) return "Higgsfield is rate limiting. Try again in a minute."
-  return `Higgsfield answered ${status || "nothing"}: ${text.slice(0, 200)}`
+  let detail = ""
+  try {
+    const d = (JSON.parse(text) as { detail?: unknown }).detail
+    detail = typeof d === "string" ? d : d ? JSON.stringify(d).slice(0, 160) : ""
+  } catch {
+    detail = text.slice(0, 160)
+  }
+  const said = detail ? ` (Higgsfield: "${detail}")` : ""
+  if (status === 401) return `Higgsfield didn't accept the key. Check HIGGSFIELD_KEY_ID and HIGGSFIELD_KEY_SECRET (not swapped, no spaces), then re-run the AI server workflow.${said}`
+  if (status === 403 || status === 402) return `The Higgsfield API account has no balance. Add funds in console.higgsfield.ai, then try again.${said}`
+  if (status === 429) return `Higgsfield is rate limiting. Try again in a minute.${said}`
+  return `Higgsfield answered ${status || "nothing"}${said || `: ${text.slice(0, 160)}`}`
 }
 
-const hfAuth = (env: Env) => ({ authorization: `Key ${env.HIGGSFIELD_KEY_ID}:${env.HIGGSFIELD_KEY_SECRET}` })
+async function hfKeyCheck(env: Env) {
+  try {
+    const res = await fetch(`${HIGGSFIELD}/requests/00000000-0000-0000-0000-000000000000/status`, { headers: hfAuth(env) })
+    return res.status === 401 ? "invalid" : "ok"
+  } catch {
+    return "unknown"
+  }
+}
+
+// trimmed: a pasted secret often carries a stray space or newline
+const hfAuth = (env: Env) => ({ authorization: `Key ${env.HIGGSFIELD_KEY_ID?.trim()}:${env.HIGGSFIELD_KEY_SECRET?.trim()}` })
 const num = (v: string | undefined, d: number) => (v && Number.isFinite(Number(v)) ? Number(v) : d)
 
 /** compare without leaking how much matched */

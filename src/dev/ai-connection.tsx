@@ -16,7 +16,12 @@ export function AiConnection() {
     try {
       const h = await health()
       const missing = [!h.claude && "Claude key", !h.images && "Higgsfield key"].filter(Boolean)
-      setTest({ state: missing.length ? "fail" : "ok", h, text: missing.length ? `Connected, but the server has no ${missing.join(" or ")} yet.` : "Connected. Claude and Higgsfield are ready." })
+      const text = missing.length
+        ? `Connected, but the server has no ${missing.join(" or ")} yet.`
+        : h.images_key === "invalid"
+          ? "Connected, but Higgsfield doesn't accept the key. Check HIGGSFIELD_KEY_ID and HIGGSFIELD_KEY_SECRET, then re-run the AI server workflow."
+          : "Connected. Claude and Higgsfield are ready."
+      setTest({ state: missing.length || h.images_key === "invalid" ? "fail" : "ok", h, text })
     } catch (e) {
       setTest({ state: "fail", text: e instanceof Error ? e.message : "Couldn't connect." })
     }

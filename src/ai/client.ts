@@ -85,7 +85,7 @@ async function call(path: string, init?: RequestInit) {
   return res
 }
 
-export type Health = { ok: boolean; claude: boolean; images: boolean; caps: { images: number; chats: number }; used: { images: number; chats: number } }
+export type Health = { ok: boolean; claude: boolean; images: boolean; images_key?: "ok" | "invalid" | "missing" | "unknown"; caps: { images: number; chats: number }; used: { images: number; chats: number } }
 export const health = async () => (await (await call("/health")).json()) as Health
 
 /* ---------- chat ---------- */
