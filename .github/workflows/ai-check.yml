@@ -18,7 +18,8 @@ jobs:
       ORIGIN: https://flamdesign.github.io
     steps:
       - name: Health
-        run: curl -sS -m 30 -H "x-flicks-pass: $PASS" -H "origin: $ORIGIN" -w "\nHTTP %{http_code}\n" "$URL/health" || true
+        run: |
+          curl -sS -m 30 -H "x-flicks-pass: $PASS" -H "origin: $ORIGIN" -w "\nHTTP %{http_code}\n" "$URL/health" || true
       - name: Start an image through the server
         run: |
           curl -sS -m 60 -X POST -H "x-flicks-pass: $PASS" -H "origin: $ORIGIN" -H "content-type: application/json" \
