@@ -15,7 +15,7 @@ GitHub Pages site  ──(passcode)──>  flicks-ai Worker  ──(keys)──
      Add **Account > Workers KV Storage > Edit** to it.
 2. **Keys**
    - Anthropic API key: console.anthropic.com > API keys. Set a monthly spend limit there too.
-   - Higgsfield API key ID and secret: console.higgsfield.ai. A separate key with a small balance is safest.
+   - Higgsfield API key: open.higgsfield.ai > API keys > Create API key > Copy API key (one key). A separate key with a small balance is safest.
    - A passcode: any long random phrase. People type it into the prototype's dev tools.
 3. **GitHub repo secrets** (Settings > Secrets and variables > Actions > New repository secret):
 
@@ -24,8 +24,7 @@ GitHub Pages site  ──(passcode)──>  flicks-ai Worker  ──(keys)──
    | `CLOUDFLARE_API_TOKEN` | the token from step 1 |
    | `CLOUDFLARE_ACCOUNT_ID` | the account ID |
    | `ANTHROPIC_API_KEY` | Anthropic key |
-   | `HIGGSFIELD_KEY_ID` | Higgsfield key ID |
-   | `HIGGSFIELD_KEY_SECRET` | Higgsfield key secret |
+   | `HIGGSFIELD_API_KEY` | the whole Higgsfield key, as copied |
    | `AI_PASSCODE` | the passcode |
 
 4. **Deploy**: Actions > "Deploy AI server" > Run workflow. The run summary shows the server address.

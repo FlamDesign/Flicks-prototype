@@ -8,7 +8,7 @@
  *   GET  /image/:id       that image's status; { status, url? }
  *
  * Every request needs the passcode (x-flicks-pass header). Daily caps limit spend if it leaks.
- * Secrets (set by the deploy action): ANTHROPIC_API_KEY, HIGGSFIELD_KEY_ID, HIGGSFIELD_KEY_SECRET, PASSCODE.
+ * Secrets (set by the deploy action): ANTHROPIC_API_KEY, HIGGSFIELD_API_KEY (or HIGGSFIELD_KEY_ID + HIGGSFIELD_KEY_SECRET), PASSCODE.
  */
 
 interface KV {
@@ -20,6 +20,8 @@ export interface Env {
   ANTHROPIC_API_KEY?: string
   HIGGSFIELD_KEY_ID?: string
   HIGGSFIELD_KEY_SECRET?: string
+  /** the single key open.higgsfield.ai gives (it holds the ID and secret, joined by a colon); preferred when set */
+  HIGGSFIELD_API_KEY?: string
   PASSCODE?: string
   /** comma-separated origins allowed to call from a browser */
   ALLOWED_ORIGINS?: string
@@ -27,6 +29,8 @@ export interface Env {
   DAILY_CHAT_CAP?: string
   /** Higgsfield image model path, e.g. /higgsfield-ai/soul/standard */
   HF_IMAGE_PATH?: string
+  /** Higgsfield API host, if a key needs a different one */
+  HF_BASE?: string
   USAGE?: KV
 }
 
@@ -34,7 +38,7 @@ const MODELS = ["claude-sonnet-5-5", "claude-opus-5-5", "claude-haiku-4-5-202510
 const MAX_TOKENS = 4096
 const ASPECTS = ["1:1", "4:3", "3:4", "3:2", "2:3", "5:4", "4:5", "16:9", "9:16", "21:9"]
 const ANTHROPIC = "https://api.anthropic.com/v1/messages"
-const HIGGSFIELD = "https://api.higgsfield.ai"
+const HIGGSFIELD_DEFAULT = "https://api.higgsfield.ai"
 
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
@@ -58,9 +62,9 @@ export default {
           {
             ok: true,
             claude: !!env.ANTHROPIC_API_KEY,
-            images: !!(env.HIGGSFIELD_KEY_ID && env.HIGGSFIELD_KEY_SECRET),
+            images: hasHf(env),
             // asks Higgsfield about a request that doesn't exist: 401 means the key is wrong
-            images_key: env.HIGGSFIELD_KEY_ID && env.HIGGSFIELD_KEY_SECRET ? await hfKeyCheck(env) : "missing",
+            images_key: hasHf(env) ? await hfKeyCheck(env) : "missing",
             models: MODELS,
             caps,
             used: { images: await count(env, `img:${day}`), chats: await count(env, `chat:${day}`) },
@@ -95,7 +99,7 @@ export default {
       }
 
       if (req.method === "POST" && url.pathname === "/image") {
-        if (!env.HIGGSFIELD_KEY_ID || !env.HIGGSFIELD_KEY_SECRET) return json({ error: "images_not_set_up" }, 503, cors)
+        if (!hasHf(env)) return json({ error: "images_not_set_up" }, 503, cors)
         const body = (await req.json()) as { prompt?: string; aspect_ratio?: string }
         const prompt = String(body.prompt ?? "").trim().slice(0, 2000)
         if (!prompt) return json({ error: "no_prompt" }, 400, cors)
@@ -106,9 +110,9 @@ export default {
         let last = { status: 0, text: "" }
         for (const path of paths) {
           for (const payload of [{ prompt, aspect_ratio: aspect }, { prompt }]) {
-            const res = await fetch(HIGGSFIELD + path, {
+            const res = await hf(env, hfBase(env) + path, {
               method: "POST",
-              headers: { ...hfAuth(env), "content-type": "application/json", "idempotency-key": crypto.randomUUID() },
+              headers: { "content-type": "application/json", "idempotency-key": crypto.randomUUID() },
               body: JSON.stringify(payload),
             })
             const text = await res.text()
@@ -131,8 +135,8 @@ export default {
 
       const m = url.pathname.match(/^\/image\/([\w-]{8,64})$/)
       if (req.method === "GET" && m) {
-        if (!env.HIGGSFIELD_KEY_ID || !env.HIGGSFIELD_KEY_SECRET) return json({ error: "images_not_set_up" }, 503, cors)
-        const res = await fetch(`${HIGGSFIELD}/requests/${m[1]}/status`, { headers: hfAuth(env) })
+        if (!hasHf(env)) return json({ error: "images_not_set_up" }, 503, cors)
+        const res = await hf(env, `${hfBase(env)}/requests/${m[1]}/status`)
         const text = await res.text()
         let out: { status?: string; images?: { url?: string }[]; image?: { url?: string }; output?: { url?: string }[] } = {}
         try {
@@ -182,7 +186,7 @@ function hfMessage(status: number, text: string) {
     detail = text.slice(0, 160)
   }
   const said = detail ? ` (Higgsfield: "${detail}")` : ""
-  if (status === 401) return `Higgsfield didn't accept the key. Check HIGGSFIELD_KEY_ID and HIGGSFIELD_KEY_SECRET (not swapped, no spaces), then re-run the AI server workflow.${said}`
+  if (status === 401) return `Higgsfield didn't accept the key. Put the whole key from open.higgsfield.ai in the HIGGSFIELD_API_KEY secret, then re-run the AI server workflow.${said}`
   if (status === 403 || status === 402) return `The Higgsfield API account has no balance. Add funds in console.higgsfield.ai, then try again.${said}`
   if (status === 429) return `Higgsfield is rate limiting. Try again in a minute.${said}`
   return `Higgsfield answered ${status || "nothing"}${said || `: ${text.slice(0, 160)}`}`
@@ -190,15 +194,36 @@ function hfMessage(status: number, text: string) {
 
 async function hfKeyCheck(env: Env) {
   try {
-    const res = await fetch(`${HIGGSFIELD}/requests/00000000-0000-0000-0000-000000000000/status`, { headers: hfAuth(env) })
+    const res = await hf(env, `${hfBase(env)}/requests/00000000-0000-0000-0000-000000000000/status`)
     return res.status === 401 ? "invalid" : "ok"
   } catch {
     return "unknown"
   }
 }
 
-// trimmed: a pasted secret often carries a stray space or newline
-const hfAuth = (env: Env) => ({ authorization: `Key ${env.HIGGSFIELD_KEY_ID?.trim()}:${env.HIGGSFIELD_KEY_SECRET?.trim()}` })
+/**
+ * The Higgsfield credential, however it was set: one combined key (id:secret), or the ID and
+ * secret separately. Trimmed: a pasted key often carries a stray space or newline.
+ */
+function hfKey(env: Env) {
+  const one = env.HIGGSFIELD_API_KEY?.trim()
+  const id = env.HIGGSFIELD_KEY_ID?.trim()
+  const secret = env.HIGGSFIELD_KEY_SECRET?.trim()
+  if (one) return one
+  if (id?.includes(":")) return id
+  if (secret?.includes(":")) return secret
+  return id && secret ? `${id}:${secret}` : (id ?? secret ?? "")
+}
+const hfBase = (env: Env) => (env.HF_BASE?.trim() || HIGGSFIELD_DEFAULT).replace(/\/+$/, "")
+const hfAuth = (env: Env, scheme: "Key" | "Bearer" = "Key") => ({ authorization: `${scheme} ${hfKey(env)}` })
+const hasHf = (env: Env) => !!hfKey(env)
+/** a Higgsfield call; a key the documented "Key" scheme refuses is tried once as a Bearer token */
+async function hf(env: Env, url: string, init: RequestInit = {}) {
+  const res = await fetch(url, { ...init, headers: { ...(init.headers as Record<string, string>), ...hfAuth(env) } })
+  if (res.status !== 401) return res
+  const again = await fetch(url, { ...init, headers: { ...(init.headers as Record<string, string>), ...hfAuth(env, "Bearer") } })
+  return again.status === 401 ? res : again
+}
 const num = (v: string | undefined, d: number) => (v && Number.isFinite(Number(v)) ? Number(v) : d)
 
 /** compare without leaking how much matched */
