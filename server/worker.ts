@@ -99,23 +99,52 @@ export default {
         if (!prompt) return json({ error: "no_prompt" }, 400, cors)
         if (!(await take(env, `img:${day}`, caps.images))) return json({ error: "daily_limit", what: "images" }, 429, cors)
         const aspect = ASPECTS.includes(String(body.aspect_ratio)) ? String(body.aspect_ratio) : "1:1"
-        const res = await fetch(HIGGSFIELD + (env.HF_IMAGE_PATH || "/higgsfield-ai/soul/standard"), {
-          method: "POST",
-          headers: { ...hfAuth(env), "content-type": "application/json", "idempotency-key": crypto.randomUUID() },
-          body: JSON.stringify({ prompt, aspect_ratio: aspect }),
-        })
-        const out = (await res.json().catch(() => ({}))) as { request_id?: string }
-        if (!res.ok || !out.request_id) return json({ error: "image_error", status: res.status, message: JSON.stringify(out).slice(0, 500) }, 502, cors)
-        return json({ id: out.request_id }, 200, cors)
+        // the configured model first, then the documented ones; a model that rejects aspect_ratio gets the prompt alone
+        const paths = [...new Set([env.HF_IMAGE_PATH, "/higgsfield-ai/soul/v2/standard", "/higgsfield-ai/soul/standard"].filter((p): p is string => !!p))]
+        let last = { status: 0, text: "" }
+        for (const path of paths) {
+          for (const payload of [{ prompt, aspect_ratio: aspect }, { prompt }]) {
+            const res = await fetch(HIGGSFIELD + path, {
+              method: "POST",
+              headers: { ...hfAuth(env), "content-type": "application/json", "idempotency-key": crypto.randomUUID() },
+              body: JSON.stringify(payload),
+            })
+            const text = await res.text()
+            let out: { request_id?: string } = {}
+            try {
+              out = JSON.parse(text)
+            } catch {
+              /* not JSON */
+            }
+            if (res.ok && out.request_id) return json({ id: out.request_id }, 200, cors)
+            last = { status: res.status, text }
+            console.log("higgsfield submit failed", path, Object.keys(payload).join("+"), res.status, text.slice(0, 300))
+            // auth, balance and rate problems won't change with another model or payload
+            if ([401, 402, 403, 429].includes(res.status)) return json({ error: "image_error", status: res.status, message: hfMessage(res.status, text) }, 502, cors)
+            if (res.status === 404) break
+          }
+        }
+        return json({ error: "image_error", status: last.status, message: hfMessage(last.status, last.text) }, 502, cors)
       }
 
       const m = url.pathname.match(/^\/image\/([\w-]{8,64})$/)
       if (req.method === "GET" && m) {
         if (!env.HIGGSFIELD_KEY_ID || !env.HIGGSFIELD_KEY_SECRET) return json({ error: "images_not_set_up" }, 503, cors)
         const res = await fetch(`${HIGGSFIELD}/requests/${m[1]}/status`, { headers: hfAuth(env) })
-        const out = (await res.json().catch(() => ({}))) as { status?: string; images?: { url?: string }[] }
-        if (!res.ok) return json({ error: "image_error", status: res.status }, 502, cors)
-        return json({ status: out.status ?? "unknown", url: out.images?.[0]?.url }, 200, cors)
+        const text = await res.text()
+        let out: { status?: string; images?: { url?: string }[]; image?: { url?: string }; output?: { url?: string }[] } = {}
+        try {
+          out = JSON.parse(text)
+        } catch {
+          /* not JSON */
+        }
+        if (!res.ok) {
+          console.log("higgsfield status failed", res.status, text.slice(0, 300))
+          return json({ error: "image_error", status: res.status, message: hfMessage(res.status, text) }, 502, cors)
+        }
+        const url = out.images?.[0]?.url ?? out.image?.url ?? out.output?.[0]?.url
+        if (out.status === "completed" && !url) console.log("higgsfield completed without an image url", text.slice(0, 300))
+        return json({ status: out.status ?? "unknown", url }, 200, cors)
       }
 
       return json({ error: "not_found" }, 404, cors)
@@ -139,6 +168,14 @@ function corsHeaders(origin: string | null): Record<string, string> {
 
 function json(data: unknown, status = 200, headers: Record<string, string> = {}) {
   return new Response(JSON.stringify(data), { status, headers: { ...headers, "content-type": "application/json" } })
+}
+
+/** a readable reason for a Higgsfield failure */
+function hfMessage(status: number, text: string) {
+  if (status === 401 || status === 403) return "Higgsfield refused the key. Check HIGGSFIELD_KEY_ID and HIGGSFIELD_KEY_SECRET."
+  if (status === 402) return "The Higgsfield account is out of balance."
+  if (status === 429) return "Higgsfield is rate limiting. Try again in a minute."
+  return `Higgsfield answered ${status || "nothing"}: ${text.slice(0, 200)}`
 }
 
 const hfAuth = (env: Env) => ({ authorization: `Key ${env.HIGGSFIELD_KEY_ID}:${env.HIGGSFIELD_KEY_SECRET}` })

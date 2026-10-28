@@ -9,7 +9,11 @@ workers_dev = true
 ALLOWED_ORIGINS = "https://flamdesign.github.io,http://localhost:5173,http://localhost:4173"
 DAILY_IMAGE_CAP = "50"
 DAILY_CHAT_CAP = "500"
-HF_IMAGE_PATH = "/higgsfield-ai/soul/standard"
+HF_IMAGE_PATH = "/higgsfield-ai/soul/v2/standard"
+
+# logs in the Cloudflare dashboard (Workers > flicks-ai > Logs), for debugging failures
+[observability]
+enabled = true
 
 [[kv_namespaces]]
 binding = "USAGE"
