@@ -1,0 +1,49 @@
+name: Check AI server
+
+# A manual health check from GitHub's machines: calls the AI server and Higgsfield and prints
+# status codes and error text only (never the keys; GitHub masks secrets in logs anyway).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      PASS: ${{ secrets.AI_PASSCODE }}
+      HFKEY: ${{ secrets.HIGGSFIELD_API_KEY }}
+      URL: https://flicks-ai.flick-prototype.workers.dev
+      ORIGIN: https://flamdesign.github.io
+    steps:
+      - name: Health
+        run: curl -sS -m 30 -H "x-flicks-pass: $PASS" -H "origin: $ORIGIN" -w "\nHTTP %{http_code}\n" "$URL/health" || true
+      - name: Start an image through the server
+        run: |
+          curl -sS -m 60 -X POST -H "x-flicks-pass: $PASS" -H "origin: $ORIGIN" -H "content-type: application/json" \
+            -d '{"prompt":"a pair of sport sunglasses on a white background, studio light","aspect_ratio":"1:1"}' \
+            -w "\nHTTP %{http_code} in %{time_total}s\n" "$URL/image" | tee /tmp/img.txt || true
+      - name: Poll it
+        run: |
+          ID=$(grep -o '"id":"[^"]*"' /tmp/img.txt | cut -d'"' -f4)
+          [ -z "$ID" ] && { echo "no id"; exit 0; }
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            sleep 6
+            curl -sS -m 30 -H "x-flicks-pass: $PASS" -H "origin: $ORIGIN" -w "\nHTTP %{http_code}\n" "$URL/image/$ID" | tee /tmp/st.txt
+            grep -q '"completed"\|"failed"\|"nsfw"' /tmp/st.txt && break
+          done
+          true
+      - name: Higgsfield directly (key shape and auth)
+        run: |
+          echo "key length: ${#HFKEY}; has colon: $([[ "$HFKEY" == *:* ]] && echo yes || echo no)"
+          for SCHEME in Key Bearer; do
+            for P in /higgsfield-ai/soul/v2/standard /higgsfield-ai/soul/standard; do
+              echo "== $SCHEME $P"
+              curl -sS -m 30 -X POST -H "Authorization: $SCHEME $HFKEY" -H "content-type: application/json" -H "Idempotency-Key: $(uuidgen)" \
+                -d '{"prompt":"a red apple on a white table"}' -w "\nHTTP %{http_code}\n" "https://api.higgsfield.ai$P" | head -c 400; echo
+            done
+          done
+          echo "== hf-api-key header style"
+          curl -sS -m 30 -X POST -H "hf-api-key: ${HFKEY%%:*}" -H "hf-secret: ${HFKEY#*:}" -H "content-type: application/json" \
+            -d '{"prompt":"a red apple on a white table"}' -w "\nHTTP %{http_code}\n" "https://api.higgsfield.ai/higgsfield-ai/soul/v2/standard" | head -c 400; echo
