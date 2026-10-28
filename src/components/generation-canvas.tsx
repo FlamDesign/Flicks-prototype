@@ -32,7 +32,8 @@ import { ElementToolbar, ToolbarGrip } from "@/components/editor/element-toolbar
 import { useAgent, type EditorApi } from "@/ai/agent"
 import { buildDesign, describeDesign, patchDesign, type Brand } from "@/ai/design"
 import { isLive, useAiConfig } from "@/ai/client"
-import { AgentComposer, AgentItemView } from "@/components/editor/agent-chat"
+import { AgentComposer, AgentItemView, type AgentCtx } from "@/components/editor/agent-chat"
+import { PlanningView, PlanSteps } from "@/components/editor/planning-view"
 import { BUTTON_TEXT, DEFAULT_ICON, GENERATED_VIDEOS, SAMPLE_UPLOADS, inSet, clampStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload } from "@/components/editor/elements"
 
 export type Generation = {
@@ -642,7 +643,7 @@ export function GenerationCanvas({
     },
     updateDesign(d) {
       if (!slidesNow.current[0].startedAt) return "Error: Approve the plan first."
-      const { elements: next, changed } = patchDesign(elements, d, brand)
+      const { elements: next, changed } = patchDesign(elements, d, brand, { count: included.length, ratio })
       // a headline or button the design doesn't have yet is added
       const extra: CanvasElement[] = []
       if (d.headline && !elements.some((e) => e.role === "headline"))
@@ -716,6 +717,30 @@ export function GenerationCanvas({
   // the composer in chat mode: talk to the chat, or write a video's prompt yourself
   const [composeMode, setComposeMode] = useState<"chat" | "prompt">("chat")
   const chatting = agentMode && (composeMode === "chat" || !slides[0].startedAt)
+  // planning: nothing generated yet, so no editor tools; just the chat and a live preview
+  const planning = agentMode && !slides[0].startedAt
+  const samplePosters = [1, 2, 3, 4, 5].map((i) => GENERATED_VIDEOS[inSet(generation.video ?? 0, i)].poster)
+  const agentCtx: AgentCtx = {
+    videoCost: VIDEO_COST,
+    credits: dev.credits,
+    addToCanvas: (u) => void agentApi.addImageToCanvas(u),
+    focusComposer: () => {
+      setComposeMode("chat")
+      document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Message"]')?.focus()
+    },
+    ratio,
+    posters: samplePosters.slice(0, Math.max(2, agent.plan?.variations.length ?? 3)),
+    brand,
+    progress: () => {
+      const vs = slides.slice(1)
+      return [
+        { label: "Reference video", state: status(slides[0]) === "done" ? "done" : "working" },
+        { label: `${vs.length} variations`, state: vs.every((v) => status(v) === "done") ? "done" : mainDone ? "working" : "waiting" },
+        { label: "Headline, button and thumbnail strip", state: elements.some((e) => e.kind === "strip") ? "done" : "working" },
+        { label: "Thumbnail images", state: vs.every((v) => v.thumb) ? "done" : "working" },
+      ]
+    },
+  }
   // the chat is where a chat project starts, so it's always open at first
   useEffect(() => {
     if (agentMode) setChatHidden(false)
@@ -855,7 +880,7 @@ export function GenerationCanvas({
   return (
     <div className="flex h-full flex-col">
       {/* Top bar */}
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b px-3 md:px-4">
+      <header className="relative flex h-14 shrink-0 items-center gap-3 border-b px-3 md:px-4">
         <FileTitle
           title={title}
           naming={naming}
@@ -869,7 +894,14 @@ export function GenerationCanvas({
           onHistory={() => setPanel("history")}
           onDelete={() => setConfirmDelete(true)}
         />
-        <div className="flex shrink-0 items-center gap-2">
+        {planning && (
+          <div className="pointer-events-none absolute inset-x-0 flex justify-center">
+            <div className="pointer-events-auto">
+              <PlanSteps step={agent.step} />
+            </div>
+          </div>
+        )}
+        <div className={cn("flex shrink-0 items-center gap-2", planning && "hidden")}>
           <VideoToggle playing={videoPlaying} disabled={!done} onToggle={() => setVideoPlaying((p) => !p)} />
           <ModeSwitch mode={mode} onChange={(m) => setPreviewMode(m === "preview")} />
           <ExportControl
@@ -955,7 +987,16 @@ export function GenerationCanvas({
 
 
 
-      <div className="flex min-h-0 flex-1">
+      {planning && (
+        <PlanningView
+          agent={agent}
+          ctx={agentCtx}
+          design={agent.plan?.design ?? agent.draft}
+          names={agent.plan?.variations.map((v) => v.name) ?? []}
+          values={agent.plan?.variations.map((v) => ({ label: v.label, price: v.price })) ?? []}
+        />
+      )}
+      <div className={cn("flex min-h-0 flex-1", planning && "hidden")}>
         {!previewing && (
         <EditorPanel
           feedsTitle={<FeedsTitle feeds={feeds} openId={feedOpen} onOpen={setFeedOpen} onRename={(id, name) => setFeeds((list) => list.map((f) => (f.id === id ? { ...f, name } : f)))} />}
@@ -1339,7 +1380,7 @@ export function GenerationCanvas({
               extra: agent.items.map((it) => ({
                 key: it.id,
                 at: it.at,
-                node: <AgentItemView item={it} agent={agent} ctx={{ videoCost: VIDEO_COST, credits: dev.credits, addToCanvas: (u) => agentApi.addImageToCanvas(u), focusComposer: () => (setComposeMode("chat"), focusPromptBox()) }} />,
+                node: <AgentItemView item={it} agent={agent} ctx={agentCtx} />,
               })),
               // once the plan is made, the box can also write one video's prompt directly
               head: slides[0].startedAt ? (

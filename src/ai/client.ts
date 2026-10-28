@@ -12,7 +12,9 @@ export const AI_MODELS = [
   { id: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5", hint: "Fastest" },
 ]
 const KEY = "flam.ai"
-const BUILD_URL = (import.meta.env.VITE_AI_URL as string | undefined) ?? ""
+/** the deployed AI server (public address; the passcode is what protects it). A build can point elsewhere with VITE_AI_URL. */
+const DEFAULT_URL = "https://flicks-ai.flick-prototype.workers.dev"
+const BUILD_URL = (import.meta.env.VITE_AI_URL as string | undefined) || DEFAULT_URL
 
 let config: AiConfig = load()
 const listeners = new Set<() => void>()

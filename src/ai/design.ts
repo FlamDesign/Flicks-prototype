@@ -2,9 +2,16 @@
  * What the chat plans and designs, and how a design becomes canvas elements. Pure functions: the
  * editor applies the results.
  */
-import { BUTTON_TEXT, FONTS, newStrip, type Align, type CanvasElement, type ButtonVariant } from "@/components/editor/elements"
+import { BUTTON_TEXT, FONTS, type Align, type CanvasElement, type ButtonVariant } from "@/components/editor/elements"
 
 export type PlanVariation = { name: string; prompt: string; label?: string; price?: string; link?: string }
+/** the thumbnail strip viewers tap to switch: where it sits and how it looks */
+export type Thumbs = {
+  position?: "bottom" | "top" | "left" | "right"
+  shape?: "square" | "rounded" | "circle"
+  size?: "small" | "medium" | "large"
+  highlight_color?: string
+}
 export type Design = {
   headline?: string
   subheading?: string
@@ -18,6 +25,7 @@ export type Design = {
   button_text_color?: string
   button_style?: "pill" | "rounded" | "sharp" | "light" | "outline" | "glass"
   font?: string
+  thumbnails?: Thumbs
 }
 export type Plan = {
   title: string
@@ -37,6 +45,29 @@ export const color = (v?: string) => (v && HEX.test(v.trim()) ? v.trim() : undef
 export const fontName = (v?: string) => (v ? FONTS.find((f) => f.name.toLowerCase() === v.trim().toLowerCase())?.name : undefined)
 const BUTTONS: Record<NonNullable<Design["button_style"]>, ButtonVariant> = { pill: "pill", rounded: "rounded", sharp: "sharp", light: "light", outline: "outline", glass: "glass" }
 
+const SIZES = { small: 10, medium: 12, large: 15 }
+const RADII = { square: 8, rounded: 24, circle: 100 }
+type Strip = Extract<CanvasElement, { kind: "strip" }>
+/** the strip for a thumbnails style: layout, size, shape, highlight and position */
+export function stripFor(t: Thumbs = {}, count: number, ratio: number, brand?: Brand): Omit<Strip, "id"> {
+  const size = SIZES[t.size ?? "medium"] ?? 12
+  const gap = 16
+  const span = count * size + (count - 1) * (gap / 10.8)
+  const vertical = t.position === "left" || t.position === "right"
+  return {
+    kind: "strip",
+    layout: vertical ? "vertical" : "horizontal",
+    size,
+    gap,
+    highlight: color(t.highlight_color) ?? color(brand?.primary_color) ?? "#ffffff",
+    highlightWidth: 6,
+    bg: "#a1a1aab3",
+    radius: RADII[t.shape ?? "rounded"] ?? 24,
+    x: vertical ? (t.position === "left" ? 5 : 100 - size - 5) : (100 - span) / 2,
+    y: vertical ? Math.max(4, (100 - span * ratio) / 2) : t.position === "top" ? 5 : 100 - size * ratio - 6,
+  }
+}
+
 /** heights (% of a 9:16 frame) that each part takes in a stack */
 const H = { label: 4.5, headline: 9, subheading: 6, price: 6, cta: 9 }
 
@@ -49,7 +80,10 @@ export function buildDesign(
   d: Design,
   opts: { ratio: number; count: number; feeds: { label?: string; price?: string; link?: string }; brand?: Brand },
 ): CanvasElement[] {
-  const align: Align = d.align ?? "center"
+  const t = d.thumbnails ?? {}
+  const strip = stripFor(t, opts.count, opts.ratio, opts.brand)
+  // text never sits on the same side as a side strip
+  const align: Align = (d.align === "left" && t.position === "left") || (d.align === "right" && t.position === "right") ? "center" : (d.align ?? "center")
   const x = align === "left" ? 8 : align === "right" ? 92 : 50
   const font = fontName(d.font) ?? fontName(opts.brand?.font)
   const ink = color(d.text_color) ?? color(opts.brand?.text_color)
@@ -63,8 +97,12 @@ export function buildDesign(
   const ctaInStack = layout === "bottom"
   if (d.cta !== "" && ctaInStack) parts.push({ role: "cta", h: H.cta })
   const total = parts.reduce((a, p) => a + p.h, 0)
-  const stripTop = 100 - 12 * opts.ratio - 6
-  const at = layout === "top" ? 6 + total / 2 : layout === "center" ? 46 : stripTop - 3 - total / 2
+  // the stack keeps clear of a strip along the top or bottom
+  const stripH = strip.layout === "horizontal" ? strip.size * opts.ratio : 0
+  const bottomEdge = strip.layout === "horizontal" && t.position !== "top" ? strip.y - 3 : 94
+  const topEdge = strip.layout === "horizontal" && t.position === "top" ? strip.y + stripH + 4 : 6
+  const stripTop = bottomEdge + 3
+  const at = layout === "top" ? topEdge + total / 2 : layout === "center" ? 46 : bottomEdge - total / 2
   let y = Math.max(4, at - total / 2)
   const out: CanvasElement[] = []
   const text = (role: Role, variant: "heading" | "subheading" | "label", value: string, feed?: string, cy = y) =>
@@ -98,18 +136,25 @@ export function buildDesign(
     else if (p.role === "cta") out.push(cta(cy))
   }
   if (d.cta !== "" && !ctaInStack) out.push(cta(stripTop - 7))
-  out.push({ ...newStrip(opts.count, "horizontal", opts.ratio), id: uid() } as CanvasElement)
+  out.push({ ...strip, id: uid() } as CanvasElement)
   return out
 }
 
 /** Changes the chat asks for on the existing design; returns the new elements and what changed. */
-export function patchDesign(els: CanvasElement[], d: Design, brand?: Brand): { elements: CanvasElement[]; changed: string[] } {
+export function patchDesign(els: CanvasElement[], d: Design, brand?: Brand, opts?: { count: number; ratio: number }): { elements: CanvasElement[]; changed: string[] } {
   const changed: string[] = []
   const font = fontName(d.font)
   const ink = color(d.text_color)
   const bg = color(d.button_color)
   const fg = color(d.button_text_color)
   const elements = els.map((el) => {
+    if (el.kind === "strip" && d.thumbnails && opts) {
+      changed.push("thumbnails")
+      const t = d.thumbnails
+      // a style change keeps the strip where it is; a new position moves it
+      const next = stripFor({ ...t, highlight_color: t.highlight_color ?? el.highlight }, opts.count, opts.ratio, brand)
+      return { ...el, ...next, ...(t.position ? {} : { x: el.x, y: el.y, layout: el.layout }), ...(t.size ? {} : { size: el.size }), ...(t.shape ? {} : { radius: el.radius }) } as CanvasElement
+    }
     if (el.kind !== "text" && el.kind !== "button") return el
     const role = roleOf(el)
     let next = { ...el } as CanvasElement & { role?: Role }
@@ -125,7 +170,6 @@ export function patchDesign(els: CanvasElement[], d: Design, brand?: Brand): { e
     if (font) (next = { ...next, font } as typeof next), changed.push("font")
     return next
   })
-  void brand
   return { elements, changed: [...new Set(changed)] }
 }
 

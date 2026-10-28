@@ -16,7 +16,7 @@ const SAMPLE_PLANS: Record<string, Omit<Plan, "reference"> & { reference: string
       { name: "Sapphire", prompt: "Same scene, deep blue sapphire lenses.", label: "Sapphire lenses", price: "$199", link: "https://example.com/sapphire" },
       { name: "White", prompt: "Same scene, white frames with clear lenses.", label: "White frames", price: "$179", link: "https://example.com/white" },
     ],
-    design: { headline: "Find your lens", cta: "Shop now", show_price: true, show_label: true, layout: "bottom" },
+    design: { headline: "Find your lens", cta: "Shop now", show_price: true, show_label: true },
   },
   boots: {
     title: "Rain-ready boots",
@@ -26,7 +26,7 @@ const SAMPLE_PLANS: Record<string, Omit<Plan, "reference"> & { reference: string
       { name: "Black", prompt: "Same scene, black waterproof leather.", label: "Black leather", price: "$220", link: "https://example.com/black" },
       { name: "Brown", prompt: "Same scene, brown pro boot with a lug sole.", label: "Brown pro", price: "$230", link: "https://example.com/brown" },
     ],
-    design: { headline: "Built for wet days", cta: "Shop boots", show_price: true, show_label: true, layout: "top" },
+    design: { headline: "Built for wet days", cta: "Shop boots", show_price: true, show_label: true },
   },
   dress: {
     title: "Occasion edit",
@@ -35,8 +35,15 @@ const SAMPLE_PLANS: Record<string, Omit<Plan, "reference"> & { reference: string
       { name: "Rust", prompt: "Same scene, rust tiered halter gown.", label: "Rust tiered", price: "$340", link: "https://example.com/rust" },
       { name: "Ombre", prompt: "Same scene, pink to violet ombre gown.", label: "Ombre gown", price: "$380", link: "https://example.com/ombre" },
     ],
-    design: { headline: "Made to move", cta: "Shop the look", show_price: true, show_label: false, layout: "bottom" },
+    design: { headline: "Made to move", cta: "Shop the look", show_price: true, show_label: false },
   },
+}
+
+/** the colours picked in the palette question ("Sunset ({...colors})") */
+function paletteOf(answer?: string) {
+  const m = answer?.match(/"colors":\[([^\]]*)\]/)
+  const c = m ? JSON.parse(`[${m[1]}]`) as string[] : ["#09090b"]
+  return { primary_color: c[0], ...(c[2] ? { text_color: c[2] } : {}) }
 }
 
 const tool = (name: string, input: Record<string, unknown>): Block => ({ type: "tool_use", id: `mock_${crypto.randomUUID().slice(0, 12)}`, name, input })
@@ -110,21 +117,50 @@ export async function mockReply(messages: Message[], s: ProjectState, onText: (t
     return reply("In this demo I can change the headline or the button text, the button colour, or add a variation. Connect Claude in dev tools (State manager, AI) and I can do much more.")
   }
 
-  // the brief
+  // the idea
   const asks = used("ask_user").length
   if (asks === 0)
     return reply(
-      "Love it. Two quick questions so the variations land right.",
-      tool("ask_user", { question: "What should change between variations?", options: ["Colours", "Products", "People or models", "Scenes", "Decide for me"], multi_select: true }),
+      "Love it. Let's build it together. First, what should viewers switch between?",
+      tool("ask_user", { question: "What should change between variations?", options: ["Colours", "Products", "People or models", "Scenes", "Decide for me"], multi_select: true, step: "idea" }),
     )
-  if (asks === 1) return reply("", tool("ask_user", { question: "Where will this Flick run?", options: ["Ads", "My website", "Share as a link", "All of these"] }))
+  if (asks === 1) return reply("", tool("ask_user", { question: "Where will this Flick run?", options: ["Ads", "My website", "Share as a link", "All of these"], step: "idea" }))
   if (!used("request_assets").length)
     return reply("", tool("request_assets", { message: "Add product photos or your logo if you have them. I'll match thumbnails and colours to them.", kinds: ["product", "logo"] }))
+  // the look: picked from previews, shown live beside the chat
+  if (asks === 2)
+    return reply(
+      "Now the look. Pick a layout; the preview updates as you choose.",
+      tool("ask_user", {
+        question: "Which layout fits?",
+        display: "layouts",
+        step: "look",
+        options: [
+          { label: "Bold bottom", description: "Big headline low, thumbnails along the bottom", design: { layout: "bottom", align: "center", button_style: "pill", thumbnails: { position: "bottom", shape: "rounded", size: "medium" } } },
+          { label: "Editorial", description: "Left aligned, thumbnails down the side", design: { layout: "bottom", align: "left", button_style: "sharp", thumbnails: { position: "right", shape: "square", size: "small" } } },
+          { label: "Clean top", description: "Headline up top, round thumbnails", design: { layout: "top", align: "center", button_style: "light", thumbnails: { position: "bottom", shape: "circle", size: "medium" } } },
+        ],
+      }),
+    )
+  if (asks === 3)
+    return reply(
+      "",
+      tool("ask_user", {
+        question: "And the colours?",
+        display: "palettes",
+        step: "look",
+        options: [
+          { label: "Ink", description: "Black button, white text", colors: ["#09090b", "#a1a1aa", "#ffffff"] },
+          { label: "Sunset", description: "Warm orange accents", colors: ["#ea580c", "#fdba74", "#ffffff"] },
+          { label: "Ocean", description: "Cool blue accents", colors: ["#2563eb", "#93c5fd", "#ffffff"] },
+        ],
+      }),
+    )
 
   const reference = first.trim().length > 24 ? first.trim() : sample.reference
   return reply(
-    "Here's the plan. Edit anything, then generate it all in one go.",
-    tool("set_brand", { name: "Your brand", primary_color: "#09090b", text_color: "#ffffff", font: "DM Sans", tone: "Confident, minimal" }),
+    "Here's the plan. Edit anything in place, add or remove variations, then generate it all in one go.",
+    tool("set_brand", { name: "Your brand", ...paletteOf(resultOf("ask_user")), font: "DM Sans", tone: "Confident, minimal" }),
     tool("propose_plan", { title: sample.title, reference: { prompt: reference }, variations: sample.variations, design: sample.design }),
   )
 }

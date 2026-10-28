@@ -77,8 +77,8 @@ export const NEW_USER: DevState = {
   largeAccount: false,
   // new users see How Flicks work once they reach Create
   featureIntro: true,
-  // a new prompt on Create opens the chat, which plans the Flick before anything generates
-  aiChat: true,
+  // on: a new prompt on Create opens the chat, which plans the Flick before anything generates (off: Generate straight away)
+  aiChat: false,
 }
 
 /** The default for now: a returning user, signed in, with sample projects, Flicks, credits and ad funds, and the same realistic waits. */

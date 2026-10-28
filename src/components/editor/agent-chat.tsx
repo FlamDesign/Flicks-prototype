@@ -1,16 +1,28 @@
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Add01Icon, Alert02Icon, ArrowUp02Icon, ImageAdd01Icon, Loading03Icon, PaintBoardIcon, RefreshIcon, StopIcon, Tick02Icon, Cancel01Icon } from "@hugeicons/core-free-icons"
+import { Add01Icon, Alert02Icon, ArrowDown01Icon, ArrowUp02Icon, ImageAdd01Icon, Loading03Icon, PaintBoardIcon, RefreshIcon, SparklesIcon, StopIcon, Tick02Icon, Cancel01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import type { Item, useAgent } from "@/ai/agent"
-import type { Plan } from "@/ai/design"
+import type { Choice, Item, useAgent } from "@/ai/agent"
+import type { Brand, Plan, PlanVariation } from "@/ai/design"
+import { FlickPreview } from "@/components/editor/flick-preview"
 import { cn } from "@/lib/utils"
 
 type Agent = ReturnType<typeof useAgent>
-export type AgentCtx = { videoCost: number; credits: number; addToCanvas: (url: string) => void; focusComposer: () => void }
+export type AgentCtx = {
+  videoCost: number
+  credits: number
+  addToCanvas: (url: string) => void
+  focusComposer: () => void
+  /** for visual answers: the frame shape, sample frames and the brand */
+  ratio: number
+  posters: string[]
+  brand?: Brand
+  /** the build's steps, read live */
+  progress: () => { label: string; state: "done" | "working" | "waiting" }[]
+}
 
 /** One chat item: the chat's words, its questions and cards, and the user's messages. */
 export function AgentItemView({ item, agent, ctx }: { item: Item; agent: Agent; ctx: AgentCtx }) {
@@ -31,7 +43,7 @@ export function AgentItemView({ item, agent, ctx }: { item: Item; agent: Agent; 
     case "assistant":
       return <Said text={item.text} streaming={item.streaming} />
     case "question":
-      return <Question item={item} agent={agent} />
+      return <Question item={item} agent={agent} ctx={ctx} />
     case "assets":
       return <Assets item={item} agent={agent} />
     case "brand":
@@ -40,6 +52,8 @@ export function AgentItemView({ item, agent, ctx }: { item: Item; agent: Agent; 
       return <PlanCard item={item} agent={agent} ctx={ctx} />
     case "image":
       return <ImageCard item={item} ctx={ctx} />
+    case "build":
+      return <BuildCard ctx={ctx} />
     case "note":
       return (
         <p className="flex items-center gap-1.5 px-1 text-xs text-muted-foreground">
@@ -91,35 +105,78 @@ const Card = ({ children, className }: { children: React.ReactNode; className?: 
   <div className={cn("mr-2 flex flex-col gap-3 rounded-2xl bg-background p-3 shadow-xs ring-1 ring-foreground/10", className)}>{children}</div>
 )
 
-function Question({ item, agent }: { item: Extract<Item, { kind: "question" }>; agent: Agent }) {
+function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question" }>; agent: Agent; ctx: AgentCtx }) {
   const [picked, setPicked] = useState<string[]>([])
   const [other, setOther] = useState("")
-  const done = item.answer !== undefined
-  const chosen = done ? item.answer!.split(", ") : picked
-  const pick = (o: string) => (item.multi ? setPicked((p) => (p.includes(o) ? p.filter((x) => x !== o) : [...p, o])) : agent.answer(item.id, o))
-  return (
-    <Card>
-      <p className="text-sm font-medium">{item.question}</p>
-      <div className="flex flex-wrap gap-1.5" role={item.multi ? "group" : "radiogroup"} aria-label={item.question}>
-        {item.options.map((o) => (
-          <Button
-            key={o}
-            size="sm"
-            variant="outline"
-            disabled={done || agent.busy}
-            aria-pressed={chosen.includes(o)}
-            onClick={() => pick(o)}
-            className={cn("h-8 rounded-full font-normal disabled:opacity-100", chosen.includes(o) ? "border-foreground bg-foreground/5" : done && "opacity-50")}
-          >
-            {chosen.includes(o) && <HugeiconsIcon icon={Tick02Icon} className="size-3.5" />}
-            {o}
-          </Button>
-        ))}
-        {done && !item.options.some((o) => chosen.includes(o)) && (
-          <span className="flex h-8 items-center rounded-full border border-foreground bg-foreground/5 px-3 text-sm">{item.answer}</span>
-        )}
+  // answered: just the question and the answer, nothing left to press
+  if (item.answer !== undefined)
+    return (
+      <div className="flex flex-col gap-1 px-1">
+        <p className="text-xs text-muted-foreground">{item.question}</p>
+        <p className="flex items-center gap-1.5 text-sm font-medium">
+          <HugeiconsIcon icon={Tick02Icon} className="size-3.5 text-muted-foreground" />
+          {item.answer === "Skipped" ? <span className="font-normal text-muted-foreground">Skipped</span> : item.answer}
+        </p>
       </div>
-      {!done && (item.custom || item.multi) && (
+    )
+  const pick = (o: Choice) => (item.multi ? setPicked((p) => (p.includes(o.label) ? p.filter((x) => x !== o.label) : [...p, o.label])) : agent.answer(item.id, o.label, o))
+  const visual = item.display === "layouts" || item.display === "thumbnails"
+  return (
+    <Card className="animate-in fade-in-0 slide-in-from-bottom-1 duration-300">
+      <p className="text-sm font-medium">{item.question}</p>
+      {item.display === "chips" ? (
+        <div className="flex flex-wrap gap-1.5" role={item.multi ? "group" : "radiogroup"} aria-label={item.question}>
+          {item.options.map((o) => (
+            <Button
+              key={o.label}
+              size="sm"
+              variant="outline"
+              aria-pressed={picked.includes(o.label)}
+              onClick={() => pick(o)}
+              className={cn("h-8 rounded-full font-normal", picked.includes(o.label) && "border-foreground bg-foreground/5")}
+            >
+              {picked.includes(o.label) && <HugeiconsIcon icon={Tick02Icon} className="size-3.5" />}
+              {o.label}
+            </Button>
+          ))}
+        </div>
+      ) : (
+        <div className={cn("grid gap-2", visual || item.display === "palettes" ? "grid-cols-3" : "grid-cols-2")} role="radiogroup" aria-label={item.question}>
+          {item.options.map((o, i) => (
+            <button
+              key={o.label}
+              type="button"
+              role="radio"
+              aria-checked={false}
+              onClick={() => pick(o)}
+              disabled={agent.busy}
+              className="group/opt flex flex-col gap-1.5 rounded-xl p-1.5 text-left outline-none ring-1 ring-foreground/10 transition-[box-shadow,background-color] hover:bg-muted/60 hover:ring-foreground/30 focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {visual && (
+                <FlickPreview
+                  design={{ headline: "Headline", cta: "Shop now", show_price: true, ...o.design }}
+                  brand={ctx.brand}
+                  ratio={ctx.ratio}
+                  posters={ctx.posters}
+                  active={i % Math.max(1, ctx.posters.length)}
+                  values={{ label: "Label", price: "$99" }}
+                  className="w-full rounded-lg shadow-none"
+                />
+              )}
+              {item.display === "palettes" && (
+                <span className="flex h-12 overflow-hidden rounded-lg ring-1 ring-foreground/10">
+                  {(o.colors?.length ? o.colors : ["#e4e4e7"]).slice(0, 4).map((c, k) => (
+                    <span key={k} className="flex-1" style={{ background: c }} />
+                  ))}
+                </span>
+              )}
+              <span className="px-1 text-xs font-medium leading-tight">{o.label}</span>
+              {o.description && <span className="px-1 pb-0.5 text-[11px] leading-snug text-muted-foreground">{o.description}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+      {(item.custom || item.multi) && (
         <div className="flex gap-2">
           {item.custom && (
             <Input
@@ -131,8 +188,8 @@ function Question({ item, agent }: { item: Extract<Item, { kind: "question" }>; 
               className="h-8 flex-1 text-sm"
             />
           )}
-          {item.multi && (
-            <Button size="sm" disabled={agent.busy || (!picked.length && !other.trim())} onClick={() => agent.answer(item.id, [...picked, ...(other.trim() ? [other.trim()] : [])].join(", "))} className="ml-auto">
+          {item.multi && (picked.length > 0 || other.trim()) && (
+            <Button size="sm" onClick={() => agent.answer(item.id, [...picked, ...(other.trim() ? [other.trim()] : [])].join(", "))} className="ml-auto">
               Continue
             </Button>
           )}
@@ -151,16 +208,19 @@ function Assets({ item, agent }: { item: Extract<Item, { kind: "assets" }>; agen
   const addFiles = (list: FileList | File[]) => setFiles((f) => [...f, ...[...list].filter((x) => x.type.startsWith("image/"))].slice(0, 8))
   if (item.done)
     return (
-      <Card>
-        <p className="text-sm text-muted-foreground">{item.message}</p>
+      <div className="flex flex-col gap-1.5 px-1">
+        <p className="text-xs text-muted-foreground">{item.message}</p>
         {item.done === "added" ? (
           <div className="flex flex-wrap gap-1.5">
-            {item.images?.map((u) => <img key={u} src={u} alt="" className="size-12 rounded-lg object-cover ring-1 ring-foreground/10" />)}
+            {item.images?.map((u) => <img key={u} src={u} alt="" className="size-10 rounded-lg object-cover ring-1 ring-foreground/10" />)}
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground">Skipped</p>
+          <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <HugeiconsIcon icon={Tick02Icon} className="size-3.5" />
+            Skipped
+          </p>
         )}
-      </Card>
+      </div>
     )
   return (
     <Card>
@@ -226,96 +286,129 @@ function BrandCard({ item }: { item: Extract<Item, { kind: "brand" }> }) {
 }
 
 function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>; agent: Agent; ctx: AgentCtx }) {
-  const [plan, setPlan] = useState<Plan>(item.plan)
-  useEffect(() => setPlan(item.plan), [item.plan])
-  const open = item.state === "open"
+  const plan = item.plan
+  const set = (p: Partial<Plan>) => agent.editPlan(item.id, { ...plan, ...p })
+  const setVar = (i: number, p: Partial<PlanVariation>) => set({ variations: plan.variations.map((v, j) => (j === i ? { ...v, ...p } : v)) })
+  const [open, setOpen] = useState(false)
   const videos = 1 + plan.variations.length
   const total = videos * ctx.videoCost
   const short = ctx.credits < total
-  const setVar = (i: number, p: Partial<Plan["variations"][number]>) => setPlan((x) => ({ ...x, variations: x.variations.map((v, j) => (j === i ? { ...v, ...p } : v)) }))
-  const field = "h-8 rounded-lg text-sm"
-  return (
-    <Card className={cn("gap-4 p-4", !open && "opacity-80")}>
-      <div className="flex items-center gap-2">
-        <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">Plan</span>
-        {open ? (
-          <Input value={plan.title} onChange={(e) => setPlan({ ...plan, title: e.target.value })} aria-label="Project name" className="h-8 flex-1 border-transparent px-1.5 text-sm font-medium shadow-none hover:border-input" />
-        ) : (
-          <span className="flex-1 truncate text-sm font-medium">{plan.title}</span>
-        )}
-        {item.state === "approved" && (
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <HugeiconsIcon icon={Tick02Icon} className="size-3.5" />
-            Generated
+  // approved (or replaced): one line, opens to read
+  if (item.state !== "open")
+    return (
+      <div className="flex flex-col gap-2 px-1">
+        <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex items-center gap-2 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <HugeiconsIcon icon={item.state === "approved" ? Tick02Icon : Cancel01Icon} className="size-3.5 text-muted-foreground" />
+          <span className="text-sm font-medium">{plan.title}</span>
+          <span className="text-xs text-muted-foreground">
+            {item.state === "approved" ? `${plan.variations.length} variations` : "Replaced by a newer plan"}
           </span>
+          <HugeiconsIcon icon={ArrowDown01Icon} className={cn("ml-auto size-3.5 text-muted-foreground transition-transform", open && "rotate-180")} />
+        </button>
+        {open && (
+          <ol className="flex flex-col gap-1 border-l pl-3 text-xs text-muted-foreground">
+            <li>Reference: {plan.reference.prompt}</li>
+            {plan.variations.map((v, i) => (
+              <li key={i}>
+                <span className="font-medium text-foreground">{v.name}</span>
+                {v.price ? ` · ${v.price}` : ""}: {v.prompt}
+              </li>
+            ))}
+          </ol>
         )}
-        {item.state === "skipped" && <span className="text-xs text-muted-foreground">Replaced</span>}
       </div>
-
-      <section className="flex flex-col gap-1.5">
-        <h4 className="text-xs font-medium text-muted-foreground">Reference video</h4>
-        <Textarea
-          value={plan.reference.prompt}
-          readOnly={!open}
-          onChange={(e) => setPlan({ ...plan, reference: { prompt: e.target.value } })}
-          aria-label="Reference video prompt"
-          className="field-sizing-content min-h-0 resize-none rounded-lg text-sm"
-        />
-      </section>
-
-      <section className="flex flex-col gap-2">
-        <h4 className="text-xs font-medium text-muted-foreground">{plan.variations.length} variations</h4>
-        {plan.variations.map((v, i) => (
-          <div key={i} className="flex flex-col gap-1.5 rounded-xl bg-muted/50 p-2.5">
-            <div className="flex items-center gap-1.5">
-              <Input value={v.name} readOnly={!open} onChange={(e) => setVar(i, { name: e.target.value })} aria-label={`Variation ${i + 1} name`} className={cn(field, "flex-1 bg-background font-medium")} />
-              {(v.price !== undefined || open) && (
-                <Input value={v.price ?? ""} readOnly={!open} onChange={(e) => setVar(i, { price: e.target.value })} placeholder="Price" aria-label={`${v.name} price`} className={cn(field, "w-20 bg-background")} />
-              )}
+    )
+  const quiet = "rounded-md border-0 bg-transparent px-1.5 shadow-none outline-none transition-colors hover:bg-muted/70 focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-ring/40 dark:bg-transparent"
+  return (
+    <Card className="gap-0 overflow-hidden p-0 animate-in fade-in-0 slide-in-from-bottom-1 duration-300">
+      <div className="flex flex-col gap-3 p-3">
+        <div className="flex items-center gap-2">
+          <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">Plan</span>
+          <input value={plan.title} onChange={(e) => set({ title: e.target.value })} aria-label="Project name" className={cn(quiet, "h-7 min-w-0 flex-1 text-sm font-medium")} />
+        </div>
+        {/* the outline: one card per video, edited in place */}
+        <ol className="flex flex-col gap-1.5">
+          <li className="flex gap-2.5 rounded-xl bg-muted/50 p-2">
+            <span className="grid size-6 shrink-0 place-items-center rounded-md bg-background text-[11px] font-medium text-muted-foreground ring-1 ring-foreground/10">R</span>
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span className="px-1.5 text-xs font-medium text-muted-foreground">Reference video</span>
+              <textarea value={plan.reference.prompt} onChange={(e) => set({ reference: { prompt: e.target.value } })} aria-label="Reference video prompt" rows={1} className={cn(quiet, "field-sizing-content min-h-0 resize-none py-0.5 text-sm leading-relaxed")} />
             </div>
-            <Textarea
-              value={v.prompt}
-              readOnly={!open}
-              onChange={(e) => setVar(i, { prompt: e.target.value })}
-              aria-label={`${v.name} prompt`}
-              className="field-sizing-content min-h-0 resize-none rounded-lg bg-background text-sm"
-            />
-            {(open || v.link) && (
-              <Input value={v.link ?? ""} readOnly={!open} onChange={(e) => setVar(i, { link: e.target.value })} placeholder="Link for Shop now" aria-label={`${v.name} link`} className={cn(field, "bg-background text-xs")} />
-            )}
+          </li>
+          {plan.variations.map((v, i) => (
+            <li key={i} className="group/v relative flex gap-2.5 rounded-xl bg-muted/50 p-2">
+              <span className="grid size-6 shrink-0 place-items-center rounded-md bg-background text-[11px] font-medium tabular-nums ring-1 ring-foreground/10">{i + 1}</span>
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <div className="flex items-center gap-1">
+                  <input value={v.name} onChange={(e) => setVar(i, { name: e.target.value })} aria-label={`Variation ${i + 1} name`} className={cn(quiet, "h-6 min-w-0 flex-1 text-sm font-medium")} />
+                  <input value={v.price ?? ""} onChange={(e) => setVar(i, { price: e.target.value || undefined })} placeholder="Price" aria-label={`${v.name} price`} className={cn(quiet, "h-6 w-16 text-right text-sm tabular-nums placeholder:text-muted-foreground/60")} />
+                </div>
+                <textarea value={v.prompt} onChange={(e) => setVar(i, { prompt: e.target.value })} aria-label={`${v.name} prompt`} rows={1} className={cn(quiet, "field-sizing-content min-h-0 resize-none py-0.5 text-sm leading-relaxed text-foreground/80")} />
+                <input value={v.link ?? ""} onChange={(e) => setVar(i, { link: e.target.value || undefined })} placeholder="Add a link for the button" aria-label={`${v.name} link`} className={cn(quiet, "h-6 text-xs text-muted-foreground placeholder:text-muted-foreground/60")} />
+              </div>
+              {plan.variations.length > 2 && (
+                <Button variant="ghost" size="icon-xs" aria-label={`Remove ${v.name}`} onClick={() => set({ variations: plan.variations.filter((_, j) => j !== i) })} className="absolute -right-1.5 -top-1.5 size-5 rounded-full bg-background opacity-0 shadow-sm ring-1 ring-foreground/10 group-hover/v:opacity-100 focus-visible:opacity-100">
+                  <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
+                </Button>
+              )}
+            </li>
+          ))}
+        </ol>
+        {plan.variations.length < 5 && (
+          <button
+            type="button"
+            onClick={() => set({ variations: [...plan.variations, { name: `Variation ${plan.variations.length + 1}`, prompt: "Same scene, " }] })}
+            className="flex h-8 items-center justify-center gap-1.5 rounded-xl border border-dashed border-foreground/15 text-xs text-muted-foreground outline-none transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <HugeiconsIcon icon={Add01Icon} className="size-3.5" />
+            Add variation
+          </button>
+        )}
+        <div className="flex flex-col gap-1">
+          <span className="px-1.5 text-xs font-medium text-muted-foreground">On screen</span>
+          <div className="flex gap-1.5">
+            <input value={plan.design.headline ?? ""} onChange={(e) => set({ design: { ...plan.design, headline: e.target.value } })} placeholder="Headline" aria-label="Headline" className={cn(quiet, "h-8 min-w-0 flex-1 bg-muted/50 text-sm")} />
+            <input value={plan.design.cta ?? ""} onChange={(e) => set({ design: { ...plan.design, cta: e.target.value } })} placeholder="Button" aria-label="Button text" className={cn(quiet, "h-8 w-28 bg-muted/50 text-sm")} />
           </div>
-        ))}
-      </section>
-
-      <section className="flex flex-col gap-1.5">
-        <h4 className="text-xs font-medium text-muted-foreground">On screen</h4>
-        <div className="flex gap-1.5">
-          <Input value={plan.design.headline ?? ""} readOnly={!open} onChange={(e) => setPlan({ ...plan, design: { ...plan.design, headline: e.target.value } })} placeholder="Headline" aria-label="Headline" className={cn(field, "flex-1")} />
-          <Input value={plan.design.cta ?? ""} readOnly={!open} onChange={(e) => setPlan({ ...plan, design: { ...plan.design, cta: e.target.value } })} placeholder="Button" aria-label="Button text" className={cn(field, "w-28")} />
         </div>
-        <p className="text-xs text-muted-foreground">
-          {[plan.design.show_label && "Label", plan.design.show_price && "Price", "Thumbnails"].filter(Boolean).join(", ")} change per variation · {plan.design.layout ?? "bottom"} layout
-        </p>
-      </section>
+      </div>
+      {/* like Gamma: the count and the one action, always at the bottom */}
+      <div className="flex items-center gap-3 border-t bg-muted/40 px-3 py-2.5">
+        <span className="text-xs text-muted-foreground">
+          {videos} videos · {total.toLocaleString()} credits
+          {short && <span className="text-destructive"> · you have {ctx.credits.toLocaleString()}</span>}
+        </span>
+        <Button size="sm" className="ml-auto gap-1.5" disabled={agent.busy} onClick={() => agent.decidePlan(item.id, plan)}>
+          <HugeiconsIcon icon={SparklesIcon} className="size-4" />
+          Generate all
+        </Button>
+      </div>
+    </Card>
+  )
+}
 
-      {open && (
-        <div className="flex flex-col gap-2 border-t pt-3">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>
-              {videos} videos · {total.toLocaleString()} credits
+/** After Generate all: each part of the Flick, ticking off as it's ready. */
+function BuildCard({ ctx }: { ctx: AgentCtx }) {
+  const steps = ctx.progress()
+  const done = steps.filter((x) => x.state === "done").length
+  return (
+    <Card className="gap-2.5">
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium">{done === steps.length ? "Your Flick is ready" : "Building your Flick"}</span>
+        <span className="ml-auto text-xs tabular-nums text-muted-foreground">
+          {done}/{steps.length}
+        </span>
+      </div>
+      <ol className="flex flex-col gap-1.5">
+        {steps.map((x) => (
+          <li key={x.label} className="flex items-center gap-2 text-sm">
+            <span className={cn("grid size-4 shrink-0 place-items-center rounded-full", x.state === "done" ? "bg-foreground text-background" : "ring-1 ring-foreground/20")}>
+              {x.state === "done" ? <HugeiconsIcon icon={Tick02Icon} className="size-2.5" strokeWidth={3} /> : x.state === "working" ? <HugeiconsIcon icon={Loading03Icon} className="size-3 animate-spin text-primary" /> : null}
             </span>
-            {short && <span className="text-destructive">You have {ctx.credits.toLocaleString()}</span>}
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="flex-1" disabled={agent.busy} onClick={ctx.focusComposer}>
-              Ask for changes
-            </Button>
-            <Button size="sm" className="flex-1" disabled={agent.busy || plan.variations.length < 2} onClick={() => agent.decidePlan(item.id, plan)}>
-              Generate all
-            </Button>
-          </div>
-        </div>
-      )}
+            <span className={cn(x.state === "waiting" && "text-muted-foreground")}>{x.label}</span>
+          </li>
+        ))}
+      </ol>
     </Card>
   )
 }

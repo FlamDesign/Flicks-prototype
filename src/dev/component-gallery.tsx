@@ -598,7 +598,7 @@ const ENTRIES: Entry[] = [
   {
     name: "Chat cards",
     kind: "Editor",
-    about: "What the planning chat shows: a question, an image request, the brand, the plan, images and notes.",
+    about: "What the planning chat shows: questions (words, layouts, palettes), an image request, the brand, the plan outline, build progress, images and notes. Answered cards shrink to one line.",
     render: () => <ChatCardsDemo />,
   },
   {
@@ -901,7 +901,7 @@ function PopupDemo({ kind }: { kind: "intro" | "gift" }) {
 /* ---------- chat cards ---------- */
 
 const fakeAgent = { items: [], busy: false, waiting: false, send: async () => {}, answer: async () => {}, addAssets: async () => {}, decidePlan: async () => {}, stop: () => {}, retry: () => {} } as unknown as Parameters<typeof AgentItemView>[0]["agent"]
-const chatCtx = { videoCost: 48, credits: 1000, addToCanvas: () => {}, focusComposer: () => {} }
+const chatCtx = { videoCost: 48, credits: 1000, addToCanvas: () => {}, focusComposer: () => {}, ratio: 9 / 16, posters: [1, 2, 3].map((i) => GENERATED_VIDEOS[i].poster), progress: () => [{ label: "Reference video", state: "done" as const }, { label: "3 variations", state: "working" as const }, { label: "Thumbnail images", state: "waiting" as const }] }
 const demoPlan: Plan = {
   title: "Sport lens drop",
   reference: { prompt: "Athlete against a sunlit concrete wall, slow push-in, golden hour." },
@@ -915,9 +915,12 @@ function ChatCardsDemo() {
   const it = (x: Record<string, unknown>) => ({ id: String(Math.random()), at: 0, ...x }) as Item
   const states = [
     { label: "Thinking", node: <AgentItemView item={it({ kind: "assistant", text: "", streaming: true })} agent={fakeAgent} ctx={chatCtx} /> },
-    { label: "Question", node: <AgentItemView item={it({ kind: "question", toolId: "q", question: "Where will this Flick run?", options: ["Ads", "My website", "A link"], multi: false, custom: true })} agent={fakeAgent} ctx={chatCtx} /> },
-    { label: "Question, answered", node: <AgentItemView item={it({ kind: "question", toolId: "q", question: "Where will this Flick run?", options: ["Ads", "My website", "A link"], multi: false, custom: true, answer: "Ads" })} agent={fakeAgent} ctx={chatCtx} /> },
+    { label: "Question", node: <AgentItemView item={it({ kind: "question", toolId: "q", question: "Where will this Flick run?", options: [{ label: "Ads" }, { label: "My website" }, { label: "A link" }], display: "chips", multi: false, custom: true })} agent={fakeAgent} ctx={chatCtx} /> },
+    { label: "Question, answered", node: <AgentItemView item={it({ kind: "question", toolId: "q", question: "Where will this Flick run?", options: [{ label: "Ads" }], display: "chips", multi: false, custom: true, answer: "Ads" })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Images request", node: <AgentItemView item={it({ kind: "assets", toolId: "a", message: "Add product photos or your logo.", kinds: ["product", "logo"] })} agent={fakeAgent} ctx={chatCtx} /> },
+    { label: "Look: layouts (visual answers)", node: <AgentItemView item={it({ kind: "question", toolId: "l", question: "Which layout fits?", display: "layouts", step: "look", multi: false, custom: false, options: [{ label: "Bold bottom", design: { layout: "bottom", thumbnails: { position: "bottom" } } }, { label: "Editorial", design: { layout: "bottom", align: "left", button_style: "sharp", thumbnails: { position: "right", shape: "square", size: "small" } } }, { label: "Clean top", design: { layout: "top", button_style: "light", thumbnails: { shape: "circle" } } }] })} agent={fakeAgent} ctx={chatCtx} /> },
+    { label: "Look: palettes", node: <AgentItemView item={it({ kind: "question", toolId: "c", question: "And the colours?", display: "palettes", step: "look", multi: false, custom: false, options: [{ label: "Ink", colors: ["#09090b", "#a1a1aa", "#ffffff"] }, { label: "Sunset", colors: ["#ea580c", "#fdba74", "#ffffff"] }, { label: "Ocean", colors: ["#2563eb", "#93c5fd", "#ffffff"] }] })} agent={fakeAgent} ctx={chatCtx} /> },
+    { label: "Build progress", node: <AgentItemView item={it({ kind: "build", count: 3 })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Brand", node: <AgentItemView item={it({ kind: "brand", brand: { name: "Lumen", primary_color: "#ea580c", text_color: "#ffffff", font: "Montserrat", tone: "Bold" } })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Plan", node: <AgentItemView item={it({ kind: "plan", toolId: "p", plan: demoPlan, state: "open" })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Image, making", node: <AgentItemView item={it({ kind: "image", prompt: "Gold lens close-up", purpose: "thumbnail", target: "Gold", state: "working" })} agent={fakeAgent} ctx={chatCtx} /> },

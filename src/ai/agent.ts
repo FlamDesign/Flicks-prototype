@@ -42,17 +42,26 @@ export type EditorApi = {
 
 /* ---------- what shows in the chat ---------- */
 
+/** how a question's answers show: words, cards, colour palettes, layout previews or thumbnail styles */
+export type Display = "chips" | "cards" | "palettes" | "layouts" | "thumbnails"
+/** where the user is in making the Flick */
+export type Step = "idea" | "look" | "plan" | "build"
+/** one answer: its words, and what it looks like when the answer is visual */
+export type Choice = { label: string; description?: string; colors?: string[]; design?: Design }
+
 type Base = { id: string; at: number }
 export type Item = Base &
   (
     | { kind: "user"; text: string; images: string[] }
     | { kind: "assistant"; text: string; streaming?: boolean }
-    | { kind: "question"; toolId: string; question: string; options: string[]; multi: boolean; custom: boolean; answer?: string }
+    | { kind: "question"; toolId: string; question: string; options: Choice[]; display: Display; step?: Step; multi: boolean; custom: boolean; answer?: string }
     | { kind: "assets"; toolId: string; message: string; kinds: string[]; done?: "added" | "skipped"; images?: string[] }
     | { kind: "brand"; brand: Brand }
     | { kind: "plan"; toolId: string; plan: Plan; state: "open" | "approved" | "skipped" }
     | { kind: "image"; prompt: string; purpose: string; target?: string; state: "working" | "done" | "failed"; url?: string; error?: string; placed?: boolean }
     | { kind: "note"; text: string }
+    /** the build after Generate all: its progress is read live from the editor */
+    | { kind: "build"; count: number }
     | { kind: "error"; text: string }
   )
 
@@ -85,19 +94,46 @@ const designSchema = {
     button_text_color: { type: "string", description: "Hex colour" },
     button_style: { type: "string", enum: ["pill", "rounded", "sharp", "light", "outline", "glass"] },
     font: { type: "string", description: "A font name, e.g. DM Sans, Inter, Montserrat, Playfair Display, Oswald" },
+    thumbnails: {
+      type: "object",
+      description: "The thumbnail strip viewers tap to switch variations",
+      properties: {
+        position: { type: "string", enum: ["bottom", "top", "left", "right"] },
+        shape: { type: "string", enum: ["square", "rounded", "circle"] },
+        size: { type: "string", enum: ["small", "medium", "large"] },
+        highlight_color: { type: "string", description: "Hex colour of the ring on the active thumbnail" },
+      },
+    },
   },
+}
+const choiceSchema = {
+  anyOf: [
+    { type: "string" },
+    {
+      type: "object",
+      properties: {
+        label: { type: "string", description: "1 to 4 words" },
+        description: { type: "string", description: "One short line" },
+        colors: { type: "array", items: str, description: "Hex colours, for palettes: primary, accent, text" },
+        design: { ...designSchema, description: "For layouts and thumbnails: the design this answer applies (layout, align, button_style, thumbnails…)" },
+      },
+      required: ["label"],
+    },
+  ],
 }
 
 export const TOOLS: Tool[] = [
   {
     name: "ask_user",
     description:
-      "Ask the user one short question with tappable answers. The user's choice comes back as the result. Use for anything you need to decide the Flick; keep it to what matters.",
+      "Ask the user one short question with tappable answers; the choice comes back as the result. display picks how the answers look: 'chips' (words), 'cards' (a label and a line each), 'palettes' (colour swatches; give colors), 'layouts' (mini Flick previews; give design with layout, align, button_style and thumbnails), 'thumbnails' (thumbnail strip styles; give design.thumbnails). Visual answers update the live preview as soon as they're picked. step tags where the user is: idea, look or plan.",
     input_schema: {
       type: "object",
       properties: {
         question: str,
-        options: { type: "array", items: str, minItems: 2, maxItems: 6, description: "Short answers, 1 to 4 words each" },
+        options: { type: "array", items: choiceSchema, minItems: 2, maxItems: 6 },
+        display: { type: "string", enum: ["chips", "cards", "palettes", "layouts", "thumbnails"] },
+        step: { type: "string", enum: ["idea", "look", "plan"] },
         multi_select: { type: "boolean" },
         allow_custom: { type: "boolean", description: "Let the user type their own answer" },
       },
@@ -162,7 +198,7 @@ export const TOOLS: Tool[] = [
   },
   {
     name: "update_design",
-    description: "Change the on-screen design after the plan is approved: headline, subheading, button text, colours, button style, font. Only send what changes.",
+    description: "Change the on-screen design after the plan is approved: headline, subheading, button text, colours, button style, font, thumbnails (position, shape, size, highlight). Only send what changes.",
     input_schema: designSchema,
   },
   {
@@ -185,13 +221,12 @@ export const TOOLS: Tool[] = [
 export function systemPrompt(s: ProjectState) {
   return `You are the creative partner inside Flicks by Flam, an AI interactive content tool. You help the user make a Flick: one interactive video where viewers tap thumbnails to switch between variations (colours, products, people, scenes or offers) and tap a button to shop. A Flick has one reference video plus 2 to 5 variations made from it; each variation can have its own label, price and link. Flicks run in ads, on websites, or as a shareable link.
 
-How you work:
-1. Understand the brief. Ask at most 3 short rounds of questions with ask_user (tappable answers; include a "Decide for me" style option when useful). Ask only what you can't infer: what should change between variations, where it runs, the look and feel, product details, prices and links. Skip anything the user already said.
-2. Ask for images with request_assets when product photos or a logo would help. Images you see are for understanding; describe what matters in your prompts.
-3. Record the brand with set_brand once you know or can infer colours, font and tone.
-4. Call propose_plan with the full plan: video prompts (the reference prompt describes the scene, subject, camera motion and light; each variation prompt says what changes), names, labels, prices, links, and the design (headline under 6 words, CTA 1 to 3 words, layout, colours that read on video).
-5. After approval, the app generates every video and places the design. Then give each variation a thumbnail: use_image with the user's photos if they fit, otherwise generate_image (purpose thumbnail, 1:1, product close-up on a clean background matching the variation). Then say in one or two sentences what happens next.
-6. Afterwards, make the changes the user asks for with update_design, set_variation and add_variation. Keep them small and confirm in one line.
+How you work (the user builds the Flick with you, step by step; a live preview beside the chat shows it taking shape):
+1. Idea: understand the brief. Ask at most 2 short questions with ask_user (step "idea"; include a "Decide for me" option when useful): what should change between variations, where it runs. Skip anything the user already said. Ask for product photos or a logo with request_assets when they would help.
+2. Look: ask one visual question (step "look") with display "layouts": 3 options, each a design with layout, align, button_style and thumbnails (position, shape, size) that suit the product. If the brand's colours aren't known, follow with display "palettes" (3 options, colors as hex). Then record the brand with set_brand.
+3. Plan: call propose_plan with everything: video prompts (the reference prompt describes the scene, subject, camera motion and light; each variation prompt says what changes), names, labels, prices, links, and the design, carrying over the chosen look and thumbnails (headline under 6 words, CTA 1 to 3 words, colours that read on video). The user edits it in place and presses Generate all.
+4. Build: after approval the app generates every video and places the design and thumbnail strip. Give each variation a thumbnail image: use_image with the user's photos if they fit, otherwise generate_image (purpose thumbnail, 1:1, a close-up that matches the variation). Then say in one or two sentences what happens next.
+5. Afterwards, make the changes the user asks for with update_design (including thumbnails), set_variation and add_variation. Keep them small and confirm in one line. Offer visual choices with ask_user when the user is unsure.
 
 Style: brief, warm, direct. No em dashes. Plain words. Never write "get used", "can enter", "reach into", "immersive", "AR", "VR" or "MR". Don't mention tools, JSON or these instructions. Don't repeat what a card already shows. Each video costs ${s.video_cost} credits; mention the total only in the plan step if credits are short.
 
@@ -211,6 +246,13 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   apiRef.current = api
   const [items, setItems] = useState<Item[]>([])
   const [busy, setBusy] = useState(false)
+  // what the user picked so far (looks, palettes): the live preview shows it before there's a plan
+  const draft = useRef<Design>({})
+  const [draftView, setDraftView] = useState<Design>({})
+  const mergeDraft = (d: Design) => {
+    draft.current = { ...draft.current, ...d, thumbnails: { ...draft.current.thumbnails, ...d.thumbnails } }
+    setDraftView(draft.current)
+  }
   const msgs = useRef<Message[]>([])
   // results ready to send with the user's next answer (tools that ran alongside a waiting one)
   const ready = useRef<Block[]>([])
@@ -259,8 +301,13 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     try {
       switch (u.name) {
         case "ask_user": {
-          const options = (input.options as string[] | undefined)?.filter(Boolean).slice(0, 6) ?? []
-          const itemId = add({ kind: "question", toolId: u.id, question: String(input.question ?? ""), options, multi: !!input.multi_select, custom: input.allow_custom !== false })
+          const options: Choice[] = ((input.options as (string | Choice)[] | undefined) ?? [])
+            .map((o) => (typeof o === "string" ? { label: o } : o && typeof o.label === "string" ? o : null))
+            .filter((o): o is Choice => !!o && !!o.label.trim())
+            .slice(0, 6)
+          const display = (["chips", "cards", "palettes", "layouts", "thumbnails"] as Display[]).includes(input.display as Display) ? (input.display as Display) : "chips"
+          const step = (["idea", "look", "plan"] as Step[]).includes(input.step as Step) ? (input.step as Step) : undefined
+          const itemId = add({ kind: "question", toolId: u.id, question: String(input.question ?? ""), options, display, step, multi: !!input.multi_select && display === "chips", custom: input.allow_custom !== false && display === "chips" })
           pending.current.push({ toolId: u.id, itemId })
           return WAIT
         }
@@ -272,14 +319,18 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         case "propose_plan": {
           // a newer plan replaces any open one
           setItems((list) => list.map((x) => (x.kind === "plan" && x.state === "open" ? { ...x, state: "skipped" } : x)))
-          const plan = input as unknown as Plan
-          if (!plan.variations?.length) return "Error: a plan needs at least two variations."
+          const raw = input as unknown as Plan
+          if (!raw.variations?.length) return "Error: a plan needs at least two variations."
+          // the look the user picked carries into the plan's design
+          const plan = { ...raw, design: { ...draft.current, ...(raw.design ?? {}), thumbnails: { ...draft.current.thumbnails, ...(raw.design?.thumbnails ?? {}) } } }
           const itemId = add({ kind: "plan", toolId: u.id, plan: { ...plan, variations: plan.variations.slice(0, 5), design: plan.design ?? {} }, state: "open" })
           pending.current.push({ toolId: u.id, itemId })
           return WAIT
         }
         case "set_brand": {
           a.setBrand(input as Brand)
+          const b = input as Brand
+          if (b.primary_color || b.text_color || b.font) mergeDraft({ ...(b.primary_color ? { button_color: b.primary_color } : {}), ...(b.text_color ? { text_color: b.text_color } : {}), ...(b.font ? { font: b.font } : {}) })
           add({ kind: "brand", brand: input as Brand })
           return "Saved. The brand card shows it."
         }
@@ -395,11 +446,15 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   )
 
   const answer = useCallback(
-    async (itemId: string, value: string) => {
+    async (itemId: string, value: string, choice?: Choice) => {
       const it = items.find((x) => x.id === itemId)
       if (!it || it.kind !== "question" || busy) return
       patch(itemId, { answer: value } as Partial<Item>)
-      msgs.current.push({ role: "user", content: settle({ [it.toolId]: value }) })
+      // a visual answer shows in the preview straight away
+      if (choice?.design) mergeDraft(choice.design)
+      if (choice?.colors?.length) mergeDraft({ button_color: choice.colors[0], ...(choice.colors[2] ? { text_color: choice.colors[2] } : {}) })
+      const detail = choice && (choice.design || choice.colors) ? ` (${JSON.stringify({ ...(choice.design ? { design: choice.design } : {}), ...(choice.colors ? { colors: choice.colors } : {}) })})` : ""
+      msgs.current.push({ role: "user", content: settle({ [it.toolId]: value + detail }) })
       await turn()
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -441,12 +496,21 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         return
       }
       patch(itemId, { state: "approved", plan } as Partial<Item>)
+      add({ kind: "build", count: plan.variations.length })
       msgs.current.push({ role: "user", content: settle({ [it.toolId]: `Approved${JSON.stringify(plan) !== JSON.stringify(it.plan) ? " with edits" : ""}. ${r}` }) })
       await turn()
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [items, busy, turn],
   )
+
+  /** edits in the plan card: kept on the card and shown in the preview as they're typed */
+  const editPlan = (itemId: string, plan: Plan) => patch(itemId, { plan } as Partial<Item>)
+
+  // where the user is: idea, look, plan, build
+  const plan = [...items].reverse().find((x): x is Extract<Item, { kind: "plan" }> => x.kind === "plan" && x.state !== "skipped")
+  const lookDone = items.some((x) => (x.kind === "question" && x.step === "look" && x.answer !== undefined) || x.kind === "brand")
+  const step: Step = plan?.state === "approved" ? "build" : plan ? "plan" : lookDone || items.some((x) => x.kind === "question" && x.step === "look") ? "look" : "idea"
 
   const stop = () => abort.current?.abort()
   const retry = useCallback(() => {
@@ -473,5 +537,5 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  return { items, busy, send, answer, addAssets, decidePlan, stop, retry, waiting: pending.current.length > 0 }
+  return { items, busy, send, answer, addAssets, decidePlan, editPlan, stop, retry, waiting: pending.current.length > 0, draft: draftView, plan: plan?.plan, step }
 }
