@@ -43,6 +43,10 @@ export type EditorApi = {
   /** back to one value for every variation */
   sameForAll(field: string | undefined, feed: string | undefined, value?: string): string
   renameFeed(from: string, to: string): string
+  /** any text, button or image on the canvas: add, change (move, resize, restyle) or remove; ids from the design list */
+  addElement(spec: ElementSpec): string
+  editElement(id: string, spec: ElementSpec): string
+  removeElement(id: string): string
   /** a variation's thumbnail in the strip */
   setThumbnail(target: string, url: string): string
   addImageToCanvas(url: string): string
@@ -50,6 +54,29 @@ export type EditorApi = {
   sampleSite(url: string): SiteRead
   /** a demo image for the scripted chat */
   sampleImage(purpose: string, target?: string): string
+}
+
+/** an element as the chat describes it: positions are % of the frame (x, y = its anchor point) */
+export type ElementSpec = {
+  type?: "text" | "button" | "image"
+  text?: string
+  style?: string
+  /** an image: a project image's url (the hook resolves image_id to this) */
+  url?: string
+  x?: number
+  y?: number
+  position?: "top" | "upper" | "center" | "lower" | "bottom"
+  align?: "left" | "center" | "right"
+  width?: number
+  size?: number
+  color?: string
+  background?: string
+  font?: string
+  bold?: boolean
+  italic?: boolean
+  link?: string
+  radius?: number
+  hidden?: boolean
 }
 
 /* ---------- what shows in the chat ---------- */
@@ -270,6 +297,68 @@ export const TOOLS: Tool[] = [
     input_schema: { type: "object", properties: { field: fieldEnum, feed: str, value: str } },
   },
   {
+    name: "add_element",
+    description:
+      "Add any text, button or image to the canvas (on every variation). Text styles: heading, subheading, body, caption, label. Button styles: pill, rounded, sharp, light, outline, glass, link. Images: image_id of a project image (uploaded, from a website or generated; a logo, a product shot). Place it with position (top, upper, center, lower, bottom) and align (left, center, right), or exact x and y (% of the frame; x is the left edge, centre or right edge by align, y the middle). width: % of the frame (images, or a text box that wraps). size: font size in % of frame width (heading is 8, body 3.4). Keep clear of other elements and the thumbnail strip (see design). Returns the new element's id.",
+    input_schema: {
+      type: "object",
+      properties: {
+        type: { type: "string", enum: ["text", "button", "image"] },
+        text: str,
+        style: str,
+        image_id: str,
+        position: { type: "string", enum: ["top", "upper", "center", "lower", "bottom"] },
+        align: { type: "string", enum: ["left", "center", "right"] },
+        x: { type: "number" },
+        y: { type: "number" },
+        width: { type: "number" },
+        size: { type: "number" },
+        color: { type: "string", description: "Hex text colour" },
+        background: { type: "string", description: "Hex button colour" },
+        font: str,
+        bold: { type: "boolean" },
+        italic: { type: "boolean" },
+        link: { type: "string", description: "Where a button goes" },
+        radius: { type: "number", description: "Image corner rounding, 0 to 100" },
+      },
+      required: ["type"],
+    },
+  },
+  {
+    name: "edit_element",
+    description:
+      "Change one element by its id from the design list: move (position/align or x/y), resize (width, size), restyle (style, color, background, font, bold, italic, radius), change its text or link, swap an image (image_id), or hide it. Text that differs per variation is changed with vary_field instead.",
+    input_schema: {
+      type: "object",
+      properties: {
+        id: str,
+        text: str,
+        style: str,
+        image_id: str,
+        position: { type: "string", enum: ["top", "upper", "center", "lower", "bottom"] },
+        align: { type: "string", enum: ["left", "center", "right"] },
+        x: { type: "number" },
+        y: { type: "number" },
+        width: { type: "number" },
+        size: { type: "number" },
+        color: str,
+        background: str,
+        font: str,
+        bold: { type: "boolean" },
+        italic: { type: "boolean" },
+        link: str,
+        radius: { type: "number" },
+        hidden: { type: "boolean" },
+      },
+      required: ["id"],
+    },
+  },
+  {
+    name: "remove_element",
+    description: "Remove one element by its id (the thumbnail strip stays).",
+    input_schema: { type: "object", properties: { id: str }, required: ["id"] },
+  },
+  {
     name: "rename_feed",
     description: "Rename a feed.",
     input_schema: { type: "object", properties: { from: str, to: str }, required: ["from", "to"] },
@@ -287,7 +376,7 @@ How you work (the user builds the Flick with you, step by step; a live preview b
 3. Plan: call propose_plan with everything: video prompts (the reference prompt describes the scene, subject, camera motion and light; each variation prompt says what changes), names, labels, prices, links, and the design, carrying over the chosen look and thumbnails (headline under 6 words, CTA 1 to 3 words, colours that read on video). The user edits it in place and presses Generate all.
 4. Build: after approval the app generates every video and places the design and thumbnail strip. Give each variation a thumbnail image: use_image with the user's photos if they fit, otherwise generate_image (purpose thumbnail, 1:1, a close-up that matches the variation). Then say in one or two sentences what happens next.
 Feeds: any on-screen text that differs per variation is a feed (a named value each variation sets). The project state lists every feed (including ones the user or a template made), what uses it and each variation's value, plus issues (empty values). In the plan, give each variation its label, price and link, and a headline, subheading or button text only when it should differ. Afterwards use vary_field to make text differ or change its values, same_for_all to make it one value again, set_variation for one variation, and rename_feed. update_design can't change text that differs per variation; it says so. When a result or the state reports issues, fix them in the same turn (fill every empty value).
-5. Afterwards, make the changes the user asks for with update_design (including thumbnails), set_variation, add_variation, vary_field and same_for_all. Keep them small and confirm in one line. Offer visual choices with ask_user when the user is unsure.
+5. Afterwards, make the changes the user asks for with update_design (including thumbnails), set_variation, add_variation, vary_field and same_for_all. To put anything else on the canvas (a logo, a product image, a badge like "New", a disclaimer, an extra button) use add_element; move, resize or restyle any element with edit_element, and remove_element. The design list gives each element's id, type, text and position; place new things where they don't overlap. Keep them small and confirm in one line. Offer visual choices with ask_user when the user is unsure.
 
 Style: brief, warm, direct. No em dashes. Plain words. Never write "get used", "can enter", "reach into", "immersive", "AR", "VR" or "MR". Don't mention tools, JSON or these instructions. Don't repeat what a card already shows. Each video costs ${s.video_cost} credits; mention the total only in the plan step if credits are short.
 
@@ -483,6 +572,20 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
                 ? a.sameForAll(input.field as string | undefined, input.feed as string | undefined, input.value as string | undefined)
                 : a.renameFeed(String(input.from ?? ""), String(input.to ?? ""))
           if (!r.startsWith("Error") && !r.startsWith("Nothing")) add({ kind: "note", text: r.replace(/ Check: .*$/, "") })
+          return r
+        }
+        case "add_element":
+        case "edit_element":
+        case "remove_element": {
+          const spec = { ...(input as ElementSpec & { image_id?: string; id?: string }) }
+          if ((input as { image_id?: string }).image_id) {
+            const img = images.current.find((i) => i.id === (input as { image_id?: string }).image_id)
+            if (!img) return "Error: no image with that id."
+            spec.url = img.url
+            spec.type = spec.type ?? "image"
+          }
+          const r = u.name === "add_element" ? a.addElement(spec) : u.name === "edit_element" ? a.editElement(String(input.id ?? ""), spec) : a.removeElement(String(input.id ?? ""))
+          if (!r.startsWith("Error") && !r.startsWith("Nothing")) add({ kind: "note", text: r.replace(/ \(id [^)]*\)/, "") })
           return r
         }
         case "add_variation": {

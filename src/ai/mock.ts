@@ -113,6 +113,33 @@ export async function mockReply(messages: Message[], s: ProjectState, onText: (t
     // a few edits the demo understands
     const t = typed
     let m
+    // anything on the canvas: add text or an image, move or remove an element
+    type D = { id: string; type: string; role?: string; text?: string }
+    const els = s.design as D[]
+    const find = (w: string) => {
+      const k = w.toLowerCase()
+      return k === "image" || k === "logo" || k === "photo" ? [...els].reverse().find((e) => e.type === "image") : k === "button" ? els.find((e) => e.type === "button") : els.find((e) => e.role === k || (e.type === "text" && e.text?.toLowerCase().includes(k)))
+    }
+    if ((m = t.match(/\badd (?:a |an |the )?(badge|text|line|caption|note|disclaimer)\b[^"“']*["“']([^"”']{1,60})["”']/i))) {
+      const badge = /badge/i.test(m[1])
+      return reply("", tool("add_element", { type: "text", text: m[2].trim(), style: badge ? "label" : "caption", position: badge ? "top" : "upper" }))
+    }
+    if ((m = t.match(/\badd\b.{0,30}?\b(logo|image|photo|picture|shot)s?\b/i))) {
+      const img = s.images.find((i) => /logo/i.test(m![1]) ? /logo/i.test(i.name) : true) ?? s.images[0]
+      if (!img) return reply("Add the image in a message (+) or give me a link to your site, and I'll place it.")
+      return reply("", tool("add_element", { type: "image", image_id: img.id, position: "top", width: /logo/i.test(m[1]) ? 18 : 30 }))
+    }
+    if ((m = t.match(/\bmove (?:the )?(headline|subheading|button|image|logo|label|price|badge)\b.*\b(top|upper|center|centre|lower|bottom|left|right)\b/i))) {
+      const el = find(m[1])
+      if (!el) return reply(`I can't find the ${m[1]} on the canvas.`)
+      const where = m[2].toLowerCase().replace("centre", "center")
+      return reply("", tool("edit_element", { id: el.id, ...(["left", "right"].includes(where) ? { align: where } : { position: where }) }))
+    }
+    if ((m = t.match(/\b(?:remove|delete) (?:the )?(subheading|image|logo|label|price|badge|headline)\b/i))) {
+      const el = find(m[1])
+      if (!el) return reply(`There's no ${m[1]} on the canvas.`)
+      return reply("", tool("remove_element", { id: el.id }))
+    }
     // feeds: make text differ per variation, set one variation's value, or make it one value again
     const fieldOf = (w: string) => (/button|cta/i.test(w) ? "cta" : (w.toLowerCase() as "headline" | "subheading" | "price" | "label"))
     const names = s.videos.filter((v) => v.role === "variation").map((v) => v.name)
@@ -138,7 +165,7 @@ export async function mockReply(messages: Message[], s: ProjectState, onText: (t
       const name = (m[1] || "New").trim().replace(/^\w/, (c) => c.toUpperCase()) || "New"
       return reply("", tool("add_variation", { name, prompt: `Same scene, ${name.toLowerCase()} version.`, label: name, generate: true }))
     }
-    return reply("In this demo I can change the headline or the button text, the button colour, make the headline, button, price or label differ per variation (or one value again), set one variation's price, or add a variation. Connect Claude in dev tools (State manager, AI) and I can do much more.")
+    return reply("In this demo I can change the headline or the button text, the button colour, make the headline, button, price or label differ per variation (or one value again), set one variation's price, add a variation, add text (add a badge “New”) or an image (add the logo), and move or remove things (move the button to the top). Connect Claude in dev tools (State manager, AI) and I can do much more.")
   }
 
   // the idea

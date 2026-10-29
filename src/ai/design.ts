@@ -203,19 +203,20 @@ export function feedOfField(els: CanvasElement[], f: Field) {
   return f === "link" ? (el.kind === "button" ? el.linkFeed : undefined) : el.feed
 }
 
-/** What the chat sees of the canvas design. */
+/** What the chat sees of the canvas design: each element with a short id, so it can move or change it. */
 export function describeDesign(els: CanvasElement[], feedName: (id?: string) => string | undefined) {
+  const r = (n: number) => Math.round(n * 10) / 10
   return els
     .filter((e) => !e.hidden)
-    .map((e) =>
-      e.kind === "text"
-        ? { type: "text", role: roleOf(e), text: e.feed ? `{${feedName(e.feed)}}` : e.text, color: e.color, font: e.font, y: Math.round(e.y) }
-        : e.kind === "button"
-          ? { type: "button", role: roleOf(e), text: e.feed ? `{${feedName(e.feed)}}` : e.text, link: e.linkFeed ? `{${feedName(e.linkFeed)}}` : e.link, bg: e.bg, y: Math.round(e.y) }
-          : e.kind === "strip"
-            ? { type: "thumbnail strip" }
-            : { type: "image", y: Math.round(e.y) },
-    )
+    .map((e) => {
+      const id = e.id.slice(0, 6)
+      if (e.kind === "text")
+        return { id, type: "text", role: roleOf(e), style: e.variant, text: e.feed ? `{${feedName(e.feed)}}` : e.text, x: r(e.x), y: r(e.y), align: e.align, size: e.size, color: e.color, font: e.font, width: e.w }
+      if (e.kind === "button")
+        return { id, type: "button", role: roleOf(e), style: e.variant, text: e.feed ? `{${feedName(e.feed)}}` : e.text, link: e.linkFeed ? `{${feedName(e.linkFeed)}}` : e.link, x: r(e.x), y: r(e.y), bg: e.bg, color: e.color }
+      if (e.kind === "strip") return { id, type: "thumbnail strip", layout: e.layout, x: r(e.x), y: r(e.y), size: r(e.size) }
+      return { id, type: "image", x: r(e.x), y: r(e.y), width: r(e.w), height: r(e.h), radius: e.radius }
+    })
 }
 
 /**
@@ -256,4 +257,43 @@ export function restack(els: CanvasElement[], longest: (el: Extract<CanvasElemen
     y += hs[i]
   })
   return els.map((e) => (moved.has(e.id) ? ({ ...e, y: moved.get(e.id)! } as CanvasElement) : e))
+}
+
+/** an element's approximate box, in % of the frame (text measured from its characters) */
+export function boxOf(e: CanvasElement, ratio: number, text?: string) {
+  if (e.kind === "strip") {
+    const span = 0 // the strip's length is set by its count; a generous box is enough here
+    return e.layout === "horizontal" ? { l: 0, r: 100, t: e.y, b: e.y + e.size * ratio + 1 + span } : { l: e.x, r: e.x + e.size, t: 0, b: 100 }
+  }
+  const align = e.kind === "image" ? "center" : (e.align ?? "center")
+  let w: number
+  let h: number
+  if (e.kind === "image") (w = e.w), (h = e.h)
+  else {
+    const size = e.size ?? (e.kind === "text" ? TEXT_STYLES.find((t) => t.variant === e.variant)!.size : BUTTON_SIZE)
+    const chars = Math.max(1, (text ?? e.text ?? "").length)
+    const perChar = e.kind === "text" && e.variant === "label" ? 0.75 : 0.55
+    const raw = chars * perChar * size + (e.kind === "button" ? size * 2.4 : 0)
+    const max = e.kind === "text" ? (e.w ?? 84) : 90
+    const lines = Math.max(1, Math.ceil(raw / max))
+    w = Math.min(raw, max)
+    h = e.kind === "button" ? size * 2.5 * ratio : lines * size * 1.15 * ratio
+  }
+  const l = align === "left" ? e.x : align === "right" ? e.x - w : e.x - w / 2
+  return { l, r: l + w, t: e.y - h / 2, b: e.y + h / 2 }
+}
+
+/**
+ * Where a new element fits: the requested height if it's free, else the nearest free height
+ * (searching outward), so added text and images don't land on top of what's there.
+ */
+export function freeY(others: CanvasElement[], el: CanvasElement, ratio: number, text: (e: CanvasElement) => string | undefined) {
+  const me = boxOf(el, ratio, text(el))
+  const h = me.b - me.t
+  const taken = others.filter((o) => !o.hidden).map((o) => boxOf(o, ratio, text(o)))
+  const clash = (y: number) => taken.find((b) => me.l < b.r && me.r > b.l && y - h / 2 - 1 < b.b && y + h / 2 + 1 > b.t)
+  if (!clash(el.y)) return { y: el.y, moved: false }
+  for (let d = 2; d < 96; d += 2)
+    for (const y of [el.y + d, el.y - d]) if (y - h / 2 >= 3 && y + h / 2 <= 97 && !clash(y)) return { y, moved: true }
+  return { y: el.y, moved: false, overlaps: true }
 }

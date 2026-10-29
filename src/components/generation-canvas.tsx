@@ -29,12 +29,12 @@ import { EditorPanel, type Picker } from "@/components/editor/editor-panel"
 import { GeneratedVideo } from "@/components/editor/generated-video"
 import { CanvasStage } from "@/components/editor/canvas-stage"
 import { ElementToolbar, ToolbarGrip } from "@/components/editor/element-toolbar"
-import { useAgent, type EditorApi } from "@/ai/agent"
-import { buildDesign, describeDesign, elementFor, feedOfField, FIELD_FEED, FIELDS, patchDesign, restack, type Brand, type Field } from "@/ai/design"
+import { useAgent, type EditorApi, type ElementSpec } from "@/ai/agent"
+import { buildDesign, color as colorOf, describeDesign, elementFor, fontName, freeY, feedOfField, FIELD_FEED, FIELDS, patchDesign, restack, type Brand, type Field } from "@/ai/design"
 import { isLive, useAiConfig } from "@/ai/client"
 import { AgentComposer, AgentItemView, type AgentCtx } from "@/components/editor/agent-chat"
 import { PlanningView, PlanSteps } from "@/components/editor/planning-view"
-import { BUTTON_TEXT, DEFAULT_ICON, GENERATED_VIDEOS, SAMPLE_UPLOADS, inSet, clampStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload } from "@/components/editor/elements"
+import { BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, GENERATED_VIDEOS, SAMPLE_UPLOADS, inSet, clampStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload } from "@/components/editor/elements"
 
 export type Generation = {
   id: string
@@ -675,6 +675,35 @@ export function GenerationCanvas({
     const name = feedsNow.current.find((x) => x.id === id)!.name
     return `${current ? "Updated" : "Made"} the ${f === "cta" ? "button text" : f} different per variation (feed “${name}”).${unknown.length ? ` No variation called ${unknown.join(", ")}.` : ""}`
   }
+  /* elements the chat adds or changes by hand */
+  const findEl = (short: string) => elementsNow.current.find((e) => e.id === short || e.id.startsWith(short.trim()))
+  const POS_Y = { top: 12, upper: 30, center: 50, lower: 70, bottom: 84 }
+  const placeOf = (spec: ElementSpec, el?: CanvasElement) => {
+    const align = spec.align ?? (el && el.kind !== "strip" && el.kind !== "image" ? el.align : undefined) ?? "center"
+    const x = spec.x ?? (spec.align || !el ? (align === "left" ? 8 : align === "right" ? 92 : 50) : el.x)
+    const y = spec.y ?? (spec.position ? POS_Y[spec.position] : (el?.y ?? 50))
+    return { x: Math.min(100, Math.max(0, x)), y: Math.min(100, Math.max(0, y)), ...(el?.kind === "image" ? {} : { align }) }
+  }
+  const textVariant = (v?: string) => TEXT_STYLES.find((t) => t.variant === v?.toLowerCase())?.variant
+  const buttonVariant = (v?: string) => BUTTON_STYLES.find((b) => b.variant.toLowerCase() === v?.toLowerCase())?.variant
+  const styleOf = (spec: ElementSpec) => ({
+    ...(spec.size ? { size: Math.min(30, Math.max(1, spec.size)) } : {}),
+    ...(colorOf(spec.color) ? { color: colorOf(spec.color) } : {}),
+    ...(colorOf(spec.background) ? { bg: colorOf(spec.background) } : {}),
+    ...(fontName(spec.font) ? { font: fontName(spec.font) } : {}),
+    ...(spec.bold !== undefined ? { bold: spec.bold } : {}),
+    ...(spec.italic !== undefined ? { italic: spec.italic } : {}),
+    ...(spec.link !== undefined ? { link: spec.link } : {}),
+  })
+  /** an image keeps its width and takes its real shape once it loads */
+  const fitImage = (id: string, src: string) => {
+    const img = new Image()
+    img.onload = () => {
+      const ar = img.naturalWidth / img.naturalHeight || 1
+      setElements((els) => els.map((e) => (e.id === id && e.kind === "image" ? { ...e, ar, h: (e.w * ratio) / ar } : e)))
+    }
+    img.src = src
+  }
   const agentApi: EditorApi = {
     state: () => ({
       flick_size: generation.size,
@@ -883,6 +912,69 @@ export function GenerationCanvas({
       if (feedByName(to)) return `Error: A feed called ${to} already exists.`
       commitFeeds(feedsNow.current.map((x) => (x.id === f.id ? { ...x, name: to.trim() } : x)))
       return `Renamed the feed ${from} to ${to.trim()}.`
+    },
+    addElement(spec) {
+      if (!slidesNow.current[0].startedAt) return "Error: Approve the plan first."
+      const type = spec.type ?? (spec.url ? "image" : "text")
+      const id = crypto.randomUUID()
+      const at = placeOf(spec)
+      let el: CanvasElement
+      if (type === "image") {
+        if (!spec.url) return "Error: Give image_id for an image."
+        const w = Math.min(100, Math.max(4, spec.width ?? 30))
+        el = { id, kind: "image", src: spec.url, x: at.x, y: at.y, w, h: w * ratio, ar: 1, lock: true, fit: "contain", radius: spec.radius ?? 0, crop: { t: 0, r: 0, b: 0, l: 0 } }
+        fitImage(id, spec.url)
+        keepImage(spec.url, "image")
+      } else if (type === "button") {
+        el = { id, kind: "button", variant: buttonVariant(spec.style) ?? "pill", text: spec.text ?? BUTTON_TEXT, ...at, ...styleOf(spec) } as CanvasElement
+      } else {
+        if (!spec.text?.trim()) return "Error: Give the text."
+        el = { id, kind: "text", variant: textVariant(spec.style) ?? "body", text: spec.text, ...at, ...styleOf(spec) } as CanvasElement
+      }
+      // keep clear of what's already there (an exact x/y from the chat is still nudged if it lands on something)
+      const shownText = (e: CanvasElement) => (e.kind === "text" || e.kind === "button" ? (e.feed ? (slidesNow.current[1]?.feeds?.[e.feed] ?? e.text) : e.text) : undefined)
+      const spot = freeY(elementsNow.current, el, ratio, shownText)
+      el = { ...el, y: spot.y } as CanvasElement
+      commitElements([...elementsNow.current, el])
+      const what = type === "image" ? "an image" : type === "button" ? `a button “${spec.text ?? BUTTON_TEXT}”` : `“${spec.text}”`
+      return `Added ${what} (id ${id.slice(0, 6)})${spot.moved ? `, moved to y ${Math.round(spot.y)} to stay clear of other elements` : ""}${spot.overlaps ? "; there was no free space, so it overlaps something: move or shrink it" : ""}.`
+    },
+    editElement(short, spec) {
+      const el = findEl(short)
+      if (!el) return `Error: No element with id ${short}.`
+      if (el.kind === "strip") return "Error: Change the thumbnail strip with update_design (thumbnails)."
+      const notes: string[] = []
+      const moved = spec.x !== undefined || spec.y !== undefined || spec.position || spec.align ? placeOf(spec, el) : {}
+      let next: CanvasElement = { ...el, ...moved, ...(spec.hidden !== undefined ? { hidden: spec.hidden } : {}) } as CanvasElement
+      if (next.kind === "image") {
+        if (spec.width) next = { ...next, w: spec.width, h: (spec.width * ratio) / next.ar }
+        if (spec.radius !== undefined) next = { ...next, radius: spec.radius }
+        if (spec.url) (next = { ...next, src: spec.url }), fitImage(el.id, spec.url), keepImage(spec.url, "image")
+      } else if (next.kind === "text" || next.kind === "button") {
+        if (spec.text !== undefined) {
+          if (next.feed) notes.push("its text differs per variation, so it was left; use vary_field")
+          else next = { ...next, text: spec.text }
+        }
+        if (spec.style) {
+          const v = next.kind === "text" ? textVariant(spec.style) : buttonVariant(spec.style)
+          if (v) next = { ...next, variant: v } as CanvasElement
+        }
+        if (next.kind === "text" && spec.width) next = { ...next, w: spec.width }
+        if (next.kind === "button" && spec.link !== undefined) {
+          if (next.linkFeed) notes.push("its link differs per variation; use vary_field with field link")
+          else next = { ...next, link: spec.link }
+        }
+        next = { ...next, ...styleOf(spec) } as CanvasElement
+      }
+      commitElements(elementsNow.current.map((e) => (e.id === el.id ? next : e)))
+      return `Changed the ${el.kind === "text" ? `text “${el.text || el.role || "text"}”` : el.kind}.${notes.length ? ` Note: ${notes.join("; ")}.` : ""}`
+    },
+    removeElement(short) {
+      const el = findEl(short)
+      if (!el) return `Error: No element with id ${short}.`
+      if (el.kind === "strip") return "Error: The thumbnail strip stays; viewers need it to switch."
+      commitElements(elementsNow.current.filter((e) => e.id !== el.id))
+      return `Removed the ${el.kind === "text" ? `text “${el.text || el.role || ""}”` : el.kind}.`
     },
     setThumbnail(target, url) {
       const sl = findSlide(target)
