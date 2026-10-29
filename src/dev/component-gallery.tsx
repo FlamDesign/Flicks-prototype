@@ -925,6 +925,9 @@ function ChatCardsDemo() {
     { label: "Plan", node: <AgentItemView item={it({ kind: "plan", toolId: "p", plan: demoPlan, state: "open" })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Image, making", node: <AgentItemView item={it({ kind: "image", prompt: "Gold lens close-up", purpose: "thumbnail", target: "Gold", state: "working" })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Image, added", node: <AgentItemView item={it({ kind: "image", prompt: "Gold lens close-up", purpose: "thumbnail", target: "Gold", state: "done", url: GENERATED_VIDEOS[1].poster, placed: true })} agent={fakeAgent} ctx={chatCtx} /> },
+    { label: "Following guides", node: <AgentItemView item={it({ kind: "skill", names: ["craft", "brief"] })} agent={fakeAgent} ctx={chatCtx} /> },
+    { label: "Review, to fix", node: <AgentItemView item={it({ kind: "review", pass: 7, fail: ["Gold: headline is 7 words; keep it to 5 for this size.", "Button text is hard to read on its colour."] })} agent={fakeAgent} ctx={chatCtx} /> },
+    { label: "Review, passed", node: <AgentItemView item={it({ kind: "review", pass: 9, fail: [] })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Note", node: <AgentItemView item={it({ kind: "note", text: "Changed the button text." })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Error", node: <AgentItemView item={it({ kind: "error", text: "Couldn't reach the AI server." })} agent={fakeAgent} ctx={chatCtx} /> },
   ]

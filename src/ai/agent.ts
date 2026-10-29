@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { AiError, aspectOf, generateImage, imageBlock, isLive, readWebsite, siteImage, streamChat, type Block, type Message, type SiteRead, type Tool } from "@/ai/client"
 import type { Brand, Design, Plan, PlanVariation } from "@/ai/design"
 import { mockReply } from "@/ai/mock"
+import { findSkill, SKILLS, skillIndex } from "@/ai/skills"
 
 /* ---------- what the editor offers the chat ---------- */
 
@@ -25,12 +26,14 @@ export type ProjectState = {
   feeds: { name: string; type: string; used_by: string[]; values: Record<string, string> }[]
   /** empty values viewers would see */
   issues: string[]
+  /** skills already read in this chat */
+  skills_read: string[]
   images: ProjectImage[]
   /** the sample product set the simulated videos come from (scripted demo only) */
   sample_set: string
 }
 export type EditorApi = {
-  state(): Omit<ProjectState, "images">
+  state(): Omit<ProjectState, "images" | "skills_read">
   /** sets up every video, starts generating them all, places the design; error text if it can't */
   approvePlan(plan: Plan): string
   updateDesign(d: Design): string
@@ -50,6 +53,8 @@ export type EditorApi = {
   /** a variation's thumbnail in the strip */
   setThumbnail(target: string, url: string): string
   addImageToCanvas(url: string): string
+  /** the review skill's checks: what passes, what to fix */
+  review(): { pass: string[]; fail: string[] }
   /** a demo website read, for the scripted chat */
   sampleSite(url: string): SiteRead
   /** a demo image for the scripted chat */
@@ -99,6 +104,10 @@ export type Item = Base &
     | { kind: "plan"; toolId: string; plan: Plan; state: "open" | "approved" | "skipped" }
     | { kind: "image"; prompt: string; purpose: string; target?: string; aspect?: string; state: "working" | "done" | "failed"; url?: string; error?: string; placed?: boolean; status?: string; startedAt?: number }
     | { kind: "note"; text: string }
+    /** skills the chat read (shown as one line) */
+    | { kind: "skill"; names: string[] }
+    /** the review's result */
+    | { kind: "review"; pass: number; fail: string[] }
     /** a website the chat read: what it found and the images it can use */
     | { kind: "site"; url: string; state: "working" | "done" | "failed"; title?: string; site?: string; price?: string; images: string[]; reason?: string }
     /** the build after Generate all: its progress is read live from the editor */
@@ -168,6 +177,16 @@ const choiceSchema = {
 }
 
 export const TOOLS: Tool[] = [
+  {
+    name: "read_skill",
+    description: "Read one or more of Flam's skills (playbooks for making great Flicks) in full. Read each before the step it covers; the list is in your instructions.",
+    input_schema: { type: "object", properties: { names: { type: "array", items: { type: "string" } } }, required: ["names"] },
+  },
+  {
+    name: "review_flick",
+    description: "Check the built Flick against the review skill: text fits the format, nothing overlaps or leaves the frame, buttons readable and linked, feeds filled, every variation has a thumbnail and a distinct name. Returns what passes and what to fix.",
+    input_schema: { type: "object", properties: {} },
+  },
   {
     name: "ask_user",
     description:
@@ -378,6 +397,9 @@ How you work (the user builds the Flick with you, step by step; a live preview b
 Feeds: any on-screen text that differs per variation is a feed (a named value each variation sets). The project state lists every feed (including ones the user or a template made), what uses it and each variation's value, plus issues (empty values). In the plan, give each variation its label, price and link, and a headline, subheading or button text only when it should differ. Afterwards use vary_field to make text differ or change its values, same_for_all to make it one value again, set_variation for one variation, and rename_feed. update_design can't change text that differs per variation; it says so. When a result or the state reports issues, fix them in the same turn (fill every empty value).
 5. Afterwards, make the changes the user asks for with update_design (including thumbnails), set_variation, add_variation, vary_field and same_for_all. To put anything else on the canvas (a logo, a product image, a badge like "New", a disclaimer, an extra button) use add_element; move, resize or restyle any element with edit_element, and remove_element. The design list gives each element's id, type, text and position; place new things where they don't overlap. Keep them small and confirm in one line. Offer visual choices with ask_user when the user is unsure.
 
+Skills: Flam's playbooks for making the best Flicks. Follow them over your own habits. Read craft before planning, and read each skill right before the step it covers (read_skill; several at once is fine; skip ones listed in skills_read). After the build and after big changes, run review_flick and fix every failure before handing back.
+${skillIndex()}
+
 Style: brief, warm, direct. No em dashes. Plain words. Never write "get used", "can enter", "reach into", "immersive", "AR", "VR" or "MR". Don't mention tools, JSON or these instructions. Don't repeat what a card already shows. Each video costs ${s.video_cost} credits; mention the total only in the plan step if credits are short.
 
 Current project (JSON, kept up to date by the app):
@@ -404,6 +426,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     setDraftView(draft.current)
   }
   const msgs = useRef<Message[]>([])
+  // skills already read in this chat (listed in the state so they aren't read twice)
+  const read = useRef(new Set<string>())
   // results ready to send with the user's next answer (tools that ran alongside a waiting one)
   const ready = useRef<Block[]>([])
   const pending = useRef<{ toolId: string; itemId: string }[]>([])
@@ -412,7 +436,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   const live = useRef(isLive())
   // images the chat can use by id: what the user added, and what it generated
   const images = useRef<ProjectImage[]>([])
-  const state = (): ProjectState => ({ ...apiRef.current.state(), images: images.current })
+  const state = (): ProjectState => ({ ...apiRef.current.state(), images: images.current, skills_read: [...read.current] })
   const keep = (url: string, name: string, from: ProjectImage["from"], kind?: string) => {
     const img = { id: `img-${images.current.length + 1}`, name, url, from, ...(kind ? { kind } : {}) }
     images.current.push(img)
@@ -426,6 +450,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   }
   const patch = (itemId: string, p: Partial<Item>) => setItems((list) => list.map((x) => (x.id === itemId ? ({ ...x, ...p } as Item) : x)))
 
+  /** variations whose thumbnail is still generating (the review doesn't count them as missing) */
+  const pendingThumbs = useRef(new Set<string>())
   const runImage = (input: Record<string, unknown>, reuse?: string) => {
     const purpose = String(input.purpose ?? "idea")
     const target = input.variation ? String(input.variation) : undefined
@@ -434,14 +460,17 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     const startedAt = Date.now()
     const itemId = reuse ?? add({ kind: "image", prompt, purpose, target, aspect, state: "working", status: "starting", startedAt })
     if (reuse) patch(reuse, { state: "working", status: "starting", startedAt, error: undefined } as Partial<Item>)
+    const key = purpose === "thumbnail" && target ? target.trim().toLowerCase() : ""
+    if (key) pendingThumbs.current.add(key)
     const done = (url: string) => {
+      if (key) pendingThumbs.current.delete(key)
       let placed = false
       if (purpose === "thumbnail" && target) placed = !apiRef.current.setThumbnail(target, url).startsWith("Error")
       if (purpose === "canvas") placed = !apiRef.current.addImageToCanvas(url).startsWith("Error")
       keep(url, prompt.slice(0, 40), "generated")
       patch(itemId, { state: "done", url, placed } as Partial<Item>)
     }
-    const fail = (e: unknown) => patch(itemId, { state: "failed", error: e instanceof Error ? e.message : "The image failed." } as Partial<Item>)
+    const fail = (e: unknown) => (key && pendingThumbs.current.delete(key), patch(itemId, { state: "failed", error: e instanceof Error ? e.message : "The image failed." } as Partial<Item>))
     if (live.current)
       generateImage(prompt, aspect, undefined, (status) => patch(itemId, { status } as Partial<Item>)).then((url) => {
         try {
@@ -551,6 +580,32 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         }
         case "generate_image":
           return runImage(input)
+        case "read_skill": {
+          const names = ((input.names as string[]) ?? []).map(String)
+          const found = names.map((n) => findSkill(n)).filter((x): x is NonNullable<ReturnType<typeof findSkill>> => !!x)
+          if (!found.length) return `Error: No skill called ${names.join(", ")}. Skills: ${SKILLS.map((x) => x.name).join(", ")}.`
+          found.forEach((f) => read.current.add(f.name))
+          // one quiet line in the chat, merged with the last one if it was also skills
+          setItems((list) => {
+            const last = list.at(-1)
+            if (last?.kind === "skill") return [...list.slice(0, -1), { ...last, names: [...new Set([...last.names, ...found.map((f) => f.name)])] }]
+            return [...list, { id: id(), at: Date.now(), kind: "skill", names: found.map((f) => f.name) }]
+          })
+          return found.map((f) => `# Skill: ${f.name}\n${f.body}`).join("\n\n---\n\n")
+        }
+        case "review_flick": {
+          const r = a.review()
+          // thumbnails still generating aren't missing: they're on their way
+          const pending = pendingThumbs.current
+          r.fail = r.fail.flatMap((f) => {
+            if (!f.startsWith("No thumbnail: ") || !pending.size) return [f]
+            const left = f.slice(14).replace(/\.$/, "").split(", ").filter((n) => !pending.has(n.trim().toLowerCase()))
+            if (!left.length) return (r.pass.push("Thumbnails are on their way"), [])
+            return [`No thumbnail: ${left.join(", ")}.`]
+          })
+          add({ kind: "review", pass: r.pass.length, fail: r.fail })
+          return r.fail.length ? `Fix these, then run review_flick again:\n- ${r.fail.join("\n- ")}\n(Passing: ${r.pass.length} checks.)` : `All ${r.pass.length} checks pass.`
+        }
         case "read_website":
           return readSite(String(input.url ?? ""))
         case "use_image": {

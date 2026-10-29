@@ -30,11 +30,11 @@ import { GeneratedVideo } from "@/components/editor/generated-video"
 import { CanvasStage } from "@/components/editor/canvas-stage"
 import { ElementToolbar, ToolbarGrip } from "@/components/editor/element-toolbar"
 import { useAgent, type EditorApi, type ElementSpec } from "@/ai/agent"
-import { buildDesign, color as colorOf, describeDesign, elementFor, fontName, freeY, feedOfField, FIELD_FEED, FIELDS, patchDesign, restack, type Brand, type Field } from "@/ai/design"
+import { boxOf, buildDesign, color as colorOf, contrast, describeDesign, elementFor, fontName, freeY, headlineLimit, feedOfField, FIELD_FEED, FIELDS, patchDesign, restack, type Brand, type Field } from "@/ai/design"
 import { isLive, useAiConfig } from "@/ai/client"
 import { AgentComposer, AgentItemView, type AgentCtx } from "@/components/editor/agent-chat"
 import { PlanningView, PlanSteps } from "@/components/editor/planning-view"
-import { BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, GENERATED_VIDEOS, SAMPLE_UPLOADS, inSet, clampStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload } from "@/components/editor/elements"
+import { BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, defaultFill, defaultInk, GENERATED_VIDEOS, SAMPLE_UPLOADS, inSet, clampStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload } from "@/components/editor/elements"
 
 export type Generation = {
   id: string
@@ -980,10 +980,59 @@ export function GenerationCanvas({
       commitElements(elementsNow.current.filter((e) => e.id !== el.id))
       return `Removed the ${el.kind === "text" ? `text “${el.text || el.role || ""}”` : el.kind}.`
     },
+    review() {
+      // the review skill's checks, in code: what passes and what to fix
+      const pass: string[] = []
+      const fail: string[] = []
+      const check = (ok: boolean, good: string, bad: string) => (ok ? pass : fail).push(ok ? good : bad)
+      const list = slidesNow.current
+      const vars = list.slice(1)
+      const shown = includeRef ? list : vars
+      check(vars.length >= 2 && vars.length <= 5, `${vars.length} variations`, `There are ${vars.length} variations; a Flick needs 2 to 5.`)
+      const names = vars.map(nameOfSlide)
+      check(new Set(names.map((n) => n.toLowerCase())).size === names.length, "Variation names are distinct", "Two variations share a name.")
+      const long = names.filter((n) => n.length > 14)
+      check(!long.length, "Variation names are short", `Names over 14 characters: ${long.join(", ")}.`)
+      const els = elementsNow.current.filter((e) => !e.hidden)
+      const valuesOf = (e: CanvasElement) => (e.kind === "text" || e.kind === "button" ? (e.feed ? shown.map((x) => x.feeds?.[e.feed!] ?? "") : [e.text]) : [])
+      const longestOf = (e: CanvasElement) => valuesOf(e).reduce((a, b) => (b.length > a.length ? b : a), "")
+      const limit = headlineLimit(generation.size)
+      const head = elementFor(els, "headline")
+      if (head) {
+        const words = Math.max(...valuesOf(head).map((v) => v.trim().split(/\s+/).filter(Boolean).length))
+        check(words <= limit, `Headline fits ${generation.size}`, `Headline is ${words} words; ${generation.size} holds ${limit}. Shorten it (id ${head.id.slice(0, 6)}).`)
+      } else fail.push("No headline on the canvas.")
+      // overlaps and the frame's edges
+      const boxes = els.map((e) => ({ e, b: boxOf(e, ratio, longestOf(e)) }))
+      const label = (e: CanvasElement) => (e.kind === "text" ? `“${(longestOf(e) || e.role || "text").slice(0, 24)}”` : e.kind === "strip" ? "the thumbnail strip" : e.kind) + ` (id ${e.id.slice(0, 6)})`
+      const hits: string[] = []
+      for (let i = 0; i < boxes.length; i++)
+        for (let j = i + 1; j < boxes.length; j++) {
+          const A = boxes[i].b
+          const B = boxes[j].b
+          if (A.l < B.r - 0.5 && A.r > B.l + 0.5 && A.t < B.b - 0.5 && A.b > B.t + 0.5) hits.push(`${label(boxes[i].e)} and ${label(boxes[j].e)}`)
+        }
+      check(!hits.length, "Nothing overlaps", `Overlapping: ${hits.slice(0, 4).join("; ")}.`)
+      const out = boxes.filter(({ e, b }) => e.kind !== "strip" && (b.l < -0.5 || b.r > 100.5 || b.t < -0.5 || b.b > 100.5)).map(({ e }) => label(e))
+      check(!out.length, "Everything is inside the frame", `Outside the frame: ${out.join(", ")}.`)
+      // buttons: readable and going somewhere
+      for (const e of els) {
+        if (e.kind !== "button" || e.variant === "icon" || e.variant === "link") continue
+        const c = contrast(e.color ?? defaultInk(e), e.bg ?? defaultFill(e))
+        if (c !== undefined) check(c >= 3, "Button text is readable", `Button ${label(e)} text contrast is ${c.toFixed(1)}:1; needs 3:1. Change its text or background colour.`)
+        const linked = e.linkFeed ? shown.every((x) => x.feeds?.[e.linkFeed!]?.trim()) : !!e.link?.trim()
+        check(linked, "Every button has a link", `Button ${label(e)} has no link${e.linkFeed ? " on some variations" : ""}.`)
+      }
+      const issues = feedIssues()
+      check(!issues.length, "Every feed is filled", `Empty values: ${issues.join("; ")}.`)
+      const noThumb = shown.filter((x) => !x.thumb).map(nameOfSlide)
+      check(!noThumb.length, "Every variation has a thumbnail", `No thumbnail: ${noThumb.join(", ")}.`)
+      return { pass, fail }
+    },
     setThumbnail(target, url) {
       const sl = findSlide(target)
       if (!sl) return `Error: No variation called “${target}”.`
-      patchSlide(sl.id, { thumb: url })
+      commitSlides(slidesNow.current.map((x) => (x.id === sl.id ? { ...x, thumb: url } : x)))
       keepImage(url, `${nameOfSlide(sl)} thumbnail`)
       return `Set ${nameOfSlide(sl)}'s thumbnail.`
     },

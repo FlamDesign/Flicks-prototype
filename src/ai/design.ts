@@ -297,3 +297,28 @@ export function freeY(others: CanvasElement[], el: CanvasElement, ratio: number,
     for (const y of [el.y + d, el.y - d]) if (y - h / 2 >= 3 && y + h / 2 <= 97 && !clash(y)) return { y, moved: true }
   return { y: el.y, moved: false, overlaps: true }
 }
+
+/** WCAG contrast between two hex colours (alpha ignored); undefined when either isn't a colour */
+export function contrast(a?: string, b?: string) {
+  const lum = (h?: string) => {
+    if (!h || !HEX.test(h)) return undefined
+    let x = h.slice(1)
+    if (x.length === 3) x = x.split("").map((c) => c + c).join("")
+    const [r, g, bl] = [0, 2, 4].map((i) => parseInt(x.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+    return 0.2126 * r + 0.7152 * g + 0.0722 * bl
+  }
+  const la = lum(a)
+  const lb = lum(b)
+  if (la === undefined || lb === undefined) return undefined
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05)
+}
+
+/** the most headline words a format can hold (from the design skill) */
+export function headlineLimit(size: string) {
+  const [w, h] = size.split("×").map(Number)
+  if (!w || !h) return 6
+  if (w <= 480 && h <= 480) return 3
+  if (w <= 480) return 4
+  if (w === h) return 5
+  return 6
+}

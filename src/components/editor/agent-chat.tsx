@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Add01Icon, Alert02Icon, ArrowDown01Icon, Globe02Icon, ArrowUp02Icon, ImageAdd01Icon, Loading03Icon, PaintBoardIcon, RefreshIcon, SparklesIcon, StopIcon, Tick02Icon, Cancel01Icon } from "@hugeicons/core-free-icons"
+import { Add01Icon, Alert02Icon, ArrowDown01Icon, BookOpen01Icon, CheckmarkBadge01Icon, Globe02Icon, ArrowUp02Icon, ImageAdd01Icon, Loading03Icon, PaintBoardIcon, RefreshIcon, SparklesIcon, StopIcon, Tick02Icon, Cancel01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -8,6 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import type { Choice, Item, useAgent } from "@/ai/agent"
 import type { Brand, Plan, PlanVariation } from "@/ai/design"
 import { FlickPreview } from "@/components/editor/flick-preview"
+import { skillTitle } from "@/ai/skills"
 import { cn } from "@/lib/utils"
 
 type Agent = ReturnType<typeof useAgent>
@@ -58,6 +59,33 @@ export function AgentItemView({ item, agent, ctx }: { item: Item; agent: Agent; 
       return <BuildCard ctx={ctx} />
     case "site":
       return <SiteCard item={item} />
+    case "skill":
+      return (
+        <p className="flex items-center gap-1.5 px-1 text-xs text-muted-foreground">
+          <HugeiconsIcon icon={BookOpen01Icon} className="size-3.5" />
+          Following Flam’s guides: {item.names.map(skillTitle).join(" · ")}
+        </p>
+      )
+    case "review":
+      return item.fail.length ? (
+        <Card className="gap-2">
+          <p className="flex items-center gap-1.5 text-sm font-medium">
+            <HugeiconsIcon icon={CheckmarkBadge01Icon} className="size-4 text-muted-foreground" />
+            Review: {item.fail.length} to fix
+            <span className="ml-auto text-xs font-normal text-muted-foreground">{item.pass} pass</span>
+          </p>
+          <ul className="flex flex-col gap-1 pl-5 text-xs text-muted-foreground">
+            {item.fail.map((f) => (
+              <li key={f} className="list-disc">{f.replace(/ \(id [^)]*\)/g, "")}</li>
+            ))}
+          </ul>
+        </Card>
+      ) : (
+        <p className="flex items-center gap-1.5 px-1 text-xs text-muted-foreground">
+          <HugeiconsIcon icon={CheckmarkBadge01Icon} className="size-3.5 text-emerald-600" />
+          Review passed: all {item.pass} checks
+        </p>
+      )
     case "note":
       return (
         <p className="flex items-center gap-1.5 px-1 text-xs text-muted-foreground">
