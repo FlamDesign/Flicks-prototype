@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Add01Icon, Alert02Icon, ArrowDown01Icon, Globe02Icon, ArrowUp02Icon, ImageAdd01Icon, Loading03Icon, PaintBoardIcon, RefreshIcon, SparklesIcon, StopIcon, Tick02Icon, Cancel01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
@@ -53,7 +53,7 @@ export function AgentItemView({ item, agent, ctx }: { item: Item; agent: Agent; 
     case "plan":
       return <PlanCard item={item} agent={agent} ctx={ctx} />
     case "image":
-      return <ImageCard item={item} ctx={ctx} />
+      return <ImageCard item={item} ctx={ctx} agent={agent} />
     case "build":
       return <BuildCard ctx={ctx} />
     case "site":
@@ -469,7 +469,19 @@ function BuildCard({ ctx }: { ctx: AgentCtx }) {
   )
 }
 
-function ImageCard({ item, ctx }: { item: Extract<Item, { kind: "image" }>; ctx: AgentCtx }) {
+const STATUS: Record<string, string> = { starting: "starting", queued: "waiting in Higgsfield's queue", in_progress: "generating", completed: "finishing" }
+/** seconds since an image started, ticking */
+function Elapsed({ since }: { since: number }) {
+  const [, tick] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => tick((n) => n + 1), 1000)
+    return () => clearInterval(t)
+  }, [])
+  const s = Math.round((Date.now() - since) / 1000)
+  return <>{s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`} · usually 20 to 60s</>
+}
+
+function ImageCard({ item, ctx, agent }: { item: Extract<Item, { kind: "image" }>; ctx: AgentCtx; agent: Agent }) {
   const what = item.purpose === "thumbnail" && item.target ? `Thumbnail for ${item.target}` : item.purpose === "canvas" ? "For the canvas" : "Image idea"
   const [added, setAdded] = useState(false)
   return (
@@ -489,9 +501,17 @@ function ImageCard({ item, ctx }: { item: Extract<Item, { kind: "image" }>; ctx:
         )}
       </span>
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className="text-sm font-medium">{item.state === "working" ? "Making an image…" : item.state === "failed" ? "Image failed" : what}</span>
-        <span className="truncate text-xs text-muted-foreground">{item.state === "failed" ? item.error : item.state === "done" && item.placed ? "Added to the Flick" : item.prompt}</span>
+        <span className="text-sm font-medium">{item.state === "working" ? `${what}: ${STATUS[item.status ?? ""] ?? "making it"}…` : item.state === "failed" ? "Image failed" : what}</span>
+        <span className={cn("text-xs text-muted-foreground", item.state !== "failed" && "truncate")}>
+          {item.state === "failed" ? item.error : item.state === "done" && item.placed ? "Added to the Flick" : item.state === "working" && item.startedAt ? <Elapsed since={item.startedAt} /> : item.prompt}
+        </span>
       </span>
+      {item.state === "failed" && (
+        <Button size="xs" variant="outline" onClick={() => agent.retryImage(item.id)} className="gap-1">
+          <HugeiconsIcon icon={RefreshIcon} className="size-3" />
+          Retry
+        </Button>
+      )}
       {item.state === "done" && !item.placed && (
         <Button size="xs" variant="outline" disabled={added} onClick={() => (ctx.addToCanvas(item.url!), setAdded(true))}>
           {added ? "Added" : "Add to canvas"}

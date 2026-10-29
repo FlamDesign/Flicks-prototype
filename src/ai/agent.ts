@@ -97,7 +97,7 @@ export type Item = Base &
     | { kind: "assets"; toolId: string; message: string; kinds: string[]; done?: "added" | "skipped"; images?: string[] }
     | { kind: "brand"; brand: Brand }
     | { kind: "plan"; toolId: string; plan: Plan; state: "open" | "approved" | "skipped" }
-    | { kind: "image"; prompt: string; purpose: string; target?: string; state: "working" | "done" | "failed"; url?: string; error?: string; placed?: boolean }
+    | { kind: "image"; prompt: string; purpose: string; target?: string; aspect?: string; state: "working" | "done" | "failed"; url?: string; error?: string; placed?: boolean; status?: string; startedAt?: number }
     | { kind: "note"; text: string }
     /** a website the chat read: what it found and the images it can use */
     | { kind: "site"; url: string; state: "working" | "done" | "failed"; title?: string; site?: string; price?: string; images: string[]; reason?: string }
@@ -426,11 +426,14 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   }
   const patch = (itemId: string, p: Partial<Item>) => setItems((list) => list.map((x) => (x.id === itemId ? ({ ...x, ...p } as Item) : x)))
 
-  const runImage = (input: Record<string, unknown>) => {
+  const runImage = (input: Record<string, unknown>, reuse?: string) => {
     const purpose = String(input.purpose ?? "idea")
     const target = input.variation ? String(input.variation) : undefined
     const prompt = String(input.prompt ?? "")
-    const itemId = add({ kind: "image", prompt, purpose, target, state: "working" })
+    const aspect = String(input.aspect_ratio ?? (purpose === "canvas" ? aspectOf(state().flick_size) : "1:1"))
+    const startedAt = Date.now()
+    const itemId = reuse ?? add({ kind: "image", prompt, purpose, target, aspect, state: "working", status: "starting", startedAt })
+    if (reuse) patch(reuse, { state: "working", status: "starting", startedAt, error: undefined } as Partial<Item>)
     const done = (url: string) => {
       let placed = false
       if (purpose === "thumbnail" && target) placed = !apiRef.current.setThumbnail(target, url).startsWith("Error")
@@ -438,9 +441,15 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       keep(url, prompt.slice(0, 40), "generated")
       patch(itemId, { state: "done", url, placed } as Partial<Item>)
     }
-    const aspect = String(input.aspect_ratio ?? (purpose === "canvas" ? aspectOf(state().flick_size) : "1:1"))
+    const fail = (e: unknown) => patch(itemId, { state: "failed", error: e instanceof Error ? e.message : "The image failed." } as Partial<Item>)
     if (live.current)
-      generateImage(prompt, aspect).then(done, (e: unknown) => patch(itemId, { state: "failed", error: e instanceof Error ? e.message : "The image failed." } as Partial<Item>))
+      generateImage(prompt, aspect, undefined, (status) => patch(itemId, { status } as Partial<Item>)).then((url) => {
+        try {
+          done(url)
+        } catch (e) {
+          fail(e)
+        }
+      }, fail)
     else setTimeout(() => done(apiRef.current.sampleImage(purpose, target)), 1800 + Math.random() * 1200)
     return `Started. It shows in the chat when ready${purpose === "thumbnail" && target ? ` and becomes ${target}'s thumbnail` : purpose === "canvas" ? " and is added to the canvas" : ""}.`
   }
@@ -606,7 +615,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     live.current = isLive()
     abort.current = new AbortController()
     try {
-      for (let step = 0; step < 10; step++) {
+      const seen = new Set<string>()
+      for (let step = 0; step < 8; step++) {
         // let the editor re-render after the last tools, so the state sent is current
         await new Promise((r) => setTimeout(r, 60))
         const req = { system: systemPrompt(state()), messages: msgs.current, tools: TOOLS }
@@ -619,6 +629,15 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         msgs.current.push({ role: "assistant", content: res.content })
         const uses = res.content.filter((b): b is Extract<Block, { type: "tool_use" }> => b.type === "tool_use")
         if (!uses.length) break
+        // the same call again in one reply means it's going round in circles: stop it
+        const sigs = uses.map((u) => u.name + JSON.stringify(u.input))
+        const repeated = sigs.some((x) => seen.has(x))
+        sigs.forEach((x) => seen.add(x))
+        if (repeated && step > 0) {
+          msgs.current.push({ role: "user", content: uses.map((u) => ({ type: "tool_result" as const, tool_use_id: u.id, content: "Not run: this repeats an earlier call. Stop and tell the user what's left." })) })
+          add({ kind: "note", text: "Stopped a repeated step. Tell me what to change next." })
+          break
+        }
         const results: Block[] = []
         let waiting = false
         for (const u of uses) {
@@ -746,6 +765,14 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   const lookDone = items.some((x) => (x.kind === "question" && x.step === "look" && x.answer !== undefined) || x.kind === "brand")
   const step: Step = plan?.state === "approved" ? "build" : plan ? "plan" : lookDone || items.some((x) => x.kind === "question" && x.step === "look") ? "look" : "idea"
 
+  /** a failed image, tried again with the same description */
+  const retryImage = (itemId: string) => {
+    const it = items.find((x) => x.id === itemId)
+    if (!it || it.kind !== "image") return
+    live.current = isLive()
+    runImage({ prompt: it.prompt, purpose: it.purpose, variation: it.target, aspect_ratio: it.aspect }, itemId)
+  }
+
   const stop = () => abort.current?.abort()
   const retry = useCallback(() => {
     setItems((list) => list.filter((x) => x.kind !== "error"))
@@ -771,5 +798,5 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  return { items, busy, send, answer, addAssets, decidePlan, editPlan, stop, retry, waiting: pending.current.length > 0, draft: draftView, plan: plan?.plan, step }
+  return { items, busy, send, answer, addAssets, decidePlan, editPlan, retryImage, stop, retry, waiting: pending.current.length > 0, draft: draftView, plan: plan?.plan, step }
 }

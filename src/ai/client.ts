@@ -175,15 +175,18 @@ async function steady(path: string, init?: RequestInit) {
   }
 }
 
-export async function generateImage(prompt: string, aspect: string, signal?: AbortSignal): Promise<string> {
+export async function generateImage(prompt: string, aspect: string, signal?: AbortSignal, onStatus?: (status: string) => void): Promise<string> {
   const { id } = (await (await steady("/image", { method: "POST", body: JSON.stringify({ prompt, aspect_ratio: aspect }), signal })).json()) as { id: string }
-  const until = Date.now() + 180_000
+  onStatus?.("queued")
+  const until = Date.now() + 240_000
   let wait = 2000
   while (Date.now() < until) {
     await new Promise((r) => setTimeout(r, wait))
     if (signal?.aborted) throw new AiError("aborted", "Stopped.")
     const s = (await (await steady(`/image/${id}`, { signal })).json()) as { status: string; url?: string }
+    onStatus?.(s.status)
     if (s.status === "completed" && s.url) return s.url
+    if (s.status === "completed") throw new AiError("image_failed", "Higgsfield finished but sent no image. Try again.")
     if (s.status === "failed" || s.status === "canceled") throw new AiError("image_failed", "The image didn't generate. Try again.")
     if (s.status === "nsfw") throw new AiError("image_blocked", "Higgsfield blocked this image. Try a different description.")
     wait = Math.min(wait * 1.4, 6000)

@@ -609,10 +609,14 @@ export function GenerationCanvas({
       e.feed ? slidesNow.current.map((x) => x.feeds?.[e.feed!] ?? "").reduce((a, b) => (b.length > a.length ? b : a), "") || e.text : e.text
     commitElements(restack(elementsNow.current, longest, ratio))
   }
+  // the same issues are reported once, so the chat isn't pushed round in circles over them
+  const lastIssues = useRef("")
   const withIssues = (msg: string) => {
     tidy()
-    const issues = feedIssues()
-    return issues.length ? `${msg} Check: ${issues.join("; ")}.` : msg
+    const issues = feedIssues().join("; ")
+    if (!issues || issues === lastIssues.current) return msg
+    lastIssues.current = issues
+    return `${msg} Check: ${issues}.`
   }
   /** sets one feed's values by variation name ("reference" too); unknown names are reported */
   const setValues = (id: string, values: Record<string, string>) => {
