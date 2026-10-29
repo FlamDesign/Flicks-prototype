@@ -79,10 +79,15 @@ export async function mockReply(messages: Message[], s: ProjectState, onText: (t
   const sample = SAMPLE_PLANS[s.sample_set] ?? SAMPLE_PLANS.sunglasses
   const first = messages.find((m) => m.role === "user")?.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join(" ") ?? ""
 
+  // a link: read it first (the app's server reads it; the demo uses sample photos)
+  const link = typed.match(/\b((?:https?:\/\/)?(?:[\w-]+\.)+[a-z]{2,}(?:\/[^\s]*)?)/i)?.[1]
+  if (link && !used("read_website").some((u) => u.input.url === link)) return reply("Let me look at that page.", tool("read_website", { url: link }))
+  const justRead = results.some((r) => uses.find((u) => u.id === r.tool_use_id)?.name === "read_website")
+
   // results of tools that didn't wait: just confirm
-  if (results.length && !typed && results.every((r) => !WAITING.has(uses.find((u) => u.id === r.tool_use_id)?.name ?? ""))) {
+  if (!justRead && results.length && !typed && results.every((r) => !WAITING.has(uses.find((u) => u.id === r.tool_use_id)?.name ?? ""))) {
     const plan = used("propose_plan").length > 0
-    const thumbs = results.some((r) => uses.find((u) => u.id === r.tool_use_id)?.name === "generate_image")
+    const thumbs = results.some((r) => ["generate_image", "use_image"].includes(uses.find((u) => u.id === r.tool_use_id)?.name ?? ""))
     const issues = s.issues
     if (issues.length && !thumbs) return reply(`Done. Heads up: ${issues.join("; ")}. Tell me the values and I'll fill them.`)
     if (thumbs) return reply("All set. Every video is generating now, and thumbnails are on their way. Ask me to change the headline, the button, colours, or add a variation.")
@@ -92,6 +97,9 @@ export async function mockReply(messages: Message[], s: ProjectState, onText: (t
   // after the plan
   const planResult = resultOf("propose_plan")
   if (planResult?.startsWith("Approved")) {
+    const fromSite = s.images.filter((i) => i.from === "website")
+    const vars = s.videos.filter((v) => v.role === "variation")
+    if (fromSite.length) return reply("", ...vars.map((v, i) => tool("use_image", { image_id: fromSite[i % fromSite.length].id, as: "thumbnail", variation: v.name })))
     return reply(
       "",
       ...s.videos
@@ -137,11 +145,11 @@ export async function mockReply(messages: Message[], s: ProjectState, onText: (t
   const asks = used("ask_user").length
   if (asks === 0)
     return reply(
-      "Love it. Let's build it together. First, what should viewers switch between?",
+      justRead ? `I read the page and kept ${s.images.filter((i) => i.from === "website").length} product photos for thumbnails. What should viewers switch between?` : "Love it. Let's build it together. First, what should viewers switch between?",
       tool("ask_user", { question: "What should change between variations?", options: ["Colours", "Products", "People or models", "Scenes", "Decide for me"], multi_select: true, step: "idea" }),
     )
   if (asks === 1) return reply("", tool("ask_user", { question: "Where will this Flick run?", options: ["Ads", "My website", "Share as a link", "All of these"], step: "idea" }))
-  if (!used("request_assets").length)
+  if (!used("request_assets").length && !s.images.some((i) => i.from === "website"))
     return reply("", tool("request_assets", { message: "Add product photos or your logo if you have them. I'll match thumbnails and colours to them.", kinds: ["product", "logo"] }))
   // the look: picked from previews, shown live beside the chat
   if (asks === 2)

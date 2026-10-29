@@ -1,6 +1,6 @@
 import { useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Add01Icon, Alert02Icon, ArrowDown01Icon, ArrowUp02Icon, ImageAdd01Icon, Loading03Icon, PaintBoardIcon, RefreshIcon, SparklesIcon, StopIcon, Tick02Icon, Cancel01Icon } from "@hugeicons/core-free-icons"
+import { Add01Icon, Alert02Icon, ArrowDown01Icon, Globe02Icon, ArrowUp02Icon, ImageAdd01Icon, Loading03Icon, PaintBoardIcon, RefreshIcon, SparklesIcon, StopIcon, Tick02Icon, Cancel01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -56,6 +56,8 @@ export function AgentItemView({ item, agent, ctx }: { item: Item; agent: Agent; 
       return <ImageCard item={item} ctx={ctx} />
     case "build":
       return <BuildCard ctx={ctx} />
+    case "site":
+      return <SiteCard item={item} />
     case "note":
       return (
         <p className="flex items-center gap-1.5 px-1 text-xs text-muted-foreground">
@@ -398,6 +400,45 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
           Generate all
         </Button>
       </div>
+    </Card>
+  )
+}
+
+/** A page the chat read through the server: the site, what it found, and the images it kept. */
+function SiteCard({ item }: { item: Extract<Item, { kind: "site" }> }) {
+  let host = item.url
+  try {
+    host = new URL(/^https?:/.test(item.url) ? item.url : `https://${item.url}`).hostname.replace(/^www\./, "")
+  } catch {
+    /* show it as typed */
+  }
+  return (
+    <Card className="gap-2.5">
+      <div className="flex items-center gap-2">
+        <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
+          <HugeiconsIcon icon={item.state === "working" ? Loading03Icon : item.state === "failed" ? Alert02Icon : Globe02Icon} className={cn("size-3.5", item.state === "working" && "animate-spin")} />
+        </span>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate text-sm font-medium">{item.state === "working" ? `Reading ${host}…` : item.state === "failed" ? `Couldn't read ${host}` : (item.title || host)}</span>
+          <span className="truncate text-xs text-muted-foreground">
+            {item.state === "failed" ? item.reason : item.state === "done" ? [host, item.price, `${item.images.length} image${item.images.length === 1 ? "" : "s"}`].filter(Boolean).join(" · ") : "Through the app, without leaving it"}
+          </span>
+        </div>
+      </div>
+      {item.state === "working" && (
+        <div className="grid grid-cols-4 gap-1.5">
+          {[0, 1, 2, 3].map((i) => (
+            <span key={i} className="shimmer aspect-square rounded-lg bg-muted" />
+          ))}
+        </div>
+      )}
+      {item.state === "done" && item.images.length > 0 && (
+        <div className="grid grid-cols-4 gap-1.5">
+          {item.images.map((u) => (
+            <img key={u} src={u} alt="" className="aspect-square w-full rounded-lg object-cover ring-1 ring-foreground/10 animate-in fade-in-0 duration-300" />
+          ))}
+        </div>
+      )}
     </Card>
   )
 }

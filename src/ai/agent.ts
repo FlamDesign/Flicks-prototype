@@ -4,13 +4,13 @@
  * scripted stand-in calls the same tools, so the flow can always be demoed.
  */
 import { useCallback, useEffect, useRef, useState } from "react"
-import { AiError, aspectOf, generateImage, imageBlock, isLive, streamChat, type Block, type Message, type Tool } from "@/ai/client"
+import { AiError, aspectOf, generateImage, imageBlock, isLive, readWebsite, siteImage, streamChat, type Block, type Message, type SiteRead, type Tool } from "@/ai/client"
 import type { Brand, Design, Plan, PlanVariation } from "@/ai/design"
 import { mockReply } from "@/ai/mock"
 
 /* ---------- what the editor offers the chat ---------- */
 
-export type ProjectImage = { id: string; name: string; url: string; from: "upload" | "generated"; kind?: string }
+export type ProjectImage = { id: string; name: string; url: string; from: "upload" | "generated" | "website"; kind?: string }
 export type ProjectState = {
   flick_size: string
   video_seconds: number
@@ -46,6 +46,8 @@ export type EditorApi = {
   /** a variation's thumbnail in the strip */
   setThumbnail(target: string, url: string): string
   addImageToCanvas(url: string): string
+  /** a demo website read, for the scripted chat */
+  sampleSite(url: string): SiteRead
   /** a demo image for the scripted chat */
   sampleImage(purpose: string, target?: string): string
 }
@@ -70,6 +72,8 @@ export type Item = Base &
     | { kind: "plan"; toolId: string; plan: Plan; state: "open" | "approved" | "skipped" }
     | { kind: "image"; prompt: string; purpose: string; target?: string; state: "working" | "done" | "failed"; url?: string; error?: string; placed?: boolean }
     | { kind: "note"; text: string }
+    /** a website the chat read: what it found and the images it can use */
+    | { kind: "site"; url: string; state: "working" | "done" | "failed"; title?: string; site?: string; price?: string; images: string[]; reason?: string }
     /** the build after Generate all: its progress is read live from the editor */
     | { kind: "build"; count: number }
     | { kind: "error"; text: string }
@@ -202,6 +206,12 @@ export const TOOLS: Tool[] = [
     },
   },
   {
+    name: "read_website",
+    description:
+      "Read a web page (a product page, a brand's site) through the app's server: returns the title, description, price, products with prices and colours, brand colour, logo, the page's text and its images (kept as project images; the first few attached so you can see them). The user never leaves the app.",
+    input_schema: { type: "object", properties: { url: { type: "string", description: "The page's address" } }, required: ["url"] },
+  },
+  {
     name: "use_image",
     description: "Use an image the user added (by its id from the project state) as a variation's thumbnail or on the canvas.",
     input_schema: {
@@ -271,6 +281,7 @@ export function systemPrompt(s: ProjectState) {
   return `You are the creative partner inside Flicks by Flam, an AI interactive content tool. You help the user make a Flick: one interactive video where viewers tap thumbnails to switch between variations (colours, products, people, scenes or offers) and tap a button to shop. A Flick has one reference video plus 2 to 5 variations made from it; each variation can have its own label, price and link. Flicks run in ads, on websites, or as a shareable link.
 
 How you work (the user builds the Flick with you, step by step; a live preview beside the chat shows it taking shape):
+0. Whenever the user gives a web address (or their product's page would help and they named one), call read_website first and use what it finds: real product names, prices, colours, links, images and the brand's colour. Don't ask for what the page already told you.
 1. Idea: understand the brief. Ask at most 2 short questions with ask_user (step "idea"; include a "Decide for me" option when useful): what should change between variations, where it runs. Skip anything the user already said. Ask for product photos or a logo with request_assets when they would help.
 2. Look: ask one visual question (step "look") with display "layouts": 3 options, each a design with layout, align, button_style and thumbnails (position, shape, size) that suit the product. If the brand's colours aren't known, follow with display "palettes" (3 options, colors as hex). Then record the brand with set_brand.
 3. Plan: call propose_plan with everything: video prompts (the reference prompt describes the scene, subject, camera motion and light; each variation prompt says what changes), names, labels, prices, links, and the design, carrying over the chosen look and thumbnails (headline under 6 words, CTA 1 to 3 words, colours that read on video). The user edits it in place and presses Generate all.
@@ -345,7 +356,63 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     return `Started. It shows in the chat when ready${purpose === "thumbnail" && target ? ` and becomes ${target}'s thumbnail` : purpose === "canvas" ? " and is added to the canvas" : ""}.`
   }
 
-  const runTool = (u: Extract<Block, { type: "tool_use" }>): string | typeof WAIT => {
+  /**
+   * Reads a page through the server (or the demo's sample), shows what it found, keeps its images
+   * as project images, and hands Claude the facts plus a look at the first few images.
+   */
+  const readSite = async (raw: string): Promise<string | Block[]> => {
+    const url = raw.trim()
+    if (!url) return "Error: No address given."
+    const itemId = add({ kind: "site", url, state: "working", images: [] })
+    try {
+      const r = live.current ? await readWebsite(url) : apiRef.current.sampleSite(url)
+      if (!r.ok) {
+        patch(itemId, { state: "failed", reason: r.reason } as Partial<Item>)
+        return `Couldn't read ${url}: ${r.reason ?? "no content"}. Ask the user to add product images instead.`
+      }
+      // images come through the server, so they show even where the site blocks embedding
+      const found = (r.images ?? []).slice(0, 8)
+      const blobs = await Promise.all(
+        found.map(async (src) => {
+          if (!live.current) return { src, blob: null as Blob | null, show: src }
+          try {
+            const blob = await siteImage(src)
+            return { src, blob, show: URL.createObjectURL(blob) }
+          } catch {
+            return null
+          }
+        }),
+      )
+      const ok = blobs.filter((b): b is { src: string; blob: Blob | null; show: string } => !!b)
+      const kept = ok.map((b, i) => keep(b.show, `${r.site ?? "site"} image ${i + 1}`, "website"))
+      patch(itemId, { state: "done", title: r.title, site: r.site, price: r.price, images: ok.map((b) => b.show) } as Partial<Item>)
+      const facts = {
+        site: r.site,
+        title: r.title,
+        description: r.description,
+        price: r.price,
+        theme_color: r.theme_color,
+        logo: r.logo,
+        products: r.products,
+        images: kept.map((k, i) => ({ id: k.id, from: ok[i].src })),
+        text: r.text,
+      }
+      const blocks: Block[] = [{ type: "text", text: `Read ${r.url}. ${JSON.stringify(facts)}\nThe images are kept with these ids (use_image can set them as thumbnails). The first ones are attached so you can see them.` }]
+      for (const b of ok.slice(0, 4)) {
+        try {
+          blocks.push(await imageBlock(b.blob ?? (await (await fetch(b.show)).blob())))
+        } catch {
+          /* an image Claude can't see is still listed */
+        }
+      }
+      return blocks
+    } catch (e) {
+      patch(itemId, { state: "failed", reason: e instanceof Error ? e.message : "It didn't load." } as Partial<Item>)
+      return `Couldn't read ${url}: ${e instanceof Error ? e.message : "it didn't load"}. Ask the user to add product images instead.`
+    }
+  }
+
+  const runTool = async (u: Extract<Block, { type: "tool_use" }>): Promise<string | Block[] | typeof WAIT> => {
     const a = apiRef.current
     const input = u.input ?? {}
     try {
@@ -386,6 +453,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         }
         case "generate_image":
           return runImage(input)
+        case "read_website":
+          return readSite(String(input.url ?? ""))
         case "use_image": {
           const img = images.current.find((i) => i.id === input.image_id)
           if (!img) return "Error: no image with that id."
@@ -450,9 +519,9 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         const results: Block[] = []
         let waiting = false
         for (const u of uses) {
-          const r = runTool(u)
+          const r = await runTool(u)
           if (r === WAIT) waiting = true
-          else results.push({ type: "tool_result", tool_use_id: u.id, content: r, ...(r.startsWith("Error") ? { is_error: true } : {}) })
+          else results.push({ type: "tool_result", tool_use_id: u.id, content: r, ...(typeof r === "string" && r.startsWith("Error") ? { is_error: true } : {}) })
         }
         if (waiting) {
           ready.current = results

@@ -897,6 +897,31 @@ export function GenerationCanvas({
       keepImage(url, "image")
       return "Added the image to the canvas."
     },
+    sampleSite(url) {
+      // the demo "reads" a product page with the sample set's product photos
+      const set = GENERATED_VIDEOS[generation.video]?.set ?? "sunglasses"
+      const pick = { sunglasses: ["u1", "u2", "u3", "u4", "u5", "u6"], boots: ["u8", "u9", "u10"], dress: ["u11", "u12"] }[set as "sunglasses"] ?? ["u1", "u2", "u3"]
+      const imgs = SAMPLE_UPLOADS.filter((u) => pick.includes(u.id))
+      const names = imgs.map((u) => u.name.replace(/\.[a-z]+$/, "").replace(/-/g, " "))
+      let host = "example.com"
+      try {
+        host = new URL(/^https?:/.test(url) ? url : `https://${url}`).hostname.replace(/^www\./, "")
+      } catch {
+        /* keep the placeholder */
+      }
+      return {
+        ok: true,
+        url,
+        site: host,
+        title: `${names[0]} | ${host}`,
+        description: "Sample product page (demo).",
+        price: "$189",
+        theme_color: "#09090b",
+        products: imgs.map((u, i) => ({ name: names[i], price: `$${179 + i * 10}`, images: [u.src] })),
+        images: imgs.map((u) => u.src),
+        text: `Demo page for ${host}: ${names.join(", ")}.`,
+      }
+    },
     sampleImage(purpose, target) {
       const sl = target ? findSlide(target) : undefined
       if (sl?.video !== undefined) return GENERATED_VIDEOS[sl.video % GENERATED_VIDEOS.length].poster

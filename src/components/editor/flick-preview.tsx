@@ -37,10 +37,10 @@ export function FlickPreview({
 }) {
   const count = Math.max(2, posters.length)
   const elements = useMemo(
-    // label and price always come per variation; headline, subheading and button text only when a variation sets them
-    () => buildDesign(design, { ratio, count, feeds: { label: "label", price: "price", link: "link", ...(values?.headline ? { headline: "headline" } : {}), ...(values?.subheading ? { subheading: "subheading" } : {}), ...(values?.cta ? { cta: "cta" } : {}) }, brand }),
+    // per-variation text shows only when the variation has it (no {placeholders} in previews)
+    () => buildDesign(design, { ratio, count, feeds: { ...(values?.label ? { label: "label" } : {}), ...(values?.price ? { price: "price" } : {}), link: "link", ...(values?.headline ? { headline: "headline" } : {}), ...(values?.subheading ? { subheading: "subheading" } : {}), ...(values?.cta ? { cta: "cta" } : {}) }, brand }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [JSON.stringify(design), JSON.stringify(brand), ratio, count, !!values?.headline, !!values?.subheading, !!values?.cta],
+    [JSON.stringify(design), JSON.stringify(brand), ratio, count, !!values?.label, !!values?.price, !!values?.headline, !!values?.subheading, !!values?.cta],
   )
   const feedOf = (id: string) => ({ name: id, value: values?.[id as Field] ?? "" })
   return (

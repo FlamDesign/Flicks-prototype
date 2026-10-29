@@ -6,6 +6,8 @@
  *   POST /chat            Claude Messages API, streamed back as server-sent events
  *   POST /image           starts a Higgsfield image; returns { id }
  *   GET  /image/:id       that image's status; { status, url? }
+ *   POST /read            reads a public web page for the chat: product, prices, images, colours, text
+ *   GET  /img?u=          a website's image, passed through (sites often refuse to be shown elsewhere)
  *
  * Every request needs the passcode (x-flicks-pass header). Daily caps limit spend if it leaks.
  * Secrets (set by the deploy action): ANTHROPIC_API_KEY, HIGGSFIELD_API_KEY (or HIGGSFIELD_KEY_ID + HIGGSFIELD_KEY_SECRET), PASSCODE.
@@ -133,6 +135,26 @@ export default {
         return json({ error: "image_error", status: last.status, message: hfMessage(last.status, last.text) }, 502, cors)
       }
 
+      if (req.method === "POST" && url.pathname === "/read") {
+        if (!(await take(env, `chat:${day}`, caps.chats))) return json({ error: "daily_limit", what: "chat" }, 429, cors)
+        const body = (await req.json()) as { url?: string }
+        const target = safeUrl(body.url)
+        if (!target) return json({ error: "bad_url", message: "That isn't a public web address." }, 400, cors)
+        return json(await readSite(target), 200, cors)
+      }
+
+      // a website's image, passed through: other sites often refuse to show their images elsewhere
+      if (req.method === "GET" && url.pathname === "/img") {
+        const target = safeUrl(url.searchParams.get("u") ?? undefined)
+        if (!target) return json({ error: "bad_url" }, 400, cors)
+        const res = await fetch(target, { headers: { "user-agent": UA, accept: "image/*" }, redirect: "follow" })
+        const type = res.headers.get("content-type") ?? ""
+        if (!res.ok || !type.startsWith("image/")) return json({ error: "not_an_image", status: res.status }, 502, cors)
+        const len = Number(res.headers.get("content-length") ?? 0)
+        if (len > 8_000_000) return json({ error: "too_large" }, 413, cors)
+        return new Response(res.body, { headers: { ...cors, "content-type": type, "cache-control": "public, max-age=86400" } })
+      }
+
       const m = url.pathname.match(/^\/image\/([\w-]{8,64})$/)
       if (req.method === "GET" && m) {
         if (!hasHf(env)) return json({ error: "images_not_set_up" }, 503, cors)
@@ -243,4 +265,132 @@ async function take(env: Env, key: string, cap: number) {
   if (n >= cap) return false
   await env.USAGE.put(key, String(n + 1), { expirationTtl: 60 * 60 * 48 })
   return true
+}
+
+/* ---------- reading a website ---------- */
+
+const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36 FlicksBot/1.0"
+
+/** only public http(s) pages: no local, private or metadata addresses */
+export function safeUrl(raw?: string) {
+  try {
+    const u = new URL(String(raw ?? "").trim().replace(/^(?!https?:\/\/)/i, "https://"))
+    if (!/^https?:$/.test(u.protocol)) return null
+    const h = u.hostname.toLowerCase()
+    if (h === "localhost" || h.endsWith(".local") || h.endsWith(".internal") || !h.includes(".")) return null
+    if (/^(127\.|10\.|0\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h) || h.startsWith("[")) return null
+    return u.toString()
+  } catch {
+    return null
+  }
+}
+
+const decode = (s: string) =>
+  s
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/\s+/g, " ")
+    .trim()
+
+/** what the chat needs from a page: product, prices, images, brand colour and the page's words */
+export async function readSite(target: string) {
+  const ctrl = new AbortController()
+  const t = setTimeout(() => ctrl.abort(), 12_000)
+  let res: Response
+  try {
+    res = await fetch(target, { headers: { "user-agent": UA, accept: "text/html,application/xhtml+xml", "accept-language": "en" }, redirect: "follow", signal: ctrl.signal })
+  } catch {
+    return { ok: false, url: target, reason: "The site didn't answer." }
+  } finally {
+    clearTimeout(t)
+  }
+  if (!res.ok) return { ok: false, url: target, reason: `The site answered ${res.status}${res.status === 403 || res.status === 429 || res.status === 503 ? " (it blocks automated visitors)" : ""}.` }
+  if (!(res.headers.get("content-type") ?? "").includes("html")) return { ok: false, url: target, reason: "That address isn't a web page." }
+  const html = (await res.text()).slice(0, 2_000_000)
+  const base = res.url || target
+  const abs = (u?: string) => {
+    if (!u) return undefined
+    try {
+      return new URL(decode(u), base).toString()
+    } catch {
+      return undefined
+    }
+  }
+  const meta = (key: string) => {
+    const r = new RegExp(`<meta[^>]+(?:property|name|itemprop)=["']${key}["'][^>]*>`, "i").exec(html)?.[0]
+    return r ? decode(/content=["']([^"']*)["']/i.exec(r)?.[1] ?? "") || undefined : undefined
+  }
+  // structured product data, when the page has it
+  const products: Record<string, unknown>[] = []
+  let org: Record<string, unknown> | undefined
+  for (const m of html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      const data = JSON.parse(m[1].trim())
+      const walk = (x: unknown): void => {
+        if (Array.isArray(x)) return x.forEach(walk)
+        if (!x || typeof x !== "object") return
+        const o = x as Record<string, unknown>
+        const type = ([] as unknown[]).concat(o["@type"] ?? []).map(String)
+        if (type.includes("Product")) products.push(o)
+        if (type.includes("Organization") && !org) org = o
+        if (o["@graph"]) walk(o["@graph"])
+        if (type.includes("ProductGroup") && o.hasVariant) walk(o.hasVariant)
+      }
+      walk(data)
+    } catch {
+      /* broken JSON-LD */
+    }
+  }
+  const imgsOf = (x: unknown): string[] => (Array.isArray(x) ? x.flatMap(imgsOf) : typeof x === "string" ? [x] : x && typeof x === "object" ? imgsOf((x as { url?: unknown }).url) : [])
+  const offer = (p: Record<string, unknown>) => {
+    const o = ([] as unknown[]).concat(p.offers ?? [])[0] as Record<string, unknown> | undefined
+    const price = o?.price ?? o?.lowPrice
+    return price !== undefined ? `${o?.priceCurrency ?? ""} ${price}`.trim() : undefined
+  }
+  const productList = products.slice(0, 8).map((p) => ({
+    name: typeof p.name === "string" ? decode(p.name) : undefined,
+    price: offer(p),
+    color: typeof p.color === "string" ? p.color : undefined,
+    description: typeof p.description === "string" ? decode(p.description).slice(0, 300) : undefined,
+    url: abs(typeof p.url === "string" ? p.url : undefined),
+    images: imgsOf(p.image).map(abs).filter(Boolean).slice(0, 4) as string[],
+  }))
+  // images: share image, product images, then large page images
+  const pageImgs = [...html.matchAll(/<img[^>]+>/gi)]
+    .map((m) => {
+      const tag = m[0]
+      const src = /\s(?:data-src|src)=["']([^"']+)["']/i.exec(tag)?.[1] ?? /\ssrcset=["']([^"',\s]+)/i.exec(tag)?.[1]
+      const w = Number(/\swidth=["']?(\d+)/i.exec(tag)?.[1] ?? 0)
+      const alt = decode(/\salt=["']([^"']*)["']/i.exec(tag)?.[1] ?? "")
+      return { src: abs(src), w, alt }
+    })
+    .filter((i) => i.src && !/\.svg(\?|$)|sprite|pixel|tracking|logo|icon|favicon|\/ads?\//i.test(i.src) && (i.w === 0 || i.w >= 200))
+  const images = [
+    ...new Set(
+      [abs(meta("og:image") ?? meta("twitter:image")), ...productList.flatMap((p) => p.images), ...pageImgs.map((i) => i.src)].filter((x): x is string => !!x && /^https?:/.test(x)),
+    ),
+  ].slice(0, 12)
+  const logo = abs(typeof org?.logo === "string" ? org.logo : imgsOf(org?.logo)[0]) ?? abs(/<link[^>]+rel=["'](?:apple-touch-icon|icon)["'][^>]*href=["']([^"']+)["']/i.exec(html)?.[1])
+  const text = decode(
+    html
+      .replace(/<(script|style|noscript|svg|nav|footer|header)[\s\S]*?<\/\1>/gi, " ")
+      .replace(/<[^>]+>/g, " "),
+  ).slice(0, 2500)
+  return {
+    ok: true,
+    url: base,
+    site: meta("og:site_name") ?? new URL(base).hostname.replace(/^www\./, ""),
+    title: meta("og:title") ?? decode(/<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1] ?? ""),
+    description: meta("og:description") ?? meta("description"),
+    price: meta("product:price:amount") ? `${meta("product:price:currency") ?? ""} ${meta("product:price:amount")}`.trim() : productList.find((p) => p.price)?.price,
+    theme_color: meta("theme-color"),
+    logo,
+    products: productList,
+    images,
+    text,
+  }
 }

@@ -191,6 +191,30 @@ export async function generateImage(prompt: string, aspect: string, signal?: Abo
   throw new AiError("image_timeout", "The image is taking too long. Try again.")
 }
 
+/* ---------- websites ---------- */
+
+export type SiteRead = {
+  ok: boolean
+  url: string
+  reason?: string
+  site?: string
+  title?: string
+  description?: string
+  price?: string
+  theme_color?: string
+  logo?: string
+  products?: { name?: string; price?: string; color?: string; description?: string; url?: string; images: string[] }[]
+  images?: string[]
+  text?: string
+}
+/** the server reads the page (the browser never opens it) */
+export const readWebsite = async (url: string) => (await (await call("/read", { method: "POST", body: JSON.stringify({ url }) })).json()) as SiteRead
+/** a website's image, through the server (sites often refuse to show their images elsewhere) */
+export async function siteImage(url: string): Promise<Blob> {
+  const res = await steady(`/img?u=${encodeURIComponent(url)}`)
+  return res.blob()
+}
+
 /** "1080×1920" → "9:16": the closest aspect Higgsfield offers */
 export function aspectOf(size: string) {
   const [w, h] = size.split("×").map(Number)
