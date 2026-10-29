@@ -21,6 +21,10 @@ export type ProjectState = {
   brand?: Brand
   videos: { name: string; role: "reference" | "variation"; status: string; prompt?: string; label?: string; price?: string; link?: string; has_thumbnail: boolean }[]
   design: unknown[]
+  /** every feed: what uses it and each video's value */
+  feeds: { name: string; type: string; used_by: string[]; values: Record<string, string> }[]
+  /** empty values viewers would see */
+  issues: string[]
   images: ProjectImage[]
   /** the sample product set the simulated videos come from (scripted demo only) */
   sample_set: string
@@ -31,8 +35,14 @@ export type EditorApi = {
   approvePlan(plan: Plan): string
   updateDesign(d: Design): string
   setBrand(b: Brand): void
-  setVariation(target: string, patch: Partial<PlanVariation> & { regenerate?: boolean }): string
-  addVariation(v: PlanVariation, generate: boolean): string
+  /** one variation: its name, prompt (regenerate), any on-screen field, or values by feed name */
+  setVariation(target: string, patch: Partial<PlanVariation> & { regenerate?: boolean; values?: Record<string, string> }): string
+  addVariation(v: PlanVariation & { values?: Record<string, string> }, generate: boolean): string
+  /** make a field (or a named feed) differ per variation, or change its values */
+  varyField(field: string | undefined, feed: string | undefined, values: Record<string, string>): string
+  /** back to one value for every variation */
+  sameForAll(field: string | undefined, feed: string | undefined, value?: string): string
+  renameFeed(from: string, to: string): string
   /** a variation's thumbnail in the strip */
   setThumbnail(target: string, url: string): string
   addImageToCanvas(url: string): string
@@ -76,9 +86,13 @@ const variationSchema = {
     label: { type: "string", description: "Optional on-screen label for this variation, e.g. 'Gold lenses'" },
     price: { type: "string", description: "Optional price with currency, e.g. '$189'" },
     link: { type: "string", description: "Optional URL the button opens for this variation" },
+    headline: { type: "string", description: "Only if this variation's headline should differ from the design's" },
+    subheading: { type: "string", description: "Only if it should differ per variation" },
+    cta: { type: "string", description: "Only if this variation's button text should differ" },
   },
   required: ["name", "prompt"],
 }
+const fieldEnum = { type: "string", enum: ["headline", "subheading", "label", "price", "cta", "link"], description: "cta is the button text, link the button's link" }
 const designSchema = {
   type: "object",
   properties: {
@@ -206,14 +220,49 @@ export const TOOLS: Tool[] = [
     description: "Change one video: its name, label, price, link or prompt. With regenerate true, it generates again with the new prompt.",
     input_schema: {
       type: "object",
-      properties: { variation: { type: "string", description: "Variation name, or 'reference'" }, name: str, prompt: str, label: str, price: str, link: str, regenerate: { type: "boolean" } },
+      properties: {
+        variation: { type: "string", description: "Variation name, or 'reference'" },
+        name: str,
+        prompt: str,
+        headline: str,
+        subheading: str,
+        label: str,
+        price: str,
+        cta: str,
+        link: str,
+        values: { type: "object", additionalProperties: { type: "string" }, description: "Values for other feeds, by feed name (see feeds in the project state)" },
+        regenerate: { type: "boolean" },
+      },
       required: ["variation"],
     },
   },
   {
     name: "add_variation",
-    description: "Add a variation (up to 5) and generate it.",
-    input_schema: { ...variationSchema, properties: { ...variationSchema.properties, generate: { type: "boolean" } } },
+    description: "Add a variation (up to 5) and generate it. Give a value for every feed in use (fields or values by feed name); missing ones are copied from the first variation.",
+    input_schema: {
+      ...variationSchema,
+      properties: { ...variationSchema.properties, values: { type: "object", additionalProperties: { type: "string" } }, generate: { type: "boolean" } },
+    },
+  },
+  {
+    name: "vary_field",
+    description:
+      "Make on-screen text differ per variation (it becomes a feed), or change the per-variation values of one that already does. Give field (headline, subheading, label, price, cta, link) or feed (an existing feed's name). values maps variation names to text; 'reference' is the reference video. Adds a label or price line if the design has none.",
+    input_schema: {
+      type: "object",
+      properties: { field: fieldEnum, feed: str, values: { type: "object", additionalProperties: { type: "string" } } },
+      required: ["values"],
+    },
+  },
+  {
+    name: "same_for_all",
+    description: "Make a field or feed the same on every variation again (removes the feed). value is the text to keep; without it, the value shown now stays.",
+    input_schema: { type: "object", properties: { field: fieldEnum, feed: str, value: str } },
+  },
+  {
+    name: "rename_feed",
+    description: "Rename a feed.",
+    input_schema: { type: "object", properties: { from: str, to: str }, required: ["from", "to"] },
   },
 ]
 
@@ -226,7 +275,8 @@ How you work (the user builds the Flick with you, step by step; a live preview b
 2. Look: ask one visual question (step "look") with display "layouts": 3 options, each a design with layout, align, button_style and thumbnails (position, shape, size) that suit the product. If the brand's colours aren't known, follow with display "palettes" (3 options, colors as hex). Then record the brand with set_brand.
 3. Plan: call propose_plan with everything: video prompts (the reference prompt describes the scene, subject, camera motion and light; each variation prompt says what changes), names, labels, prices, links, and the design, carrying over the chosen look and thumbnails (headline under 6 words, CTA 1 to 3 words, colours that read on video). The user edits it in place and presses Generate all.
 4. Build: after approval the app generates every video and places the design and thumbnail strip. Give each variation a thumbnail image: use_image with the user's photos if they fit, otherwise generate_image (purpose thumbnail, 1:1, a close-up that matches the variation). Then say in one or two sentences what happens next.
-5. Afterwards, make the changes the user asks for with update_design (including thumbnails), set_variation and add_variation. Keep them small and confirm in one line. Offer visual choices with ask_user when the user is unsure.
+Feeds: any on-screen text that differs per variation is a feed (a named value each variation sets). The project state lists every feed (including ones the user or a template made), what uses it and each variation's value, plus issues (empty values). In the plan, give each variation its label, price and link, and a headline, subheading or button text only when it should differ. Afterwards use vary_field to make text differ or change its values, same_for_all to make it one value again, set_variation for one variation, and rename_feed. update_design can't change text that differs per variation; it says so. When a result or the state reports issues, fix them in the same turn (fill every empty value).
+5. Afterwards, make the changes the user asks for with update_design (including thumbnails), set_variation, add_variation, vary_field and same_for_all. Keep them small and confirm in one line. Offer visual choices with ask_user when the user is unsure.
 
 Style: brief, warm, direct. No em dashes. Plain words. Never write "get used", "can enter", "reach into", "immersive", "AR", "VR" or "MR". Don't mention tools, JSON or these instructions. Don't repeat what a card already shows. Each video costs ${s.video_cost} credits; mention the total only in the plan step if credits are short.
 
@@ -351,12 +401,24 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         case "set_variation": {
           const { variation, ...rest } = input as { variation: string } & Partial<PlanVariation> & { regenerate?: boolean }
           const r = a.setVariation(variation, rest)
-          if (!r.startsWith("Error")) add({ kind: "note", text: r })
+          if (!r.startsWith("Error")) add({ kind: "note", text: r.replace(/ Check: .*$/, "") })
+          return r
+        }
+        case "vary_field":
+        case "same_for_all":
+        case "rename_feed": {
+          const r =
+            u.name === "vary_field"
+              ? a.varyField(input.field as string | undefined, input.feed as string | undefined, (input.values as Record<string, string>) ?? {})
+              : u.name === "same_for_all"
+                ? a.sameForAll(input.field as string | undefined, input.feed as string | undefined, input.value as string | undefined)
+                : a.renameFeed(String(input.from ?? ""), String(input.to ?? ""))
+          if (!r.startsWith("Error") && !r.startsWith("Nothing")) add({ kind: "note", text: r.replace(/ Check: .*$/, "") })
           return r
         }
         case "add_variation": {
           const r = a.addVariation(input as unknown as PlanVariation, input.generate !== false)
-          if (!r.startsWith("Error")) add({ kind: "note", text: r })
+          if (!r.startsWith("Error")) add({ kind: "note", text: r.replace(/ Check: .*$/, "") })
           return r
         }
         default:

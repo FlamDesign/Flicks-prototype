@@ -1,6 +1,6 @@
 import { useMemo } from "react"
 import { CanvasStage } from "@/components/editor/canvas-stage"
-import { buildDesign, type Brand, type Design } from "@/ai/design"
+import { buildDesign, type Brand, type Design, type Field } from "@/ai/design"
 import { cn } from "@/lib/utils"
 
 const noop = () => {}
@@ -30,18 +30,19 @@ export function FlickPreview({
   posters: string[]
   active?: number
   /** the shown variation's label and price */
-  values?: { label?: string; price?: string }
+  values?: Partial<Record<Field, string>>
   className?: string
   /** the video behind, faded (nothing planned yet) */
   dim?: boolean
 }) {
   const count = Math.max(2, posters.length)
   const elements = useMemo(
-    () => buildDesign(design, { ratio, count, feeds: { label: "label", price: "price", link: "link" }, brand }),
+    // label and price always come per variation; headline, subheading and button text only when a variation sets them
+    () => buildDesign(design, { ratio, count, feeds: { label: "label", price: "price", link: "link", ...(values?.headline ? { headline: "headline" } : {}), ...(values?.subheading ? { subheading: "subheading" } : {}), ...(values?.cta ? { cta: "cta" } : {}) }, brand }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [JSON.stringify(design), JSON.stringify(brand), ratio, count],
+    [JSON.stringify(design), JSON.stringify(brand), ratio, count, !!values?.headline, !!values?.subheading, !!values?.cta],
   )
-  const feedOf = (id: string) => ({ name: id, value: (id === "label" ? values?.label : id === "price" ? values?.price : "") ?? "" })
+  const feedOf = (id: string) => ({ name: id, value: values?.[id as Field] ?? "" })
   return (
     <div className={cn("relative overflow-hidden rounded-xl bg-muted shadow-sm ring-1 ring-foreground/10", className)} style={{ ...style, aspectRatio: ratio, containerType: "size" }}>
       {posters[active] && (

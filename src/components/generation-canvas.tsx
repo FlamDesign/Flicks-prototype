@@ -30,7 +30,7 @@ import { GeneratedVideo } from "@/components/editor/generated-video"
 import { CanvasStage } from "@/components/editor/canvas-stage"
 import { ElementToolbar, ToolbarGrip } from "@/components/editor/element-toolbar"
 import { useAgent, type EditorApi } from "@/ai/agent"
-import { buildDesign, describeDesign, patchDesign, type Brand } from "@/ai/design"
+import { buildDesign, describeDesign, elementFor, feedOfField, FIELD_FEED, FIELDS, patchDesign, restack, type Brand, type Field } from "@/ai/design"
 import { isLive, useAiConfig } from "@/ai/client"
 import { AgentComposer, AgentItemView, type AgentCtx } from "@/components/editor/agent-chat"
 import { PlanningView, PlanSteps } from "@/components/editor/planning-view"
@@ -550,11 +550,6 @@ export function GenerationCanvas({
     if (["reference", "reference video", "main"].includes(t)) return list[0]
     return list.find((x) => slideName(x, list.indexOf(x)).toLowerCase() === t) ?? list.find((x) => t && slideName(x, list.indexOf(x)).toLowerCase().includes(t))
   }
-  const feedId = (name: string) => feeds.find((f) => f.name === name)?.id
-  const feedVal = (sl: Slide, name: string) => {
-    const id = feedId(name)
-    return (id && sl.feeds?.[id]) || undefined
-  }
   const keepImage = (src: string, name: string) =>
     setUploads((u) => (u.some((x) => x.src === src) ? u : [{ id: crypto.randomUUID(), name: `${name.slice(0, 40)}.jpg`, src, loading: false }, ...u]))
   /** starts one video now (or right after the reference video), charged and logged like the prompt box does */
@@ -565,9 +560,120 @@ export function GenerationCanvas({
     const main = slidesNow.current[0]
     const startedAt = id === "main" ? now : main.startedAt && now < main.startedAt + ms ? main.startedAt + ms + 1 : now
     const video = inSet(generation.video ?? 0, nextVideo.current++)
-    setSlides((list) => list.map((x) => (x.id === id ? { ...x, video, startedAt, prompt: "", refs: [], used: { prompt, refs: [], fromReference: id !== "main" } } : x)))
+    commitSlides(slidesNow.current.map((x) => (x.id === id ? { ...x, video, startedAt, prompt: "", refs: [], used: { prompt, refs: [], fromReference: id !== "main" } } : x)))
     setHistory((h) => [...h, { id: crypto.randomUUID(), slideId: id, prompt, refs: [], fromReference: id !== "main", video, startedAt, at: now }])
     return true
+  }
+  // feeds and elements too: several tools can run in one reply
+  const feedsNow = useRef(feeds)
+  feedsNow.current = feeds
+  const elementsNow = useRef(elements)
+  elementsNow.current = elements
+  const commitFeeds = (next: Feed[]) => ((feedsNow.current = next), setFeeds(next))
+  const commitElements = (next: CanvasElement[]) => ((elementsNow.current = next), setElements(next))
+  const commitSlides = (next: Slide[]) => ((slidesNow.current = next), setSlides(next))
+  const feedByName = (name?: string) => (name ? feedsNow.current.find((f) => f.name.toLowerCase() === name.trim().toLowerCase()) : undefined)
+  const nameOfSlide = (x: Slide) => slideName(x, slidesNow.current.indexOf(x))
+  /** a field's or a named feed's element and feed (the field wins when both are given) */
+  const resolve = (field?: string, feed?: string) => {
+    const f = FIELDS.find((x) => x === field || (field === "button" && x === "cta"))
+    const fd = f ? feedOfField(elementsNow.current, f) : undefined
+    const byName = feedByName(feed)
+    return { field: f, feedId: fd ?? byName?.id, el: f ? elementFor(elementsNow.current, f) : undefined }
+  }
+  /** what each element using a feed is, for the chat */
+  const usesOf = (id: string) =>
+    elementsNow.current.flatMap((e) =>
+      e.kind === "text" && e.feed === id
+        ? [e.role ?? "text"]
+        : e.kind === "button" && e.feed === id
+          ? ["button text"]
+          : e.kind === "button" && e.linkFeed === id
+            ? ["button link"]
+            : [],
+    )
+  /** empty values the viewer would see, so the chat can fill them */
+  const feedIssues = () => {
+    const shown = includeRef ? slidesNow.current : slidesNow.current.slice(1)
+    const out: string[] = []
+    for (const f of feedsNow.current) {
+      if (!usesOf(f.id).length) continue
+      const empty = shown.filter((x) => !x.feeds?.[f.id]?.trim()).map(nameOfSlide)
+      if (empty.length) out.push(`${f.name} is empty on ${empty.join(", ")}`)
+    }
+    return out
+  }
+  /** re-spaces the chat's text stack for its longest values, so wrapped lines never overlap */
+  const tidy = () => {
+    const longest = (e: Extract<CanvasElement, { kind: "text" | "button" }>) =>
+      e.feed ? slidesNow.current.map((x) => x.feeds?.[e.feed!] ?? "").reduce((a, b) => (b.length > a.length ? b : a), "") || e.text : e.text
+    commitElements(restack(elementsNow.current, longest, ratio))
+  }
+  const withIssues = (msg: string) => {
+    tidy()
+    const issues = feedIssues()
+    return issues.length ? `${msg} Check: ${issues.join("; ")}.` : msg
+  }
+  /** sets one feed's values by variation name ("reference" too); unknown names are reported */
+  const setValues = (id: string, values: Record<string, string>) => {
+    const unknown: string[] = []
+    const byId: Record<string, string> = {}
+    for (const [k, v] of Object.entries(values)) {
+      const sl = findSlide(k)
+      if (sl) byId[sl.id] = String(v)
+      else unknown.push(k)
+    }
+    commitSlides(slidesNow.current.map((x) => (byId[x.id] !== undefined ? { ...x, feeds: { ...x.feeds, [id]: byId[x.id] } } : x)))
+    return unknown
+  }
+  /** the element a field needs, added when the design doesn't have it yet (label above, price below the headline) */
+  const ensureElement = (f: Field) => {
+    const have = elementFor(elementsNow.current, f)
+    if (have) return have
+    if (f === "link") return undefined
+    const head = elementFor(elementsNow.current, "headline")
+    const y0 = head?.y ?? 40
+    const x = head?.x ?? 50
+    const align = head?.align ?? "center"
+    const ink = head && head.kind === "text" ? head.color : undefined
+    const el: CanvasElement =
+      f === "cta"
+        ? { id: crypto.randomUUID(), kind: "button", variant: "pill", text: BUTTON_TEXT, x, y: Math.min(80, y0 + 16), align, role: "cta" }
+        : {
+            id: crypto.randomUUID(),
+            kind: "text",
+            variant: f === "headline" ? "heading" : f === "label" ? "label" : "subheading",
+            text: "",
+            x,
+            y: f === "label" ? y0 - 7 : f === "headline" ? 20 : y0 + 8,
+            align,
+            role: f,
+            ...(ink ? { color: ink } : {}),
+          }
+    commitElements([...elementsNow.current, el])
+    return el
+  }
+  /** links a field's element to a feed (made if needed) and fills it; everyone without a value keeps what's shown now */
+  const varyField = (f: Field, values: Record<string, string>) => {
+    const el = ensureElement(f)
+    if (!el) return `Error: There's no button for a link.`
+    const current = f === "link" ? (el.kind === "button" ? el.linkFeed : undefined) : el.feed
+    let id = current
+    if (!id) {
+      const meta = FIELD_FEED[f]
+      const taken = new Set(feedsNow.current.map((x) => x.name))
+      let name = meta.name
+      for (let n = 2; taken.has(name); n++) name = `${meta.name}-${n}`
+      id = crypto.randomUUID()
+      commitFeeds([...feedsNow.current, { id, name, type: meta.type }])
+      // the shared text becomes everyone's starting value
+      const shared = f === "link" ? (el.kind === "button" ? (el.link ?? "") : "") : el.text
+      commitSlides(slidesNow.current.map((x) => ({ ...x, feeds: { ...x.feeds, [id!]: shared } })))
+      commitElements(elementsNow.current.map((e) => (e.id === el.id ? ({ ...e, ...(f === "link" ? { linkFeed: id } : { feed: id }) } as CanvasElement) : e)))
+    }
+    const unknown = setValues(id, values)
+    const name = feedsNow.current.find((x) => x.id === id)!.name
+    return `${current ? "Updated" : "Made"} the ${f === "cta" ? "button text" : f} different per variation (feed “${name}”).${unknown.length ? ` No variation called ${unknown.join(", ")}.` : ""}`
   }
   const agentApi: EditorApi = {
     state: () => ({
@@ -579,16 +685,21 @@ export function GenerationCanvas({
       planned: !!slidesNow.current[0].startedAt,
       brand,
       videos: slidesNow.current.map((x, i) => ({
-        name: slideName(x, i),
+        name: nameOfSlide(x),
         role: i ? "variation" : "reference",
         status: status(x),
         prompt: x.used?.prompt || x.prompt || undefined,
-        label: feedVal(x, "label"),
-        price: feedVal(x, "price"),
-        link: feedVal(x, "link"),
         has_thumbnail: !!x.thumb,
       })),
-      design: describeDesign(elements, (id) => feeds.find((f) => f.id === id)?.name),
+      // every feed, including ones the user or a template made, with what uses it and each variation's value
+      feeds: feedsNow.current.map((f) => ({
+        name: f.name,
+        type: f.type,
+        used_by: usesOf(f.id),
+        values: Object.fromEntries(slidesNow.current.map((x) => [nameOfSlide(x), x.feeds?.[f.id] ?? ""])),
+      })),
+      issues: feedIssues(),
+      design: describeDesign(elementsNow.current, (id) => feedsNow.current.find((f) => f.id === id)?.name),
       sample_set: GENERATED_VIDEOS[generation.video]?.set ?? "sunglasses",
     }),
     approvePlan(plan) {
@@ -602,18 +713,29 @@ export function GenerationCanvas({
       setDev((d) => ({ credits: d.credits - cost }))
       const now = Date.now()
       const base = generation.video ?? 0
-      const mk = (name: string, type: Feed["type"], on: boolean): Feed | undefined => (on ? { id: crypto.randomUUID(), name, type } : undefined)
-      const fLabel = mk("label", "text", vars.some((v) => v.label?.trim()))
-      const fPrice = mk("price", "text", vars.some((v) => v.price?.trim()))
-      const fLink = mk("link", "link", vars.some((v) => v.link?.trim()))
-      const main: Slide = { id: "main", prompt: "", refs: [], video: base, startedAt: now, used: { prompt: plan.reference.prompt, refs: generation.refs ?? [], fromReference: false } }
+      const design = { ...(plan.design ?? {}) }
+      // a field becomes a feed when variations give it values: label, price and link whenever set;
+      // headline, subheading and button text only when they actually differ
+      const made: Feed[] = []
+      const ids: Partial<Record<Field, string>> = {}
+      const valueOf = (v: (typeof vars)[number], f: Field) => v[f]?.trim() || (f === "headline" ? design.headline : f === "subheading" ? design.subheading : f === "cta" ? design.cta : "") || ""
+      for (const f of FIELDS) {
+        const given = vars.some((v) => v[f]?.trim())
+        if (!given) continue
+        const vals = vars.map((v) => valueOf(v, f))
+        const varies = f === "label" || f === "price" || f === "link" || new Set(vals).size > 1
+        if (!varies) {
+          if (f === "headline" || f === "subheading" || f === "cta") design[f] = vals[0]
+          continue
+        }
+        const id = crypto.randomUUID()
+        made.push({ id, name: FIELD_FEED[f].name, type: FIELD_FEED[f].type })
+        ids[f] = id
+        if ((f === "headline" || f === "subheading" || f === "cta") && !design[f]) design[f] = vals[0]
+      }
+      const valuesFor = (v: (typeof vars)[number]) => Object.fromEntries(FIELDS.flatMap((f) => (ids[f] ? [[ids[f]!, valueOf(v, f)]] : [])))
       // the reference video shows the first variation's values, so the design never shows empty {placeholders}
-      const firstValues = (v: (typeof vars)[number]) => ({
-        ...(fLabel && v.label ? { [fLabel.id]: v.label } : {}),
-        ...(fPrice && v.price ? { [fPrice.id]: v.price } : {}),
-        ...(fLink && v.link ? { [fLink.id]: v.link } : {}),
-      })
-      main.feeds = firstValues(vars[0])
+      const main: Slide = { id: "main", prompt: "", refs: [], video: base, startedAt: now, used: { prompt: plan.reference.prompt, refs: generation.refs ?? [], fromReference: false }, feeds: valuesFor(vars[0]) }
       const vs: Slide[] = vars.map((v, i) => ({
         id: crypto.randomUUID(),
         n: i + 1,
@@ -624,80 +746,150 @@ export function GenerationCanvas({
         // made from the reference video, so they start once it's ready
         startedAt: now + ms + 1,
         used: { prompt: v.prompt, refs: [], fromReference: true },
-        feeds: firstValues(v),
+        feeds: valuesFor(v),
       }))
       nextN.current = vs.length + 1
-      slidesNow.current = [main, ...vs]
-      setSlides([main, ...vs])
+      commitSlides([main, ...vs])
       setHistory([main, ...vs].map((x) => ({ id: crypto.randomUUID(), slideId: x.id, prompt: x.used!.prompt, refs: refsOf(x.used!.refs), fromReference: x.id !== "main", video: x.video!, startedAt: x.startedAt!, batch: x.id !== "main", at: now })))
-      setFeeds([fLabel, fPrice, fLink].filter((f): f is Feed => !!f))
+      commitFeeds(made)
       stripAdded.current = true
-      setShared(buildDesign(plan.design ?? {}, { ratio, count: vs.length, feeds: { label: fLabel?.id, price: fPrice?.id, link: fLink?.id }, brand }))
+      const els = buildDesign(design, { ratio, count: vs.length, feeds: ids, brand })
+      elementsNow.current = els
+      setShared(els)
       setIncludeRef(false)
       setStart(vs[0].id)
       setActive("main")
       setSelected([])
       if (plan.title?.trim()) setTitle(plan.title.trim())
-      const per = [fLabel && "label", fPrice && "price", fLink && "link"].filter(Boolean)
-      return `Generating the reference video and ${vs.length} variations (${cost.toLocaleString()} credits); they take about ${dev.generationSeconds * 2} seconds. The design is on the canvas${per.length ? `, with ${per.join(", ")} set per variation` : ""}. Thumbnails are empty until set.`
+      const per = made.map((f) => f.name)
+      return withIssues(`Generating the reference video and ${vs.length} variations (${cost.toLocaleString()} credits); they take about ${dev.generationSeconds * 2} seconds. The design is on the canvas${per.length ? `, with ${per.join(", ")} set per variation (feeds)` : ""}. Thumbnails are empty until set.`)
     },
     updateDesign(d) {
       if (!slidesNow.current[0].startedAt) return "Error: Approve the plan first."
-      const { elements: next, changed } = patchDesign(elements, d, brand, { count: included.length, ratio })
+      // text that differs per variation can't be set for everyone here: say so instead of silently not changing
+      const skipped: string[] = []
+      const rest = { ...d }
+      for (const f of ["headline", "subheading", "cta"] as const) {
+        if (rest[f] !== undefined && feedOfField(elementsNow.current, f)) {
+          skipped.push(f === "cta" ? "button text" : f)
+          delete rest[f]
+        }
+      }
+      const { elements: next, changed } = patchDesign(elementsNow.current, rest, brand, { count: included.length, ratio })
       // a headline or button the design doesn't have yet is added
       const extra: CanvasElement[] = []
-      if (d.headline && !elements.some((e) => e.role === "headline"))
-        extra.push({ id: crypto.randomUUID(), kind: "text", variant: "heading", text: d.headline, x: 50, y: 14, align: "center", role: "headline" }), changed.push("headline")
-      if (d.cta && !elements.some((e) => e.kind === "button"))
-        extra.push({ id: crypto.randomUUID(), kind: "button", variant: "pill", text: d.cta, x: 50, y: 74, align: "center", role: "cta", ...(feedId("link") ? { linkFeed: feedId("link") } : {}) }), changed.push("button")
-      if (!changed.length) return "Nothing to change."
-      setElements([...next, ...extra])
-      return `Changed the ${changed.join(", ")}.`
+      if (rest.headline && !elementFor(elementsNow.current, "headline"))
+        extra.push({ id: crypto.randomUUID(), kind: "text", variant: "heading", text: rest.headline, x: 50, y: 14, align: "center", role: "headline" }), changed.push("headline")
+      if (rest.cta && !elementsNow.current.some((e) => e.kind === "button")) {
+        const link = feedByName("link")?.id
+        extra.push({ id: crypto.randomUUID(), kind: "button", variant: "pill", text: rest.cta, x: 50, y: 74, align: "center", role: "cta", ...(link ? { linkFeed: link } : {}) }), changed.push("button")
+      }
+      if (changed.length) (commitElements([...next, ...extra]), tidy())
+      const note = skipped.length ? ` The ${skipped.join(" and ")} differ${skipped.length > 1 ? "" : "s"} per variation: set each with vary_field, or use same_for_all.` : ""
+      return changed.length ? `Changed the ${changed.join(", ")}.${note}` : `Nothing changed.${note}`
     },
     setBrand: (b) => setBrand((x) => ({ ...x, ...b })),
     setVariation(target, p) {
       const sl = findSlide(target)
       if (!sl) return `Error: No variation called “${target}”.`
-      const name = slideName(sl, slidesNow.current.indexOf(sl))
-      const values: Record<string, string> = {}
-      const newFeeds: Feed[] = []
-      for (const [key, type] of [["label", "text"], ["price", "text"], ["link", "link"]] as const) {
-        const v = p[key]
-        if (v === undefined) continue
-        let fid = feedId(key)
-        if (!fid) newFeeds.push({ id: (fid = crypto.randomUUID()), name: key, type })
-        values[fid] = v
+      const name = nameOfSlide(sl)
+      const parts: string[] = []
+      if (p.name?.trim()) {
+        commitSlides(slidesNow.current.map((x) => (x.id === sl.id ? { ...x, name: p.name!.trim() } : x)))
+        parts.push(`renamed it ${p.name.trim()}`)
       }
-      if (newFeeds.length) setFeeds((f) => [...f, ...newFeeds])
-      setSlides((list) => list.map((x) => (x.id === sl.id ? { ...x, ...(p.name ? { name: p.name } : {}), feeds: { ...x.feeds, ...values } } : x)))
-      const parts = [p.name && `renamed it ${p.name}`, ...Object.keys(values).length ? ["updated its " + (["label", "price", "link"] as const).filter((k) => p[k] !== undefined).join(", ")] : []].filter(Boolean)
+      // any on-screen text for just this variation: its feed if there is one, else it becomes one
+      for (const f of FIELDS) {
+        const v = p[f]
+        if (v === undefined) continue
+        const id = resolve(f).feedId
+        if (id) setValues(id, { [p.name?.trim() || name]: v })
+        else varyField(f, { [p.name?.trim() || name]: v })
+        parts.push(`set its ${f === "cta" ? "button text" : f}`)
+      }
+      for (const [feed, v] of Object.entries(p.values ?? {}) as [string, string][]) {
+        const f = feedByName(feed)
+        if (!f) {
+          parts.push(`no feed called ${feed}`)
+          continue
+        }
+        setValues(f.id, { [p.name?.trim() || name]: v })
+        parts.push(`set ${f.name}`)
+      }
       if (p.regenerate && p.prompt) {
         if (!startVideo(sl.id, p.prompt)) return "Error: Not enough credits to regenerate."
         parts.push("regenerating with the new prompt")
       }
-      return parts.length ? `${name}: ${parts.join(", ")}.` : `Nothing changed on ${name}.`
+      return withIssues(parts.length ? `${name}: ${parts.join(", ")}.` : `Nothing changed on ${name}.`)
     },
     addVariation(v, gen) {
       if (slidesNow.current.length > MAX_VARIATIONS) return `Error: A Flick has at most ${MAX_VARIATIONS} variations.`
       const id = crypto.randomUUID()
       const n = nextN.current++
+      // every feed gets a value: what was given, else the first variation's (said in the result)
+      const first = slidesNow.current[1] ?? slidesNow.current[0]
       const values: Record<string, string> = {}
-      for (const key of ["label", "price", "link"] as const) {
-        const fid = feedId(key)
-        if (fid && v[key]) values[fid] = v[key]!
+      const copied: string[] = []
+      for (const f of feedsNow.current) {
+        const field = FIELDS.find((x) => feedOfField(elementsNow.current, x) === f.id)
+        const given = (field && v[field]) ?? v.values?.[f.name]
+        if (given !== undefined) values[f.id] = given
+        else {
+          values[f.id] = first.feeds?.[f.id] ?? ""
+          copied.push(f.name)
+        }
       }
       const sl: Slide = { id, n, name: v.name?.trim() || undefined, prompt: v.prompt ?? "", refs: [], feeds: values }
-      slidesNow.current = [...slidesNow.current, sl]
-      setSlides((l) => [...l, sl])
+      commitSlides([...slidesNow.current, sl])
       if (gen && v.prompt && slidesNow.current[0].startedAt) startVideo(id, v.prompt)
-      return `Added ${v.name || `Variation ${n}`}${gen ? " and started its video" : ""}.`
+      return withIssues(
+        `Added ${v.name || `Variation ${n}`}${gen ? " and started its video" : ""}.${copied.length ? ` Copied ${copied.join(", ")} from ${nameOfSlide(first)}; change them with set_variation if they should differ.` : ""}`,
+      )
+    },
+    varyField(field, feed, values) {
+      if (!slidesNow.current[0].startedAt) return "Error: Approve the plan first."
+      const r = resolve(field, feed)
+      if (r.field) return withIssues(varyField(r.field, values))
+      if (r.feedId) {
+        const unknown = setValues(r.feedId, values)
+        return withIssues(`Updated ${feed}.${unknown.length ? ` No variation called ${unknown.join(", ")}.` : ""}`)
+      }
+      return `Error: Name a field (${FIELDS.join(", ")}) or an existing feed.`
+    },
+    sameForAll(field, feed, value) {
+      const r = resolve(field, feed)
+      if (!r.feedId) return `Nothing to do: ${field ?? feed} is already the same everywhere.`
+      const id = r.feedId
+      const active = slidesNow.current.find((x) => x.id === activeSlide.id) ?? slidesNow.current[1]
+      const shown = value ?? active?.feeds?.[id] ?? ""
+      // unlink everything that used it, showing one value for all, then drop the feed
+      commitElements(
+        elementsNow.current.map((e) =>
+          e.kind === "text" && e.feed === id
+            ? { ...e, feed: undefined, text: shown }
+            : e.kind === "button" && (e.feed === id || e.linkFeed === id)
+              ? { ...e, ...(e.feed === id && { feed: undefined, text: shown }), ...(e.linkFeed === id && { linkFeed: undefined, link: shown }) }
+              : e,
+        ),
+      )
+      const name = feedsNow.current.find((f) => f.id === id)?.name
+      commitFeeds(feedsNow.current.filter((f) => f.id !== id))
+      tidy()
+      return `${name} is now the same on every variation: “${shown}”.`
+    },
+    renameFeed(from, to) {
+      const f = feedByName(from)
+      if (!f) return `Error: No feed called ${from}.`
+      if (feedByName(to)) return `Error: A feed called ${to} already exists.`
+      commitFeeds(feedsNow.current.map((x) => (x.id === f.id ? { ...x, name: to.trim() } : x)))
+      return `Renamed the feed ${from} to ${to.trim()}.`
     },
     setThumbnail(target, url) {
       const sl = findSlide(target)
       if (!sl) return `Error: No variation called “${target}”.`
       patchSlide(sl.id, { thumb: url })
-      keepImage(url, `${slideName(sl, slidesNow.current.indexOf(sl))} thumbnail`)
-      return `Set ${slideName(sl, slidesNow.current.indexOf(sl))}'s thumbnail.`
+      keepImage(url, `${nameOfSlide(sl)} thumbnail`)
+      return `Set ${nameOfSlide(sl)}'s thumbnail.`
     },
     addImageToCanvas(url) {
       if (!slidesNow.current[0].startedAt) return "Error: Approve the plan first."
@@ -993,7 +1185,7 @@ export function GenerationCanvas({
           ctx={agentCtx}
           design={agent.plan?.design ?? agent.draft}
           names={agent.plan?.variations.map((v) => v.name) ?? []}
-          values={agent.plan?.variations.map((v) => ({ label: v.label, price: v.price })) ?? []}
+          values={agent.plan?.variations ?? []}
         />
       )}
       <div className={cn("flex min-h-0 flex-1", planning && "hidden")}>

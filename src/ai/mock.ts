@@ -83,6 +83,8 @@ export async function mockReply(messages: Message[], s: ProjectState, onText: (t
   if (results.length && !typed && results.every((r) => !WAITING.has(uses.find((u) => u.id === r.tool_use_id)?.name ?? ""))) {
     const plan = used("propose_plan").length > 0
     const thumbs = results.some((r) => uses.find((u) => u.id === r.tool_use_id)?.name === "generate_image")
+    const issues = s.issues
+    if (issues.length && !thumbs) return reply(`Done. Heads up: ${issues.join("; ")}. Tell me the values and I'll fill them.`)
     if (thumbs) return reply("All set. Every video is generating now, and thumbnails are on their way. Ask me to change the headline, the button, colours, or add a variation.")
     return reply(plan ? "Done. Anything else?" : "Got it.")
   }
@@ -103,6 +105,20 @@ export async function mockReply(messages: Message[], s: ProjectState, onText: (t
     // a few edits the demo understands
     const t = typed
     let m
+    // feeds: make text differ per variation, set one variation's value, or make it one value again
+    const fieldOf = (w: string) => (/button|cta/i.test(w) ? "cta" : (w.toLowerCase() as "headline" | "subheading" | "price" | "label"))
+    const names = s.videos.filter((v) => v.role === "variation").map((v) => v.name)
+    const shown = (role: string) => (s.design as { role?: string; text?: string }[]).find((d) => d.role === role)?.text?.replace(/^\{.*\}$/, "") || ""
+    if ((m = t.match(/\b(headline|subheading|button(?: text)?|price|label)\b.*\b(?:different|differ|vary|varies|per variation|each variation)/i))) {
+      const f = fieldOf(m[1])
+      const base = shown(f === "cta" ? "cta" : f) || (f === "cta" ? "Shop now" : "")
+      // prices need real numbers: the demo leaves them for the user to give
+      const values = f === "price" ? {} : Object.fromEntries(names.map((n) => [n, f === "cta" ? `Shop ${n}` : f === "label" ? n : `${base || "Meet"} ${n}`.trim()]))
+      return reply("", tool("vary_field", { field: f, values }))
+    }
+    if ((m = t.match(/\b(?:same|one)\s+(headline|subheading|button(?: text)?|price|label)\b/i))) return reply("", tool("same_for_all", { field: fieldOf(m[1]) }))
+    if ((m = t.match(/\b(headline|subheading|button(?: text)?|price|label)\s+(?:for|of|on)\s+([\w-]+)\s+(?:to|is|should be|=)\s+["“']?([^"”']{1,60})["”']?\s*$/i)))
+      return reply("", tool("set_variation", { variation: m[2], [fieldOf(m[1])]: m[3].trim() }))
     if ((m = t.match(/(?:button|cta)\b.*?(?:to|say|says|read|reads)\s+["“']?([^"”']{1,30})["”']?\s*$/i))) return reply("", tool("update_design", { cta: m[1].trim() }))
     if ((m = t.match(/headline\b.*?(?:to|say|says|read|reads)\s+["“']?([^"”']{1,60})["”']?\s*$/i))) return reply("", tool("update_design", { headline: m[1].trim() }))
     if ((m = t.match(/(?:button)?\s*colou?r\b.*?(#[0-9a-f]{3,6}|red|black|white|blue|green|orange|pink|gold|purple)/i))) {
@@ -114,7 +130,7 @@ export async function mockReply(messages: Message[], s: ProjectState, onText: (t
       const name = (m[1] || "New").trim().replace(/^\w/, (c) => c.toUpperCase()) || "New"
       return reply("", tool("add_variation", { name, prompt: `Same scene, ${name.toLowerCase()} version.`, label: name, generate: true }))
     }
-    return reply("In this demo I can change the headline or the button text, the button colour, or add a variation. Connect Claude in dev tools (State manager, AI) and I can do much more.")
+    return reply("In this demo I can change the headline or the button text, the button colour, make the headline, button, price or label differ per variation (or one value again), set one variation's price, or add a variation. Connect Claude in dev tools (State manager, AI) and I can do much more.")
   }
 
   // the idea

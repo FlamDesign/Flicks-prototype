@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Tick02Icon } from "@hugeicons/core-free-icons"
 import type { Step, useAgent } from "@/ai/agent"
-import type { Design } from "@/ai/design"
+import type { Design, Field } from "@/ai/design"
 import { AgentComposer, AgentItemView, type AgentCtx } from "@/components/editor/agent-chat"
 import { FlickPreview } from "@/components/editor/flick-preview"
 import { cn } from "@/lib/utils"
@@ -56,7 +56,7 @@ export function PlanningView({
   design: Design
   /** variation names for the preview's tabs (placeholders before the plan) */
   names: string[]
-  values: { label?: string; price?: string }[]
+  values: Partial<Record<Field, string>>[]
 }) {
   const list = useRef<HTMLDivElement>(null)
   const [active, setActive] = useState(0)

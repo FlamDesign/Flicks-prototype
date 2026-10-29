@@ -2,9 +2,21 @@
  * What the chat plans and designs, and how a design becomes canvas elements. Pure functions: the
  * editor applies the results.
  */
-import { BUTTON_TEXT, FONTS, type Align, type CanvasElement, type ButtonVariant } from "@/components/editor/elements"
+import { BUTTON_SIZE, BUTTON_TEXT, FONTS, TEXT_STYLES, type Align, type CanvasElement, type ButtonVariant } from "@/components/editor/elements"
 
-export type PlanVariation = { name: string; prompt: string; label?: string; price?: string; link?: string }
+/** on-screen text that can differ per variation (each becomes a feed when it does) */
+export const FIELDS = ["headline", "subheading", "label", "price", "cta", "link"] as const
+export type Field = (typeof FIELDS)[number]
+/** what a field's feed is called, and its type */
+export const FIELD_FEED: Record<Field, { name: string; type: "text" | "link" }> = {
+  headline: { name: "headline", type: "text" },
+  subheading: { name: "subheading", type: "text" },
+  label: { name: "label", type: "text" },
+  price: { name: "price", type: "text" },
+  cta: { name: "button", type: "text" },
+  link: { name: "link", type: "link" },
+}
+export type PlanVariation = { name: string; prompt: string } & Partial<Record<Field, string>>
 /** the thumbnail strip viewers tap to switch: where it sits and how it looks */
 export type Thumbs = {
   position?: "bottom" | "top" | "left" | "right"
@@ -78,7 +90,7 @@ const H = { label: 4.5, headline: 9, subheading: 6, price: 6, cta: 9 }
  */
 export function buildDesign(
   d: Design,
-  opts: { ratio: number; count: number; feeds: { label?: string; price?: string; link?: string }; brand?: Brand },
+  opts: { ratio: number; count: number; feeds: Partial<Record<Field, string>>; brand?: Brand },
 ): CanvasElement[] {
   const t = d.thumbnails ?? {}
   const strip = stripFor(t, opts.count, opts.ratio, opts.brand)
@@ -88,10 +100,11 @@ export function buildDesign(
   const font = fontName(d.font) ?? fontName(opts.brand?.font)
   const ink = color(d.text_color) ?? color(opts.brand?.text_color)
   const parts: { role: Role; h: number }[] = []
-  if (d.show_label && opts.feeds.label) parts.push({ role: "label", h: H.label })
-  if (d.headline) parts.push({ role: "headline", h: H.headline })
-  if (d.subheading) parts.push({ role: "subheading", h: H.subheading })
-  if (d.show_price && opts.feeds.price) parts.push({ role: "price", h: H.price })
+  // label and price show when they have values (unless turned off); headline and subheading when set or varied
+  if (d.show_label !== false && opts.feeds.label) parts.push({ role: "label", h: H.label })
+  if (d.headline || opts.feeds.headline) parts.push({ role: "headline", h: H.headline })
+  if (d.subheading || opts.feeds.subheading) parts.push({ role: "subheading", h: H.subheading })
+  if (d.show_price !== false && opts.feeds.price) parts.push({ role: "price", h: H.price })
   const layout = d.layout ?? "bottom"
   // the CTA sits in the stack at the bottom; above the strip otherwise
   const ctaInStack = layout === "bottom"
@@ -121,6 +134,7 @@ export function buildDesign(
       align,
       role: "cta",
       ...(opts.feeds.link ? { linkFeed: opts.feeds.link } : {}),
+      ...(opts.feeds.cta ? { feed: opts.feeds.cta } : {}),
       ...(bg ? { bg } : {}),
       ...(fg ? { color: fg } : {}),
       ...(font ? { font } : {}),
@@ -130,8 +144,8 @@ export function buildDesign(
     const cy = y + p.h / 2
     y += p.h
     if (p.role === "label") out.push(text("label", "label", "", opts.feeds.label, cy))
-    else if (p.role === "headline") out.push(text("headline", "heading", d.headline!, undefined, cy))
-    else if (p.role === "subheading") out.push(text("subheading", "subheading", d.subheading!, undefined, cy))
+    else if (p.role === "headline") out.push(text("headline", "heading", d.headline ?? "", opts.feeds.headline, cy))
+    else if (p.role === "subheading") out.push(text("subheading", "subheading", d.subheading ?? "", opts.feeds.subheading, cy))
     else if (p.role === "price") out.push(text("price", "subheading", "", opts.feeds.price, cy))
     else if (p.role === "cta") out.push(cta(cy))
   }
@@ -173,6 +187,22 @@ export function patchDesign(els: CanvasElement[], d: Design, brand?: Brand, opts
   return { elements, changed: [...new Set(changed)] }
 }
 
+/** the element that shows a field: by the role the chat gave it, else the first that fits */
+export function elementFor(els: CanvasElement[], f: Field) {
+  const role = f === "link" ? "cta" : f
+  const byRole = els.find((e) => (e.kind === "text" || e.kind === "button") && roleOf(e) === role)
+  if (byRole) return byRole as Extract<CanvasElement, { kind: "text" | "button" }>
+  if (f === "cta" || f === "link") return els.find((e) => e.kind === "button") as Extract<CanvasElement, { kind: "button" }> | undefined
+  if (f === "headline") return els.find((e) => e.kind === "text" && e.variant === "heading") as Extract<CanvasElement, { kind: "text" }> | undefined
+  return undefined
+}
+/** the feed a field's element uses, if any */
+export function feedOfField(els: CanvasElement[], f: Field) {
+  const el = elementFor(els, f)
+  if (!el) return undefined
+  return f === "link" ? (el.kind === "button" ? el.linkFeed : undefined) : el.feed
+}
+
 /** What the chat sees of the canvas design. */
 export function describeDesign(els: CanvasElement[], feedName: (id?: string) => string | undefined) {
   return els
@@ -186,4 +216,44 @@ export function describeDesign(els: CanvasElement[], feedName: (id?: string) => 
             ? { type: "thumbnail strip" }
             : { type: "image", y: Math.round(e.y) },
     )
+}
+
+/**
+ * Re-spaces the chat's text stack (label, headline, subheading, price, button) so lines that wrap
+ * never overlap: each part's height comes from its longest text across variations. The stack keeps
+ * its anchor: the bottom edge for a stack in the lower half, the top edge otherwise.
+ */
+export function restack(els: CanvasElement[], longest: (el: Extract<CanvasElement, { kind: "text" | "button" }>) => string, ratio: number): CanvasElement[] {
+  type T = Extract<CanvasElement, { kind: "text" | "button" }>
+  const ORDER = ["label", "headline", "subheading", "price", "cta"]
+  const stack = els.filter((e): e is T => (e.kind === "text" || e.kind === "button") && !e.hidden && ORDER.includes(roleOf(e) ?? "")).sort((a, b) => a.y - b.y)
+  if (stack.length < 2) return els
+  // a button far below the text (the top layout) isn't part of the stack
+  const parts = stack.filter((e, i) => i === 0 || e.y - stack[i - 1].y < 25)
+  const heightOf = (e: T) => {
+    const size = e.size ?? (e.kind === "text" ? TEXT_STYLES.find((t) => t.variant === e.variant)!.size : BUTTON_SIZE)
+    if (e.kind === "button") return size * 2.5 * ratio + 2
+    const avail = e.w ?? (e.align === "center" ? 84 : 76)
+    const chars = Math.max(1, longest(e).length)
+    const perChar = e.variant === "label" ? 0.75 : 0.52
+    const lines = Math.max(1, Math.ceil((chars * perChar * size) / avail))
+    return lines * size * 1.12 * ratio + 1.6
+  }
+  const hs = parts.map(heightOf)
+  const total = hs.reduce((a, b) => a + b, 0)
+  const top0 = parts[0].y - hs[0] / 2
+  const last = parts.length - 1
+  const bottom0 = parts[last].y + hs[last] / 2
+  // stay clear of a strip along the bottom or top
+  const strip = els.find((e): e is Extract<CanvasElement, { kind: "strip" }> => e.kind === "strip" && e.layout === "horizontal")
+  const floor = strip && strip.y > 50 ? strip.y - 2.5 : 97
+  const ceil = strip && strip.y <= 50 ? strip.y + strip.size * ratio + 2.5 : 3
+  let y = parts[0].y > 50 ? Math.min(floor, bottom0) - total : Math.max(ceil, top0)
+  y = Math.max(ceil, Math.min(floor - total, y))
+  const moved = new Map<string, number>()
+  parts.forEach((e, i) => {
+    moved.set(e.id, y + hs[i] / 2)
+    y += hs[i]
+  })
+  return els.map((e) => (moved.has(e.id) ? ({ ...e, y: moved.get(e.id)! } as CanvasElement) : e))
 }

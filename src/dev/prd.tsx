@@ -5,7 +5,7 @@ import { DevBadge } from "@/dev/state-manager"
 import { cn } from "@/lib/utils"
 
 /** Bump when the PRD changes. */
-export const PRD_UPDATED = "Oct 28, 2026, 5:00 pm"
+export const PRD_UPDATED = "Oct 28, 2026, 6:15 pm"
 
 /* ---------- small writing helpers ---------- */
 
@@ -231,6 +231,8 @@ const SECTIONS: Section[] = [
             "Build: Generate all charges every video, starts the reference video, queues the variations right after it, and opens the editor with the chat on the right. The design is placed from the plan and the chosen look: label, headline, price and button stacked at the top, centre or bottom; label, price and link as feeds filled per variation (the reference video shows the first variation\u2019s); and the thumbnail strip with its position (bottom, top, left or right), shape (square, rounded, circle), size and highlight colour. A Building your Flick card ticks off the reference video, the variations, the design and the thumbnail images.",
             "Thumbnails: the chat sets one per variation, from the user\u2019s photos or a generated image (\u201cMaking an image\u2026\u201d, then \u201cThumbnail for Gold, Added to the Flick\u201d). Images also land in the Images panel.",
             "After that, the chat makes changes on request: headline, subheading, button text, colours, button style, font, thumbnails; a variation\u2019s name, label, price, link or prompt (regenerating it); or a new variation. Each change shows a one-line note with a tick. A switch above the message box offers Chat or Prompt a video (the per-video prompt box).",
+            "Feeds with the chat: it sees every feed (including ones the user or a template made), what uses it (headline, button text, button link\u2026) and each video\u2019s value. The plan can give each variation its own headline, subheading or button text as well as label, price and link; whatever differs becomes a feed named plainly (headline, subheading, label, price, button, link) and linked to its element, and the plan card shows a box per variation for it. On request it makes any text differ per variation (adding a label or price line if the design has none), changes one variation\u2019s value, makes text one value again (removing the feed) or renames a feed.",
+            "It never silently does nothing: asking to change text that differs per variation says so and offers to set each value or make it one. A variation added later gets a value for every feed (copied from the first variation when not given, and said so). After each change the chat is told about empty values viewers would see (\u201cprice is empty on Black\u201d) and fills them. The text stack re-spaces for its longest values, so wrapped lines never overlap and it stays clear of the thumbnail strip.",
             "The chat streams its replies; Stop ends a reply. A failed reply shows an error with Retry. A header badge says Claude (live) or Demo (scripted).",
             "In this prototype: with an AI server connected, Claude plans and designs and Higgsfield makes the images; videos are always simulated. Without one, a scripted demo follows the same steps with sample images and understands a few edits (button text, headline, button colour, add a variation). The chat isn\u2019t kept when leaving the project.",
           ]}

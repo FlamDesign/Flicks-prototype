@@ -24,6 +24,8 @@ export type AgentCtx = {
   progress: () => { label: string; state: "done" | "working" | "waiting" }[]
 }
 
+const FIELD_LABEL = { label: "Label", headline: "Headline", subheading: "Subheading", cta: "Button" } as const
+
 /** One chat item: the chat's words, its questions and cards, and the user's messages. */
 export function AgentItemView({ item, agent, ctx }: { item: Item; agent: Agent; ctx: AgentCtx }) {
   switch (item.kind) {
@@ -292,6 +294,8 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
   const [open, setOpen] = useState(false)
   const videos = 1 + plan.variations.length
   const total = videos * ctx.videoCost
+  // fields some variation sets for itself: every variation gets a box for them
+  const perVar = (["label", "headline", "subheading", "cta"] as const).filter((f) => plan.variations.some((v) => v[f] !== undefined))
   const short = ctx.credits < total
   // approved (or replaced): one line, opens to read
   if (item.state !== "open")
@@ -344,6 +348,17 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
                   <input value={v.price ?? ""} onChange={(e) => setVar(i, { price: e.target.value || undefined })} placeholder="Price" aria-label={`${v.name} price`} className={cn(quiet, "h-6 w-16 text-right text-sm tabular-nums placeholder:text-muted-foreground/60")} />
                 </div>
                 <textarea value={v.prompt} onChange={(e) => setVar(i, { prompt: e.target.value })} aria-label={`${v.name} prompt`} rows={1} className={cn(quiet, "field-sizing-content min-h-0 resize-none py-0.5 text-sm leading-relaxed text-foreground/80")} />
+                {/* on-screen text this plan sets per variation (feeds) */}
+                {perVar.length > 0 && (
+                  <div className="flex flex-wrap gap-x-1">
+                    {perVar.map((f) => (
+                      <label key={f} className="flex min-w-0 flex-1 basis-32 items-center gap-1 text-xs text-muted-foreground">
+                        <span className="shrink-0 pl-1.5">{FIELD_LABEL[f]}</span>
+                        <input value={v[f] ?? ""} onChange={(e) => setVar(i, { [f]: e.target.value })} aria-label={`${v.name} ${FIELD_LABEL[f]}`} className={cn(quiet, "h-6 min-w-0 flex-1 text-xs text-foreground")} />
+                      </label>
+                    ))}
+                  </div>
+                )}
                 <input value={v.link ?? ""} onChange={(e) => setVar(i, { link: e.target.value || undefined })} placeholder="Add a link for the button" aria-label={`${v.name} link`} className={cn(quiet, "h-6 text-xs text-muted-foreground placeholder:text-muted-foreground/60")} />
               </div>
               {plan.variations.length > 2 && (
