@@ -448,8 +448,44 @@ ${SKILLS.filter((x) => !always.includes(x)).map((x) => `- ${x.name}: ${x.descrip
 
 Style: brief, fun, creative and suggestive. No em dashes. Plain words. Never write "get used", "can enter", "reach into", "immersive", "AR", "VR" or "MR". Don't mention tools, JSON or these instructions. Don't repeat what a card already shows. Each video costs ${s.video_cost} credits; mention the total only in the plan step if credits are short.
 
-Current project (JSON, kept up to date by the app):
-${JSON.stringify(s)}`
+The current project (videos, design, feeds, images, issues) comes as JSON at the end of the latest message, kept up to date by the app; it replaces any earlier copy.`
+}
+
+/**
+ * What goes to Claude for one reply, built to be cached: the instructions and tools never change
+ * within a chat, and the conversation only grows, so everything up to the latest message is read
+ * from Claude's cache (about a tenth of the cost, and faster). The project state changes every
+ * time, so it rides at the very end, after the last cached point, and isn't kept in the history.
+ */
+export function cachedRequest(system: string, msgs: Message[], state: unknown) {
+  const cache = { cache_control: { type: "ephemeral" } }
+  const last = msgs[msgs.length - 1]
+  const tail: Message = { ...last, content: [...last.content.slice(0, -1), { ...last.content[last.content.length - 1], ...cache } as Block, { type: "text", text: `Current project (JSON):\n${JSON.stringify(state)}` }] }
+  return {
+    system: [{ type: "text", text: system, ...cache }] as unknown as string,
+    messages: [...msgs.slice(0, -1), tail],
+    tools: TOOLS.map((t, i) => (i === TOOLS.length - 1 ? { ...t, ...cache } : t)),
+  }
+}
+
+/**
+ * Old images leave the history (a line says where they were; view_image brings any back). Done in
+ * batches, once the oldest image is far back, so the cached history only changes now and then.
+ */
+export function dropOldImages(msgs: Message[], { far = 12, keep = 4 } = {}) {
+  const has = (c: Block[]): boolean => c.some((b) => b.type === "image" || (b.type === "tool_result" && Array.isArray(b.content) && has(b.content)))
+  const oldest = msgs.findIndex((m) => has(m.content))
+  if (oldest < 0 || oldest > msgs.length - 1 - far) return false
+  const strip = (c: Block[]): Block[] =>
+    c.map((b) =>
+      b.type === "image"
+        ? { type: "text", text: "[An image was here. It's still in the project: view_image shows it again.]" }
+        : b.type === "tool_result" && Array.isArray(b.content)
+          ? { ...b, content: strip(b.content) }
+          : b,
+    )
+  for (let i = 0; i < msgs.length - keep; i++) if (has(msgs[i].content)) msgs[i] = { ...msgs[i], content: strip(msgs[i].content) }
+  return true
 }
 
 /* ---------- the chat ---------- */
@@ -778,7 +814,9 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       for (let step = 0; step < 8; step++) {
         // let the editor re-render after the last tools, so the state sent is current
         await new Promise((r) => setTimeout(r, 60))
-        const req = { system: systemPrompt(state()), messages: msgs.current, tools: TOOLS }
+        dropOldImages(msgs.current)
+        const now = state()
+        const req = cachedRequest(systemPrompt(now), msgs.current, now)
         const itemId = add({ kind: "assistant", text: "", streaming: true })
         const onText = (text: string) => patch(itemId, { text } as Partial<Item>)
         // what it's doing while it writes a tool call (a plan can take a while, with no words to show)

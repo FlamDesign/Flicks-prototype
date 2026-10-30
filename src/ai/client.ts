@@ -133,6 +133,11 @@ export async function streamChat(req: ChatRequest, onText: (text: string) => voi
       } catch {
         continue
       }
+      // how much came from Claude's cache (visible in the browser console)
+      if (ev.type === "message_start" && ev.message?.usage) {
+        const u = ev.message.usage
+        console.info(`[Flicks AI] input ${u.input_tokens} new, ${u.cache_read_input_tokens ?? 0} from cache, ${u.cache_creation_input_tokens ?? 0} cached now`)
+      }
       if (ev.type === "content_block_start") {
         const b = ev.content_block
         blocks[ev.index] = b.type === "tool_use" ? { type: "tool_use", id: b.id, name: b.name, input: {}, json: "" } : { type: "text", text: "" }
