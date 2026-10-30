@@ -8,7 +8,7 @@
  *   GET  /image/:id       that image's status; { status, url? }
  *   POST /video           starts a video (Higgsfield, 720p only); returns { id }
  *   GET  /video/:id       that video's status; { status, url?, poster? }
- *   POST /upload          keeps an image the user added (in the library too) and returns a public address for it, so Higgsfield can use it
+ *   POST /upload          keeps a photo or video the user added (in the library too) and returns a public address for it, so Higgsfield can use it
  *   GET  /file/:id        a kept image or video (public: the address is unguessable)
  *   GET  /media?u=        a generated video, passed through (Higgsfield's hosts only), for poster frames
  *   GET  /store/:key      saved app data: "state" (projects, Flicks, made videos) or "chat-<project id>"
@@ -144,14 +144,16 @@ export default {
       if (req.method === "POST" && url.pathname === "/upload") {
         if (!(await take(env, `up:${day}`, 300))) return json({ error: "daily_limit", what: "uploads" }, 429, cors)
         const type = (req.headers.get("content-type") ?? "").split(";")[0]
-        if (!/^image\/(png|jpeg|webp|gif)$/.test(type)) return json({ error: "not_an_image" }, 400, cors)
+        // photos, and videos (trimmed to 15 s in the browser, so they're small)
+        const video = /^video\/(mp4|webm|quicktime)$/.test(type)
+        if (!video && !/^image\/(png|jpeg|webp|gif)$/.test(type)) return json({ error: "not_an_image" }, 400, cors)
         const bytes = await req.arrayBuffer()
-        if (bytes.byteLength > 8_000_000) return json({ error: "too_large" }, 413, cors)
+        if (bytes.byteLength > (video ? 24_000_000 : 8_000_000)) return json({ error: "too_large" }, 413, cors)
         const id = `up-${crypto.randomUUID()}`
         // kept for good and listed in the library, like everything made here
         await env.USAGE?.put(`file:${id}`, bytes, { metadata: { type } })
         const q = url.searchParams
-        await env.USAGE?.put(`lib:${id}`, JSON.stringify({ id, kind: "image", prompt: (q.get("name") ?? "Uploaded image").slice(0, 200), model: "upload", refs: [], ...pick({ project: q.get("project") ?? undefined, purpose: "upload" }), created: Date.now(), saved: true, bytes: bytes.byteLength, type }))
+        await env.USAGE?.put(`lib:${id}`, JSON.stringify({ id, kind: video ? "video" : "image", prompt: (q.get("name") ?? (video ? "Uploaded video" : "Uploaded image")).slice(0, 200), model: "upload", refs: [], ...pick({ project: q.get("project") ?? undefined, purpose: "upload" }), created: Date.now(), saved: true, bytes: bytes.byteLength, type }))
         return json({ url: `${url.origin}/file/${id}` }, 200, cors)
       }
 

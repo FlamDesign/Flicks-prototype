@@ -2,9 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Add01Icon,
-  PackageIcon,
-  UserIcon,
-  Image03Icon,
+  PlayIcon,
   ArrowDown01Icon,
   SparklesIcon,
   Cancel01Icon,
@@ -20,7 +18,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
-  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -31,17 +28,13 @@ import { SIZES, SIZE_GROUPS, type Template } from "@/data"
 import { RatioGlyph } from "@/components/ratio-glyph"
 import { cn } from "@/lib/utils"
 import { useImageUploads } from "@/lib/uploads"
+import { useMediaAdd } from "@/components/media-picker"
+import type { PickedMedia } from "@/lib/media"
 import { MediaViewer, type ViewerItem } from "@/components/media-viewer"
 import { videoCost } from "@/components/credits-card"
 
-export type Kind = "Product" | "Character" | "Scene"
-export type Reference = { id: string; kind: Kind; name: string; url: string; loading: boolean; failed?: boolean }
-
-export const REFERENCE_OPTIONS = [
-  { kind: "Product", icon: PackageIcon, hint: "Packshot or product photo" },
-  { kind: "Character", icon: UserIcon, hint: "Model or mascot" },
-  { kind: "Scene", icon: Image03Icon, hint: "Background or setting" },
-] as const
+/** A photo or video added to a prompt box. Videos are at most 15 seconds (longer ones are trimmed when added). */
+export type Reference = { id: string; name: string; url: string; loading: boolean; failed?: boolean; media?: "image" | "video"; poster?: string; duration?: number }
 
 
 /** Video lengths offered in the composer, in seconds. */
@@ -84,8 +77,6 @@ export function PromptComposer({
   const [dragging, setDragging] = useState(false)
   const firstSize = useRef(true)
   const ref = useRef<HTMLTextAreaElement>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
-  const pendingKind = useRef<Kind>("Product")
 
   useEffect(() => {
     if (!pulse) return
@@ -113,12 +104,8 @@ export function PromptComposer({
   const refUploads = useReferenceUploads(setRefs)
   const [viewing, setViewing] = useState<number | null>(null)
   const failedRefs = refs.some((r) => r.failed)
-  const addFiles = (files: FileList | File[], kind: Kind = pendingKind.current) => refUploads.add(files, kind)
-
-  const pick = (kind: Kind) => {
-    pendingKind.current = kind
-    fileRef.current?.click()
-  }
+  const media = useMediaAdd(refUploads.addPicked)
+  const addFiles = (files: FileList | File[]) => media.addFiles(files)
 
   const remove = (id: string) =>
     // the image may still be in use by a generated video's prompt box, so its URL is kept
@@ -159,7 +146,7 @@ export function PromptComposer({
         onDrop={(e) => {
           e.preventDefault()
           setDragging(false)
-          addFiles(e.dataTransfer.files, "Product")
+          addFiles(e.dataTransfer.files)
         }}
         className={cn(
           "relative w-full rounded-3xl border bg-background/85 p-2 shadow-[0_12px_40px_-12px_color-mix(in_oklch,var(--shadow-ink)_18%,transparent)] backdrop-blur-xl transition-shadow duration-500",
@@ -167,17 +154,7 @@ export function PromptComposer({
           dragging && "border-primary ring-2 ring-primary/30",
         )}
       >
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          multiple
-          hidden
-          onChange={(e) => {
-            if (e.target.files) addFiles(e.target.files)
-            e.target.value = ""
-          }}
-        />
+        {media.ui}
 
         {/* References + template */}
         {(template || refs.length > 0) && (
@@ -205,7 +182,7 @@ export function PromptComposer({
           onPaste={(e) => {
             if (e.clipboardData.files.length) {
               e.preventDefault()
-              addFiles(e.clipboardData.files, "Product")
+              addFiles(e.clipboardData.files)
             }
           }}
           onKeyDown={(e) => {
@@ -218,32 +195,14 @@ export function PromptComposer({
 
         {/* Toolbar */}
         <div className="flex items-center gap-1.5 px-1 pb-0.5">
-          <DropdownMenu>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon" aria-label="Add image reference">
-                    <HugeiconsIcon icon={Add01Icon} className="size-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-              </TooltipTrigger>
-              <TooltipContent>
-                Add image reference
-              </TooltipContent>
-            </Tooltip>
-            <DropdownMenuContent align="start" className="w-56" onCloseAutoFocus={(e) => e.preventDefault()}>
-              <DropdownMenuLabel>Add image reference</DropdownMenuLabel>
-              {REFERENCE_OPTIONS.map((o) => (
-                <DropdownMenuItem key={o.kind} onSelect={() => pick(o.kind)} className="gap-3">
-                  <HugeiconsIcon icon={o.icon} className="size-4" />
-                  <span className="flex flex-col">
-                    <span>{o.kind}</span>
-                    <span className="text-xs text-muted-foreground">{o.hint}</span>
-                  </span>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="icon" aria-label="Add photos or videos" onClick={media.openPicker}>
+                <HugeiconsIcon icon={Add01Icon} className="size-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Add photos or videos</TooltipContent>
+          </Tooltip>
 
           <div className="flex-1" />
 
@@ -354,13 +313,14 @@ export function useReferenceUploads(setRefs: (fn: (r: Reference[]) => Reference[
     setRefs((r) => r.map((x) => (ids.includes(x.id) ? { ...x, loading: true, failed: false } : x)))
     uploads.run(items, settle, retry)
   }
-  const add = (files: FileList | File[], kind: Kind) => {
-    const items = uploads.screen(files).map((file) => ({ id: crypto.randomUUID(), name: file.name, url: URL.createObjectURL(file) }))
+  /** picked photos and videos: new files upload (shimmer, then the thumbnail); library items are ready */
+  const addPicked = (items: PickedMedia[]) => {
     if (!items.length) return
-    setRefs((r) => [...r, ...items.map((it) => ({ ...it, kind, loading: true }))])
-    uploads.run(items, settle, retry)
+    const refs: Reference[] = items.map((m) => ({ id: crypto.randomUUID(), name: m.name, url: m.url, media: m.kind, poster: m.poster, duration: m.duration, loading: !!m.file }))
+    setRefs((r) => [...r, ...refs])
+    uploads.run(refs.filter((r) => r.loading).map((r) => ({ id: r.id, name: r.name })), settle, retry)
   }
-  return { add, retry }
+  return { addPicked, retry }
 }
 
 /** No scrollbar on the references row: a mouse wheel scrolls it sideways (trackpads already do). */
@@ -399,7 +359,7 @@ export function ReferenceThumb({ r, onRemove, onRetry, onOpen }: { r: Reference;
               aria-label={`Retry uploading ${r.name}`}
               className="relative block size-14 overflow-hidden rounded-xl ring-2 ring-destructive/60 outline-none focus-visible:ring-ring"
             >
-              <img src={r.url} alt="" className="size-full object-cover opacity-50 grayscale" />
+              <img src={r.poster ?? r.url} alt="" className="size-full object-cover opacity-50 grayscale" />
               <span className="absolute inset-0 grid place-items-center bg-destructive/25 text-white">
                 <span className="grid size-6 place-items-center rounded-full bg-destructive shadow-sm">
                   <HugeiconsIcon icon={RefreshIcon} className="size-3.5" strokeWidth={2.25} />
@@ -409,10 +369,16 @@ export function ReferenceThumb({ r, onRemove, onRetry, onOpen }: { r: Reference;
           ) : (
             <button type="button" onClick={onOpen} disabled={!onOpen} aria-label={`View ${r.name}`} className="block size-14 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default">
               <img
-                src={r.url}
+                src={r.poster ?? r.url}
                 alt={r.name}
                 className="animate-in fade-in-0 zoom-in-95 size-14 rounded-xl object-cover ring-1 ring-foreground/10 duration-300"
               />
+              {r.media === "video" && (
+                <span className="absolute bottom-1 left-1 flex items-center gap-0.5 rounded bg-black/60 px-1 text-[10px] font-medium text-white tabular-nums">
+                  <HugeiconsIcon icon={PlayIcon} className="size-2.5" />
+                  {r.duration ? `${Math.round(r.duration)}s` : ""}
+                </span>
+              )}
             </button>
           )}
           <Button
@@ -426,7 +392,7 @@ export function ReferenceThumb({ r, onRemove, onRetry, onOpen }: { r: Reference;
           </Button>
         </div>
       </TooltipTrigger>
-      <TooltipContent>{r.loading ? "Uploading…" : r.failed ? "Couldn’t upload. Click to retry." : `${r.kind} · ${r.name}`}</TooltipContent>
+      <TooltipContent>{r.loading ? "Uploading…" : r.failed ? "Couldn’t upload. Click to retry." : r.name}</TooltipContent>
     </Tooltip>
   )
 }
@@ -436,12 +402,10 @@ export function ReferenceViewer({ refs, index, onIndex, onClose }: { refs: Refer
   const ready = refs.filter((r) => !r.loading && !r.failed)
   const items: ViewerItem[] = ready.map((r) => ({
     id: r.id,
-    kind: "image",
-    src: r.url,
+    ...(r.media === "video" ? { kind: "video" as const, src: r.url, poster: r.poster } : { kind: "image" as const, src: r.url }),
     name: r.name,
     details: [
-      ["Source", "Uploaded"],
-      ["Used as", r.kind],
+      ["Type", r.media === "video" ? `Video${r.duration ? ` · ${r.duration.toFixed(1)}s` : ""}` : "Photo"],
       ["Format", (r.name.split(".").pop() ?? "png").toUpperCase().replace("JPEG", "JPG")],
     ],
   }))

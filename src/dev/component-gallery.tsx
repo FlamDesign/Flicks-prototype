@@ -1,3 +1,4 @@
+import { useMediaAdd } from "@/components/media-picker"
 import { useEffect, useState } from "react"
 import { WelcomeGiftDialog } from "@/components/welcome-gift-page"
 import { HowFlicksWork } from "@/components/how-flicks-work"
@@ -540,11 +541,25 @@ const ENTRIES: Entry[] = [
     render: () => (
       <States
         states={[
-          { label: "Uploading", node: <ReferenceThumb r={{ id: "a", kind: "Product", name: "lamp.png", url: GENERATED_VIDEOS[1].poster, loading: true }} onRemove={() => {}} /> },
-          { label: "Ready", node: <ReferenceThumb r={{ id: "b", kind: "Product", name: "lamp.png", url: GENERATED_VIDEOS[1].poster, loading: false }} onRemove={() => {}} /> },
-          { label: "Failed", node: <ReferenceThumb r={{ id: "c", kind: "Product", name: "lamp.png", url: GENERATED_VIDEOS[1].poster, loading: false, failed: true }} onRemove={() => {}} onRetry={() => {}} /> },
+          { label: "Uploading", node: <ReferenceThumb r={{ id: "a", name: "lamp.png", url: GENERATED_VIDEOS[1].poster, loading: true }} onRemove={() => {}} /> },
+          { label: "Ready", node: <ReferenceThumb r={{ id: "b", name: "lamp.png", url: GENERATED_VIDEOS[1].poster, loading: false }} onRemove={() => {}} /> },
+          { label: "Failed", node: <ReferenceThumb r={{ id: "c", name: "lamp.png", url: GENERATED_VIDEOS[1].poster, loading: false, failed: true }} onRemove={() => {}} onRetry={() => {}} /> },
         ]}
       />
+    ),
+  },
+  {
+    name: "Media picker",
+    kind: "Editor",
+    about: "Opened by + in every prompt box (Create, the canvas and the AI chat). Uploads and generated work with search, source tabs, type, project and sort; generated items show their final prompt and references. Upload tile and drop take photos and videos (up to 100 MB). Videos over 15 s open the trimmer; the clip is used there only.",
+    render: () => <MediaPickerDemo />,
+  },
+  {
+    name: "Reference video",
+    kind: "Editor",
+    about: "A video reference in a prompt box: its first frame with a play mark and length.",
+    render: () => (
+      <States states={[{ label: "Ready", node: <ReferenceThumb r={{ id: "v", name: "walk.mp4", url: GENERATED_VIDEOS[0].mp4, poster: GENERATED_VIDEOS[0].poster, media: "video", duration: 12, loading: false }} onRemove={() => {}} /> }]} />
     ),
   },
   {
@@ -948,6 +963,20 @@ function ChatCardsDemo() {
           <figcaption className="border-t px-2.5 py-1.5 text-[11px] text-muted-foreground">{x.label}</figcaption>
         </figure>
       ))}
+    </div>
+  )
+}
+
+function MediaPickerDemo() {
+  const [picked, setPicked] = useState<string[]>([])
+  const media = useMediaAdd((items) => setPicked(items.map((i) => `${i.name}${i.trim ? ` (clip ${i.trim.start.toFixed(1)} to ${i.trim.end.toFixed(1)} s)` : ""}`)))
+  return (
+    <div className="flex flex-col items-start gap-2">
+      <Button variant="outline" onClick={media.openPicker}>
+        Open the picker
+      </Button>
+      {picked.length > 0 && <p className="text-xs text-muted-foreground">Added: {picked.join(", ")}</p>}
+      {media.ui}
     </div>
   )
 }

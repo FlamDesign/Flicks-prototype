@@ -250,7 +250,8 @@ export function shareable(src: string, about: { name?: string; project?: string 
   const job = (async () => {
     const blob = await (await fetch(src)).blob()
     // big photos are scaled down first (the models don't need more than 2048 px)
-    const small = blob.size > 2_500_000 || !/^image\/(png|jpeg|webp)$/.test(blob.type) ? await shrink(blob) : blob
+    // videos go as they are (already trimmed to 15 s); big or unusual photos are scaled down first
+    const small = blob.type.startsWith("video/") ? blob : blob.size > 2_500_000 || !/^image\/(png|jpeg|webp)$/.test(blob.type) ? await shrink(blob) : blob
     const q = new URLSearchParams(Object.entries(about).filter((e): e is [string, string] => !!e[1]))
     const res = await steady(`/upload?${q}`, { method: "POST", body: small, headers: { "content-type": small.type } })
     return ((await res.json()) as { url: string }).url

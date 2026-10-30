@@ -346,7 +346,7 @@ export default function App() {
                     Hey {firstName}, let’s start with a video
                   </h1>
                   <p className="text-sm text-foreground">
-                    Add image references for video. Create variants of generated video in next step.
+                    Add photos or videos as references. Create variants of generated video in next step.
                   </p>
                 </div>
                 <PromptComposer

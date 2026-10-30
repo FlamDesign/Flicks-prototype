@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Add01Icon, Alert02Icon, ArrowLeft01Icon, ArrowRight01Icon, ArrowDown01Icon, BookOpen01Icon, CheckmarkBadge01Icon, Globe02Icon, ArrowUp02Icon, ImageAdd01Icon, Loading03Icon, PencilEdit01Icon, LeftToRightListNumberIcon, PaintBoardIcon, RefreshIcon, SparklesIcon, StopIcon, Tick02Icon, Cancel01Icon } from "@hugeicons/core-free-icons"
+import { Add01Icon, Alert02Icon, ArrowLeft01Icon, ArrowRight01Icon, ArrowDown01Icon, BookOpen01Icon, CheckmarkBadge01Icon, Globe02Icon, ArrowUp02Icon, ImageAdd01Icon, Loading03Icon, PencilEdit01Icon, LeftToRightListNumberIcon, PaintBoardIcon, RefreshIcon, SparklesIcon, StopIcon, Tick02Icon, Cancel01Icon, PlayIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -10,6 +10,8 @@ import type { Brand, Plan, PlanVariation } from "@/ai/design"
 import { FlickPreview } from "@/components/editor/flick-preview"
 import { skillTitle } from "@/ai/skills"
 import { cn } from "@/lib/utils"
+import { useMediaAdd } from "@/components/media-picker"
+import { asFile } from "@/lib/media"
 
 type Agent = ReturnType<typeof useAgent>
 export type AgentCtx = {
@@ -350,10 +352,10 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
 function Assets({ item, agent, bare }: { item: Extract<Item, { kind: "assets" }>; agent: Agent; bare?: boolean }) {
   const [files, setFiles] = useState<File[]>([])
   const [over, setOver] = useState(false)
-  const input = useRef<HTMLInputElement>(null)
   const previews = useRef(new Map<File, string>())
   const url = (f: File) => previews.current.get(f) ?? (previews.current.set(f, URL.createObjectURL(f)), previews.current.get(f)!)
-  const addFiles = (list: FileList | File[]) => setFiles((f) => [...f, ...[...list].filter((x) => x.type.startsWith("image/"))].slice(0, 8))
+  const media = useMediaAdd((items) => void Promise.all(items.map(asFile)).then((f) => setFiles((x) => [...x, ...f].slice(0, 8))))
+  const addFiles = (list: FileList | File[]) => media.addFiles(list)
   if (item.done)
     return (
       <div className="flex flex-col gap-1.5 px-1">
@@ -373,10 +375,10 @@ function Assets({ item, agent, bare }: { item: Extract<Item, { kind: "assets" }>
   const body = (
     <>
       {!bare && <p className="text-sm font-medium">{item.message}</p>}
-      <input ref={input} type="file" accept="image/*" multiple hidden onChange={(e) => (e.target.files && addFiles(e.target.files), (e.target.value = ""))} />
+      {media.ui}
       <button
         type="button"
-        onClick={() => input.current?.click()}
+        onClick={media.openPicker}
         onDragOver={(e) => (e.preventDefault(), setOver(true))}
         onDragLeave={() => setOver(false)}
         onDrop={(e) => (e.preventDefault(), setOver(false), addFiles(e.dataTransfer.files))}
@@ -387,7 +389,7 @@ function Assets({ item, agent, bare }: { item: Extract<Item, { kind: "assets" }>
       >
         {files.length ? (
           <>
-            {files.map((f) => <img key={url(f)} src={url(f)} alt={f.name} className="size-14 rounded-lg object-cover ring-1 ring-foreground/10" />)}
+            {files.map((f) => <FileThumb key={url(f)} file={f} url={url(f)} className="size-14" />)}
             <span className="grid size-14 place-items-center rounded-lg border border-dashed border-foreground/20">
               <HugeiconsIcon icon={Add01Icon} className="size-4" />
             </span>
@@ -395,7 +397,7 @@ function Assets({ item, agent, bare }: { item: Extract<Item, { kind: "assets" }>
         ) : (
           <span className="flex flex-col items-center gap-1.5">
             <HugeiconsIcon icon={ImageAdd01Icon} className="size-5" />
-            Drop images or click to add
+            Drop photos or videos, or click to pick
             {item.kinds.length > 0 && <span className="text-xs">{item.kinds.join(", ")}</span>}
           </span>
         )}
@@ -405,12 +407,26 @@ function Assets({ item, agent, bare }: { item: Extract<Item, { kind: "assets" }>
           Skip
         </Button>
         <Button size="sm" disabled={agent.busy || !files.length} onClick={() => agent.addAssets(item.id, files)}>
-          Add {files.length > 0 ? files.length : ""} image{files.length === 1 ? "" : "s"}
+          Add{files.length > 0 ? ` ${files.length}` : ""}
         </Button>
       </div>
     </>
   )
   return bare ? <div className="flex flex-col gap-3 px-4 pb-3">{body}</div> : <Card>{body}</Card>
+}
+
+/** A photo, or a video's first frame with a play mark, for files waiting to be sent. */
+function FileThumb({ file, url, className }: { file: File; url: string; className?: string }) {
+  return file.type.startsWith("video/") ? (
+    <span className={cn("relative block shrink-0 overflow-hidden rounded-lg ring-1 ring-foreground/10", className)}>
+      <video src={url} muted preload="metadata" className="size-full object-cover" aria-label={file.name} />
+      <span className="absolute bottom-0.5 left-0.5 grid size-4 place-items-center rounded bg-black/60 text-white">
+        <HugeiconsIcon icon={PlayIcon} className="size-2.5" />
+      </span>
+    </span>
+  ) : (
+    <img src={url} alt={file.name} className={cn("shrink-0 rounded-lg object-cover ring-1 ring-foreground/10", className)} />
+  )
 }
 
 function BrandCard({ item }: { item: Extract<Item, { kind: "brand" }> }) {
@@ -681,10 +697,11 @@ function ImageCard({ item, ctx, agent }: { item: Extract<Item, { kind: "image" }
 export function AgentComposer({ agent, placeholder }: { agent: Agent; placeholder?: string }) {
   const [text, setText] = useState("")
   const [files, setFiles] = useState<File[]>([])
-  const input = useRef<HTMLInputElement>(null)
   const urls = useRef(new Map<File, string>())
   const url = (f: File) => urls.current.get(f) ?? (urls.current.set(f, URL.createObjectURL(f)), urls.current.get(f)!)
   const can = (text.trim() || files.length) && !agent.busy
+  // photos and videos: picked from uploads and generated work, or dropped or pasted (long videos trimmed first)
+  const media = useMediaAdd((items) => void Promise.all(items.map(asFile)).then((f) => setFiles((x) => [...x, ...f].slice(0, 8))))
   const send = () => {
     if (!can) return
     agent.send(text.trim(), files)
@@ -695,14 +712,14 @@ export function AgentComposer({ agent, placeholder }: { agent: Agent; placeholde
     <div
       className="rounded-2xl border bg-background p-2 shadow-sm"
       onDragOver={(e) => e.dataTransfer.types.includes("Files") && e.preventDefault()}
-      onDrop={(e) => (e.preventDefault(), setFiles((f) => [...f, ...[...e.dataTransfer.files].filter((x) => x.type.startsWith("image/"))].slice(0, 8)))}
+      onDrop={(e) => (e.preventDefault(), media.addFiles(e.dataTransfer.files))}
     >
-      <input ref={input} type="file" accept="image/*" multiple hidden onChange={(e) => (e.target.files && setFiles((f) => [...f, ...e.target.files!].slice(0, 8)), (e.target.value = ""))} />
+      {media.ui}
       {files.length > 0 && (
         <div className="flex gap-2 overflow-x-auto px-1 pb-1 pt-1.5">
           {files.map((f) => (
             <div key={url(f)} className="group/f relative size-12 shrink-0">
-              <img src={url(f)} alt={f.name} className="size-12 rounded-lg object-cover ring-1 ring-foreground/10" />
+              <FileThumb file={f} url={url(f)} className="size-12" />
               <Button variant="secondary" size="icon-xs" aria-label={`Remove ${f.name}`} onClick={() => setFiles((x) => x.filter((y) => y !== f))} className="absolute -right-1.5 -top-1.5 size-5 rounded-full opacity-0 shadow-sm ring-1 ring-foreground/10 group-hover/f:opacity-100 focus-visible:opacity-100">
                 <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
               </Button>
@@ -716,7 +733,7 @@ export function AgentComposer({ agent, placeholder }: { agent: Agent; placeholde
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) (e.preventDefault(), send())
         }}
-        onPaste={(e) => e.clipboardData.files.length && (e.preventDefault(), setFiles((f) => [...f, ...[...e.clipboardData.files].filter((x) => x.type.startsWith("image/"))].slice(0, 8)))}
+        onPaste={(e) => e.clipboardData.files.length && (e.preventDefault(), media.addFiles(e.clipboardData.files))}
         placeholder={placeholder ?? "Describe your Flick, or ask for a change"}
         aria-label="Message"
         rows={2}
@@ -725,11 +742,11 @@ export function AgentComposer({ agent, placeholder }: { agent: Agent; placeholde
       <div className="flex items-center gap-1.5 px-0.5">
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="outline" size="icon-sm" aria-label="Add images" onClick={() => input.current?.click()}>
+            <Button variant="outline" size="icon-sm" aria-label="Add photos or videos" onClick={media.openPicker}>
               <HugeiconsIcon icon={Add01Icon} className="size-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Add images</TooltipContent>
+          <TooltipContent>Add photos or videos</TooltipContent>
         </Tooltip>
         <div className="flex-1" />
         {agent.busy ? (

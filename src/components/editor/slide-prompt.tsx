@@ -1,11 +1,11 @@
-import { useRef, useState } from "react"
+import { useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Add01Icon, Loading03Icon, PlayIcon, SparklesIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { FailedRefsNote, REFERENCE_OPTIONS, ReferenceThumb, ReferenceViewer, scrollSideways, useReferenceUploads, type Kind, type Reference } from "@/components/prompt-composer"
+import { FailedRefsNote, ReferenceThumb, ReferenceViewer, scrollSideways, useReferenceUploads, type Reference } from "@/components/prompt-composer"
+import { useMediaAdd } from "@/components/media-picker"
 import type { SlideStatus } from "@/components/editor/slides-strip"
 import { cn } from "@/lib/utils"
 
@@ -45,15 +45,14 @@ export function SlidePrompt({
   disabled?: string
   onGenerate: () => void
 }) {
-  const file = useRef<HTMLInputElement>(null)
-  const kind = useRef<Kind>("Product")
   const [dragging, setDragging] = useState(false)
   const generating = status === "generating"
   const failedRefs = refs.some((r) => r.failed)
   const canSend = !!prompt.trim() && !generating && !disabled && refs.every((r) => !r.loading) && !failedRefs
   const refUploads = useReferenceUploads(setRefs)
   const [viewing, setViewing] = useState<number | null>(null)
-  const addFiles = (files: FileList | File[], k: Kind = kind.current) => refUploads.add(files, k)
+  const media = useMediaAdd(refUploads.addPicked)
+  const addFiles = (files: FileList | File[]) => media.addFiles(files)
 
   return (
     <div
@@ -64,11 +63,11 @@ export function SlidePrompt({
       onDrop={(e) => {
         e.preventDefault()
         setDragging(false)
-        addFiles(e.dataTransfer.files, "Product")
+        addFiles(e.dataTransfer.files)
       }}
       className={cn("rounded-2xl border bg-background p-2 shadow-sm", dragging && "border-primary ring-2 ring-primary/30")}
     >
-      <input ref={file} type="file" accept="image/*" multiple hidden onChange={(e) => (e.target.files && addFiles(e.target.files), (e.target.value = ""))} />
+      {media.ui}
 
       {(fixedRef || refs.length > 0) && (
         // one line; scrolls sideways when there are more than fit
@@ -106,7 +105,7 @@ export function SlidePrompt({
         onChange={(e) => setPrompt(e.target.value)}
         readOnly={!!locked}
         onPaste={(e) => {
-          if (e.clipboardData.files.length) (e.preventDefault(), addFiles(e.clipboardData.files, "Product"))
+          if (e.clipboardData.files.length) (e.preventDefault(), addFiles(e.clipboardData.files))
         }}
         onKeyDown={(e) => {
           if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && canSend) onGenerate()
@@ -121,30 +120,14 @@ export function SlidePrompt({
         <p className="px-1.5 pb-1 text-xs text-muted-foreground">{locked}</p>
       ) : (
       <div className="flex items-center gap-1.5 px-0.5">
-        <DropdownMenu>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon-sm" aria-label="Add image reference">
-                  <HugeiconsIcon icon={Add01Icon} className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-            </TooltipTrigger>
-            <TooltipContent>Add image reference</TooltipContent>
-          </Tooltip>
-          <DropdownMenuContent align="start" side="top" className="w-56" onCloseAutoFocus={(e) => e.preventDefault()}>
-            <DropdownMenuLabel>Add image reference</DropdownMenuLabel>
-            {REFERENCE_OPTIONS.map((o) => (
-              <DropdownMenuItem key={o.kind} onSelect={() => ((kind.current = o.kind), file.current?.click())} className="gap-3">
-                <HugeiconsIcon icon={o.icon} className="size-4" />
-                <span className="flex flex-col">
-                  <span>{o.kind}</span>
-                  <span className="text-xs text-muted-foreground">{o.hint}</span>
-                </span>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="outline" size="icon-sm" aria-label="Add photos or videos" onClick={media.openPicker}>
+              <HugeiconsIcon icon={Add01Icon} className="size-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Add photos or videos</TooltipContent>
+        </Tooltip>
 
         <div className="flex-1" />
 

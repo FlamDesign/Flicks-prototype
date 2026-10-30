@@ -65,7 +65,7 @@ const MADE_FROM: { prompts: string[]; refs: AssetRef[] }[] = [
 ]
 
 /** Sample library for the filled state: 20 today, 15 yesterday, 12 a few days ago, across all three product sets. */
-const SAMPLE_ASSETS: Asset[] = [
+export const SAMPLE_ASSETS: Asset[] = [
   [0, 20],
   [1, 15],
   [4, 12],

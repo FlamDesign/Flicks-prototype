@@ -9,6 +9,7 @@ import type { Brand, Design, Plan, PlanVariation } from "@/ai/design"
 import { mockReply } from "@/ai/mock"
 import { findSkill, SKILLS } from "@/ai/skills"
 import { loadSaved, saver } from "@/ai/sync"
+import { probeVideo, stillsAt } from "@/lib/media"
 
 /* ---------- what the editor offers the chat ---------- */
 
@@ -519,6 +520,7 @@ The order of work (always):
 
 How the app works (the mechanics, not what to ask):
 - Concepts: propose_concepts shows up to 3 concepts as cards with preview images; use it before every plan unless the user already gave a full concept or asked to skip ideas.
+- Videos the user adds (vid-1, vid-2...) arrive as three stills (start, middle, end) with their length (15 seconds at most; longer ones were trimmed). Say what happens in each. Plans can't use a user's video yet: ask what it's for (a reference to change, a style to follow, or frames to use), note the answer, and plan with images and prompts for now.
 - Questions: ask_user shows tappable answers. display "chips" for words; "layouts", "palettes" or "thumbnails" for visual choices; step "idea", "look" or "plan" moves the progress bar. Several ask_user calls in one reply show together. request_assets asks for files.
 - Web: web_search finds pages; web_fetch reads a page or PDF (text) that appeared in the conversation or in search results; read_website reads a product page for its products, prices, colours and images (and keeps the images for the project). Use them on your own whenever a brand or product is hinted.
 - Brand: set_brand records the brand (name, colours, font, voice).
@@ -705,6 +707,39 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     // the user's own images are kept in the library too (and are then ready to share with Higgsfield)
     if (from === "upload" && live.current) shareable(url, { name, project: apiRef.current.state().title }).catch(() => {})
     return img
+  }
+
+  /**
+   * Files the user added, for Claude: photos as they are; videos as three stills (start, middle,
+   * end) plus their id and length. Returns the blocks, a line naming them, and what to show in the chat.
+   */
+  const attach = async (files: File[], kind?: string) => {
+    const blocks: Block[] = []
+    const names: string[] = []
+    const shows: string[] = []
+    for (const f of files) {
+      const url = URL.createObjectURL(f)
+      if (!f.type.startsWith("video/")) {
+        const it = keep(url, f.name, "upload", kind)
+        blocks.push(await imageBlock(f))
+        names.push(`${it.id} (${f.name})`)
+        shows.push(url)
+        continue
+      }
+      try {
+        const { duration } = await probeVideo(url)
+        const stills = await stillsAt(url, [0.1, 0.5, 0.9].map((k) => k * duration), 768)
+        const it = { id: `vid-${images.current.filter((x) => x.kind === "video").length + 1}`, name: f.name, url, from: "upload" as const, kind: "video" }
+        images.current.push(it)
+        if (live.current) shareable(url, { name: f.name, project: apiRef.current.state().title }).catch(() => {})
+        for (const b of stills) blocks.push(await imageBlock(b))
+        names.push(`${it.id} (${f.name}, a ${duration.toFixed(1)} s video; the 3 stills above are its start, middle and end)`)
+        shows.push(URL.createObjectURL(stills[0]))
+      } catch {
+        names.push(`${f.name} (a video that couldn't be read)`)
+      }
+    }
+    return { blocks, line: names.length ? `[Added: ${names.join(", ")}]` : "", shows }
   }
 
   const add = (it: NewItem) => {
@@ -1164,12 +1199,12 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   const send = useCallback(
     async (text: string, files: File[] = []) => {
       if (busy) return
-      const urls = files.map((f) => URL.createObjectURL(f))
-      add({ kind: "user", text, images: urls })
+      const itemId = add({ kind: "user", text, images: [] })
       const blocks: Block[] = settle({ ...held.current })
-      const added = files.map((f, i) => keep(urls[i], f.name, "upload"))
-      for (const f of files) blocks.push(await imageBlock(f))
-      blocks.push({ type: "text", text: (text || "(images added)") + (added.length ? `\n\n[Added images: ${added.map((x) => `${x.id} (${x.name})`).join(", ")}]` : "") })
+      const got = await attach(files)
+      patch(itemId, { images: got.shows } as Partial<Item>)
+      blocks.push(...got.blocks)
+      blocks.push({ type: "text", text: (text || "(files added)") + (got.line ? `\n\n${got.line}` : "") })
       msgs.current.push({ role: "user", content: blocks })
       await turn()
     },
@@ -1205,11 +1240,9 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         msgs.current.push({ role: "user", content: settle({ ...held.current }) })
         return turn()
       }
-      const urls = files.map((f) => URL.createObjectURL(f))
-      const added = files.map((f, i) => keep(urls[i], f.name, "upload", kind))
-      patch(itemId, { done: "added", images: urls } as Partial<Item>)
-      const result: Block[] = [{ type: "text", text: `Added ${files.length} image${files.length > 1 ? "s" : ""}: ${added.map((x) => `${x.id} (${x.name})`).join(", ")}.` }]
-      for (const f of files) result.push(await imageBlock(f))
+      const got = await attach(files, kind)
+      patch(itemId, { done: "added", images: got.shows } as Partial<Item>)
+      const result: Block[] = [{ type: "text", text: got.line }, ...got.blocks]
       if (!hold(it.toolId, result)) return
       msgs.current.push({ role: "user", content: settle({ ...held.current }) })
       await turn()
