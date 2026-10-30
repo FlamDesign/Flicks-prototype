@@ -11,6 +11,8 @@
  *   POST /upload          keeps an image the user added (in the library too) and returns a public address for it, so Higgsfield can use it
  *   GET  /file/:id        a kept image or video (public: the address is unguessable)
  *   GET  /media?u=        a generated video, passed through (Higgsfield's hosts only), for poster frames
+ *   GET  /store/:key      saved app data: "state" (projects, Flicks, made videos) or "chat-<project id>"
+ *   PUT  /store/:key      saves it (JSON, whole value replaced)
  *   GET  /library         every image and video made here, newest first (each kept on our side once it finishes)
  *   POST /library/import  keeps copies of finished images or videos the app still has links to
  *   POST /read            reads a public web page for the chat: product, prices, images, colours, text
@@ -276,6 +278,21 @@ export default {
         return json({ status: out.status ?? "unknown", url: video, poster }, 200, cors)
       }
 
+      // saved app data, so projects and chats survive a reload and follow you to other devices
+      const st = url.pathname.match(/^\/store\/(state|chat-[\w-]{4,80})$/)
+      if (st && req.method === "GET") return new Response((await env.USAGE?.get(`store:${st[1]}`)) ?? "null", { headers: { ...cors, "content-type": "application/json", "cache-control": "no-store" } })
+      if (st && req.method === "PUT") {
+        const text = await req.text()
+        if (text.length > 20_000_000) return json({ error: "too_large" }, 413, cors)
+        try {
+          JSON.parse(text)
+        } catch {
+          return json({ error: "not_json" }, 400, cors)
+        }
+        await env.USAGE?.put(`store:${st[1]}`, text)
+        return json({ ok: true }, 200, cors)
+      }
+
       if (req.method === "GET" && url.pathname === "/library") {
         const keys: string[] = []
         let cursor: string | undefined
@@ -349,7 +366,7 @@ function corsHeaders(origin: string | null): Record<string, string> {
   return origin
     ? {
         "access-control-allow-origin": origin,
-        "access-control-allow-methods": "GET, POST, OPTIONS",
+        "access-control-allow-methods": "GET, POST, PUT, OPTIONS",
         "access-control-allow-headers": "content-type, x-flicks-pass",
         "access-control-max-age": "86400",
         vary: "origin",

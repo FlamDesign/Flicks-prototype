@@ -8,6 +8,7 @@ import { AiError, aspectOf, generateImage, imageBlock, library, shareable, type 
 import type { Brand, Design, Plan, PlanVariation } from "@/ai/design"
 import { mockReply } from "@/ai/mock"
 import { findSkill, SKILLS } from "@/ai/skills"
+import { loadSaved, saver } from "@/ai/sync"
 
 /* ---------- what the editor offers the chat ---------- */
 
@@ -458,7 +459,7 @@ type DOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never
 type NewItem = DOmit<Item, "id" | "at"> & { id?: string }
 const WAIT = Symbol("wait")
 
-export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { url: string; name: string }[]; autoStart?: boolean }) {
+export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { url: string; name: string }[]; autoStart?: boolean; projectId?: string }) {
   const apiRef = useRef(api)
   apiRef.current = api
   const [items, setItems] = useState<Item[]>([])
@@ -961,10 +962,47 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     if (msgs.current.at(-1)?.role === "user") turn()
   }, [turn])
 
-  // the first message: what the user typed on Create
+  // the chat is saved with its project (with the AI server connected): reopening it picks up here
+  type SavedChat = { items: Item[]; msgs: Message[]; pending: typeof pending.current; ready: Block[]; held: Record<string, string | Block[]>; images: ProjectImage[]; read: string[]; draft: Design }
+  const restored = useRef<"no" | "loading" | "done">("no")
+  const saveChat = useRef<((v: unknown) => void) | null>(null)
+  useEffect(() => {
+    if (!opts.projectId || !live.current) return
+    saveChat.current = saver(`chat-${opts.projectId}`)
+  }, [opts.projectId])
+  useEffect(() => {
+    // save once the chat settles (not mid-reply), and only after loading what was saved
+    if (!saveChat.current || busy || restored.current === "loading" || !items.length) return
+    saveChat.current({ items: items.map((x) => (x.kind === "assistant" ? { ...x, streaming: false } : x)), msgs: msgs.current, pending: pending.current, ready: ready.current, held: held.current, images: images.current, read: [...read.current], draft: draft.current } satisfies SavedChat)
+  }, [items, busy])
+
+  // the first message: what the user typed on Create (unless this chat was saved before)
   useEffect(() => {
     if (started.current || !opts.autoStart || !opts.prompt?.trim()) return
     started.current = true
+    if (opts.projectId && live.current) {
+      restored.current = "loading"
+      loadSaved<SavedChat>(`chat-${opts.projectId}`)
+        .catch(() => null)
+        .then((saved) => {
+          restored.current = "done"
+          if (saved?.items?.length) {
+            msgs.current = saved.msgs
+            pending.current = saved.pending ?? []
+            ready.current = saved.ready ?? []
+            held.current = saved.held ?? {}
+            images.current = saved.images ?? []
+            read.current = new Set(saved.read ?? [])
+            if (saved.draft) mergeDraft(saved.draft)
+            setItems(saved.items)
+          } else begin()
+        })
+      return
+    }
+    begin()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const begin = () => {
     // images added on Create come along as files
     Promise.all(
       (opts.imageUrls ?? []).map(async (r) => {
@@ -976,8 +1014,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         }
       }),
     ).then((files) => send(opts.prompt!.trim(), files.filter((f): f is File => !!f)))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }
 
   return { items, busy, send, answer, pendingIds: pending.current.map((p) => p.itemId), addAssets, decidePlan, editPlan, retryImage, stop, retry, waiting: pending.current.length > 0, draft: draftView, plan: plan?.plan, step }
 }

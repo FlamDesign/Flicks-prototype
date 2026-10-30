@@ -130,7 +130,8 @@ export function GenerationCanvas({
       startedAt: generation.agent ? undefined : generation.startedAt,
       used: { prompt: generation.prompt, refs: generation.refs ?? [], fromReference: false },
     }
-    if (savedSnap) return savedSnap.slides.map((x, i) => ({ ...x, n: x.n ?? (i || undefined), startedAt: x.startedAt ? 1 : undefined }))
+    // reopened: finished videos count as made long ago; a real video still being made keeps going
+    if (savedSnap) return savedSnap.slides.map((x, i) => ({ ...x, n: x.n ?? (i || undefined), job: x.job?.id ? x.job : undefined, startedAt: x.startedAt ? (x.job?.id ? x.startedAt : 1) : undefined }))
     // a sample project: the reference video and two variations, all made long ago (startedAt 1)
     if (generation.sample)
       return [
@@ -1075,7 +1076,7 @@ export function GenerationCanvas({
       return GENERATED_VIDEOS[generation.video ?? 0].poster
     },
   }
-  const agent = useAgent(agentApi, { prompt: agentMode ? generation.prompt : undefined, imageUrls: agentMode ? (generation.refs ?? []).filter((r) => !r.failed).map((r) => ({ url: r.url, name: r.name })) : [], autoStart: agentMode })
+  const agent = useAgent(agentApi, { projectId: generation.id, prompt: agentMode ? generation.prompt : undefined, imageUrls: agentMode ? (generation.refs ?? []).filter((r) => !r.failed).map((r) => ({ url: r.url, name: r.name })) : [], autoStart: agentMode })
   const live = isLive(useAiConfig())
   liveRef.current = live
   // real videos: only in projects made with the AI chat, with the AI server connected; every video
@@ -1085,16 +1086,19 @@ export function GenerationCanvas({
   useEffect(() => {
     if (!live || !agentMode) return
     for (const sl of slides) {
-      if (!sl.startedAt || sl.startedAt <= 1 || sl.job || isMadeVideo(sl.video) || !sl.used?.prompt) continue
+      if (!sl.startedAt || sl.startedAt <= 1 || isMadeVideo(sl.video) || !sl.used?.prompt) continue
       const key = `${sl.id}:${sl.startedAt}`
       if (jobs.current.has(key)) continue
+      // a job from before a reload: keep checking it (one that never got an id is lost)
+      if (sl.job && !sl.job.id) continue
       jobs.current.add(key)
+      const resume = sl.job?.id
       const ref = slidesNow.current[0].used?.prompt
       const prompt = sl.id !== "main" && sl.used.fromReference && ref ? `${ref}\nThis version: ${sl.used.prompt}` : sl.used.prompt
       const mine = (x: Slide) => x.id === sl.id && x.startedAt === sl.startedAt
       const patchJob = (p: Partial<Slide>) => commitSlides(slidesNow.current.map((x) => (mine(x) ? { ...x, ...p } : x)))
-      patchJob({ job: { status: "starting", since: Date.now() } })
-      generateVideo({ prompt, aspect: videoAspectOf(generation.size), seconds: generation.duration ?? 8, meta: { project: title, variation: slideName(sl, slidesNow.current.indexOf(sl)), purpose: "video" } }, (status) =>
+      if (!resume) patchJob({ job: { status: "starting", since: Date.now() } })
+      generateVideo({ prompt, aspect: videoAspectOf(generation.size), seconds: generation.duration ?? 8, resume, onId: (id) => commitSlides(slidesNow.current.map((x) => (mine(x) && x.job ? { ...x, job: { ...x.job, id } } : x))), meta: { project: title, variation: slideName(sl, slidesNow.current.indexOf(sl)), purpose: "video" } }, (status) =>
         commitSlides(slidesNow.current.map((x) => (mine(x) && x.job ? { ...x, job: { ...x.job, status } } : x))),
       ).then(
         async ({ url, poster }) => {

@@ -243,10 +243,12 @@ export function videoAspectOf(size: string) {
 }
 
 /** Starts a real video (720p) and waits for it: a few minutes. `image` (a public https address) becomes the first frame. */
-export async function generateVideo(input: { prompt: string; aspect: string; seconds: number; image?: string; meta?: GenMeta }, onStatus?: (status: string) => void, signal?: AbortSignal): Promise<{ url: string; poster?: string }> {
-  const { id } = (await (
+export async function generateVideo(input: { prompt: string; aspect: string; seconds: number; image?: string; meta?: GenMeta; resume?: string; onId?: (id: string) => void }, onStatus?: (status: string) => void, signal?: AbortSignal): Promise<{ url: string; poster?: string }> {
+  // a video started before a reload carries on from its id
+  const { id } = input.resume ? { id: input.resume } : ((await (
     await steady("/video", { method: "POST", body: JSON.stringify({ prompt: input.prompt, aspect_ratio: input.aspect, duration: input.seconds, image_url: input.image, meta: input.meta }), signal })
-  ).json()) as { id: string }
+  ).json()) as { id: string })
+  input.onId?.(id)
   onStatus?.("queued")
   const until = Date.now() + 15 * 60_000
   let wait = 5000

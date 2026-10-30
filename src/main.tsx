@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client"
 import "./index.css"
 import App from "./App"
 import { DevStateProvider } from "@/dev/state"
+import { startSync } from "@/ai/sync"
 
 const HelpCenter = lazy(() => import("@/help/help-center").then((m) => ({ default: m.HelpCenter })))
 const isHelp = () => location.hash.startsWith("#help")
@@ -25,6 +26,9 @@ function Root() {
     </DevStateProvider>
   )
 }
+
+// projects, Flicks and AI chats load from and save to the AI server when a passcode is set
+startSync()
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

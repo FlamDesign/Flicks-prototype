@@ -80,12 +80,22 @@ const sampleProjects = (): Project[] =>
 
 // ---------- store ----------
 
-type LibraryState = { projects: Project[]; flicks: FlickRecord[] }
+export type LibraryState = { projects: Project[]; flicks: FlickRecord[] }
 let state: LibraryState = { projects: sampleProjects(), flicks: FLICKS.map(sampleFlick) }
 const listeners = new Set<() => void>()
-const set = (fn: (s: LibraryState) => LibraryState) => {
+/** true while a change shouldn't be saved to the server (dev resets, loading what the server sent) */
+let quiet = false
+const set = (fn: (s: LibraryState) => LibraryState, silent = false) => {
   state = fn(state)
+  quiet = silent
   listeners.forEach((l) => l())
+  quiet = false
+}
+/** for the server sync: every change, and whether it should be saved */
+export const watchLibrary = (fn: (s: LibraryState, silent: boolean) => void) => {
+  const l = () => fn(state, quiet)
+  listeners.add(l)
+  return () => void listeners.delete(l)
 }
 export const useLibrary = () =>
   useSyncExternalStore(
@@ -100,7 +110,11 @@ const uid = (p: string) => `${p}_${Math.random().toString(36).slice(2, 8)}`
 export const library = {
   /** dev tools: the samples, or nothing */
   reset({ projects, flicks }: { projects: boolean; flicks: boolean }) {
-    set(() => ({ projects: projects ? sampleProjects() : [], flicks: flicks ? FLICKS.map(sampleFlick) : [] }))
+    set(() => ({ projects: projects ? sampleProjects() : [], flicks: flicks ? FLICKS.map(sampleFlick) : [] }), true)
+  },
+  /** what the server saved replaces what's here */
+  load(saved: { projects: Project[]; flicks: FlickRecord[] }) {
+    set(() => ({ projects: saved.projects, flicks: saved.flicks }), true)
   },
   /** create or update a project (the editor saves as you work) */
   saveProject(p: Partial<Project> & { id: string }) {
