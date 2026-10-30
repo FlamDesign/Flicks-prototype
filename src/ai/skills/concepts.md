@@ -62,3 +62,7 @@ One line each:
   opens a window, the view is revealed, slow push toward the view. Question: "Where would you go?"
 
 For category-specific ideas, read the categories skill.
+
+## Before concepts
+What changes between variations is settled first (brief skill): every concept uses that swap. Concepts
+differ in the idea, story and look, not in a swap the user didn't choose.

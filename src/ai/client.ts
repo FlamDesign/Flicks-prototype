@@ -182,7 +182,15 @@ export async function streamChat(req: ChatRequest, onText: (text: string) => voi
     }
   }
   // the API refuses empty text blocks when they're sent back
-  return { content: blocks.filter(keepable), stop }
+  // a web search whose results never came (the reply stopped for one of our tools first) can't be
+  // sent back alone: it becomes a plain note of what was searched
+  const done = new Set(blocks.flatMap((b) => (b && (b.type === "web_search_tool_result" || b.type === "web_fetch_tool_result") ? [String(b.tool_use_id)] : [])))
+  const content = blocks.map((b): Block | undefined =>
+    b?.type === "server_tool_use" && stop !== "pause_turn" && !done.has(String(b.id))
+      ? { type: "text", text: `(Started a web ${b.name === "web_fetch" ? "read" : "search"} that didn't finish: ${String((b.input as { query?: string; url?: string } | undefined)?.query ?? (b.input as { url?: string } | undefined)?.url ?? "")})` }
+      : b,
+  )
+  return { content: content.filter(keepable), stop }
 }
 
 /* ---------- images ---------- */

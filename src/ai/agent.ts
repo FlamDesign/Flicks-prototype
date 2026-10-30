@@ -192,6 +192,17 @@ const choiceSchema = {
   ],
 }
 
+/** how the variations were settled; concepts and plans are refused until they are */
+const variationsFrom = {
+  type: "object",
+  description: "How you know what changes between variations",
+  properties: {
+    basis: { type: "string", enum: ["asked", "user_message"], description: "asked: the user answered your ask_user with purpose 'variations' (also how you confirm products seen in the images); user_message: the user said it themselves in a message" },
+    quote: { type: "string", description: "For user_message: the user's own words naming what varies, copied exactly" },
+  },
+  required: ["basis"],
+}
+
 export const TOOLS: Tool[] = [
   {
     name: "read_skill",
@@ -210,6 +221,7 @@ export const TOOLS: Tool[] = [
     input_schema: {
       type: "object",
       properties: {
+        variations_from: variationsFrom,
         concepts: {
           type: "array",
           maxItems: 3,
@@ -229,7 +241,7 @@ export const TOOLS: Tool[] = [
           },
         },
       },
-      required: ["concepts"],
+      required: ["variations_from", "concepts"],
     },
   },
   {
@@ -243,6 +255,7 @@ export const TOOLS: Tool[] = [
         options: { type: "array", items: choiceSchema, minItems: 2, maxItems: 6 },
         display: { type: "string", enum: ["chips", "cards", "palettes", "layouts", "thumbnails"] },
         step: { type: "string", enum: ["idea", "look", "plan"] },
+        purpose: { type: "string", enum: ["variations", "other"], description: "'variations' when asking what changes between variations" },
         multi_select: { type: "boolean" },
         allow_custom: { type: "boolean", description: "Let the user type their own answer" },
       },
@@ -293,6 +306,7 @@ export const TOOLS: Tool[] = [
           },
           required: ["prompt"],
         },
+        variations_from: variationsFrom,
         variations: { type: "array", items: variationSchema, minItems: 2, maxItems: 5 },
         design: designSchema,
       },
@@ -499,7 +513,9 @@ Flam's skills decide WHAT you ask, suggest and make; follow them over your own h
 The order of work (always):
 1. Read everything the user gave: the prompt, every image, every link. When there are images, your first reply opens with a short read-out: one line per image (what it is), then what you conclude (one product in several views, several different products = the variations, a logo, a style reference...). Follow the brief skill's table for what to ask next.
 2. Brand and products, before any concept: if there's any hint of the brand (a name in the prompt, a logo, text on packaging, a website or product name), look it up yourself with web_search and web_fetch: the official site, brand guidelines, the product pages (names, variants, prices, links, images; read_website gets a product page's images). Record it with set_brand (with notes and sources) and say in a line what you found. If there's no hint, ask for the brand name or website (or "no brand"), with options.
-3. Ask only what's still missing (brief skill), then show concepts built on what you found (propose_concepts), then the plan.
+   Look up the product range too: the brand's other products, versions, flavours or colours, with their names and images.
+3. What changes between variations, settled with the user before concepts. If the inputs show different products, name them as the variations and ask to confirm. If they show one product (several views) and the user hasn't said what varies, ask with ask_user (purpose "variations"), options built from your research, e.g. "Across the range: Red, Black, Gold, Blue Label", "Red Label only: different serves", "Red Label only: moods or occasions", "I'll add more products". If they pick other products, ask for their pack shots (request_assets) or offer to take the official ones from the brand's site (read_website); never generate a product you have no image of. propose_concepts and propose_plan are refused until this is settled.
+4. Ask anything else still missing (brief skill), then show concepts built on what you found (propose_concepts), then the plan.
 
 How the app works (the mechanics, not what to ask):
 - Concepts: propose_concepts shows up to 3 concepts as cards with preview images; use it before every plan unless the user already gave a full concept or asked to skip ideas.
@@ -535,6 +551,19 @@ export const SERVER_TOOLS: Tool[] = [
   { type: "web_search_20250305", name: "web_search", max_uses: 6 },
   { type: "web_fetch_20250910", name: "web_fetch", max_uses: 6, max_content_tokens: 12000 },
 ]
+
+/**
+ * Tool inputs sometimes carry stray call markup inside a text field ('<parameter name="prompt">…').
+ * A field that is only that markup becomes the fields it names; any leftover tags are removed.
+ */
+export function cleanInput(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(cleanInput)
+  if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, cleanInput(x)]))
+  if (typeof v !== "string" || !/<\/?(parameter|invoke)\b/.test(v)) return v
+  const parts = [...v.matchAll(/<parameter name="([\w-]+)">([\s\S]*?)(?=<\/parameter>|<parameter name=|$)/g)]
+  if (parts.length && !v.slice(0, v.indexOf("<parameter")).trim()) return Object.fromEntries(parts.map((m) => [m[1], m[2].replace(/<\/?(parameter|invoke)[^>]*>/g, "").trim()]))
+  return v.replace(/<\/?(parameter|invoke)[^>]*>/g, "").trim()
+}
 
 export function cachedRequest(system: string, raw: Message[], state: unknown, flatten = false) {
   // saved chats can hold blocks the API refuses (empty thinking from older builds); drop them
@@ -721,9 +750,25 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     }
   }
 
+  /** concepts and plans wait until what varies is settled: a variations question answered, or the user's own words */
+  const variationsSettled = (from: unknown, forPlan: boolean) => {
+    const answered = new Set(msgs.current.flatMap((m) => (m.role === "user" ? m.content.flatMap((b) => (b.type === "tool_result" ? [b.tool_use_id] : [])) : [])))
+    const calls = msgs.current.flatMap((m) => (m.role === "assistant" ? m.content.filter((b): b is Extract<Block, { type: "tool_use" }> => b.type === "tool_use") : []))
+    if (calls.some((c) => c.name === "ask_user" && (c.input as { purpose?: string }).purpose === "variations" && answered.has(c.id))) return true
+    if (forPlan && calls.some((c) => c.name === "propose_concepts" && answered.has(c.id))) return true
+    const quote = String((from as { quote?: string } | undefined)?.quote ?? "").trim().toLowerCase()
+    if ((from as { basis?: string } | undefined)?.basis === "user_message" && quote.length >= 3) {
+      const said = msgs.current.flatMap((m) => (m.role === "user" ? m.content.flatMap((b) => (b.type === "text" && !b.text.startsWith("(Go ahead") ? [b.text.toLowerCase()] : [])) : [])).join("\n")
+      return said.includes(quote)
+    }
+    return false
+  }
+  const NOT_SETTLED =
+    "Not shown: what changes between variations isn't settled yet. Ask first with ask_user (purpose \"variations\"): if the inputs show different products, name them and ask to confirm; if they show one product, offer options from your research (other products in the brand's range by name, or this product only with different serves, scenes, moods, people or offers, and \"I'll add more products\"). Then come back to this."
+
   const runTool = async (u: Extract<Block, { type: "tool_use" }>): Promise<string | Block[] | typeof WAIT> => {
     const a = apiRef.current
-    const input = u.input ?? {}
+    const input = cleanInput(u.input ?? {}) as Record<string, unknown>
     try {
       switch (u.name) {
         case "ask_user": {
@@ -738,6 +783,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           return WAIT
         }
         case "propose_concepts": {
+          if (live.current && !variationsSettled(input.variations_from, false)) return NOT_SETTLED
           const list = ((input.concepts as Record<string, unknown>[]) ?? []).slice(0, 3)
           if (!list.length) return "Error: Give 1 to 3 concepts."
           const options: Choice[] = list.map((c) => ({
@@ -774,6 +820,9 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         case "propose_plan": {
           // a newer plan replaces any open one
           setItems((list) => list.map((x) => (x.kind === "plan" && x.state === "open" ? { ...x, state: "skipped" } : x)))
+          if (live.current && !variationsSettled(input.variations_from, true)) return NOT_SETTLED
+          // a reference given as bare text is its prompt
+          if (typeof input.reference === "string") input.reference = { prompt: input.reference }
           const raw = input as unknown as Plan
           if (!raw.variations?.length) return "Error: a plan needs at least two variations."
           // the look the user picked carries into the plan's design
@@ -946,7 +995,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           if (e instanceof Error && /tool_result|thinking|signature/i.test(e.message)) return ask(cachedRequest(systemPrompt(now), msgs.current, now, true))
           throw e
         })
-        const text = res.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("\n\n")
+        const text = res.content.flatMap((b) => (b.type === "text" && !b.text.startsWith("(Started a web") ? [b.text] : [])).join("\n\n")
         if (text.trim()) patch(itemId, { text, streaming: false } as Partial<Item>)
         else setItems((list) => list.filter((x) => x.id !== itemId))
         msgs.current.push({ role: "assistant", content: res.content })
