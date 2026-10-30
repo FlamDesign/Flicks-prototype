@@ -794,15 +794,18 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     }
     ready.current = []
     pending.current = []
+    held.current = {}
     return content
   }
+  /** answers to questions asked together, kept until every one of them is answered */
+  const held = useRef<Record<string, string>>({})
 
   const send = useCallback(
     async (text: string, files: File[] = []) => {
       if (busy) return
       const urls = files.map((f) => URL.createObjectURL(f))
       add({ kind: "user", text, images: urls })
-      const blocks: Block[] = settle({})
+      const blocks: Block[] = settle({ ...held.current })
       const added = files.map((f, i) => keep(urls[i], f.name, "upload"))
       for (const f of files) blocks.push(await imageBlock(f))
       blocks.push({ type: "text", text: (text || "(images added)") + (added.length ? `\n\n[Added images: ${added.map((x) => `${x.id} (${x.name})`).join(", ")}]` : "") })
@@ -822,7 +825,11 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       if (choice?.design) mergeDraft(choice.design)
       if (choice?.colors?.length) mergeDraft({ button_color: choice.colors[0], ...(choice.colors[2] ? { text_color: choice.colors[2] } : {}) })
       const detail = choice && (choice.design || choice.colors) ? ` (${JSON.stringify({ ...(choice.design ? { design: choice.design } : {}), ...(choice.colors ? { colors: choice.colors } : {}) })})` : ""
-      msgs.current.push({ role: "user", content: settle({ [it.toolId]: value + detail }) })
+      held.current[it.toolId] = value + detail
+      // questions asked together go back together, once all of them are answered (or skipped)
+      const waitingFor = pending.current.filter((p) => !(p.toolId in held.current) && items.find((x) => x.id === p.itemId)?.kind === "question")
+      if (waitingFor.length) return
+      msgs.current.push({ role: "user", content: settle({ ...held.current }) })
       await turn()
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -913,5 +920,5 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  return { items, busy, send, answer, addAssets, decidePlan, editPlan, retryImage, stop, retry, waiting: pending.current.length > 0, draft: draftView, plan: plan?.plan, step }
+  return { items, busy, send, answer, pendingIds: pending.current.map((p) => p.itemId), addAssets, decidePlan, editPlan, retryImage, stop, retry, waiting: pending.current.length > 0, draft: draftView, plan: plan?.plan, step }
 }

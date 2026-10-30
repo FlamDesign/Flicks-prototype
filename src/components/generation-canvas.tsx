@@ -32,7 +32,7 @@ import { ElementToolbar, ToolbarGrip } from "@/components/editor/element-toolbar
 import { useAgent, type EditorApi, type ElementSpec } from "@/ai/agent"
 import { boxOf, buildDesign, color as colorOf, contrast, describeDesign, elementFor, fontName, freeY, headlineLimit, feedOfField, FIELD_FEED, FIELDS, patchDesign, restack, type Brand, type Field } from "@/ai/design"
 import { generateVideo, isLive, posterOf, useAiConfig, videoAspectOf } from "@/ai/client"
-import { AgentComposer, AgentItemView, type AgentCtx } from "@/components/editor/agent-chat"
+import { AgentComposer, AgentItemView, QuestionDeck, type AgentCtx } from "@/components/editor/agent-chat"
 import { PlanningView, PlanSteps } from "@/components/editor/planning-view"
 import { addMadeVideo, isMadeVideo, BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, defaultFill, defaultInk, GENERATED_VIDEOS, SAMPLE_UPLOADS, inSet, clampStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload } from "@/components/editor/elements"
 
@@ -1774,11 +1774,14 @@ export function GenerationCanvas({
                   <TooltipContent side="bottom">{live ? "Live: Claude plans and designs, Higgsfield makes images" : "Scripted demo. Connect AI in dev tools for live Claude and Higgsfield."}</TooltipContent>
                 </Tooltip>
               ),
-              extra: agent.items.map((it) => ({
-                key: it.id,
-                at: it.at,
-                node: <AgentItemView item={it} agent={agent} ctx={agentCtx} />,
-              })),
+              // questions waiting for an answer dock above the composer instead
+              extra: agent.items
+                .filter((it) => !(it.kind === "question" && agent.pendingIds.includes(it.id)))
+                .map((it) => ({
+                  key: it.id,
+                  at: it.at,
+                  node: <AgentItemView item={it} agent={agent} ctx={agentCtx} />,
+                })),
               // once the plan is made, the box can also write one video's prompt directly
               head: slides[0].startedAt ? (
                 <div className="flex items-center gap-2 px-1 pb-2 text-xs text-muted-foreground">
@@ -1803,7 +1806,10 @@ export function GenerationCanvas({
             })}
             composer={
               chatting ? (
-                <AgentComposer agent={agent} placeholder={agent.waiting ? "Pick an answer above, or type your own" : slides[0].startedAt ? "Ask for a change: a headline, a colour, another variation" : undefined} />
+                <div className="flex flex-col gap-2">
+                  <QuestionDeck agent={agent} ctx={agentCtx} />
+                  <AgentComposer agent={agent} placeholder={agent.waiting ? "Or reply directly…" : slides[0].startedAt ? "Ask for a change: a headline, a colour, another variation" : undefined} />
+                </div>
               ) : // a template's reference video is fixed, so it has no prompt
               fixedRef && activeIndex === 0 ? (
                 <p className="rounded-2xl bg-background p-3 text-sm text-muted-foreground ring-1 ring-foreground/5">The reference video comes with this template. Pick a variation to write its prompt.</p>

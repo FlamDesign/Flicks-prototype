@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Add01Icon, Alert02Icon, ArrowDown01Icon, BookOpen01Icon, CheckmarkBadge01Icon, Globe02Icon, ArrowUp02Icon, ImageAdd01Icon, Loading03Icon, PencilEdit01Icon, LeftToRightListNumberIcon, PaintBoardIcon, RefreshIcon, SparklesIcon, StopIcon, Tick02Icon, Cancel01Icon } from "@hugeicons/core-free-icons"
+import { Add01Icon, Alert02Icon, ArrowLeft01Icon, ArrowRight01Icon, ArrowDown01Icon, BookOpen01Icon, CheckmarkBadge01Icon, Globe02Icon, ArrowUp02Icon, ImageAdd01Icon, Loading03Icon, PencilEdit01Icon, LeftToRightListNumberIcon, PaintBoardIcon, RefreshIcon, SparklesIcon, StopIcon, Tick02Icon, Cancel01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -736,5 +736,184 @@ export function AgentComposer({ agent, placeholder }: { agent: Agent; placeholde
         )}
       </div>
     </div>
+  )
+}
+
+type Q = Extract<Item, { kind: "question" }>
+
+/**
+ * The questions the chat is waiting on, docked above the composer like Claude's and Higgsfield's:
+ * one at a time ("1 of 3", arrows), numbered answers (keys 1 to 9), "Something else", Skip and
+ * Continue. Picking moves to the next question; the answers go back together once all are in.
+ */
+export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: AgentCtx; className?: string }) {
+  const qs = agent.items.filter((x): x is Q => x.kind === "question" && agent.pendingIds.includes(x.id))
+  const [at, setAt] = useState(0)
+  const [picked, setPicked] = useState<Record<string, string[]>>({})
+  const [other, setOther] = useState<Record<string, string>>({})
+  const key = qs.map((q) => q.id).join()
+  // a new set of questions starts at the first
+  useEffect(() => setAt(0), [key])
+  const i = Math.min(at, Math.max(0, qs.length - 1))
+  const q = qs[i]
+  const nextOpen = (from: number) => {
+    for (let k = 1; k <= qs.length; k++) {
+      const j = (from + k) % qs.length
+      if (qs[j].answer === undefined) return j
+    }
+    return -1
+  }
+  const advance = () => {
+    const j = nextOpen(i)
+    if (j >= 0) setAt(j)
+  }
+  const mine = q ? (picked[q.id] ?? []) : []
+  const typed = q ? (other[q.id] ?? "") : ""
+  const commit = (value: string, choice?: Choice) => {
+    if (!q) return
+    agent.answer(q.id, value, choice)
+    advance()
+  }
+  const pick = (o: Choice) => {
+    if (!q) return
+    if (q.multi) setPicked((p) => ({ ...p, [q.id]: mine.includes(o.label) ? mine.filter((x) => x !== o.label) : [...mine, o.label] }))
+    else commit(o.label, o)
+  }
+  const cont = () => {
+    const all = [...mine, ...(typed.trim() ? [typed.trim()] : [])]
+    if (all.length) commit(all.join(", "))
+  }
+  // keys: 1 to 9 pick, Esc skips (not while typing)
+  const pickRef = useRef(pick)
+  pickRef.current = pick
+  const skipRef = useRef(() => {})
+  skipRef.current = () => commit("Skipped")
+  useEffect(() => {
+    if (!q) return
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement
+      if (e.metaKey || e.ctrlKey || e.altKey || t.closest("input, textarea, [contenteditable]")) return
+      const n = Number(e.key)
+      if (n >= 1 && n <= Math.min(9, q.options.length)) (e.preventDefault(), pickRef.current(q.options[n - 1]))
+      else if (e.key === "Escape") skipRef.current()
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [q])
+  if (!q) return null
+  const visual = q.display === "layouts" || q.display === "thumbnails"
+  const chosen = (o: Choice) => (q.multi ? mine.includes(o.label) : q.answer === o.label)
+  return (
+    <section aria-label="Questions" className={cn("flex flex-col overflow-hidden rounded-2xl bg-background shadow-lg ring-1 ring-foreground/10 animate-in fade-in-0 slide-in-from-bottom-2 duration-300", className)}>
+      <header className="flex items-start gap-3 px-4 pb-2 pt-3.5">
+        <p className="flex-1 text-[15px] font-medium leading-snug">
+          {q.question}
+          {q.multi && <span className="ml-2 text-xs font-normal text-muted-foreground">Pick any</span>}
+        </p>
+        {qs.length > 1 && (
+          <div className="flex shrink-0 items-center gap-0.5 text-xs tabular-nums text-muted-foreground">
+            <Button size="icon-xs" variant="ghost" aria-label="Previous question" disabled={i === 0} onClick={() => setAt(i - 1)}>
+              <HugeiconsIcon icon={ArrowLeft01Icon} className="size-3.5" />
+            </Button>
+            {i + 1} of {qs.length}
+            <Button size="icon-xs" variant="ghost" aria-label="Next question" disabled={i === qs.length - 1} onClick={() => setAt(i + 1)}>
+              <HugeiconsIcon icon={ArrowRight01Icon} className="size-3.5" />
+            </Button>
+          </div>
+        )}
+      </header>
+      <div className="max-h-[50vh] overflow-y-auto px-2">
+        {q.display === "chips" || q.display === "cards" ? (
+          <div className="flex flex-col" role={q.multi ? "group" : "radiogroup"} aria-label={q.question}>
+            {q.options.map((o, n) => {
+              const on = chosen(o)
+              return (
+                <button
+                  key={o.label}
+                  type="button"
+                  role={q.multi ? "checkbox" : "radio"}
+                  aria-checked={on}
+                  disabled={agent.busy}
+                  onClick={() => pick(o)}
+                  className={cn(
+                    "group/row relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm outline-none transition-colors hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60",
+                    "after:absolute after:inset-x-3 after:bottom-0 after:h-px after:bg-foreground/8 last:after:hidden hover:after:opacity-0",
+                    on && "bg-primary/10 after:opacity-0 hover:bg-primary/12",
+                  )}
+                >
+                  <span className={cn("grid size-7 shrink-0 place-items-center rounded-md text-xs font-medium tabular-nums text-muted-foreground ring-1 ring-foreground/10", on && "bg-primary text-primary-foreground ring-primary")}>
+                    {on && q.multi ? <HugeiconsIcon icon={Tick02Icon} className="size-3.5" strokeWidth={2.5} /> : n + 1}
+                  </span>
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className={cn(on && "text-primary")}>{o.label}</span>
+                    {o.description && <span className="text-xs text-muted-foreground">{o.description}</span>}
+                  </span>
+                  {!q.multi && <HugeiconsIcon icon={ArrowRight01Icon} className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover/row:opacity-100" />}
+                </button>
+              )
+            })}
+          </div>
+        ) : (
+          <div className={cn("grid gap-2 p-1", "grid-cols-3")} role="radiogroup" aria-label={q.question}>
+            {q.options.map((o, n) => (
+              <button
+                key={o.label}
+                type="button"
+                role="radio"
+                aria-checked={chosen(o)}
+                onClick={() => pick(o)}
+                disabled={agent.busy}
+                className={cn(
+                  "flex flex-col gap-1.5 rounded-xl p-1.5 text-left outline-none ring-1 ring-foreground/10 transition-[box-shadow,background-color] hover:bg-muted/60 hover:ring-foreground/30 focus-visible:ring-2 focus-visible:ring-ring",
+                  chosen(o) && "bg-primary/10 ring-2 ring-primary",
+                )}
+              >
+                {visual && (
+                  <FlickPreview
+                    design={{ headline: "Headline", cta: "Shop now", show_price: true, ...o.design }}
+                    brand={ctx.brand}
+                    ratio={ctx.ratio}
+                    posters={ctx.posters}
+                    active={n % Math.max(1, ctx.posters.length)}
+                    values={{ label: "Label", price: "$99" }}
+                    className="w-full rounded-lg shadow-none"
+                  />
+                )}
+                {q.display === "palettes" && (
+                  <span className="flex h-12 overflow-hidden rounded-lg ring-1 ring-foreground/10">
+                    {(o.colors?.length ? o.colors : ["#e4e4e7"]).slice(0, 4).map((c, k) => (
+                      <span key={k} className="flex-1" style={{ background: c }} />
+                    ))}
+                  </span>
+                )}
+                <span className="flex items-center gap-1.5 px-1 text-xs font-medium leading-tight">
+                  <span className="text-muted-foreground tabular-nums">{n + 1}</span>
+                  {o.label}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <footer className="flex items-center gap-2 border-t px-3 py-2">
+        <HugeiconsIcon icon={PencilEdit01Icon} className="size-4 shrink-0 text-muted-foreground" />
+        <input
+          value={typed}
+          onChange={(e) => setOther((o) => ({ ...o, [q.id]: e.target.value }))}
+          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), cont())}
+          placeholder="Something else…"
+          aria-label="Your own answer"
+          className="h-8 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+        />
+        <Button size="sm" variant="ghost" disabled={agent.busy} onClick={() => commit("Skipped")} className="gap-1.5 text-muted-foreground">
+          Skip <kbd className="rounded bg-muted px-1 text-[10px] font-normal">Esc</kbd>
+        </Button>
+        {(q.multi || typed.trim()) && (
+          <Button size="sm" disabled={agent.busy || !(mine.length || typed.trim())} onClick={cont}>
+            Continue
+          </Button>
+        )}
+      </footer>
+    </section>
   )
 }

@@ -46,7 +46,7 @@ import { PromptChat, type HistoryItem } from "@/components/editor/prompt-chat"
 import { ReferenceThumb } from "@/components/prompt-composer"
 import { DevBadge } from "@/dev/state-manager"
 import { cn } from "@/lib/utils"
-import { AgentItemView } from "@/components/editor/agent-chat"
+import { AgentItemView, QuestionDeck } from "@/components/editor/agent-chat"
 import type { Item } from "@/ai/agent"
 import type { Plan } from "@/ai/design"
 
@@ -915,6 +915,15 @@ function ChatCardsDemo() {
   const it = (x: Record<string, unknown>) => ({ id: String(Math.random()), at: 0, ...x }) as Item
   const states = [
     { label: "Thinking", node: <AgentItemView item={it({ kind: "assistant", text: "", streaming: true })} agent={fakeAgent} ctx={chatCtx} /> },
+    {
+      label: "Questions, docked (1 of 2)",
+      node: (
+        <QuestionDeck
+          agent={{ ...fakeAgent, pendingIds: ["dq1", "dq2"], items: [it({ id: "dq1", kind: "question", toolId: "q1", question: "What should change between variations?", options: [{ label: "Colours", description: "Same scene, a new colourway each" }, { label: "Products" }, { label: "Scenes" }, { label: "Decide for me" }], display: "chips", multi: false, custom: true }), it({ id: "dq2", kind: "question", toolId: "q2", question: "Where will it run?", options: [{ label: "Ads" }, { label: "Website" }], display: "chips", multi: false, custom: true })] } as typeof fakeAgent}
+          ctx={chatCtx}
+        />
+      ),
+    },
     { label: "Question", node: <AgentItemView item={it({ kind: "question", toolId: "q", question: "Where will this Flick run?", options: [{ label: "Ads" }, { label: "My website" }, { label: "A link" }], display: "chips", multi: false, custom: true })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Question, answered", node: <AgentItemView item={it({ kind: "question", toolId: "q", question: "Where will this Flick run?", options: [{ label: "Ads" }], display: "chips", multi: false, custom: true, answer: "Ads" })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Images request", node: <AgentItemView item={it({ kind: "assets", toolId: "a", message: "Add product photos or your logo.", kinds: ["product", "logo"] })} agent={fakeAgent} ctx={chatCtx} /> },

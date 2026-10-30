@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Tick02Icon } from "@hugeicons/core-free-icons"
-import type { Step, useAgent } from "@/ai/agent"
+import type { Item, Step, useAgent } from "@/ai/agent"
 import type { Design, Field } from "@/ai/design"
-import { AgentComposer, AgentItemView, ChoicePointer, isOpenChoice, StageContext, type AgentCtx } from "@/components/editor/agent-chat"
+import { AgentComposer, AgentItemView, ChoicePointer, isOpenChoice, QuestionDeck, StageContext, type AgentCtx } from "@/components/editor/agent-chat"
 import { FlickPreview } from "@/components/editor/flick-preview"
 import { cn } from "@/lib/utils"
 
@@ -78,7 +78,9 @@ export function PlanningView({
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
   }, [agent.items.length, last?.kind === "assistant" ? last.text.length : 0])
 
-  const open = agent.items.filter(isOpenChoice)
+  // questions waiting for an answer dock above the composer; image requests and the plan open on the left
+  const asking = (it: Item) => it.kind === "question" && agent.pendingIds.includes(it.id)
+  const open = agent.items.filter((it) => isOpenChoice(it) && it.kind !== "question")
   const openKey = open.map((x) => x.id).join()
   // new choices: back to the top of the panel
   useEffect(() => {
@@ -136,9 +138,6 @@ export function PlanningView({
                       <AgentItemView item={it} agent={agent} ctx={ctx} />
                     </div>
                   ))}
-                  {open.some((x) => x.kind === "question" && x.display === "chips") && (
-                    <p className="text-center text-xs text-muted-foreground">Press 1 to {Math.min(9, Math.max(...open.map((x) => (x.kind === "question" ? x.options.length : 0))))} to pick, or type your own.</p>
-                  )}
                 </div>
               </StageContext.Provider>
             </div>
@@ -154,7 +153,7 @@ export function PlanningView({
           <div className="mx-auto flex w-full max-w-[620px] flex-col gap-5 px-5 pb-6 pt-6">
             {agent.items.map((it) => (
               <div key={it.id} className="flex flex-col">
-                {isOpenChoice(it) ? (
+                {asking(it) ? null : isOpenChoice(it) ? (
                   <>
                     <div className="flex flex-col lg:hidden">
                       <AgentItemView item={it} agent={agent} ctx={ctx} />
@@ -170,8 +169,9 @@ export function PlanningView({
             ))}
           </div>
         </div>
-        <div className="mx-auto w-full max-w-[620px] px-5 pb-5" data-composer>
-          <AgentComposer agent={agent} placeholder={agent.waiting ? "Pick an answer, or type your own" : "Tell me more, or ask for a change"} />
+        <div className="mx-auto flex w-full max-w-[620px] flex-col gap-2 px-3 pb-4" data-composer>
+          <QuestionDeck agent={agent} ctx={ctx} />
+          <AgentComposer agent={agent} placeholder={agent.waiting ? "Or reply directly…" : "Tell me more, or ask for a change"} />
         </div>
       </section>
     </div>
