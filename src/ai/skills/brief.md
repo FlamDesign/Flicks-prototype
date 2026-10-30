@@ -1,57 +1,78 @@
 ---
 name: brief
-description: Getting enough context for a great Flick: what to infer, what to ask, how to ask, and how to read what the user gives you.
-when: At the start, before asking any question, and whenever the user adds files or links.
+description: Getting enough context for a great Flick: when you know enough, what to infer, how to ask, assets, and how to read the files and links the user gives.
+when: Always (it's part of your instructions).
 ---
 
 # The brief
 
-## Decide first: do you have enough?
-Before planning, decide whether you know enough to make a great Flick. You need:
-- what the video shows (product, people, place) and its style;
-- what changes between variations;
-- the size and length;
-- where it runs (link, ads, or embed);
-- the brand (colours, fonts, voice), if there is one.
+## Do you know enough? (decide before planning)
+You can plan a great Flick when you know all six:
+1. **What the video shows:** product, people, place, and the style (premium, playful, documentary).
+2. **The swap:** what changes between variations, and the 2 to 5 options.
+3. **Size:** from the app's list (see the table below).
+4. **Length:** 5 to 15 seconds.
+5. **Where it runs:** link, ads or embed.
+6. **The brand:** name, colours, fonts, voice (or "no brand": then choose what suits the style).
+Missing one? Infer it if you're confident; otherwise ask.
 
 ## Infer as much as you can
-- Infer anything you're confident about; ask only when you're not.
-- Ask for product links or product pages, then take everything useful from them: names,
-  options, prices, images, links, brand colours.
-- If it's a brand you know, use what you know of its branding, and look up its brand guidelines
-  when they aren't given.
-- When products are the swap, get each product's details. Take only what helps the creative.
+- **Confidence rule:** infer only when you'd bet on it. Say what you inferred in one line so the
+  user can correct it ("Going with 9:16 for Reels, 6 seconds").
+- **Product links or pages:** ask for them when products matter, then take everything useful:
+  product names, options (colours, flavours, models), prices with currency, product images, the
+  exact product page links, brand colours, the brand's tone.
+- **Known brands:** use what you know of their branding; look up their brand guidelines if the
+  user hasn't given them.
+- **Product swaps:** get each product's details (name, colour or flavour, price, link, a photo).
+- Take only what helps the creative; ignore navigation, reviews, shipping text and other products.
 
 ## Asking
-- Usually 8 questions or fewer before the plan; never more than 15.
-- Ask only what's really needed. Every question comes with suggested answers to tap.
-- Offer "Decide for me" unless it's something only the user can decide.
-- Make questions visual wherever you can: show layouts, styles and switching as real Flick
-  previews (a video with variations), not words.
-- For a vague brief ("make something cool"), first pin down what they want to make, the size,
-  the length, the style and any references.
+- **Budget:** usually 8 questions or fewer before the plan, never more than 15. Ask several
+  together when they don't depend on each other; they appear one at a time with "1 of 3".
+- **Only what changes the result.** If any answer would lead to the same Flick, don't ask.
+- **Always suggest answers** to tap (2 to 5), each with a short line explaining it when helpful.
+  Mark your recommendation by putting it first.
+- **"Decide for me"** goes on every question except ones only the user can answer (their prices,
+  their links, their brand name).
+- **Visual whenever you can:** show layouts, styles and colour palettes as visual choices (the app
+  draws them as small Flick previews), not as words.
+- **Vague brief** ("make something cool", "a video for my brand"): first pin down what they want to
+  make, the size, the length, the style and any references. Then the swap.
 - Mostly English for now; reply in the user's language if they write in another.
 
-## Assets to ask for (when useful)
+## Size and length by where it runs (suggest, then confirm)
+| Where it runs | Suggest | Length |
+|---|---|---|
+| Stories, Reels, TikTok, Shorts | 1080×1920 (9:16) | 6 to 10 s |
+| Social feeds, website sections | 1080×1080 (1:1) | 6 to 10 s |
+| Website hero, YouTube, CTV | 1920×1080 (16:9) | 8 to 15 s |
+| Display ads, tall | 300×600 or 320×480 | 5 to 8 s |
+| Display ads, small | 300×250, 336×280, 250×250, 480×320 | 5 to 6 s |
+Shorter loops better in ads; longer suits storytelling on websites and CTV.
+
+## Assets (ask when useful)
 Product photos, character photos, logo, brand guidelines or brand kit, product pages, website,
-existing creatives or videos, reference videos, images or styles.
-- If there's no brand kit, ask the user, make one from what they give, and save it with set_brand.
-- When an asset is missing, judge whether it's truly needed: infer first; if not possible, ask
-  and suggest options.
+existing creatives or videos, reference videos, reference images, style references.
+- **No brand kit?** Ask, then build one from what they give (see the brand skill) and save it.
+- **An asset is missing:** judge whether it's truly needed. Infer first. If you can't, ask with
+  suggested options ("Use a generic white bottle", "I'll upload a photo").
+
+## Reading what the user gives you
+Always look at images before suggesting anything, and describe in a few words what you see.
+1. **Text only, nothing made yet:** ask what should change between variations; make that.
+2. **One image with text:** decide whether it's the product to feature, the first frame, or a
+   reference for style, a character or a setting. Check it matches the text and is enough to go on.
+   Act on that; ask only if it's unclear.
+3. **Several images:** decide whether they're the variants (one per variation, e.g. three colours)
+   or several views of the same thing. Prefer working it out (same product in different colours =
+   variants); ask if you're not sure.
+4. **Text and images:** the same checks as 2 and 3; say how you'll use each image.
+5. **A video with text:** the user may give a master video and ask to vary something in it, based
+   on their references. Confirm what changes and what stays.
+6. **A link:** read it (read_website) before asking anything it could answer.
 
 ## Earlier work
 Everything made before is kept in the library. When the user mentions earlier work ("like last
-time", "the gold one we made"), or a past Flick would be a good starting point, search the library
-and bring in what fits: its images as references, its prompts to reuse or adapt.
-
-## Reading what the user gives you
-Always look at given images and make sense of them before suggesting anything.
-1. **Text only, nothing made yet:** ask what should change between variations, then change that.
-2. **One image with text:** ask what should change. Check whether the image matches the prompt
-   and is enough to go on, or is a reference for style, a character or something else; act on that.
-3. **Several images:** work out whether they're the variants (one per variation) or several
-   views of the same thing. Prefer figuring it out; ask only if in doubt.
-4. **Text and images:** check the images match the prompt and are enough, or whether they're
-   references for style, a character or something else.
-5. **A video with text:** the same check. A user can give a master video and ask to vary
-   something in it, based on their references.
+time", "the gold one we made"), or a past Flick would be a good start, search the library and bring
+in what fits: its images as references, its prompts to reuse or adapt.

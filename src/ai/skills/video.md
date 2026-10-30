@@ -1,40 +1,72 @@
 ---
 name: video
-description: Writing video prompts for the reference video and each variation, and handling settings and failures.
+description: Writing the reference and variation video prompts, the words to avoid and why, settings, and what to do when a video fails.
 when: Right before writing the plan's video prompts, and before any regenerate.
 ---
 
 # Video
 
 ## Model and settings
-- The model is Flam Forge (never name any other model or provider). Default 720p; choose by the
-  Flick's size and use. Sound is off.
-- Always make one video first (the reference), then its variations.
+- The model is **Flam Forge**. Never name any other model or provider.
+- Default 720p; choose by size and use (the app makes 720p today). Sound is always off: Flicks play muted.
+- Always make **one video first (the reference), then its variations.**
 
-## Reference prompt (in this order)
-1. **Subject:** the product, person or place, with concrete details (material, colour, shape).
-2. **Action:** one simple, smooth motion.
-3. **Camera:** shot size, angle and move from the shot plan.
-4. **Setting and light:** one place, one light.
-5. **Style:** the look agreed with the user.
-6. **Avoid:** on-screen text, logos and watermarks, readable screens, extra people, morphing
-   hands or faces, fast or jerky motion.
+## The reference prompt
+Write 60 to 100 words, most important first (models follow the start of a prompt best).
+1. **Subject:** what we see, concretely: material, colour, shape, size. "Matte black sport
+   sunglasses with gold mirrored lenses", not "beautiful sunglasses".
+2. **Action:** one simple, physical motion, with its result: "a hand lifts the can; condensation
+   beads run down the side". No lists of actions.
+3. **Camera:** shot size, angle and one move from the shot plan: "close-up at eye level, slow
+   push-in, easing in and out".
+4. **Setting and light:** one place and one light: "sunlit concrete wall at golden hour".
+5. **Style:** "clean commercial look, shallow depth of field".
+6. **Avoid:** see the avoid list.
+- **Over 8 seconds or more than one shot?** Write a timeline: "0 to 4 s: ... Cut to 4 to 8 s: ...".
+- **Use plain physical words,** not praise ("stunning", "epic"): they give the model nothing to show.
 
-Example: "Close-up of matte black sport sunglasses on an athlete against a sunlit concrete wall,
-slow push-in at eye level, golden-hour light, cinematic, shallow depth of field. No text, no
-logos, no extra people, smooth motion."
+Example: "Close-up of matte black sport sunglasses with gold mirrored lenses on an athlete leaning
+on a sunlit concrete wall. He turns his head slowly toward the camera. Eye level, slow push-in,
+easing in and out. Golden-hour light, warm tones, shallow depth of field, clean commercial look.
+No on-screen text, no logos, no extra people, smooth motion, no face or hand distortion."
 
-## Variation prompts
-- Say only what changes, plus everything that changes with it: "Same scene and motion; the
-  can is lime green with lime slices around it."
-- Never re-describe the camera, light or setting, and never add new actions: motion must stay
-  identical.
-- If the user gave a master video, vary only what they asked, based on their references.
+## Variation prompts: what they must say, and what they never repeat
+*Why this matters:* a variation is the reference video with one thing changed. The app builds each
+variation's prompt from the reference prompt plus your variation line. If your line re-describes
+the camera, light or action, the model treats them as new instructions and the variations stop
+matching.
+- **Must say:** only what changes, plus everything that changes with it, concretely:
+  "Same scene and motion; the can is lime green with lime slices floating around it."
+- **Never repeat:** the camera, the light, the setting or the action. Never add a new action.
+- **Keep the footprint:** the changed thing keeps the same shape, size and position.
+- **Master video from the user:** vary only what they asked, based on their references.
 
-## Showing the style first
-Before videos are generated, show the user a quick reference image of the style. A first frame
-isn't required.
+## The avoid list, and why each is on it
+Video models get these wrong, and errors differ between variations, which breaks the Flick.
+| Avoid | Why |
+|---|---|
+| on-screen text, logos, watermarks, price tags | they come out garbled; real text goes on the canvas |
+| readable screens and interfaces | same: garbled |
+| extra people, crowds, animals in the background | they appear differently in each variation |
+| fast, jerky or spinning motion | variations drift apart; it looks cheap |
+| more than one camera move in a shot | causes jitter and drift |
+| hands doing fine work (tying, typing) | fingers distort |
+| faces turning fast or talking | faces morph |
+| several locations in one short clip | smeared transitions |
+| real celebrities and other brands | legal and reputation risk |
+End every prompt with the relevant part of the list, in plain words ("no on-screen text, no
+logos, no extra people, smooth motion").
 
-## When something fails or looks wrong
-Show the user what happened and suggest how to regenerate (a simpler prompt, a different
-detail). Don't regenerate silently.
+## Show the style first
+Before videos are generated, show the user a quick reference image of the style (fast image
+model). A first frame isn't required.
+
+## When a video fails or looks wrong
+Show what happened and suggest how to fix it; never regenerate silently.
+| Problem | Suggest |
+|---|---|
+| failed or blocked | simplify the subject or wording; remove anything sensitive |
+| swap hard to see | closer shot size, bigger product, fewer moving parts |
+| variations don't match | shorten the variation line to just the change; simpler camera move |
+| motion jerky | one slower move, or static |
+| product looks wrong | describe its shape and materials more exactly; add a product photo as reference |
