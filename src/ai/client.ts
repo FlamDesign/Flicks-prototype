@@ -101,9 +101,11 @@ export type Block =
   /** Claude's own reasoning; sent back unchanged with its signature */
   | { type: "thinking"; thinking: string; signature?: string }
   | { type: "redacted_thinking"; data: string }
-/** The API refuses empty text blocks and thinking blocks without their text or signature */
-export const keepable = (b: Block | undefined): b is Block =>
-  !!b && !(b.type === "text" && !b.text.trim()) && !(b.type === "thinking" && (!b.thinking || !b.signature))
+/**
+ * The API refuses empty text blocks, and thinking blocks without a signature (newer models send the
+ * thinking text empty on purpose: the signature carries it, so those are kept exactly as they came)
+ */
+export const keepable = (b: Block | undefined): b is Block => !!b && !(b.type === "text" && !b.text.trim()) && !(b.type === "thinking" && !b.signature)
 export type Message = { role: "user" | "assistant"; content: Block[] }
 export type Tool = { name: string; description?: string; input_schema?: Record<string, unknown>; type?: string; [k: string]: unknown }
 export type ChatRequest = { system: string; messages: Message[]; tools: Tool[]; max_tokens?: number }

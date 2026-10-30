@@ -536,10 +536,13 @@ export const SERVER_TOOLS: Tool[] = [
   { type: "web_fetch_20250910", name: "web_fetch", max_uses: 6, max_content_tokens: 12000 },
 ]
 
-export function cachedRequest(system: string, raw: Message[], state: unknown) {
+export function cachedRequest(system: string, raw: Message[], state: unknown, flatten = false) {
   // saved chats can hold blocks the API refuses (empty thinking from older builds); drop them
   const msgs = raw.map((m) => {
-    const content = m.content.filter(keepable)
+    // a chat saved by an older build lost its thinking signatures; its web searches then can't be
+    // sent back as they were, so they become plain notes of what was searched
+    const broken = flatten || m.content.some((b) => b.type === "thinking" && !b.signature)
+    const content = (broken ? m.content.flatMap((b): Block[] => (b.type === "thinking" || b.type === "redacted_thinking" ? (flatten ? [] : [b]) : b.type === "server_tool_use" ? [{ type: "text", text: `(Searched the web: ${String((b.input as { query?: string; url?: string } | undefined)?.query ?? (b.input as { url?: string } | undefined)?.url ?? "")})` }] : b.type === "web_search_tool_result" || b.type === "web_fetch_tool_result" ? [] : [b])) : m.content).filter(keepable)
     return { ...m, content: content.length ? content : [{ type: "text", text: "(thinking)" } as Block] }
   })
   const cache = { cache_control: { type: "ephemeral" } }
@@ -937,7 +940,12 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         const onText = (text: string) => patch(itemId, { text } as Partial<Item>)
         // what it's doing while it writes a tool call (a plan can take a while, with no words to show)
         const onTool = (name: string) => patch(itemId, { activity: ACTIVITY[name] ?? "Working" } as Partial<Item>)
-        const res = live.current ? await streamChat(req, onText, abort.current.signal, onTool) : await mockReply(msgs.current, state(), onText)
+        const ask = (r: typeof req) => (live.current ? streamChat(r, onText, abort.current!.signal, onTool) : mockReply(msgs.current, state(), onText))
+        // if the API refuses how earlier searches or thinking were sent back, send them once more as plain notes
+        const res = await ask(req).catch((e) => {
+          if (e instanceof Error && /tool_result|thinking|signature/i.test(e.message)) return ask(cachedRequest(systemPrompt(now), msgs.current, now, true))
+          throw e
+        })
         const text = res.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("\n\n")
         if (text.trim()) patch(itemId, { text, streaming: false } as Partial<Item>)
         else setItems((list) => list.filter((x) => x.id !== itemId))
