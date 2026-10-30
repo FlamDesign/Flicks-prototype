@@ -22,6 +22,10 @@ One line each:
   image_prompt, so the user sees the style before any video credits are spent.
 - Suggest up to 3, clearly different from each other (not three versions of one idea).
 - Write image_prompt as one frame of the concept: subject, setting, light, style; no text.
+- **Previews use the user's images.** The app passes the user's own images (uploads, website and
+  library images) as references by default, so each preview shows their real product or person.
+  Set reference_image_ids to choose which ones (for example only the product photo, not the logo),
+  and describe them in image_prompt as "the product from the photo".
 - The user can pick one, or type a mix or a change. Then plan the picked concept.
 
 ## Choosing what changes

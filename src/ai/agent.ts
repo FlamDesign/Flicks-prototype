@@ -223,6 +223,7 @@ export const TOOLS: Tool[] = [
               variations: { type: "array", items: { type: "string" }, description: "2 to 5 variation names" },
               beats: { type: "array", items: { type: "string" }, description: "The story in 2 or 3 short beats" },
               image_prompt: { type: "string", description: "A detailed description of one frame in this concept's style, for the preview image (no text)" },
+              reference_image_ids: { type: "array", items: { type: "string" }, description: "Project images this concept's preview must stay true to (the user's product, person or style); defaults to the user's own images" },
             },
             required: ["title", "idea", "variations", "image_prompt"],
           },
@@ -716,12 +717,18 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           }))
           const itemId = add({ kind: "question", toolId: u.id, question: "Pick a concept", options, display: "concepts", step: "idea", multi: false, custom: true })
           pending.current.push({ toolId: u.id, itemId })
-          // quick previews of each concept's style, filled in as they arrive
+          // quick previews of each concept's style, filled in as they arrive; they use the user's own
+          // images (product, person, style) as references, so the preview shows their real product
           const aspect = aspectOf(state().flick_size)
+          const own = images.current.filter((i) => i.from === "upload" || i.from === "website" || i.from === "library").slice(0, 3)
           list.forEach((c, i) => {
             const fill = (url: string) => setItems((all) => all.map((x) => (x.id === itemId && x.kind === "question" ? { ...x, options: x.options.map((o, j) => (j === i ? { ...o, image: url } : o)) } : x)))
+            const picked = ((c.reference_image_ids as string[] | undefined) ?? []).map((r) => images.current.find((x) => x.id === r)).filter((x): x is ProjectImage => !!x)
+            const refs = (picked.length ? picked : own).slice(0, 3)
             if (live.current)
-              generateImage(String(c.image_prompt ?? c.idea ?? ""), aspect, undefined, undefined, [], { project: state().title, purpose: "concept preview" }, { quality: "draft" }).then(fill, () => {})
+              Promise.all(refs.map((r) => shareable(r.url).catch(() => null)))
+                .then((urls) => generateImage(String(c.image_prompt ?? c.idea ?? ""), aspect, undefined, undefined, urls.filter((u): u is string => !!u), { project: state().title, purpose: "concept preview" }, { quality: "draft" }))
+                .then(fill, () => {})
             else setTimeout(() => fill(apiRef.current.sampleImage("idea", undefined)), 1200 + i * 600)
           })
           return WAIT
