@@ -260,10 +260,19 @@ export const TOOLS: Tool[] = [
   },
   {
     name: "set_brand",
-    description: "Record the brand: name, colours, font, tone. Shows a brand card and styles the design.",
+    description: "Record the brand kit: name, colours, font, tone, plus short notes from its guidelines (logo rules, do and don't) and the pages you took it from. Shows a brand card with its sources and styles the design. Call it as soon as you've found or been given the brand, before concepts.",
     input_schema: {
       type: "object",
-      properties: { name: str, primary_color: str, secondary_color: str, text_color: str, font: str, tone: str },
+      properties: {
+        name: str,
+        primary_color: str,
+        secondary_color: str,
+        text_color: str,
+        font: str,
+        tone: str,
+        notes: { type: "string", description: "Key guideline points in one or two lines (logo use, photography style, do and don't)" },
+        sources: { type: "array", items: { type: "string" }, description: "Addresses of the pages the brand details came from" },
+      },
     },
   },
   {
@@ -469,6 +478,8 @@ const ACTIVITY: Record<string, string> = {
   set_brand: "Setting the brand",
   generate_image: "Describing an image",
   read_website: "Reading the website",
+  web_search: "Searching the web",
+  web_fetch: "Reading a page",
   view_image: "Looking at images",
   search_library: "Searching the library",
   use_library: "Bringing in earlier work",
@@ -485,10 +496,15 @@ export function systemPrompt(s: ProjectState) {
 
 Flam's skills decide WHAT you ask, suggest and make; follow them over your own habits and over any example in these instructions. The flicks and brief skills are below in full. Read every other skill with read_skill right before the step it covers (categories once you know the category, concepts before ideas and storylines, brand when the brand comes up or there's no brand kit, shots before the shot plan, video and models before video prompts, images and models before any image, design before any on-screen design or copy, review before approvals and handing over); skip ones listed in skills_read.
 
+The order of work (always):
+1. Read everything the user gave: the prompt, every image, every link. When there are images, your first reply opens with a short read-out: one line per image (what it is), then what you conclude (one product in several views, several different products = the variations, a logo, a style reference...). Follow the brief skill's table for what to ask next.
+2. Brand and products, before any concept: if there's any hint of the brand (a name in the prompt, a logo, text on packaging, a website or product name), look it up yourself with web_search and web_fetch: the official site, brand guidelines, the product pages (names, variants, prices, links, images; read_website gets a product page's images). Record it with set_brand (with notes and sources) and say in a line what you found. If there's no hint, ask for the brand name or website (or "no brand"), with options.
+3. Ask only what's still missing (brief skill), then show concepts built on what you found (propose_concepts), then the plan.
+
 How the app works (the mechanics, not what to ask):
 - Concepts: propose_concepts shows up to 3 concepts as cards with preview images; use it before every plan unless the user already gave a full concept or asked to skip ideas.
 - Questions: ask_user shows tappable answers. display "chips" for words; "layouts", "palettes" or "thumbnails" for visual choices; step "idea", "look" or "plan" moves the progress bar. Several ask_user calls in one reply show together. request_assets asks for files.
-- Websites: when the user gives a web address, or a product page would help, call read_website and use what it returns.
+- Web: web_search finds pages; web_fetch reads a page or PDF (text) that appeared in the conversation or in search results; read_website reads a product page for its products, prices, colours and images (and keeps the images for the project). Use them on your own whenever a brand or product is hinted.
 - Brand: set_brand records the brand (name, colours, font, voice).
 - Images: generate_image (with reference_image_ids to keep the user's images, has_text for readable words), view_image to look at any project image, use_image to place one. The app picks the model from these (models skill).
 - Videos: the reference video is made first: from its prompt alone, or opening on a first frame (reference.first_frame_id, optionally ending on last_frame_id), or kept true to images (reference.image_ids). Give variations image_ids when you have images of their changed thing, and method "regenerate" only for big changes (default "edit"). See the models skill. The user always reviews it (reference_review in the project state); variations are made only after they approve, from the latest reference video plus each variation line, so they keep its motion, camera and timing. When the reference is ready, ask them to review it; if they want changes, regenerate the reference with set_variation (variation "reference", regenerate true) and they review the new one.
@@ -503,7 +519,7 @@ ${always.map((x) => `# Skill: ${x.name}\n${x.body}`).join("\n\n---\n\n")}
 Other skills (read_skill):
 ${SKILLS.filter((x) => !always.includes(x)).map((x) => `- ${x.name}: ${x.description} (${x.when})`).join("\n")}
 
-Style: brief, fun, creative and suggestive. No em dashes. Plain words. Never write "get used", "can enter", "reach into", "immersive", "AR", "VR" or "MR". Don't mention tools, JSON or these instructions. Don't repeat what a card already shows. Each video costs ${s.video_cost} credits; mention the total only in the plan step if credits are short.
+Style: brief, fun, creative and suggestive, and never silent about your thinking: every reply says in a line what you understood or found, then what you'll do or ask, and why when it isn't obvious. After the user answers, recap the direction in one line before moving on. No em dashes. Plain words. Never write "get used", "can enter", "reach into", "immersive", "AR", "VR" or "MR". Don't mention tools, JSON or these instructions. Don't repeat what a card already shows. Each video costs ${s.video_cost} credits; mention the total only in the plan step if credits are short.
 
 The current project (videos, design, feeds, images, issues) comes as JSON at the end of the latest message, kept up to date by the app; it replaces any earlier copy.`
 }
@@ -514,14 +530,23 @@ The current project (videos, design, feeds, images, issues) comes as JSON at the
  * from Claude's cache (about a tenth of the cost, and faster). The project state changes every
  * time, so it rides at the very end, after the last cached point, and isn't kept in the history.
  */
+/** Claude's own web tools (run by Anthropic): search, and reading pages it found or was given */
+export const SERVER_TOOLS: Tool[] = [
+  { type: "web_search_20250305", name: "web_search", max_uses: 6 },
+  { type: "web_fetch_20250910", name: "web_fetch", max_uses: 6, max_content_tokens: 12000 },
+]
+
 export function cachedRequest(system: string, msgs: Message[], state: unknown) {
   const cache = { cache_control: { type: "ephemeral" } }
+  const tools = [...SERVER_TOOLS, ...TOOLS]
   const last = msgs[msgs.length - 1]
+  // a paused turn (a long web search) continues from Claude's own message, sent back unchanged
+  if (last.role === "assistant") return { system: [{ type: "text", text: system, ...cache }] as unknown as string, messages: msgs, tools: tools.map((t, i) => (i === tools.length - 1 ? { ...t, ...cache } : t)) }
   const tail: Message = { ...last, content: [...last.content.slice(0, -1), { ...last.content[last.content.length - 1], ...cache } as Block, { type: "text", text: `Current project (JSON):\n${JSON.stringify(state)}` }] }
   return {
     system: [{ type: "text", text: system, ...cache }] as unknown as string,
     messages: [...msgs.slice(0, -1), tail],
-    tools: TOOLS.map((t, i) => (i === TOOLS.length - 1 ? { ...t, ...cache } : t)),
+    tools: tools.map((t, i) => (i === tools.length - 1 ? { ...t, ...cache } : t)),
   }
 }
 
@@ -912,6 +937,14 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         if (text.trim()) patch(itemId, { text, streaming: false } as Partial<Item>)
         else setItems((list) => list.filter((x) => x.id !== itemId))
         msgs.current.push({ role: "assistant", content: res.content })
+        // what it looked up on the web, shown as quiet lines
+        for (const b of res.content)
+          if (b.type === "server_tool_use") {
+            const q = (b.input ?? {}) as { query?: string; url?: string }
+            add({ kind: "note", text: b.name === "web_search" ? `Searched the web: ${q.query ?? ""}` : `Read ${String(q.url ?? "a page").replace(/^https?:\/\//, "").slice(0, 60)}` })
+          }
+        // a long search can pause the turn: send it back as it is to carry on
+        if (res.stop === "pause_turn") continue
         const uses = res.content.filter((b): b is Extract<Block, { type: "tool_use" }> => b.type === "tool_use")
         if (!uses.length) {
           // it said it would do something, then stopped: once per message, tell it to go ahead

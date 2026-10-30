@@ -19,16 +19,19 @@ when: When the brand comes up, when there's no brand kit yet, and before setting
 
 ## Where it comes from (in this order)
 1. **The user's brand guidelines or brand kit** (files or links).
-2. **Their website or product pages** (read_website): theme colour, button colours, logo, fonts,
-   tone of the copy.
-3. **A brand you know:** what you know of it, and its published guidelines.
+2. **Research it yourself** whenever there's a hint (a name, a logo, packaging text, a domain):
+   web_search for the official site, guidelines or press kit; web_fetch them; read_website on
+   product pages. Take theme and button colours, logo, fonts, tone of the copy, photography style.
+3. **A brand you know:** what you know of it, checked against what you found.
 4. **Their logo or photos:** take the colours from them.
 5. **None of these:** ask the user (with suggested palettes as a visual choice), or choose what
    suits the agreed style.
 
 ## Saving it
-- Once you have it, record it with set_brand, and tell the user in one line ("Saved your brand:
-  orange and white, Montserrat, confident").
+- Once you have it, record it with set_brand, with notes (key guideline points) and sources (the
+  pages you used), and tell the user in one line ("Saved your brand: orange and white, Montserrat,
+  confident; from lumen.com and their press kit").
+- Do this before concepts, so the concepts use the real brand and products.
 - Use it for every later Flick of this brand; ask before changing it.
 
 ## Applying it

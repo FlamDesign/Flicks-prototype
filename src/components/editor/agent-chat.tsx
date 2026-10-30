@@ -417,13 +417,24 @@ function BrandCard({ item }: { item: Extract<Item, { kind: "brand" }> }) {
   const b = item.brand
   const swatches = [b.primary_color, b.secondary_color, b.text_color].filter((c): c is string => !!c && /^#/.test(c))
   return (
-    <Card className="flex-row items-center gap-3">
+    <Card className="flex-row items-start gap-3">
       <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground">
         <HugeiconsIcon icon={PaintBoardIcon} className="size-4.5" />
       </span>
       <div className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-sm font-medium">{b.name || "Brand"}</span>
         <span className="truncate text-xs text-muted-foreground">{[b.font, b.tone].filter(Boolean).join(" · ") || "Colours saved"}</span>
+        {b.notes && <span className="mt-1 text-xs leading-snug text-muted-foreground">{b.notes}</span>}
+        {!!b.sources?.length && (
+          <span className="mt-1 flex flex-wrap gap-x-2 text-[11px] text-muted-foreground">
+            From{" "}
+            {b.sources.slice(0, 4).map((u) => (
+              <a key={u} href={u} target="_blank" rel="noreferrer" className="underline-offset-2 hover:text-foreground hover:underline">
+                {u.replace(/^https?:\/\/(www\.)?/, "").split("/")[0]}
+              </a>
+            ))}
+          </span>
+        )}
       </div>
       <div className="flex -space-x-1.5">
         {swatches.map((c) => (

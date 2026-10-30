@@ -47,7 +47,7 @@ export type Plan = {
   variations: PlanVariation[]
   design: Design
 }
-export type Brand = { name?: string; primary_color?: string; secondary_color?: string; text_color?: string; font?: string; tone?: string }
+export type Brand = { name?: string; primary_color?: string; secondary_color?: string; text_color?: string; font?: string; tone?: string; notes?: string; sources?: string[] }
 
 /** roles the chat finds its elements by */
 export type Role = "headline" | "subheading" | "label" | "price" | "cta"

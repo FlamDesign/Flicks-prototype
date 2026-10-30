@@ -96,8 +96,10 @@ export type Block =
   | { type: "tool_use"; id: string; name: string; input: Record<string, unknown> }
   | { type: "tool_result"; tool_use_id: string; content: string | Block[]; is_error?: boolean }
   | { type: "image"; source: { type: "base64"; media_type: string; data: string } }
+  /** web search and page reads Claude runs itself (kept exactly as received: the API needs them back) */
+  | { type: "server_tool_use" | "web_search_tool_result" | "web_fetch_tool_result"; id?: string; name?: string; input?: Record<string, unknown>; [k: string]: unknown }
 export type Message = { role: "user" | "assistant"; content: Block[] }
-export type Tool = { name: string; description: string; input_schema: Record<string, unknown> }
+export type Tool = { name: string; description?: string; input_schema?: Record<string, unknown>; type?: string; [k: string]: unknown }
 export type ChatRequest = { system: string; messages: Message[]; tools: Tool[]; max_tokens?: number }
 export type ChatResult = { content: Block[]; stop: string }
 
@@ -140,8 +142,13 @@ export async function streamChat(req: ChatRequest, onText: (text: string) => voi
       }
       if (ev.type === "content_block_start") {
         const b = ev.content_block
-        blocks[ev.index] = b.type === "tool_use" ? { type: "tool_use", id: b.id, name: b.name, input: {}, json: "" } : { type: "text", text: "" }
-        if (b.type === "tool_use") onTool?.(b.name)
+        // tool calls stream their input; web search and page-read blocks arrive whole and are kept as they are
+        blocks[ev.index] =
+          b.type === "tool_use" ? { type: "tool_use", id: b.id, name: b.name, input: {}, json: "" }
+          : b.type === "server_tool_use" ? { ...b, input: {}, json: "" }
+          : b.type === "text" ? { type: "text", text: "" }
+          : { ...b }
+        if (b.type === "tool_use" || b.type === "server_tool_use") onTool?.(b.name)
       } else if (ev.type === "content_block_delta") {
         const b = blocks[ev.index]
         if (ev.delta.type === "text_delta" && b?.type === "text") {
@@ -149,9 +156,10 @@ export async function streamChat(req: ChatRequest, onText: (text: string) => voi
           text += ev.delta.text
           onText(text)
         } else if (ev.delta.type === "input_json_delta" && b) b.json += ev.delta.partial_json
+        else if (ev.delta.type === "citations_delta" && b?.type === "text") (b as { citations?: unknown[] }).citations = [...((b as { citations?: unknown[] }).citations ?? []), ev.delta.citation]
       } else if (ev.type === "content_block_stop") {
         const b = blocks[ev.index]
-        if (b?.type === "tool_use") {
+        if (b?.type === "tool_use" || b?.type === "server_tool_use") {
           try {
             b.input = b.json ? JSON.parse(b.json) : {}
           } catch {
