@@ -221,7 +221,7 @@ export async function mockReply(messages: Message[], s: ProjectState, onText: (t
   const reference = first.trim().length > 24 ? first.trim() : sample.reference
   return reply(
     "Here's the plan. Edit anything in place, add or remove variations, then generate it all in one go.",
-    tool("read_skill", { names: ["variations", "video-prompts", "copy", "feeds"] }),
+    tool("read_skill", { names: ["flick-studio-no-blender", "variations", "video-prompts", "copy", "feeds"] }),
     tool("set_brand", { name: "Your brand", ...paletteOf(resultOf("ask_user")), font: "DM Sans", tone: "Confident, minimal" }),
     tool("propose_plan", { title: sample.title, reference: { prompt: reference }, variations: sample.variations, design: sample.design }),
   )
