@@ -106,10 +106,10 @@ export async function mockReply(messages: Message[], s: ProjectState, onText: (t
   if (planResult?.startsWith("Approved")) {
     const fromSite = s.images.filter((i) => i.from === "website")
     const vars = s.videos.filter((v) => v.role === "variation")
-    if (fromSite.length) return reply("", tool("read_skill", { names: ["thumbnails", "review"] }), ...vars.map((v, i) => tool("use_image", { image_id: fromSite[i % fromSite.length].id, as: "thumbnail", variation: v.name })))
+    if (fromSite.length) return reply("", tool("read_skill", { names: ["images", "review"] }), ...vars.map((v, i) => tool("use_image", { image_id: fromSite[i % fromSite.length].id, as: "thumbnail", variation: v.name })))
     return reply(
       "",
-      tool("read_skill", { names: ["thumbnails", "review"] }),
+      tool("read_skill", { names: ["images", "review"] }),
       ...s.videos
         .filter((v) => v.role === "variation")
         .map((v) => tool("generate_image", { prompt: `${v.label ?? v.name}, product close-up on a clean studio background`, purpose: "thumbnail", variation: v.name, aspect_ratio: "1:1" })),
@@ -181,7 +181,7 @@ export async function mockReply(messages: Message[], s: ProjectState, onText: (t
   if (asks === 0)
     return reply(
       justRead ? `I read the page and kept ${s.images.filter((i) => i.from === "website").length} product photos for thumbnails. What should viewers switch between?` : "Love it. Let's build it together. First, what should viewers switch between?",
-      tool("read_skill", { names: ["craft", "brief"] }),
+      tool("read_skill", { names: ["flicks", "brief"] }),
       tool("ask_user", { question: "What should change between variations?", options: ["Colours", "Products", "People or models", "Scenes", "Decide for me"], multi_select: true, step: "idea" }),
     )
   if (asks === 1) return reply("", tool("ask_user", { question: "Where will this Flick run?", options: ["Ads", "My website", "Share as a link", "All of these"], step: "idea" }))
@@ -221,7 +221,7 @@ export async function mockReply(messages: Message[], s: ProjectState, onText: (t
   const reference = first.trim().length > 24 ? first.trim() : sample.reference
   return reply(
     "Here's the plan. Edit anything in place, add or remove variations, then generate it all in one go.",
-    tool("read_skill", { names: ["flick-studio-no-blender", "variations", "video-prompts", "copy", "feeds"] }),
+    tool("read_skill", { names: ["concepts", "shots", "video"] }),
     tool("set_brand", { name: "Your brand", ...paletteOf(resultOf("ask_user")), font: "DM Sans", tone: "Confident, minimal" }),
     tool("propose_plan", { title: sample.title, reference: { prompt: reference }, variations: sample.variations, design: sample.design }),
   )

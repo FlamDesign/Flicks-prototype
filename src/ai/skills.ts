@@ -15,11 +15,11 @@ export const SKILLS: Skill[] = Object.entries(files)
     const meta = Object.fromEntries((m?.[1] ?? "").split("\n").map((l) => [l.slice(0, l.indexOf(":")).trim(), l.slice(l.indexOf(":") + 1).trim().replace(/^"(.*)"$/, "$1")]))
     return { name: meta.name || path.split("/").pop()!.replace(/\.md$/, ""), description: meta.description ?? "", when: meta.when ?? "", body: (m?.[2] ?? raw).trim() }
   })
-  // craft first: it's the one every other skill serves
-  .sort((a, b) => (a.name === "craft" ? -1 : b.name === "craft" ? 1 : a.name.localeCompare(b.name)))
+  // flicks first: it's the one every other skill serves
+  .sort((a, b) => (a.name === "flicks" ? -1 : b.name === "flicks" ? 1 : a.name.localeCompare(b.name)))
 
 export const skillIndex = () => SKILLS.map((s) => `- ${s.name}: ${s.description} (${s.when})`).join("\n")
 export const findSkill = (name: string) => SKILLS.find((s) => s.name === name.trim().toLowerCase().replace(/\.md$/, ""))
 /** a skill's name as people read it: "video-prompts" → "Video prompts" */
-const TITLES: Record<string, string> = { "flick-studio-no-blender": "Flick Studio" }
+const TITLES: Record<string, string> = {}
 export const skillTitle = (name: string) => TITLES[name] ?? name.replace(/-/g, " ").replace(/^\w/, (c) => c.toUpperCase())

@@ -1,18 +1,28 @@
 ---
 name: review
-description: The final check before handing over: run review_flick and fix every failure.
-when: After the build (thumbnails set) and after any big change.
+description: When to stop for the user's approval, what you may change on your own, and the checks before handing over.
+when: Before spending credits on videos, after the build, and after any big change.
 ---
 
 # Review
 
-Call review_flick. It checks, in code:
-- text fits the format (headline words, lines on small sizes);
-- nothing overlaps and everything is inside the frame and clear of the strip;
-- button text contrasts with the button;
-- every feed has a value on every variation; every button has a link;
-- every variation has a thumbnail and a distinct name;
-- 2 to 5 variations.
+## Stop for approval
+- Before spending credits on videos (images are fine without asking).
+- At major checkpoints that set the direction or the final output: the storyline, the plan.
 
-Fix every failure yourself (edit_element, vary_field, set_variation, use_image…), then run it
-once more. Tell the user in one line that it passed, or what's left for them (e.g. a missing price).
+## Change on your own
+- Fix layout problems: anything overlapping or not working.
+- Make any change the user asks for.
+
+## Explaining
+Explain choices only as much as needed: little or nothing for things that are easy to change
+later, a little for things that are hard to change. Never over-explain.
+
+## Before handing over
+Run review_flick and fix every failure, then check:
+- every video and variation is generated;
+- thumbnails are generated, one per variation;
+- the layout is good: nothing overlapping, cropped or hard to read;
+- every button has a link, and each link goes to the right page.
+
+Missing variations or broken links block export; tell the user what's left.
