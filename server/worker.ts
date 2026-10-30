@@ -11,6 +11,8 @@
  *   POST /upload          keeps an image (the user's photo) and returns a public address for it, so Higgsfield can use it
  *   GET  /file/:id        an uploaded image (public: the address is unguessable and expires in 7 days)
  *   GET  /media?u=        a generated video, passed through (Higgsfield's hosts only), for poster frames
+ *   GET  /library         every image and video made here, newest first (each kept on our side once it finishes)
+ *   POST /library/import  keeps copies of finished images or videos the app still has links to
  *   POST /read            reads a public web page for the chat: product, prices, images, colours, text
  *   GET  /img?u=          a website's image, passed through (sites often refuse to be shown elsewhere)
  *
@@ -23,6 +25,7 @@ interface KV {
   get(key: string, type: "arrayBuffer"): Promise<ArrayBuffer | null>
   getWithMetadata<M>(key: string, type: "arrayBuffer"): Promise<{ value: ArrayBuffer | null; metadata: M | null }>
   put(key: string, value: string | ArrayBuffer, opts?: { expirationTtl?: number; metadata?: unknown }): Promise<void>
+  list(opts: { prefix?: string; limit?: number; cursor?: string }): Promise<{ keys: { name: string }[]; list_complete: boolean; cursor?: string }>
 }
 
 export interface Env {
@@ -58,7 +61,7 @@ const ANTHROPIC = "https://api.anthropic.com/v1/messages"
 const HIGGSFIELD_DEFAULT = "https://api.higgsfield.ai"
 
 export default {
-  async fetch(req: Request, env: Env): Promise<Response> {
+  async fetch(req: Request, env: Env, ctx?: { waitUntil(p: Promise<unknown>): void }): Promise<Response> {
     const origin = req.headers.get("origin")
     const allowed = (env.ALLOWED_ORIGINS ?? "").split(",").map((s) => s.trim()).filter(Boolean)
     // browsers from other sites are turned away; scripts outside a browser still need the passcode
@@ -80,6 +83,16 @@ export default {
       const url = new URL(req.url)
       const day = new Date().toISOString().slice(0, 10)
       const caps = { images: num(env.DAILY_IMAGE_CAP, 50), chats: num(env.DAILY_CHAT_CAP, 500), videos: num(env.DAILY_VIDEO_CAP, 20) }
+      // the library: every generation is recorded when it starts and copied here when it finishes
+      // (Higgsfield deletes its copies after 7 days and can't list past requests)
+      type Meta = { project?: string; variation?: string; purpose?: string }
+      const started = async (kind: "image" | "video", id: string, prompt: string, model: string, meta: Meta = {}, refs: string[] = []) => {
+        await env.USAGE?.put(`lib:${id}`, JSON.stringify({ id, kind, prompt, model, refs, ...pick(meta), created: Date.now(), saved: false }))
+        return json({ id }, 200, cors)
+      }
+      const finished = (id: string, media?: string) => {
+        if (media && ctx) ctx.waitUntil(keep(env, id, media).catch((e) => console.log("library save failed", id, String(e))))
+      }
 
       if (req.method === "GET" && url.pathname === "/health") {
         return json(
@@ -136,7 +149,7 @@ export default {
 
       if (req.method === "POST" && url.pathname === "/image") {
         if (!hasHf(env)) return json({ error: "images_not_set_up" }, 503, cors)
-        const body = (await req.json()) as { prompt?: string; aspect_ratio?: string; image_urls?: string[] }
+        const body = (await req.json()) as { prompt?: string; aspect_ratio?: string; image_urls?: string[]; meta?: Meta }
         const prompt = String(body.prompt ?? "").trim().slice(0, 2000)
         if (!prompt) return json({ error: "no_prompt" }, 400, cors)
         if (!(await take(env, `img:${day}`, caps.images))) return json({ error: "daily_limit", what: "images" }, 429, cors)
@@ -159,7 +172,7 @@ export default {
             } catch {
               /* not JSON */
             }
-            if (res.ok && out.request_id) return json({ id: out.request_id, model: path }, 200, cors)
+            if (res.ok && out.request_id) return started("image", out.request_id, prompt, path, body.meta, refs)
             lastRef = { status: res.status, text }
             console.log("higgsfield reference image failed", path, res.status, text.slice(0, 300))
             if ([401, 402, 403, 429].includes(res.status)) return json({ error: "image_error", status: res.status, message: hfMessage(res.status, text) }, 502, cors)
@@ -183,7 +196,7 @@ export default {
             } catch {
               /* not JSON */
             }
-            if (res.ok && out.request_id) return json({ id: out.request_id }, 200, cors)
+            if (res.ok && out.request_id) return started("image", out.request_id, prompt, path, body.meta)
             last = { status: res.status, text }
             console.log("higgsfield submit failed", path, Object.keys(payload).join("+"), res.status, text.slice(0, 300))
             // auth, balance and rate problems won't change with another model or payload
@@ -218,7 +231,7 @@ export default {
 
       if (req.method === "POST" && url.pathname === "/video") {
         if (!hasHf(env)) return json({ error: "videos_not_set_up" }, 503, cors)
-        const body = (await req.json()) as { prompt?: string; aspect_ratio?: string; duration?: number; image_url?: string }
+        const body = (await req.json()) as { prompt?: string; aspect_ratio?: string; duration?: number; image_url?: string; meta?: Meta }
         const prompt = String(body.prompt ?? "").trim().slice(0, 2000)
         if (!prompt) return json({ error: "no_prompt" }, 400, cors)
         if (!(await take(env, `vid:${day}`, caps.videos))) return json({ error: "daily_limit", what: "videos" }, 429, cors)
@@ -236,7 +249,7 @@ export default {
         } catch {
           /* not JSON */
         }
-        if (res.ok && out.request_id) return json({ id: out.request_id }, 200, cors)
+        if (res.ok && out.request_id) return started("video", out.request_id, prompt, path, body.meta, image ? [image] : [])
         console.log("higgsfield video submit failed", path, res.status, text.slice(0, 300))
         return json({ error: "video_error", status: res.status, message: hfMessage(res.status, text) }, 502, cors)
       }
@@ -256,7 +269,40 @@ export default {
         const video = urls.find((u) => /\.(mp4|mov|webm)(\?|$)/i.test(u)) ?? urlsIn(out.video)[0]
         const poster = urls.find((u) => /\.(jpe?g|png|webp)(\?|$)/i.test(u))
         if (out.status === "completed" && !video) console.log("higgsfield video completed without a url", text.slice(0, 400))
+        if (out.status === "completed") finished(v[1], video)
         return json({ status: out.status ?? "unknown", url: video, poster }, 200, cors)
+      }
+
+      if (req.method === "GET" && url.pathname === "/library") {
+        const keys: string[] = []
+        let cursor: string | undefined
+        do {
+          const page = await env.USAGE!.list({ prefix: "lib:", limit: 1000, cursor })
+          keys.push(...page.keys.map((k) => k.name))
+          cursor = page.list_complete ? undefined : page.cursor
+        } while (cursor && keys.length < 5000)
+        const items = (await Promise.all(keys.map((k) => env.USAGE!.get(k)))).flatMap((x) => (x ? [JSON.parse(x) as { created: number; id: string; saved?: boolean }] : []))
+        items.sort((a, b) => b.created - a.created)
+        return json({ items: items.map((x) => ({ ...x, file: x.saved ? `${url.origin}/file/${x.id}` : undefined })) }, 200, cors)
+      }
+
+      if (req.method === "POST" && url.pathname === "/library/import") {
+        const body = (await req.json()) as { items?: { url?: string; kind?: string; prompt?: string; name?: string; created?: number }[] }
+        const done: string[] = []
+        for (const it of (body.items ?? []).slice(0, 20)) {
+          const target = safeUrl(it.url)
+          if (!target) continue
+          const id = `imp-${(await sha(target)).slice(0, 24)}`
+          if (await env.USAGE?.get(`lib:${id}`)) continue
+          await env.USAGE?.put(`lib:${id}`, JSON.stringify({ id, kind: it.kind === "image" ? "image" : "video", prompt: it.prompt ?? it.name ?? "", model: "imported", refs: [], created: it.created || Date.now(), saved: false }))
+          try {
+            await keep(env, id, target)
+            done.push(id)
+          } catch (e) {
+            console.log("import failed", target, String(e))
+          }
+        }
+        return json({ imported: done.length }, 200, cors)
       }
 
       // a generated video passed through, so the app can take a frame from it for the poster
@@ -285,6 +331,7 @@ export default {
         }
         const url = out.images?.[0]?.url ?? out.image?.url ?? out.output?.[0]?.url ?? urlsIn(out).find((u) => /\.(png|jpe?g|webp)(\?|$)/i.test(u))
         if (out.status === "completed" && !url) console.log("higgsfield completed without an image url", text.slice(0, 300))
+        if (out.status === "completed") finished(m[1], url)
         return json({ status: out.status ?? "unknown", url }, 200, cors)
       }
 
@@ -515,4 +562,28 @@ function urlsIn(v: unknown, out: string[] = []): string[] {
   } else if (Array.isArray(v)) v.forEach((x) => urlsIn(x, out))
   else if (v && typeof v === "object") Object.values(v).forEach((x) => urlsIn(x, out))
   return out
+}
+
+const pick = (m: { project?: string; variation?: string; purpose?: string }) =>
+  Object.fromEntries(Object.entries(m ?? {}).filter(([k, v]) => ["project", "variation", "purpose"].includes(k) && typeof v === "string").map(([k, v]) => [k, (v as string).slice(0, 120)]))
+
+async function sha(s: string) {
+  const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s))
+  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("")
+}
+
+/** copies a finished image or video into our storage (once), and marks it saved in the library */
+async function keep(env: Env, id: string, media: string) {
+  const raw = await env.USAGE?.get(`lib:${id}`)
+  if (!raw) return
+  const entry = JSON.parse(raw) as Record<string, unknown>
+  if (entry.saved) return
+  const res = await fetch(media, { redirect: "follow" })
+  if (!res.ok) throw new Error(`download ${res.status}`)
+  const bytes = await res.arrayBuffer()
+  // a stored value can be at most 25 MB
+  if (bytes.byteLength > 24_000_000) throw new Error("too large to keep")
+  const type = res.headers.get("content-type") ?? (entry.kind === "video" ? "video/mp4" : "image/png")
+  await env.USAGE?.put(`file:${id}`, bytes, { metadata: { type } })
+  await env.USAGE?.put(`lib:${id}`, JSON.stringify({ ...entry, saved: true, bytes: bytes.byteLength, type, source: media }))
 }

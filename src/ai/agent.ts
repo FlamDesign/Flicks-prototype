@@ -4,14 +4,14 @@
  * scripted stand-in calls the same tools, so the flow can always be demoed.
  */
 import { useCallback, useEffect, useRef, useState } from "react"
-import { AiError, aspectOf, generateImage, imageBlock, shareable, isLive, readWebsite, siteImage, streamChat, type Block, type Message, type SiteRead, type Tool } from "@/ai/client"
+import { AiError, aspectOf, generateImage, imageBlock, library, shareable, type LibraryItem, isLive, readWebsite, siteImage, streamChat, type Block, type Message, type SiteRead, type Tool } from "@/ai/client"
 import type { Brand, Design, Plan, PlanVariation } from "@/ai/design"
 import { mockReply } from "@/ai/mock"
 import { findSkill, SKILLS } from "@/ai/skills"
 
 /* ---------- what the editor offers the chat ---------- */
 
-export type ProjectImage = { id: string; name: string; url: string; from: "upload" | "generated" | "website"; kind?: string }
+export type ProjectImage = { id: string; name: string; url: string; from: "upload" | "generated" | "website" | "library"; kind?: string }
 export type ProjectState = {
   flick_size: string
   video_seconds: number
@@ -259,6 +259,20 @@ export const TOOLS: Tool[] = [
     input_schema: { type: "object", properties: { url: { type: "string", description: "The page's address" } }, required: ["url"] },
   },
   {
+    name: "search_library",
+    description:
+      "Search everything made before with this tool (images and videos from earlier projects, kept on Flam's side): each result has an id, kind, date, project, variation, purpose and the prompt that made it. Use it when the user mentions earlier work, wants something like a previous Flick, or for references and prompts that worked.",
+    input_schema: {
+      type: "object",
+      properties: { query: { type: "string", description: "Words to match in prompts, projects or variations; empty for the latest" }, kind: { type: "string", enum: ["image", "video"] }, limit: { type: "number" } },
+    },
+  },
+  {
+    name: "use_library",
+    description: "Bring library items into this project by id: images become project images (usable in use_image, view_image and as reference_image_ids, and you see them); videos come back with the prompt that made them, to reuse or adapt.",
+    input_schema: { type: "object", properties: { ids: { type: "array", items: { type: "string" } } }, required: ["ids"] },
+  },
+  {
     name: "view_image",
     description: "Look at project images by id (from the project state): generated images, uploads, website images. Use it to check a generated thumbnail before keeping it, or to describe a photo you haven't seen.",
     input_schema: { type: "object", properties: { image_ids: { type: "array", items: { type: "string" } } }, required: ["image_ids"] },
@@ -400,6 +414,8 @@ const ACTIVITY: Record<string, string> = {
   generate_image: "Describing an image",
   read_website: "Reading the website",
   view_image: "Looking at images",
+  search_library: "Searching the library",
+  use_library: "Bringing in earlier work",
   review_flick: "Reviewing the Flick",
   update_design: "Designing",
   add_element: "Designing",
@@ -418,6 +434,7 @@ How the app works (the mechanics, not what to ask):
 - Websites: when the user gives a web address, or a product page would help, call read_website and use what it returns.
 - Brand: set_brand records the brand (name, colours, font, voice).
 - Images: generate_image (with reference_image_ids to keep the user's images), view_image to look at any project image, use_image to place one.
+- Library: everything made before is kept. search_library finds earlier images and videos (with their prompts); use_library brings them in as references or starting points.
 - The plan: propose_plan is the approval before any video credits are spent. It carries the reference video prompt, each variation (name, prompt, label, price, link, and headline, subheading or button text only when they differ) and the design. The user edits it and presses Generate all; the app then makes every video and places the design and thumbnail strip.
 - Feeds: on-screen text that differs per variation is a feed. The project state lists every feed, what uses it, each variation's value and any issues. Change them with vary_field, same_for_all, set_variation and rename_feed; update_design can't change text that differs per variation. Fix reported issues in the same turn.
 - After the build: update_design, set_variation, add_variation, add_element, edit_element and remove_element change the Flick. The design list gives each element's id, type, text and position. run review_flick after the build and after big changes, and fix every failure.
@@ -464,6 +481,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   const live = useRef(isLive())
   // images the chat can use by id: what the user added, and what it generated
   const images = useRef<ProjectImage[]>([])
+  /** library items the chat has seen in search results, by id */
+  const libSeen = useRef(new Map<string, LibraryItem>())
   const state = (): ProjectState => ({ ...apiRef.current.state(), images: images.current, skills_read: [...read.current] })
   const keep = (url: string, name: string, from: ProjectImage["from"], kind?: string) => {
     const img = { id: `img-${images.current.length + 1}`, name, url, from, ...(kind ? { kind } : {}) }
@@ -504,7 +523,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     // the images to keep, at addresses Higgsfield can open (uploads go to the server first)
     const refs = () => Promise.all(refImages.map((i) => shareable(i.url).catch(() => null))).then((u) => u.filter((x): x is string => !!x))
     if (live.current)
-      refs().then((urls) => generateImage(prompt, aspect, undefined, (status) => patch(itemId, { status } as Partial<Item>), urls)).then((url) => {
+      refs().then((urls) => generateImage(prompt, aspect, undefined, (status) => patch(itemId, { status } as Partial<Item>), urls, { project: apiRef.current.state().title, variation: target, purpose })).then((url) => {
         try {
           done(url)
         } catch (e) {
@@ -637,6 +656,37 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           })
           add({ kind: "review", pass: r.pass.length, fail: r.fail })
           return r.fail.length ? `Fix these, then run review_flick again:\n- ${r.fail.join("\n- ")}\n(Passing: ${r.pass.length} checks.)` : `All ${r.pass.length} checks pass.`
+        }
+        case "search_library": {
+          if (!live.current) return "The library needs the AI server; nothing is saved in the demo."
+          const all = await library()
+          const words = String(input.query ?? "").toLowerCase().split(/\s+/).filter(Boolean)
+          const found = all
+            .filter((x) => x.saved && (!input.kind || x.kind === input.kind))
+            .filter((x) => words.every((w) => `${x.prompt} ${x.project ?? ""} ${x.variation ?? ""} ${x.purpose ?? ""}`.toLowerCase().includes(w)))
+            .slice(0, Math.min(Number(input.limit) || 12, 30))
+          libSeen.current = new Map([...libSeen.current, ...found.map((x) => [x.id, x] as const)])
+          if (!found.length) return words.length ? "Nothing in the library matches." : "The library is empty."
+          return found.map((x) => `- ${x.id} · ${x.kind} · ${new Date(x.created).toISOString().slice(0, 10)}${x.project ? ` · ${x.project}` : ""}${x.variation ? ` · ${x.variation}` : ""}${x.purpose ? ` · ${x.purpose}` : ""}\n  ${x.prompt.slice(0, 220)}`).join("\n")
+        }
+        case "use_library": {
+          const ids = ((input.ids as string[]) ?? []).slice(0, 6)
+          const known = ids.map((x) => libSeen.current.get(x)).filter((x): x is LibraryItem => !!x?.file)
+          if (!known.length) return "Error: Search the library first, then use ids from the results."
+          const out: Block[] = []
+          for (const x of known) {
+            if (x.kind === "image") {
+              const img = keep(x.file!, (x.variation ?? x.prompt).slice(0, 40), "library")
+              out.push({ type: "text", text: `${x.id} is now project image ${img.id}. Prompt: ${x.prompt}` })
+              try {
+                out.push(await imageBlock(await (await fetch(x.file!)).blob()))
+              } catch {
+                /* shown without the picture */
+              }
+            } else out.push({ type: "text", text: `${x.id} (video${x.project ? `, ${x.project}` : ""}${x.variation ? `, ${x.variation}` : ""}) was made from: ${x.prompt}` })
+          }
+          add({ kind: "note", text: `Brought ${known.length} item${known.length === 1 ? "" : "s"} from the library` })
+          return out
         }
         case "view_image": {
           const ids = ((input.image_ids as string[]) ?? []).slice(0, 4)

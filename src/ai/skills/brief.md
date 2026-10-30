@@ -39,6 +39,11 @@ existing creatives or videos, reference videos, images or styles.
 - When an asset is missing, judge whether it's truly needed: infer first; if not possible, ask
   and suggest options.
 
+## Earlier work
+Everything made before is kept in the library. When the user mentions earlier work ("like last
+time", "the gold one we made"), or a past Flick would be a good starting point, search the library
+and bring in what fits: its images as references, its prompts to reuse or adapt.
+
 ## Reading what the user gives you
 Always look at given images and make sense of them before suggesting anything.
 1. **Text only, nothing made yet:** ask what should change between variations, then change that.

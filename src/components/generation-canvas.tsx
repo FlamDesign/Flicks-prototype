@@ -1093,7 +1093,7 @@ export function GenerationCanvas({
       const mine = (x: Slide) => x.id === sl.id && x.startedAt === sl.startedAt
       const patchJob = (p: Partial<Slide>) => commitSlides(slidesNow.current.map((x) => (mine(x) ? { ...x, ...p } : x)))
       patchJob({ job: { status: "starting", since: Date.now() } })
-      generateVideo({ prompt, aspect: videoAspectOf(generation.size), seconds: generation.duration ?? 8 }, (status) =>
+      generateVideo({ prompt, aspect: videoAspectOf(generation.size), seconds: generation.duration ?? 8, meta: { project: title, variation: slideName(sl, slidesNow.current.indexOf(sl)), purpose: "video" } }, (status) =>
         commitSlides(slidesNow.current.map((x) => (mine(x) && x.job ? { ...x, job: { ...x.job, status } } : x))),
       ).then(
         async ({ url, poster }) => {

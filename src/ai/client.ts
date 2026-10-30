@@ -178,8 +178,10 @@ async function steady(path: string, init?: RequestInit) {
 }
 
 /** imageUrls: public addresses of the user's photos or a website's images (see shareable), so the product in the picture is theirs */
-export async function generateImage(prompt: string, aspect: string, signal?: AbortSignal, onStatus?: (status: string) => void, imageUrls: string[] = []): Promise<string> {
-  const { id } = (await (await steady("/image", { method: "POST", body: JSON.stringify({ prompt, aspect_ratio: aspect, image_urls: imageUrls }), signal })).json()) as { id: string }
+/** what a generation is for: kept with it in the library */
+export type GenMeta = { project?: string; variation?: string; purpose?: string }
+export async function generateImage(prompt: string, aspect: string, signal?: AbortSignal, onStatus?: (status: string) => void, imageUrls: string[] = [], meta: GenMeta = {}): Promise<string> {
+  const { id } = (await (await steady("/image", { method: "POST", body: JSON.stringify({ prompt, aspect_ratio: aspect, image_urls: imageUrls, meta }), signal })).json()) as { id: string }
   onStatus?.("queued")
   const until = Date.now() + 240_000
   let wait = 2000
@@ -240,9 +242,9 @@ export function videoAspectOf(size: string) {
 }
 
 /** Starts a real video (720p) and waits for it: a few minutes. `image` (a public https address) becomes the first frame. */
-export async function generateVideo(input: { prompt: string; aspect: string; seconds: number; image?: string }, onStatus?: (status: string) => void, signal?: AbortSignal): Promise<{ url: string; poster?: string }> {
+export async function generateVideo(input: { prompt: string; aspect: string; seconds: number; image?: string; meta?: GenMeta }, onStatus?: (status: string) => void, signal?: AbortSignal): Promise<{ url: string; poster?: string }> {
   const { id } = (await (
-    await steady("/video", { method: "POST", body: JSON.stringify({ prompt: input.prompt, aspect_ratio: input.aspect, duration: input.seconds, image_url: input.image }), signal })
+    await steady("/video", { method: "POST", body: JSON.stringify({ prompt: input.prompt, aspect_ratio: input.aspect, duration: input.seconds, image_url: input.image, meta: input.meta }), signal })
   ).json()) as { id: string }
   onStatus?.("queued")
   const until = Date.now() + 15 * 60_000
@@ -284,6 +286,15 @@ export async function posterOf(videoUrl: string): Promise<string | undefined> {
     return undefined
   }
 }
+
+/* ---------- library ---------- */
+
+/** an image or video made through the AI server; `file` is our own copy, once it's saved */
+export type LibraryItem = { id: string; kind: "image" | "video"; prompt: string; model: string; created: number; saved: boolean; file?: string; project?: string; variation?: string; purpose?: string; refs?: string[]; bytes?: number; type?: string }
+export const library = async () => ((await (await call("/library")).json()) as { items: LibraryItem[] }).items
+/** keeps copies of finished media the app still has links to (Higgsfield deletes its own after 7 days) */
+export const importToLibrary = async (items: { url: string; kind: "image" | "video"; prompt?: string; name?: string; created?: number }[]) =>
+  ((await (await call("/library/import", { method: "POST", body: JSON.stringify({ items }) })).json()) as { imported: number }).imported
 
 /* ---------- websites ---------- */
 
