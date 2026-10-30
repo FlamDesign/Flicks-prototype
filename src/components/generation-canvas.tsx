@@ -31,7 +31,7 @@ import { CanvasStage } from "@/components/editor/canvas-stage"
 import { ElementToolbar, ToolbarGrip } from "@/components/editor/element-toolbar"
 import { useAgent, type EditorApi, type ElementSpec } from "@/ai/agent"
 import { boxOf, buildDesign, color as colorOf, contrast, describeDesign, elementFor, fontName, freeY, headlineLimit, feedOfField, FIELD_FEED, FIELDS, patchDesign, restack, type Brand, type Field } from "@/ai/design"
-import { generateVideo, isLive, posterOf, useAiConfig, videoAspectOf } from "@/ai/client"
+import { generateVideo, isLive, posterOf, shareable, useAiConfig, videoAspectOf, type VideoInput } from "@/ai/client"
 import { AgentComposer, AgentItemView, isDocked, QuestionDeck, type AgentCtx } from "@/components/editor/agent-chat"
 import { PlanningView, PlanSteps } from "@/components/editor/planning-view"
 import { addMadeVideo, isMadeVideo, BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, defaultFill, defaultInk, GENERATED_VIDEOS, SAMPLE_UPLOADS, inSet, clampStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload } from "@/components/editor/elements"
@@ -565,7 +565,8 @@ export function GenerationCanvas({
     const main = slidesNow.current[0]
     const startedAt = id === "main" ? now : main.startedAt && now < main.startedAt + ms ? main.startedAt + ms + 1 : now
     const video = inSet(generation.video ?? 0, nextVideo.current++)
-    commitSlides(slidesNow.current.map((x) => (x.id === id ? { ...x, video, startedAt, prompt: "", refs: [], used: { prompt, refs: [], fromReference: id !== "main" } } : x)))
+    // a regenerate keeps what the video is made from (first frame, images, method)
+    commitSlides(slidesNow.current.map((x) => (x.id === id ? { ...x, video, startedAt, prompt: "", refs: [], used: { prompt, refs: [], fromReference: id !== "main", media: x.used?.media } } : x)))
     setHistory((h) => [...h, { id: crypto.randomUUID(), slideId: id, prompt, refs: [], fromReference: id !== "main", video, startedAt, at: now }])
     return true
   }
@@ -775,7 +776,7 @@ export function GenerationCanvas({
       }
       const valuesFor = (v: (typeof vars)[number]) => Object.fromEntries(FIELDS.flatMap((f) => (ids[f] ? [[ids[f]!, valueOf(v, f)]] : [])))
       // the reference video shows the first variation's values, so the design never shows empty {placeholders}
-      const main: Slide = { id: "main", prompt: "", refs: [], video: base, startedAt: now, used: { prompt: plan.reference.prompt, refs: generation.refs ?? [], fromReference: false }, feeds: valuesFor(vars[0]) }
+      const main: Slide = { id: "main", prompt: "", refs: [], video: base, startedAt: now, used: { prompt: plan.reference.prompt, refs: generation.refs ?? [], fromReference: false, media: plan.reference.media }, feeds: valuesFor(vars[0]) }
       const vs: Slide[] = vars.map((v, i) => ({
         id: crypto.randomUUID(),
         n: i + 1,
@@ -785,7 +786,7 @@ export function GenerationCanvas({
         video: inSet(base, i + 1),
         // made from the reference video, so they start once it's ready
         startedAt: now + ms + 1,
-        used: { prompt: v.prompt, refs: [], fromReference: true },
+        used: { prompt: v.prompt, refs: [], fromReference: true, media: v.media },
         feeds: valuesFor(v),
       }))
       nextN.current = vs.length + 1
@@ -1125,13 +1126,30 @@ export function GenerationCanvas({
       }
       jobs.current.add(key)
       const resume = sl.job?.id
-      const prompt = fromRef
-        ? `Keep the input video exactly as it is: the same camera, framing, motion, timing, setting and lighting. Change only this: ${sl.used.prompt}`
-        : sl.used.prompt
+      // which kind of generation fits what we have (see the models skill):
+      // reference: first frame → image to video; images to keep → reference to video; else text to video
+      // variation: edit the approved reference (default), or regenerate following it for big changes
+      const media = sl.used.media ?? {}
+      const pics = media.images ?? []
+      const picsLine = pics.length ? ` ${pics.length === 1 ? "Image 1 shows" : `Images 1 to ${pics.length} show`} exactly how it must look: match ${pics.length === 1 ? "it" : "them"}.` : ""
+      const keep = "Keep everything else exactly the same: camera, framing, motion, timing, setting and lighting."
+      const end = (t: string) => (/[.!?]$/.test(t.trim()) ? t.trim() : `${t.trim()}.`)
+      const plan: VideoInput = fromRef
+        ? media.method === "regenerate"
+          ? { mode: "reference", prompt: `Follow Video 1 exactly for camera, framing, motion and timing, and keep its setting and lighting. Change only this: ${end(sl.used.prompt)}${picsLine}`, video: refVideo, images: pics }
+          : { mode: "edit", prompt: `Edit Video 1. ${keep} Change only this: ${end(sl.used.prompt)}${picsLine}`, video: refVideo, images: pics }
+        : media.first_frame
+          ? { mode: "image", prompt: sl.used.prompt, image: media.first_frame, endImage: media.last_frame }
+          : pics.length
+            ? { mode: "reference", prompt: `${end(sl.used.prompt)}${pics.length === 1 ? " Image 1 shows" : ` Images 1 to ${pics.length} show`} the product and look to keep exactly.`, images: pics }
+            : { mode: "text", prompt: sl.used.prompt }
       if (!resume) patchJob({ job: { status: "starting", since: Date.now() } })
-      generateVideo({ prompt, video: fromRef ? refVideo : undefined, aspect: videoAspectOf(generation.size), seconds: generation.duration ?? 8, resume, onId: (id) => commitSlides(slidesNow.current.map((x) => (mine(x) && x.job ? { ...x, job: { ...x.job, id } } : x))), meta: { project: title, variation: slideName(sl, slidesNow.current.indexOf(sl)), purpose: "video" } }, (status) =>
+      // images that only live in this page go to the server first, so the video model can open them
+      const share = (u?: string) => (u ? shareable(u).catch(() => undefined) : Promise.resolve(undefined))
+      Promise.all([share(plan.image), share(plan.endImage), Promise.all((plan.images ?? []).map(share))]).then(([image, endImage, images]) =>
+      generateVideo({ ...plan, image, endImage, images: images.filter((x): x is string => !!x), aspect: videoAspectOf(generation.size), seconds: generation.duration ?? 8, resume, onId: (id) => commitSlides(slidesNow.current.map((x) => (mine(x) && x.job ? { ...x, job: { ...x.job, id } } : x))), meta: { project: title, variation: slideName(sl, slidesNow.current.indexOf(sl)), purpose: "video" } }, (status) =>
         commitSlides(slidesNow.current.map((x) => (mine(x) && x.job ? { ...x, job: { ...x.job, status } } : x))),
-      ).then(
+      )).then(
         async ({ url, poster }) => {
           const still = poster ?? (await posterOf(url)) ?? GENERATED_VIDEOS[sl.video ?? generation.video ?? 0].poster
           const video = addMadeVideo({ name: `${slideName(sl, slidesNow.current.indexOf(sl))}-${sl.startedAt}`, size: generation.size, mp4: url, poster: still })

@@ -16,7 +16,9 @@ export const FIELD_FEED: Record<Field, { name: string; type: "text" | "link" }> 
   cta: { name: "button", type: "text" },
   link: { name: "link", type: "link" },
 }
-export type PlanVariation = { name: string; prompt: string } & Partial<Record<Field, string>>
+/** what a video is made from besides its prompt (image addresses, resolved from project image ids) */
+export type VideoMedia = { first_frame?: string; last_frame?: string; images?: string[]; method?: "edit" | "regenerate" }
+export type PlanVariation = { name: string; prompt: string; image_ids?: string[]; method?: "edit" | "regenerate"; media?: VideoMedia } & Partial<Record<Field, string>>
 /** the thumbnail strip viewers tap to switch: where it sits and how it looks */
 export type Thumbs = {
   position?: "bottom" | "top" | "left" | "right"
@@ -41,7 +43,7 @@ export type Design = {
 }
 export type Plan = {
   title: string
-  reference: { prompt: string }
+  reference: { prompt: string; first_frame_id?: string; last_frame_id?: string; image_ids?: string[]; media?: VideoMedia }
   variations: PlanVariation[]
   design: Design
 }

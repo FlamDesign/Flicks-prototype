@@ -49,6 +49,7 @@ export interface Env {
   HF_VIDEO_PATH?: string
   HF_VIDEO_IMAGE_PATH?: string
   HF_VIDEO_REF_PATH?: string
+  HF_VIDEO_EDIT_PATH?: string
   HF_IMAGE_TEXT_PATH?: string
   /** Higgsfield image model path, e.g. /higgsfield-ai/soul/standard */
   HF_IMAGE_PATH?: string
@@ -257,24 +258,30 @@ export default {
 
       if (req.method === "POST" && url.pathname === "/video") {
         if (!hasHf(env)) return json({ error: "videos_not_set_up" }, 503, cors)
-        const body = (await req.json()) as { prompt?: string; aspect_ratio?: string; duration?: number; image_url?: string; video_urls?: string[]; meta?: Meta }
+        const body = (await req.json()) as { mode?: string; prompt?: string; aspect_ratio?: string; duration?: number; image_url?: string; end_image_url?: string; image_urls?: string[]; video_url?: string; video_urls?: string[]; meta?: Meta }
         const prompt = String(body.prompt ?? "").trim().slice(0, 2000)
         if (!prompt) return json({ error: "no_prompt" }, 400, cors)
         if (!(await take(env, `vid:${day}`, caps.videos))) return json({ error: "daily_limit", what: "videos" }, 429, cors)
         const aspect = VIDEO_ASPECTS.includes(String(body.aspect_ratio)) ? String(body.aspect_ratio) : "16:9"
         const duration = Math.max(4, Math.min(15, Math.round(Number(body.duration) || 8)))
-        const image = body.image_url && /^https:\/\//.test(body.image_url) ? body.image_url : undefined
-        // a variation: made from the finished reference video, so it keeps its motion, camera and timing
-        const videos = (body.video_urls ?? []).filter((u) => typeof u === "string" && /^https:\/\//.test(u)).slice(0, 1)
-        // 720p, no sound: Flicks play muted
-        const payload = videos.length
-          ? { prompt, duration, resolution: "720p", generate_audio: false, aspect_ratio: aspect, video_urls: videos }
-          : { prompt, duration, resolution: "720p", generate_audio: false, ...(image ? { image_url: image } : { aspect_ratio: aspect }) }
-        const path = videos.length
-          ? env.HF_VIDEO_REF_PATH || "/bytedance/seedance-2.5/reference-to-video"
-          : image
-            ? env.HF_VIDEO_IMAGE_PATH || "/bytedance/seedance-2.5/image-to-video"
-            : env.HF_VIDEO_PATH || "/bytedance/seedance-2.5/text-to-video"
+        const https = (u?: string) => (u && /^https:\/\//.test(u) ? u : undefined)
+        const image = https(body.image_url)
+        const endImage = https(body.end_image_url)
+        const images = (body.image_urls ?? []).map(https).filter((u): u is string => !!u).slice(0, 4)
+        const video = https(body.video_url) ?? (body.video_urls ?? []).map(https).find((u) => !!u)
+        // the kind of generation (720p, no sound: Flicks play muted):
+        // text: prompt only · image: opens on a first frame (may end on a last one) · reference: stays
+        // true to images, and follows a video when given · edit: edits a video, keeping all but the change
+        const mode = body.mode === "edit" && video ? "edit" : body.mode === "reference" && (images.length || video) ? "reference" : (body.mode === "image" || (!body.mode && image)) && image ? "image" : video ? "reference" : "text"
+        const common = { prompt, resolution: "720p", generate_audio: false }
+        const [path, payload]: [string, Record<string, unknown>] =
+          mode === "edit"
+            ? [env.HF_VIDEO_EDIT_PATH || "/bytedance/seedance-2.5/video-edit", { ...common, video_url: video, ...(images.length ? { image_urls: images } : {}) }]
+            : mode === "reference"
+              ? [env.HF_VIDEO_REF_PATH || "/bytedance/seedance-2.5/reference-to-video", { ...common, duration, aspect_ratio: aspect, ...(images.length ? { image_urls: images } : {}), ...(video ? { video_urls: [video] } : {}) }]
+              : mode === "image"
+                ? [env.HF_VIDEO_IMAGE_PATH || "/bytedance/seedance-2.5/image-to-video", { ...common, duration, image_url: image, ...(endImage ? { end_image_url: endImage } : {}) }]
+                : [env.HF_VIDEO_PATH || "/bytedance/seedance-2.5/text-to-video", { ...common, duration, aspect_ratio: aspect }]
         const res = await hf(env, hfBase(env) + path, { method: "POST", headers: { "content-type": "application/json", "idempotency-key": crypto.randomUUID() }, body: JSON.stringify(payload) })
         const text = await res.text()
         let out: { request_id?: string } = {}
@@ -283,7 +290,7 @@ export default {
         } catch {
           /* not JSON */
         }
-        if (res.ok && out.request_id) return started("video", out.request_id, prompt, path, body.meta, videos.length ? videos : image ? [image] : [])
+        if (res.ok && out.request_id) return started("video", out.request_id, prompt, path, body.meta, [video, image, endImage, ...images].filter((u): u is string => !!u))
         console.log("higgsfield video submit failed", path, res.status, text.slice(0, 300))
         return json({ error: "video_error", status: res.status, message: hfMessage(res.status, text) }, 502, cors)
       }

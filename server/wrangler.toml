@@ -14,8 +14,10 @@ DAILY_VIDEO_CAP = "20"
 # videos: Higgsfield, 720p only
 HF_VIDEO_PATH = "/bytedance/seedance-2.5/text-to-video"
 HF_VIDEO_IMAGE_PATH = "/bytedance/seedance-2.5/image-to-video"
-# variations: made from the finished reference video
+# videos that stay true to images, or follow a video (variations that change a lot)
 HF_VIDEO_REF_PATH = "/bytedance/seedance-2.5/reference-to-video"
+# variations: edits of the approved reference video
+HF_VIDEO_EDIT_PATH = "/bytedance/seedance-2.5/video-edit"
 # images from a prompt alone
 HF_IMAGE_PATH = "/higgsfield-ai/soul/v2/standard"
 # images that keep the user's product (from their photos): the main model, then the fallback

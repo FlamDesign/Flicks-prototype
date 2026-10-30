@@ -249,10 +249,16 @@ export function videoAspectOf(size: string) {
 }
 
 /** Starts a real video (720p) and waits for it: a few minutes. `image` (a public https address) becomes the first frame. */
-export async function generateVideo(input: { prompt: string; aspect: string; seconds: number; image?: string; video?: string; meta?: GenMeta; resume?: string; onId?: (id: string) => void }, onStatus?: (status: string) => void, signal?: AbortSignal): Promise<{ url: string; poster?: string }> {
+/**
+ * What a video is made from. text: the prompt alone; image: opens on `image` (and may end on
+ * `endImage`); reference: stays true to `images` (and follows `video` when given); edit: edits
+ * `video`, matching `images` for the change.
+ */
+export type VideoInput = { mode: "text" | "image" | "reference" | "edit"; prompt: string; image?: string; endImage?: string; images?: string[]; video?: string }
+export async function generateVideo(input: VideoInput & { aspect: string; seconds: number; meta?: GenMeta; resume?: string; onId?: (id: string) => void }, onStatus?: (status: string) => void, signal?: AbortSignal): Promise<{ url: string; poster?: string }> {
   // a video started before a reload carries on from its id
   const { id } = input.resume ? { id: input.resume } : ((await (
-    await steady("/video", { method: "POST", body: JSON.stringify({ prompt: input.prompt, aspect_ratio: input.aspect, duration: input.seconds, image_url: input.image, video_urls: input.video ? [input.video] : undefined, meta: input.meta }), signal })
+    await steady("/video", { method: "POST", body: JSON.stringify({ mode: input.mode, prompt: input.prompt, aspect_ratio: input.aspect, duration: input.seconds, image_url: input.image, end_image_url: input.endImage, image_urls: input.images, video_url: input.video, meta: input.meta }), signal })
   ).json()) as { id: string })
   input.onId?.(id)
   onStatus?.("queued")

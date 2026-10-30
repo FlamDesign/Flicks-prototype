@@ -26,15 +26,26 @@ Rules:
   the canvas instead (add_element), which is sharper and editable.
 
 ## Videos
-| Step | How it's made | Cost |
-|---|---|---|
-| Reference video | from your reference prompt (text to video), 720p, no sound | about 46 cents a second (an 8 s video is about $3.70) |
-| Each variation | from the finished reference video plus your variation line (reference to video): it copies the reference's camera, motion and timing, changing only what you describe | the same rate or less |
-| Several variations | start together once the user approves the finished reference; until then they show "Waiting for the reference video" | |
+Every video is 720p with no sound. Pick the way it's made by what you give the plan:
 
-**The user always reviews the reference video first.** When it's ready, a bar asks them to approve it
-("Make the variations") or change it. If they want changes, regenerate the reference with their
-changes; they review the new one, and the variations are made from the latest approved version.
+| Video | What you give | How it's made | Use when |
+|---|---|---|---|
+| Reference | the prompt only | text to video | no images to work from |
+| Reference | reference.first_frame_id (and optionally last_frame_id) | image to video: opens exactly on that image (ends on the last one) | the user has the exact shot, or you made and they approved a look frame; a controlled reveal from one frame to another |
+| Reference | reference.image_ids | reference to video: stays true to those images | the product, person or style must match photos, but there's no exact first frame |
+| Variation | (default) method "edit", plus image_ids if you have images of its change | video edit: edits the approved reference video, changing only what you describe, matching the images | almost always: colour, flavour, product swaps of the same shape, outfits, time of day |
+| Variation | method "regenerate", plus image_ids | reference to video, following the approved reference video | bigger changes the edit can't make cleanly: a different product shape, a new setting |
+
+Costs: about 46 cents a second at 720p (an 8 s reference is about $3.70). Variations made from the
+reference video are billed for the input video at a lower rate, so they cost about the same or less.
+
+Images for videos:
+- **First frames** must already be the Flick's shape (1:1, 9:16 or 16:9) and show the exact opening
+  shot: make one with generate_image (quality, with the user's product as reference) and have the
+  user approve it, or use the user's own shot.
+- **Image ids for a variation** should show only that variation's changed thing (the lime green
+  can, the denim jacket), cleanly; one or two is enough.
+- Never pass images that contradict the prompt.
 
 What this means for you:
 - **The reference is the master.** Every variation copies it, so its prompt matters most: subject,

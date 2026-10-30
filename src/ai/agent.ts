@@ -136,6 +136,8 @@ const variationSchema = {
   type: "object",
   properties: {
     name: { type: "string", description: "Short name shown to viewers on its thumbnail, e.g. 'Gold' or 'Rain'" },
+    image_ids: { type: "array", items: { type: "string" }, description: "Project image ids showing exactly how this variation's changed thing looks (its product, colour, person or place); the video is made to match them" },
+    method: { type: "string", enum: ["edit", "regenerate"], description: "How it's made from the approved reference video: 'edit' (default) edits the reference, keeping everything but the change; 'regenerate' makes a new video that follows the reference, for bigger changes such as a different shape or a new setting" },
     prompt: { type: "string", description: "What changes in this variation's video compared with the reference video (subject, colour, scene, motion). One or two sentences." },
     label: { type: "string", description: "Optional on-screen label for this variation, e.g. 'Gold lenses'" },
     price: { type: "string", description: "Optional price with currency, e.g. '$189'" },
@@ -271,7 +273,16 @@ export const TOOLS: Tool[] = [
       type: "object",
       properties: {
         title: { type: "string", description: "Project name, 2 to 5 words" },
-        reference: { type: "object", properties: { prompt: { type: "string", description: "The reference video: subject, setting, camera motion, light, style. 1 to 3 sentences." } }, required: ["prompt"] },
+        reference: {
+          type: "object",
+          properties: {
+            prompt: { type: "string", description: "The reference video: subject, setting, camera motion, light, style. 1 to 3 sentences." },
+            first_frame_id: { type: "string", description: "A project image id to open the video on, exactly (the user's shot, or an approved look frame)" },
+            last_frame_id: { type: "string", description: "Optional: a project image id the video ends on (a controlled reveal); needs first_frame_id" },
+            image_ids: { type: "array", items: { type: "string" }, description: "Project image ids the video must stay true to (product, person, style) when there's no first frame" },
+          },
+          required: ["prompt"],
+        },
         variations: { type: "array", items: variationSchema, minItems: 2, maxItems: 5 },
         design: designSchema,
       },
@@ -479,7 +490,7 @@ How the app works (the mechanics, not what to ask):
 - Websites: when the user gives a web address, or a product page would help, call read_website and use what it returns.
 - Brand: set_brand records the brand (name, colours, font, voice).
 - Images: generate_image (with reference_image_ids to keep the user's images, has_text for readable words), view_image to look at any project image, use_image to place one. The app picks the model from these (models skill).
-- Videos: the reference video is made first from its prompt. The user always reviews it (reference_review in the project state); variations are made only after they approve, from the latest reference video plus each variation line, so they keep its motion, camera and timing. When the reference is ready, ask them to review it; if they want changes, regenerate the reference with set_variation (variation "reference", regenerate true) and they review the new one.
+- Videos: the reference video is made first: from its prompt alone, or opening on a first frame (reference.first_frame_id, optionally ending on last_frame_id), or kept true to images (reference.image_ids). Give variations image_ids when you have images of their changed thing, and method "regenerate" only for big changes (default "edit"). See the models skill. The user always reviews it (reference_review in the project state); variations are made only after they approve, from the latest reference video plus each variation line, so they keep its motion, camera and timing. When the reference is ready, ask them to review it; if they want changes, regenerate the reference with set_variation (variation "reference", regenerate true) and they review the new one.
 - Library: everything made before is kept. search_library finds earlier images and videos (with their prompts); use_library brings them in as references or starting points.
 - The plan: propose_plan is the approval before any video credits are spent. It carries the reference video prompt, each variation (name, prompt, label, price, link, and headline, subheading or button text only when they differ) and the design. The user edits it and presses Generate all; the app then makes every video and places the design and thumbnail strip.
 - Feeds: on-screen text that differs per variation is a feed. The project state lists every feed, what uses it, each variation's value and any issues. Change them with vary_field, same_for_all, set_variation and rename_feed; update_design can't change text that differs per variation. Fix reported issues in the same turn.
@@ -1031,7 +1042,14 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         // the user wants changes: they say what in the chat
         return
       }
-      const r = apiRef.current.approvePlan(plan)
+      // image ids become addresses the video model can use
+      const url = (id?: string) => (id ? images.current.find((i) => i.id === id)?.url : undefined)
+      const urls = (ids?: string[]) => (ids ?? []).map(url).filter((u): u is string => !!u).slice(0, 4)
+      const r = apiRef.current.approvePlan({
+        ...plan,
+        reference: { ...plan.reference, media: { first_frame: url(plan.reference.first_frame_id), last_frame: url(plan.reference.last_frame_id), images: urls(plan.reference.image_ids) } },
+        variations: plan.variations.map((v) => ({ ...v, media: { images: urls(v.image_ids), method: v.method } })),
+      })
       if (r.startsWith("Error")) {
         add({ kind: "error", text: r.replace(/^Error: /, "") })
         return

@@ -60,6 +60,15 @@ Video models get these wrong, and errors differ between variations, which breaks
 End every prompt with the relevant part of the list, in plain words ("no on-screen text, no
 logos, no extra people, smooth motion").
 
+## Images and the reference video as inputs
+- **The user gave the exact opening shot, or approved a look frame:** set reference.first_frame_id
+  (and last_frame_id for a reveal). The video opens on it exactly; the prompt then describes only
+  the motion and camera from there.
+- **The product or person must match photos:** set reference.image_ids, and name what they show in
+  the prompt ("the bottle from the photos").
+- **Variations:** give each variation image_ids when you have images of its change (each colour's
+  product photo). Leave method as "edit" unless the change is too big for an edit (see the models skill).
+
 ## Show the style first
 Before videos are generated, show the user a quick reference image of the style (fast image
 model). A first frame isn't required.

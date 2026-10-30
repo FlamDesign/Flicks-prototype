@@ -9,6 +9,8 @@ import { GENERATED_VIDEOS } from "@/components/editor/elements"
 import { cn } from "@/lib/utils"
 import type { Reference } from "@/components/prompt-composer"
 
+import type { VideoMedia } from "@/ai/design"
+
 export type Slide = {
   id: string
   prompt?: string
@@ -21,7 +23,7 @@ export type Slide = {
   thumb?: string // uploaded thumbnail for the strip on the canvas
   feeds?: Record<string, string> // this variation's value for each feed
   /** what the current video was generated from */
-  used?: { prompt: string; refs: Reference[]; fromReference: boolean }
+  used?: { prompt: string; refs: Reference[]; fromReference: boolean; media?: VideoMedia }
   /** a real video being made by the AI server (the video above is a stand-in until it's ready) */
   job?: { status: string; since: number; id?: string }
   /** the reference video: the startedAt of the version the user approved (variations are made only from an approved one) */
