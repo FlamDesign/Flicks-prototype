@@ -206,7 +206,7 @@ const shared = new Map<string, Promise<string>>()
  * A public address for an image, so Higgsfield can use it: one already on the web stays as it is;
  * one that only lives in this browser (an upload, a blob) is kept by the server for 7 days.
  */
-export function shareable(src: string): Promise<string> {
+export function shareable(src: string, about: { name?: string; project?: string } = {}): Promise<string> {
   if (/^https:\/\//.test(src) && !src.startsWith(location.origin)) return Promise.resolve(src)
   const known = shared.get(src)
   if (known) return known
@@ -214,7 +214,8 @@ export function shareable(src: string): Promise<string> {
     const blob = await (await fetch(src)).blob()
     // big photos are scaled down first (the models don't need more than 2048 px)
     const small = blob.size > 2_500_000 || !/^image\/(png|jpeg|webp)$/.test(blob.type) ? await shrink(blob) : blob
-    const res = await steady("/upload", { method: "POST", body: small, headers: { "content-type": small.type } })
+    const q = new URLSearchParams(Object.entries(about).filter((e): e is [string, string] => !!e[1]))
+    const res = await steady(`/upload?${q}`, { method: "POST", body: small, headers: { "content-type": small.type } })
     return ((await res.json()) as { url: string }).url
   })()
   shared.set(src, job)

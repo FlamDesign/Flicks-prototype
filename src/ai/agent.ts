@@ -487,6 +487,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   const keep = (url: string, name: string, from: ProjectImage["from"], kind?: string) => {
     const img = { id: `img-${images.current.length + 1}`, name, url, from, ...(kind ? { kind } : {}) }
     images.current.push(img)
+    // the user's own images are kept in the library too (and are then ready to share with Higgsfield)
+    if (from === "upload" && live.current) shareable(url, { name, project: apiRef.current.state().title }).catch(() => {})
     return img
   }
 

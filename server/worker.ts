@@ -8,8 +8,8 @@
  *   GET  /image/:id       that image's status; { status, url? }
  *   POST /video           starts a video (Higgsfield, 720p only); returns { id }
  *   GET  /video/:id       that video's status; { status, url?, poster? }
- *   POST /upload          keeps an image (the user's photo) and returns a public address for it, so Higgsfield can use it
- *   GET  /file/:id        an uploaded image (public: the address is unguessable and expires in 7 days)
+ *   POST /upload          keeps an image the user added (in the library too) and returns a public address for it, so Higgsfield can use it
+ *   GET  /file/:id        a kept image or video (public: the address is unguessable)
  *   GET  /media?u=        a generated video, passed through (Higgsfield's hosts only), for poster frames
  *   GET  /library         every image and video made here, newest first (each kept on our side once it finishes)
  *   POST /library/import  keeps copies of finished images or videos the app still has links to
@@ -142,8 +142,11 @@ export default {
         if (!/^image\/(png|jpeg|webp|gif)$/.test(type)) return json({ error: "not_an_image" }, 400, cors)
         const bytes = await req.arrayBuffer()
         if (bytes.byteLength > 8_000_000) return json({ error: "too_large" }, 413, cors)
-        const id = crypto.randomUUID()
-        await env.USAGE?.put(`file:${id}`, bytes, { expirationTtl: 7 * 86400, metadata: { type } })
+        const id = `up-${crypto.randomUUID()}`
+        // kept for good and listed in the library, like everything made here
+        await env.USAGE?.put(`file:${id}`, bytes, { metadata: { type } })
+        const q = url.searchParams
+        await env.USAGE?.put(`lib:${id}`, JSON.stringify({ id, kind: "image", prompt: (q.get("name") ?? "Uploaded image").slice(0, 200), model: "upload", refs: [], ...pick({ project: q.get("project") ?? undefined, purpose: "upload" }), created: Date.now(), saved: true, bytes: bytes.byteLength, type }))
         return json({ url: `${url.origin}/file/${id}` }, 200, cors)
       }
 
