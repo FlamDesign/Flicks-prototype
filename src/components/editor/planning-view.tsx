@@ -3,7 +3,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Tick02Icon } from "@hugeicons/core-free-icons"
 import type { Item, Step, useAgent } from "@/ai/agent"
 import type { Design, Field } from "@/ai/design"
-import { AgentComposer, AgentItemView, QuestionDeck, type AgentCtx } from "@/components/editor/agent-chat"
+import { AgentComposer, AgentItemView, isDocked, QuestionDeck, type AgentCtx } from "@/components/editor/agent-chat"
 import { cn } from "@/lib/utils"
 
 type Agent = ReturnType<typeof useAgent>
@@ -52,7 +52,7 @@ export function PlanningView({ agent, ctx }: { agent: Agent; ctx: AgentCtx; desi
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
   }, [agent.items.length, last?.kind === "assistant" ? last.text.length : 0])
   // questions waiting for an answer dock above the composer instead
-  const asking = (it: Item) => it.kind === "question" && agent.pendingIds.includes(it.id)
+  const asking = (it: Item) => isDocked(it, agent.pendingIds)
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-background">
       <div ref={list} className="min-h-0 flex-1 overflow-y-auto">

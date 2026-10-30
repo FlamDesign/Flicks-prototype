@@ -347,7 +347,7 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
   )
 }
 
-function Assets({ item, agent }: { item: Extract<Item, { kind: "assets" }>; agent: Agent }) {
+function Assets({ item, agent, bare }: { item: Extract<Item, { kind: "assets" }>; agent: Agent; bare?: boolean }) {
   const [files, setFiles] = useState<File[]>([])
   const [over, setOver] = useState(false)
   const input = useRef<HTMLInputElement>(null)
@@ -370,9 +370,9 @@ function Assets({ item, agent }: { item: Extract<Item, { kind: "assets" }>; agen
         )}
       </div>
     )
-  return (
-    <Card>
-      <p className="text-sm font-medium">{item.message}</p>
+  const body = (
+    <>
+      {!bare && <p className="text-sm font-medium">{item.message}</p>}
       <input ref={input} type="file" accept="image/*" multiple hidden onChange={(e) => (e.target.files && addFiles(e.target.files), (e.target.value = ""))} />
       <button
         type="button"
@@ -408,8 +408,9 @@ function Assets({ item, agent }: { item: Extract<Item, { kind: "assets" }>; agen
           Add {files.length > 0 ? files.length : ""} image{files.length === 1 ? "" : "s"}
         </Button>
       </div>
-    </Card>
+    </>
   )
+  return bare ? <div className="flex flex-col gap-3 px-4 pb-3">{body}</div> : <Card>{body}</Card>
 }
 
 function BrandCard({ item }: { item: Extract<Item, { kind: "brand" }> }) {
@@ -746,8 +747,13 @@ type Q = Extract<Item, { kind: "question" }>
  * one at a time ("1 of 3", arrows), numbered answers (keys 1 to 9), "Something else", Skip and
  * Continue. Picking moves to the next question; the answers go back together once all are in.
  */
+type Deckable = Q | Extract<Item, { kind: "assets" }>
+/** the cards a chat reply is waiting on that dock above the composer: questions and image requests */
+export const isDocked = (x: Item, pendingIds: string[]) => (x.kind === "question" || x.kind === "assets") && pendingIds.includes(x.id)
+const settled = (x: Deckable) => (x.kind === "question" ? x.answer !== undefined : !!x.done)
+
 export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: AgentCtx; className?: string }) {
-  const qs = agent.items.filter((x): x is Q => x.kind === "question" && agent.pendingIds.includes(x.id))
+  const qs = agent.items.filter((x): x is Deckable => isDocked(x, agent.pendingIds))
   const [at, setAt] = useState(0)
   const [picked, setPicked] = useState<Record<string, string[]>>({})
   const [other, setOther] = useState<Record<string, string>>({})
@@ -759,7 +765,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
   const nextOpen = (from: number) => {
     for (let k = 1; k <= qs.length; k++) {
       const j = (from + k) % qs.length
-      if (qs[j].answer === undefined) return j
+      if (!settled(qs[j])) return j
     }
     return -1
   }
@@ -767,15 +773,22 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
     const j = nextOpen(i)
     if (j >= 0) setAt(j)
   }
+  // an image request moves on by itself once its images are added or skipped
+  const reqDone = q?.kind === "assets" && !!q.done
+  useEffect(() => {
+    if (reqDone) advance()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reqDone])
   const mine = q ? (picked[q.id] ?? []) : []
   const typed = q ? (other[q.id] ?? "") : ""
   const commit = (value: string, choice?: Choice) => {
     if (!q) return
+    if (q.kind === "assets") return void agent.addAssets(q.id, [])
     agent.answer(q.id, value, choice)
     advance()
   }
   const pick = (o: Choice) => {
-    if (!q) return
+    if (!q || q.kind !== "question") return
     if (q.multi) setPicked((p) => ({ ...p, [q.id]: mine.includes(o.label) ? mine.filter((x) => x !== o.label) : [...mine, o.label] }))
     else commit(o.label, o)
   }
@@ -789,7 +802,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
   const skipRef = useRef(() => {})
   skipRef.current = () => commit("Skipped")
   useEffect(() => {
-    if (!q) return
+    if (!q || q.kind !== "question") return
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement
       if (e.metaKey || e.ctrlKey || e.altKey || t.closest("input, textarea, [contenteditable]")) return
@@ -801,26 +814,39 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
     return () => window.removeEventListener("keydown", onKey)
   }, [q])
   if (!q) return null
+  const pager =
+    qs.length > 1 ? (
+      <div className="flex shrink-0 items-center gap-0.5 text-xs tabular-nums text-muted-foreground">
+        <Button size="icon-xs" variant="ghost" aria-label="Previous" disabled={i === 0} onClick={() => setAt(i - 1)}>
+          <HugeiconsIcon icon={ArrowLeft01Icon} className="size-3.5" />
+        </Button>
+        {i + 1} of {qs.length}
+        <Button size="icon-xs" variant="ghost" aria-label="Next" disabled={i === qs.length - 1} onClick={() => setAt(i + 1)}>
+          <HugeiconsIcon icon={ArrowRight01Icon} className="size-3.5" />
+        </Button>
+      </div>
+    ) : null
+  const shell = "flex flex-col overflow-hidden rounded-2xl bg-background shadow-lg ring-1 ring-foreground/10 animate-in fade-in-0 slide-in-from-bottom-2 duration-300"
+  if (q.kind === "assets")
+    return (
+      <section aria-label="Questions" className={cn(shell, className)}>
+        <header className="flex items-start gap-3 px-4 pb-2 pt-3.5">
+          <p className="flex-1 text-[15px] font-medium leading-snug">{q.message}</p>
+          {pager}
+        </header>
+        <Assets item={q} agent={agent} bare />
+      </section>
+    )
   const visual = q.display === "layouts" || q.display === "thumbnails"
   const chosen = (o: Choice) => (q.multi ? mine.includes(o.label) : q.answer === o.label)
   return (
-    <section aria-label="Questions" className={cn("flex flex-col overflow-hidden rounded-2xl bg-background shadow-lg ring-1 ring-foreground/10 animate-in fade-in-0 slide-in-from-bottom-2 duration-300", className)}>
+    <section aria-label="Questions" className={cn(shell, className)}>
       <header className="flex items-start gap-3 px-4 pb-2 pt-3.5">
         <p className="flex-1 text-[15px] font-medium leading-snug">
           {q.question}
           {q.multi && <span className="ml-2 text-xs font-normal text-muted-foreground">Pick any</span>}
         </p>
-        {qs.length > 1 && (
-          <div className="flex shrink-0 items-center gap-0.5 text-xs tabular-nums text-muted-foreground">
-            <Button size="icon-xs" variant="ghost" aria-label="Previous question" disabled={i === 0} onClick={() => setAt(i - 1)}>
-              <HugeiconsIcon icon={ArrowLeft01Icon} className="size-3.5" />
-            </Button>
-            {i + 1} of {qs.length}
-            <Button size="icon-xs" variant="ghost" aria-label="Next question" disabled={i === qs.length - 1} onClick={() => setAt(i + 1)}>
-              <HugeiconsIcon icon={ArrowRight01Icon} className="size-3.5" />
-            </Button>
-          </div>
-        )}
+        {pager}
       </header>
       <div className="max-h-[50vh] overflow-y-auto px-2">
         {q.display === "chips" || q.display === "cards" ? (

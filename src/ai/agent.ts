@@ -462,6 +462,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   const apiRef = useRef(api)
   apiRef.current = api
   const [items, setItems] = useState<Item[]>([])
+  const itemsRef = useRef<Item[]>([])
+  itemsRef.current = items
   const [busy, setBusy] = useState(false)
   // what the user picked so far (looks, palettes): the live preview shows it before there's a plan
   const draft = useRef<Design>({})
@@ -850,7 +852,12 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     return content
   }
   /** answers to questions asked together, kept until every one of them is answered */
-  const held = useRef<Record<string, string>>({})
+  const held = useRef<Record<string, string | Block[]>>({})
+  /** keeps one card's answer; true when every question and image request asked together has one */
+  const hold = (toolId: string, value: string | Block[]) => {
+    held.current[toolId] = value
+    return !pending.current.some((p) => !(p.toolId in held.current) && ["question", "assets"].includes(itemsRef.current.find((x) => x.id === p.itemId)?.kind ?? ""))
+  }
 
   const send = useCallback(
     async (text: string, files: File[] = []) => {
@@ -877,10 +884,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       if (choice?.design) mergeDraft(choice.design)
       if (choice?.colors?.length) mergeDraft({ button_color: choice.colors[0], ...(choice.colors[2] ? { text_color: choice.colors[2] } : {}) })
       const detail = choice && (choice.design || choice.colors) ? ` (${JSON.stringify({ ...(choice.design ? { design: choice.design } : {}), ...(choice.colors ? { colors: choice.colors } : {}) })})` : ""
-      held.current[it.toolId] = value + detail
-      // questions asked together go back together, once all of them are answered (or skipped)
-      const waitingFor = pending.current.filter((p) => !(p.toolId in held.current) && items.find((x) => x.id === p.itemId)?.kind === "question")
-      if (waitingFor.length) return
+      // questions and image requests asked together go back together, once all are answered (or skipped)
+      if (!hold(it.toolId, value + detail)) return
       msgs.current.push({ role: "user", content: settle({ ...held.current }) })
       await turn()
     },
@@ -894,7 +899,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       if (!it || it.kind !== "assets" || busy) return
       if (!files.length) {
         patch(itemId, { done: "skipped" } as Partial<Item>)
-        msgs.current.push({ role: "user", content: settle({ [it.toolId]: "Skipped: no images." }) })
+        if (!hold(it.toolId, "Skipped: no images.")) return
+        msgs.current.push({ role: "user", content: settle({ ...held.current }) })
         return turn()
       }
       const urls = files.map((f) => URL.createObjectURL(f))
@@ -902,7 +908,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       patch(itemId, { done: "added", images: urls } as Partial<Item>)
       const result: Block[] = [{ type: "text", text: `Added ${files.length} image${files.length > 1 ? "s" : ""}: ${added.map((x) => `${x.id} (${x.name})`).join(", ")}.` }]
       for (const f of files) result.push(await imageBlock(f))
-      msgs.current.push({ role: "user", content: settle({ [it.toolId]: result }) })
+      if (!hold(it.toolId, result)) return
+      msgs.current.push({ role: "user", content: settle({ ...held.current }) })
       await turn()
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps

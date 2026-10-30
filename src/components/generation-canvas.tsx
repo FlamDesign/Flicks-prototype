@@ -32,7 +32,7 @@ import { ElementToolbar, ToolbarGrip } from "@/components/editor/element-toolbar
 import { useAgent, type EditorApi, type ElementSpec } from "@/ai/agent"
 import { boxOf, buildDesign, color as colorOf, contrast, describeDesign, elementFor, fontName, freeY, headlineLimit, feedOfField, FIELD_FEED, FIELDS, patchDesign, restack, type Brand, type Field } from "@/ai/design"
 import { generateVideo, isLive, posterOf, useAiConfig, videoAspectOf } from "@/ai/client"
-import { AgentComposer, AgentItemView, QuestionDeck, type AgentCtx } from "@/components/editor/agent-chat"
+import { AgentComposer, AgentItemView, isDocked, QuestionDeck, type AgentCtx } from "@/components/editor/agent-chat"
 import { PlanningView, PlanSteps } from "@/components/editor/planning-view"
 import { addMadeVideo, isMadeVideo, BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, defaultFill, defaultInk, GENERATED_VIDEOS, SAMPLE_UPLOADS, inSet, clampStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload } from "@/components/editor/elements"
 
@@ -1776,7 +1776,7 @@ export function GenerationCanvas({
               ),
               // questions waiting for an answer dock above the composer instead
               extra: agent.items
-                .filter((it) => !(it.kind === "question" && agent.pendingIds.includes(it.id)))
+                .filter((it) => !isDocked(it, agent.pendingIds))
                 .map((it) => ({
                   key: it.id,
                   at: it.at,
