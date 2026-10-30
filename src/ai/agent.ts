@@ -4,7 +4,7 @@
  * scripted stand-in calls the same tools, so the flow can always be demoed.
  */
 import { useCallback, useEffect, useRef, useState } from "react"
-import { AiError, aspectOf, generateImage, imageBlock, isLive, readWebsite, siteImage, streamChat, type Block, type Message, type SiteRead, type Tool } from "@/ai/client"
+import { AiError, aspectOf, generateImage, imageBlock, shareable, isLive, readWebsite, siteImage, streamChat, type Block, type Message, type SiteRead, type Tool } from "@/ai/client"
 import type { Brand, Design, Plan, PlanVariation } from "@/ai/design"
 import { mockReply } from "@/ai/mock"
 import { findSkill, SKILLS, skillIndex } from "@/ai/skills"
@@ -239,7 +239,7 @@ export const TOOLS: Tool[] = [
   {
     name: "generate_image",
     description:
-      "Generate one image with Higgsfield (takes 10 to 60 seconds; runs in the background). purpose 'thumbnail' with a variation name sets that variation's thumbnail in the strip; 'canvas' adds it to the design; 'idea' just shows it. Use sparingly.",
+      "Generate one image (Higgsfield; 10 to 60 seconds; runs in the background). purpose 'thumbnail' with a variation name sets that variation's thumbnail in the strip; 'canvas' adds it to the design; 'idea' just shows it. Pass reference_image_ids (the user's product photos, a website's product images) whenever the image shows their product: the model keeps the real product and changes the scene. Use sparingly.",
     input_schema: {
       type: "object",
       properties: {
@@ -247,6 +247,7 @@ export const TOOLS: Tool[] = [
         purpose: { type: "string", enum: ["thumbnail", "canvas", "idea"] },
         variation: { type: "string", description: "Variation name, for thumbnails" },
         aspect_ratio: { type: "string", enum: ["1:1", "4:5", "3:4", "9:16", "16:9"] },
+        reference_image_ids: { type: "array", items: { type: "string" }, description: "Up to 3 project image ids to keep true to (product first, then a model or scene)" },
       },
       required: ["prompt", "purpose"],
     },
@@ -256,6 +257,11 @@ export const TOOLS: Tool[] = [
     description:
       "Read a web page (a product page, a brand's site) through the app's server: returns the title, description, price, products with prices and colours, brand colour, logo, the page's text and its images (kept as project images; the first few attached so you can see them). The user never leaves the app.",
     input_schema: { type: "object", properties: { url: { type: "string", description: "The page's address" } }, required: ["url"] },
+  },
+  {
+    name: "view_image",
+    description: "Look at project images by id (from the project state): generated images, uploads, website images. Use it to check a generated thumbnail before keeping it, or to describe a photo you haven't seen.",
+    input_schema: { type: "object", properties: { image_ids: { type: "array", items: { type: "string" } } }, required: ["image_ids"] },
   },
   {
     name: "use_image",
@@ -471,8 +477,12 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       patch(itemId, { state: "done", url, placed } as Partial<Item>)
     }
     const fail = (e: unknown) => (key && pendingThumbs.current.delete(key), patch(itemId, { state: "failed", error: e instanceof Error ? e.message : "The image failed." } as Partial<Item>))
+    const refIds = ((input.reference_image_ids as string[] | undefined) ?? []).slice(0, 3)
+    const refImages = refIds.map((r) => images.current.find((i) => i.id === r)).filter((i): i is ProjectImage => !!i)
+    // the images to keep, at addresses Higgsfield can open (uploads go to the server first)
+    const refs = () => Promise.all(refImages.map((i) => shareable(i.url).catch(() => null))).then((u) => u.filter((x): x is string => !!x))
     if (live.current)
-      generateImage(prompt, aspect, undefined, (status) => patch(itemId, { status } as Partial<Item>)).then((url) => {
+      refs().then((urls) => generateImage(prompt, aspect, undefined, (status) => patch(itemId, { status } as Partial<Item>), urls)).then((url) => {
         try {
           done(url)
         } catch (e) {
@@ -605,6 +615,22 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           })
           add({ kind: "review", pass: r.pass.length, fail: r.fail })
           return r.fail.length ? `Fix these, then run review_flick again:\n- ${r.fail.join("\n- ")}\n(Passing: ${r.pass.length} checks.)` : `All ${r.pass.length} checks pass.`
+        }
+        case "view_image": {
+          const ids = ((input.image_ids as string[]) ?? []).slice(0, 4)
+          const found = ids.map((x) => images.current.find((i) => i.id === x)).filter((i): i is ProjectImage => !!i)
+          if (!found.length) return "Error: No images with those ids."
+          const blocks: Block[] = []
+          for (const i of found) {
+            try {
+              // generated images live on Higgsfield's servers, which may not share with the browser: the AI server passes them through
+              const blob = await fetch(i.url).then((r) => (r.ok ? r.blob() : Promise.reject()), () => Promise.reject()).catch(() => siteImage(i.url))
+              blocks.push({ type: "text", text: `${i.id}: ${i.name} (${i.from})` }, await imageBlock(blob))
+            } catch {
+              blocks.push({ type: "text", text: `${i.id}: couldn't load this image.` })
+            }
+          }
+          return blocks
         }
         case "read_website":
           return readSite(String(input.url ?? ""))

@@ -22,6 +22,8 @@ export type Slide = {
   feeds?: Record<string, string> // this variation's value for each feed
   /** what the current video was generated from */
   used?: { prompt: string; refs: Reference[]; fromReference: boolean }
+  /** a real video being made by the AI server (the video above is a stand-in until it's ready) */
+  job?: { status: string; since: number }
 }
 /** a slide's name when the user hasn't named it: numbers stay put when others are removed */
 export const slideName = (s: Slide, index: number) =>

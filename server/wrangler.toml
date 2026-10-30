@@ -9,7 +9,16 @@ workers_dev = true
 ALLOWED_ORIGINS = "https://flamdesign.github.io,http://localhost:5173,http://localhost:4173"
 DAILY_IMAGE_CAP = "50"
 DAILY_CHAT_CAP = "500"
+# videos cost the most (about $0.46 a second at 720p): keep this low
+DAILY_VIDEO_CAP = "20"
+# videos: Higgsfield, 720p only
+HF_VIDEO_PATH = "/bytedance/seedance-2.5/text-to-video"
+HF_VIDEO_IMAGE_PATH = "/bytedance/seedance-2.5/image-to-video"
+# images from a prompt alone
 HF_IMAGE_PATH = "/higgsfield-ai/soul/v2/standard"
+# images that keep the user's product (from their photos): the main model, then the fallback
+HF_IMAGE_REF_PATH = "/marketing-studio/image"
+HF_IMAGE_EDIT_PATH = "/alibaba/qwen-image-3/edit"
 
 # logs in the Cloudflare dashboard (Workers > flicks-ai > Logs), for debugging failures
 [observability]

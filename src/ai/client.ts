@@ -1,5 +1,6 @@
 /**
  * Talking to the Flicks AI server (server/worker.ts): Claude chat, streamed, and Higgsfield images.
+ * Images and videos (720p) come from Higgsfield.
  * The server address comes from the build (VITE_AI_URL) or dev tools; the passcode is typed in dev
  * tools and kept only on this device. With no address or passcode, the chat runs its scripted demo.
  */
@@ -85,7 +86,7 @@ async function call(path: string, init?: RequestInit) {
   return res
 }
 
-export type Health = { ok: boolean; claude: boolean; images: boolean; images_key?: "ok" | "invalid" | "missing" | "unknown"; caps: { images: number; chats: number }; used: { images: number; chats: number } }
+export type Health = { ok: boolean; claude: boolean; images: boolean; videos?: boolean; image_model?: string; images_key?: "ok" | "invalid" | "missing" | "unknown"; caps: { images: number; chats: number; videos?: number }; used: { images: number; chats: number; videos?: number } }
 export const health = async () => (await (await call("/health")).json()) as Health
 
 /* ---------- chat ---------- */
@@ -175,8 +176,9 @@ async function steady(path: string, init?: RequestInit) {
   }
 }
 
-export async function generateImage(prompt: string, aspect: string, signal?: AbortSignal, onStatus?: (status: string) => void): Promise<string> {
-  const { id } = (await (await steady("/image", { method: "POST", body: JSON.stringify({ prompt, aspect_ratio: aspect }), signal })).json()) as { id: string }
+/** imageUrls: public addresses of the user's photos or a website's images (see shareable), so the product in the picture is theirs */
+export async function generateImage(prompt: string, aspect: string, signal?: AbortSignal, onStatus?: (status: string) => void, imageUrls: string[] = []): Promise<string> {
+  const { id } = (await (await steady("/image", { method: "POST", body: JSON.stringify({ prompt, aspect_ratio: aspect, image_urls: imageUrls }), signal })).json()) as { id: string }
   onStatus?.("queued")
   const until = Date.now() + 240_000
   let wait = 2000
@@ -192,6 +194,94 @@ export async function generateImage(prompt: string, aspect: string, signal?: Abo
     wait = Math.min(wait * 1.4, 6000)
   }
   throw new AiError("image_timeout", "The image is taking too long. Try again.")
+}
+
+/* ---------- sharing images ---------- */
+
+const shared = new Map<string, Promise<string>>()
+/**
+ * A public address for an image, so Higgsfield can use it: one already on the web stays as it is;
+ * one that only lives in this browser (an upload, a blob) is kept by the server for 7 days.
+ */
+export function shareable(src: string): Promise<string> {
+  if (/^https:\/\//.test(src) && !src.startsWith(location.origin)) return Promise.resolve(src)
+  const known = shared.get(src)
+  if (known) return known
+  const job = (async () => {
+    const blob = await (await fetch(src)).blob()
+    // big photos are scaled down first (the models don't need more than 2048 px)
+    const small = blob.size > 2_500_000 || !/^image\/(png|jpeg|webp)$/.test(blob.type) ? await shrink(blob) : blob
+    const res = await steady("/upload", { method: "POST", body: small, headers: { "content-type": small.type } })
+    return ((await res.json()) as { url: string }).url
+  })()
+  shared.set(src, job)
+  job.catch(() => shared.delete(src))
+  return job
+}
+async function shrink(file: Blob): Promise<Blob> {
+  const bmp = await createImageBitmap(file)
+  const s = Math.min(1, 2048 / Math.max(bmp.width, bmp.height))
+  const c = document.createElement("canvas")
+  c.width = Math.round(bmp.width * s)
+  c.height = Math.round(bmp.height * s)
+  c.getContext("2d")!.drawImage(bmp, 0, 0, c.width, c.height)
+  return new Promise((ok, no) => c.toBlob((b) => (b ? ok(b) : no(new Error("encode"))), "image/jpeg", 0.9))
+}
+
+/* ---------- videos ---------- */
+
+/** "1080×1920" → "9:16": the closest shape the video model makes */
+export function videoAspectOf(size: string) {
+  const [w, h] = size.split("×").map(Number)
+  if (!w || !h) return "16:9"
+  const options: [string, number][] = [["1:1", 1], ["3:4", 0.75], ["9:16", 9 / 16], ["4:3", 4 / 3], ["16:9", 16 / 9], ["21:9", 21 / 9]]
+  return options.reduce((a, b) => (Math.abs(Math.log(b[1] / (w / h))) < Math.abs(Math.log(a[1] / (w / h))) ? b : a))[0]
+}
+
+/** Starts a real video (720p) and waits for it: a few minutes. `image` (a public https address) becomes the first frame. */
+export async function generateVideo(input: { prompt: string; aspect: string; seconds: number; image?: string }, onStatus?: (status: string) => void, signal?: AbortSignal): Promise<{ url: string; poster?: string }> {
+  const { id } = (await (
+    await steady("/video", { method: "POST", body: JSON.stringify({ prompt: input.prompt, aspect_ratio: input.aspect, duration: input.seconds, image_url: input.image }), signal })
+  ).json()) as { id: string }
+  onStatus?.("queued")
+  const until = Date.now() + 15 * 60_000
+  let wait = 5000
+  while (Date.now() < until) {
+    await new Promise((r) => setTimeout(r, wait))
+    if (signal?.aborted) throw new AiError("aborted", "Stopped.")
+    const s = (await (await steady(`/video/${id}`, { signal })).json()) as { status: string; url?: string; poster?: string }
+    onStatus?.(s.status)
+    if (s.status === "completed" && s.url) return { url: s.url, poster: s.poster }
+    if (s.status === "completed") throw new AiError("video_failed", "The video finished but no file came back. Try again.")
+    if (s.status === "failed" || s.status === "canceled") throw new AiError("video_failed", "The video didn't generate. Try again.")
+    if (s.status === "nsfw") throw new AiError("video_blocked", "This video was blocked. Try a different description.")
+    wait = Math.min(wait * 1.3, 15000)
+  }
+  throw new AiError("video_timeout", "The video is taking too long. Try again.")
+}
+
+/** a still from a generated video (through the server, so the browser may read its pixels) */
+export async function posterOf(videoUrl: string): Promise<string | undefined> {
+  try {
+    const blob = await (await steady(`/media?u=${encodeURIComponent(videoUrl)}`)).blob()
+    const src = URL.createObjectURL(blob)
+    const v = document.createElement("video")
+    v.muted = true
+    v.preload = "auto"
+    v.src = src
+    await new Promise<void>((ok, no) => ((v.onloadeddata = () => ok()), (v.onerror = () => no()), setTimeout(no, 20000)))
+    v.currentTime = Math.min(0.5, (v.duration || 1) / 2)
+    await new Promise<void>((ok) => ((v.onseeked = () => ok()), setTimeout(ok, 3000)))
+    const c = document.createElement("canvas")
+    const s = Math.min(1, 720 / Math.max(v.videoWidth, v.videoHeight))
+    c.width = Math.round(v.videoWidth * s)
+    c.height = Math.round(v.videoHeight * s)
+    c.getContext("2d")!.drawImage(v, 0, 0, c.width, c.height)
+    URL.revokeObjectURL(src)
+    return c.toDataURL("image/jpeg", 0.8)
+  } catch {
+    return undefined
+  }
 }
 
 /* ---------- websites ---------- */

@@ -1,6 +1,6 @@
 ---
 name: examples
-description: Strong real Flicks to match in quality (GAP, Diageo, Modelo-style plans).
+description: Strong real Flicks to match in quality (GAP, Diageo).
 when: When writing the plan, to calibrate copy, variations and layout.
 ---
 

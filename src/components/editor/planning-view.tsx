@@ -3,7 +3,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Tick02Icon } from "@hugeicons/core-free-icons"
 import type { Step, useAgent } from "@/ai/agent"
 import type { Design, Field } from "@/ai/design"
-import { AgentComposer, AgentItemView, type AgentCtx } from "@/components/editor/agent-chat"
+import { AgentComposer, AgentItemView, ChoicePointer, isOpenChoice, StageContext, type AgentCtx } from "@/components/editor/agent-chat"
 import { FlickPreview } from "@/components/editor/flick-preview"
 import { cn } from "@/lib/utils"
 
@@ -40,8 +40,9 @@ export function PlanSteps({ step }: { step: Step }) {
 }
 
 /**
- * Before anything is generated: the chat on the left, roomy and centred, and the Flick taking shape
- * on the right as the user answers. No editor tools yet; they arrive with the build.
+ * Before anything is generated: choices on the left (questions, image requests, the plan), the chat
+ * on the right. With nothing to choose, the left shows the Flick taking shape. Below lg, everything
+ * stays in the chat.
  */
 export function PlanningView({
   agent,
@@ -59,6 +60,7 @@ export function PlanningView({
   values: Partial<Record<Field, string>>[]
 }) {
   const list = useRef<HTMLDivElement>(null)
+  const panel = useRef<HTMLDivElement>(null)
   const [active, setActive] = useState(0)
   const planned = names.length > 0 && !!agent.plan
   const shown = Math.min(active, Math.max(0, names.length - 1))
@@ -76,59 +78,102 @@ export function PlanningView({
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
   }, [agent.items.length, last?.kind === "assistant" ? last.text.length : 0])
 
+  const open = agent.items.filter(isOpenChoice)
+  const openKey = open.map((x) => x.id).join()
+  // new choices: back to the top of the panel
+  useEffect(() => panel.current?.scrollTo({ top: 0, behavior: "smooth" }), [openKey])
+  const show = (id: string) => document.getElementById(`choice-${id}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+
   const hasLook = Object.keys(design).length > 0
+  const preview = (big: boolean) => (
+    <div className={cn("flex w-full flex-col gap-3", big ? "max-w-[360px]" : "max-w-[240px]")} onPointerDown={() => setAuto(false)}>
+      <FlickPreview
+        design={hasLook || planned ? { headline: "Your headline", cta: "Shop now", ...design } : { cta: "" }}
+        brand={ctx.brand}
+        ratio={ctx.ratio}
+        posters={ctx.posters}
+        active={shown}
+        values={values[shown]}
+        dim={!planned && !hasLook}
+        className="mx-auto shadow-lg"
+        style={{ width: big ? `min(100%, calc(60vh * ${ctx.ratio}))` : `min(100%, calc(40vh * ${ctx.ratio}))` }}
+      />
+      {names.length > 0 && (
+        <div role="tablist" aria-label="Variations" className="flex flex-wrap justify-center gap-1">
+          {names.map((n, i) => (
+            <button
+              key={i}
+              role="tab"
+              aria-selected={i === shown}
+              onClick={() => (setAuto(false), setActive(i))}
+              className={cn("h-7 rounded-full px-3 text-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring", i === shown ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted")}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      )}
+      <p className="text-center text-xs text-muted-foreground">
+        {planned ? "This is how it will look. Videos generate when you press Generate all." : hasLook ? "Your look. Variations come next." : "Your Flick takes shape here as you answer."}
+      </p>
+    </div>
+  )
+
   return (
     <div className="flex min-h-0 flex-1">
+      {/* choices, or the Flick taking shape */}
+      <section aria-label={open.length ? "Choices" : "Preview"} className="hidden min-w-0 flex-1 bg-[color-mix(in_oklch,var(--muted),var(--foreground)_3%)] lg:flex">
+        {open.length > 0 ? (
+          <>
+            <div ref={panel} className="min-h-0 flex-1 overflow-y-auto">
+              <StageContext.Provider value={true}>
+                <div className="mx-auto flex w-full max-w-[640px] flex-col gap-4 px-6 pb-10 pt-8">
+                  {open.map((it) => (
+                    <div key={it.id} id={`choice-${it.id}`} className="flex scroll-mt-6 flex-col">
+                      <AgentItemView item={it} agent={agent} ctx={ctx} />
+                    </div>
+                  ))}
+                  {open.some((x) => x.kind === "question" && x.display === "chips") && (
+                    <p className="text-center text-xs text-muted-foreground">Press 1 to {Math.min(9, Math.max(...open.map((x) => (x.kind === "question" ? x.options.length : 0))))} to pick, or type your own.</p>
+                  )}
+                </div>
+              </StageContext.Provider>
+            </div>
+            <aside aria-label="Preview" className="hidden w-[300px] shrink-0 flex-col items-center justify-center border-l bg-background p-6 xl:flex">
+              {preview(false)}
+            </aside>
+          </>
+        ) : (
+          <div className="flex flex-1 items-center justify-center p-8">{preview(true)}</div>
+        )}
+      </section>
+
       {/* the conversation */}
-      <section className="flex min-w-0 flex-1 flex-col bg-[color-mix(in_oklch,var(--muted),var(--foreground)_3%)]">
+      <section className="flex min-w-0 flex-1 flex-col border-l bg-background lg:w-[400px] lg:flex-none">
         <div ref={list} className="min-h-0 flex-1 overflow-y-auto">
-          <div className="mx-auto flex w-full max-w-[620px] flex-col gap-5 px-5 pb-6 pt-8">
+          <div className="mx-auto flex w-full max-w-[620px] flex-col gap-5 px-5 pb-6 pt-6">
             {agent.items.map((it) => (
               <div key={it.id} className="flex flex-col">
-                <AgentItemView item={it} agent={agent} ctx={ctx} />
+                {isOpenChoice(it) ? (
+                  <>
+                    <div className="flex flex-col lg:hidden">
+                      <AgentItemView item={it} agent={agent} ctx={ctx} />
+                    </div>
+                    <div className="hidden lg:flex">
+                      <ChoicePointer item={it} onShow={() => show(it.id)} />
+                    </div>
+                  </>
+                ) : (
+                  <AgentItemView item={it} agent={agent} ctx={ctx} />
+                )}
               </div>
             ))}
           </div>
         </div>
         <div className="mx-auto w-full max-w-[620px] px-5 pb-5" data-composer>
-          <AgentComposer agent={agent} placeholder={agent.waiting ? "Pick an answer above, or type your own" : "Tell me more, or ask for a change"} />
+          <AgentComposer agent={agent} placeholder={agent.waiting ? "Pick an answer, or type your own" : "Tell me more, or ask for a change"} />
         </div>
       </section>
-
-      {/* the Flick, taking shape */}
-      <aside aria-label="Preview" className="hidden w-[min(40vw,480px)] shrink-0 flex-col items-center justify-center gap-4 border-l bg-background p-8 lg:flex">
-        <div className="flex w-full max-w-[360px] flex-col gap-3" onPointerDown={() => setAuto(false)}>
-          <FlickPreview
-            design={hasLook || planned ? { headline: "Your headline", cta: "Shop now", ...design } : { cta: "" }}
-            brand={ctx.brand}
-            ratio={ctx.ratio}
-            posters={ctx.posters}
-            active={shown}
-            values={values[shown]}
-            dim={!planned && !hasLook}
-            className="mx-auto shadow-lg"
-            style={{ width: `min(100%, calc(60vh * ${ctx.ratio}))` }}
-          />
-          {names.length > 0 && (
-            <div role="tablist" aria-label="Variations" className="flex flex-wrap justify-center gap-1">
-              {names.map((n, i) => (
-                <button
-                  key={i}
-                  role="tab"
-                  aria-selected={i === shown}
-                  onClick={() => (setAuto(false), setActive(i))}
-                  className={cn("h-7 rounded-full px-3 text-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring", i === shown ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted")}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-          )}
-          <p className="text-center text-xs text-muted-foreground">
-            {planned ? "This is how it will look. Videos generate when you press Generate all." : hasLook ? "Your look. Variations come next." : "Your Flick takes shape here as you answer."}
-          </p>
-        </div>
-      </aside>
     </div>
   )
 }

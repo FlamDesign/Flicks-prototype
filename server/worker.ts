@@ -4,8 +4,13 @@
  *
  *   GET  /health          is the server set up? (and today's usage)
  *   POST /chat            Claude Messages API, streamed back as server-sent events
- *   POST /image           starts a Higgsfield image; returns { id }
+ *   POST /image           starts a Higgsfield image; with image_urls, one that keeps those images (the product); returns { id }
  *   GET  /image/:id       that image's status; { status, url? }
+ *   POST /video           starts a video (Higgsfield, 720p only); returns { id }
+ *   GET  /video/:id       that video's status; { status, url?, poster? }
+ *   POST /upload          keeps an image (the user's photo) and returns a public address for it, so Higgsfield can use it
+ *   GET  /file/:id        an uploaded image (public: the address is unguessable and expires in 7 days)
+ *   GET  /media?u=        a generated video, passed through (Higgsfield's hosts only), for poster frames
  *   POST /read            reads a public web page for the chat: product, prices, images, colours, text
  *   GET  /img?u=          a website's image, passed through (sites often refuse to be shown elsewhere)
  *
@@ -15,7 +20,9 @@
 
 interface KV {
   get(key: string): Promise<string | null>
-  put(key: string, value: string, opts?: { expirationTtl?: number }): Promise<void>
+  get(key: string, type: "arrayBuffer"): Promise<ArrayBuffer | null>
+  getWithMetadata<M>(key: string, type: "arrayBuffer"): Promise<{ value: ArrayBuffer | null; metadata: M | null }>
+  put(key: string, value: string | ArrayBuffer, opts?: { expirationTtl?: number; metadata?: unknown }): Promise<void>
 }
 
 export interface Env {
@@ -29,6 +36,13 @@ export interface Env {
   ALLOWED_ORIGINS?: string
   DAILY_IMAGE_CAP?: string
   DAILY_CHAT_CAP?: string
+  DAILY_VIDEO_CAP?: string
+  /** Higgsfield image models that take images: the main one and the fallback */
+  HF_IMAGE_REF_PATH?: string
+  HF_IMAGE_EDIT_PATH?: string
+  /** Higgsfield video model paths (text-to-video and image-to-video) */
+  HF_VIDEO_PATH?: string
+  HF_VIDEO_IMAGE_PATH?: string
   /** Higgsfield image model path, e.g. /higgsfield-ai/soul/standard */
   HF_IMAGE_PATH?: string
   /** Higgsfield API host, if a key needs a different one */
@@ -39,6 +53,7 @@ export interface Env {
 const MODELS = ["claude-sonnet-5-5", "claude-opus-5-5", "claude-haiku-4-5-20251001"]
 const MAX_TOKENS = 4096
 const ASPECTS = ["1:1", "4:3", "3:4", "3:2", "2:3", "5:4", "4:5", "16:9", "9:16", "21:9"]
+const VIDEO_ASPECTS = ["16:9", "4:3", "1:1", "3:4", "9:16", "21:9"]
 const ANTHROPIC = "https://api.anthropic.com/v1/messages"
 const HIGGSFIELD_DEFAULT = "https://api.higgsfield.ai"
 
@@ -52,12 +67,19 @@ export default {
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors })
 
     try {
+      // images made here: public, so <img> and the video model can load them
+      const file = new URL(req.url).pathname.match(/^\/file\/([\w-]{20,64})$/)
+      if (req.method === "GET" && file) {
+        const got = await env.USAGE?.getWithMetadata<{ type?: string }>(`file:${file[1]}`, "arrayBuffer")
+        if (!got?.value) return json({ error: "not_found" }, 404, cors)
+        return new Response(got.value, { headers: { ...cors, "access-control-allow-origin": "*", "content-type": got.metadata?.type ?? "image/png", "cache-control": "public, max-age=604800, immutable" } })
+      }
       if (!env.PASSCODE) return json({ error: "server_not_set_up", message: "PASSCODE is not set" }, 500, cors)
       if (!same(req.headers.get("x-flicks-pass") ?? "", env.PASSCODE)) return json({ error: "wrong_passcode" }, 401, cors)
 
       const url = new URL(req.url)
       const day = new Date().toISOString().slice(0, 10)
-      const caps = { images: num(env.DAILY_IMAGE_CAP, 50), chats: num(env.DAILY_CHAT_CAP, 500) }
+      const caps = { images: num(env.DAILY_IMAGE_CAP, 50), chats: num(env.DAILY_CHAT_CAP, 500), videos: num(env.DAILY_VIDEO_CAP, 20) }
 
       if (req.method === "GET" && url.pathname === "/health") {
         return json(
@@ -65,11 +87,12 @@ export default {
             ok: true,
             claude: !!env.ANTHROPIC_API_KEY,
             images: hasHf(env),
+            videos: hasHf(env),
             // asks Higgsfield about a request that doesn't exist: 401 means the key is wrong
             images_key: hasHf(env) ? await hfKeyCheck(env) : "missing",
             models: MODELS,
             caps,
-            used: { images: await count(env, `img:${day}`), chats: await count(env, `chat:${day}`) },
+            used: { images: await count(env, `img:${day}`), chats: await count(env, `chat:${day}`), videos: await count(env, `vid:${day}`) },
           },
           200,
           cors,
@@ -100,13 +123,49 @@ export default {
         return new Response(upstream.body, { headers: { ...cors, "content-type": "text/event-stream", "cache-control": "no-store" } })
       }
 
+      if (req.method === "POST" && url.pathname === "/upload") {
+        if (!(await take(env, `up:${day}`, 300))) return json({ error: "daily_limit", what: "uploads" }, 429, cors)
+        const type = (req.headers.get("content-type") ?? "").split(";")[0]
+        if (!/^image\/(png|jpeg|webp|gif)$/.test(type)) return json({ error: "not_an_image" }, 400, cors)
+        const bytes = await req.arrayBuffer()
+        if (bytes.byteLength > 8_000_000) return json({ error: "too_large" }, 413, cors)
+        const id = crypto.randomUUID()
+        await env.USAGE?.put(`file:${id}`, bytes, { expirationTtl: 7 * 86400, metadata: { type } })
+        return json({ url: `${url.origin}/file/${id}` }, 200, cors)
+      }
+
       if (req.method === "POST" && url.pathname === "/image") {
         if (!hasHf(env)) return json({ error: "images_not_set_up" }, 503, cors)
-        const body = (await req.json()) as { prompt?: string; aspect_ratio?: string }
+        const body = (await req.json()) as { prompt?: string; aspect_ratio?: string; image_urls?: string[] }
         const prompt = String(body.prompt ?? "").trim().slice(0, 2000)
         if (!prompt) return json({ error: "no_prompt" }, 400, cors)
         if (!(await take(env, `img:${day}`, caps.images))) return json({ error: "daily_limit", what: "images" }, 429, cors)
         const aspect = ASPECTS.includes(String(body.aspect_ratio)) ? String(body.aspect_ratio) : "1:1"
+        const refs = (body.image_urls ?? []).filter((u) => typeof u === "string" && /^https:\/\//.test(u)).slice(0, 3)
+        // with images: a model that keeps them (the product stays theirs; the prompt says what changes)
+        if (refs.length) {
+          const near = (list: string[]) => (list.includes(aspect) ? aspect : aspect === "4:5" || aspect === "2:3" ? "3:4" : aspect === "5:4" ? "4:3" : "1:1")
+          const tries: [string, Record<string, unknown>][] = [
+            [env.HF_IMAGE_REF_PATH || "/marketing-studio/image", { prompt, image_urls: refs, aspect_ratio: near(["1:1", "3:2", "2:3", "4:3", "3:4", "16:9", "9:16", "21:9"]), resolution: "1k" }],
+            [env.HF_IMAGE_EDIT_PATH || "/alibaba/qwen-image-3/edit", { prompt, image_urls: refs, aspect_ratio: near(["1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", "21:9"]), resolution: "1k" }],
+          ]
+          let lastRef = { status: 0, text: "" }
+          for (const [path, payload] of tries) {
+            const res = await hf(env, hfBase(env) + path, { method: "POST", headers: { "content-type": "application/json", "idempotency-key": crypto.randomUUID() }, body: JSON.stringify(payload) })
+            const text = await res.text()
+            let out: { request_id?: string } = {}
+            try {
+              out = JSON.parse(text)
+            } catch {
+              /* not JSON */
+            }
+            if (res.ok && out.request_id) return json({ id: out.request_id, model: path }, 200, cors)
+            lastRef = { status: res.status, text }
+            console.log("higgsfield reference image failed", path, res.status, text.slice(0, 300))
+            if ([401, 402, 403, 429].includes(res.status)) return json({ error: "image_error", status: res.status, message: hfMessage(res.status, text) }, 502, cors)
+          }
+          return json({ error: "image_error", status: lastRef.status, message: hfMessage(lastRef.status, lastRef.text) }, 502, cors)
+        }
         // the configured model first, then the documented ones; a model that rejects aspect_ratio gets the prompt alone
         const paths = [...new Set([env.HF_IMAGE_PATH, "/higgsfield-ai/soul/v2/standard", "/higgsfield-ai/soul/standard"].filter((p): p is string => !!p))]
         let last = { status: 0, text: "" }
@@ -156,6 +215,60 @@ export default {
       }
 
       const m = url.pathname.match(/^\/image\/([\w-]{8,64})$/)
+
+      if (req.method === "POST" && url.pathname === "/video") {
+        if (!hasHf(env)) return json({ error: "videos_not_set_up" }, 503, cors)
+        const body = (await req.json()) as { prompt?: string; aspect_ratio?: string; duration?: number; image_url?: string }
+        const prompt = String(body.prompt ?? "").trim().slice(0, 2000)
+        if (!prompt) return json({ error: "no_prompt" }, 400, cors)
+        if (!(await take(env, `vid:${day}`, caps.videos))) return json({ error: "daily_limit", what: "videos" }, 429, cors)
+        const aspect = VIDEO_ASPECTS.includes(String(body.aspect_ratio)) ? String(body.aspect_ratio) : "16:9"
+        const duration = Math.max(4, Math.min(15, Math.round(Number(body.duration) || 8)))
+        const image = body.image_url && /^https:\/\//.test(body.image_url) ? body.image_url : undefined
+        // 720p only, no sound: Flicks play muted
+        const payload = { prompt, duration, resolution: "720p", generate_audio: false, ...(image ? { image_url: image } : { aspect_ratio: aspect }) }
+        const path = image ? env.HF_VIDEO_IMAGE_PATH || "/bytedance/seedance-2.5/image-to-video" : env.HF_VIDEO_PATH || "/bytedance/seedance-2.5/text-to-video"
+        const res = await hf(env, hfBase(env) + path, { method: "POST", headers: { "content-type": "application/json", "idempotency-key": crypto.randomUUID() }, body: JSON.stringify(payload) })
+        const text = await res.text()
+        let out: { request_id?: string } = {}
+        try {
+          out = JSON.parse(text)
+        } catch {
+          /* not JSON */
+        }
+        if (res.ok && out.request_id) return json({ id: out.request_id }, 200, cors)
+        console.log("higgsfield video submit failed", path, res.status, text.slice(0, 300))
+        return json({ error: "video_error", status: res.status, message: hfMessage(res.status, text) }, 502, cors)
+      }
+
+      const v = url.pathname.match(/^\/video\/([\w-]{8,64})$/)
+      if (req.method === "GET" && v) {
+        const res = await hf(env, `${hfBase(env)}/requests/${v[1]}/status`)
+        const text = await res.text()
+        if (!res.ok) return json({ error: "video_error", status: res.status, message: hfMessage(res.status, text) }, 502, cors)
+        let out: Record<string, unknown> = {}
+        try {
+          out = JSON.parse(text)
+        } catch {
+          /* not JSON */
+        }
+        const urls = urlsIn(out)
+        const video = urls.find((u) => /\.(mp4|mov|webm)(\?|$)/i.test(u)) ?? urlsIn(out.video)[0]
+        const poster = urls.find((u) => /\.(jpe?g|png|webp)(\?|$)/i.test(u))
+        if (out.status === "completed" && !video) console.log("higgsfield video completed without a url", text.slice(0, 400))
+        return json({ status: out.status ?? "unknown", url: video, poster }, 200, cors)
+      }
+
+      // a generated video passed through, so the app can take a frame from it for the poster
+      if (req.method === "GET" && url.pathname === "/media") {
+        const target = safeUrl(url.searchParams.get("u") ?? undefined)
+        if (!target || !/(^|\.)(higgsfield\.ai|cloudfront\.net|amazonaws\.com|r2\.dev)$/.test(new URL(target).hostname)) return json({ error: "bad_url" }, 400, cors)
+        const res = await fetch(target, { redirect: "follow" })
+        const type = res.headers.get("content-type") ?? ""
+        if (!res.ok || !(type.startsWith("video/") || type === "application/octet-stream")) return json({ error: "not_a_video", status: res.status }, 502, cors)
+        return new Response(res.body, { headers: { ...cors, "content-type": type.startsWith("video/") ? type : "video/mp4", "cache-control": "public, max-age=86400" } })
+      }
+
       if (req.method === "GET" && m) {
         if (!hasHf(env)) return json({ error: "images_not_set_up" }, 503, cors)
         const res = await hf(env, `${hfBase(env)}/requests/${m[1]}/status`)
@@ -170,7 +283,7 @@ export default {
           console.log("higgsfield status failed", res.status, text.slice(0, 300))
           return json({ error: "image_error", status: res.status, message: hfMessage(res.status, text) }, 502, cors)
         }
-        const url = out.images?.[0]?.url ?? out.image?.url ?? out.output?.[0]?.url
+        const url = out.images?.[0]?.url ?? out.image?.url ?? out.output?.[0]?.url ?? urlsIn(out).find((u) => /\.(png|jpe?g|webp)(\?|$)/i.test(u))
         if (out.status === "completed" && !url) console.log("higgsfield completed without an image url", text.slice(0, 300))
         return json({ status: out.status ?? "unknown", url }, 200, cors)
       }
@@ -393,4 +506,13 @@ export async function readSite(target: string) {
     images,
     text,
   }
+}
+
+/** every https address anywhere in a JSON value, in order */
+function urlsIn(v: unknown, out: string[] = []): string[] {
+  if (typeof v === "string") {
+    if (/^https:\/\//.test(v)) out.push(v)
+  } else if (Array.isArray(v)) v.forEach((x) => urlsIn(x, out))
+  else if (v && typeof v === "object") Object.values(v).forEach((x) => urlsIn(x, out))
+  return out
 }

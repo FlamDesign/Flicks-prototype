@@ -38,7 +38,7 @@ import up11 from "@/assets/uploads/dress-rust-tiered.jpg"
 import up12 from "@/assets/uploads/dress-ombre-gown.jpg"
 import { BRAND_VIDEOS, type BrandSet } from "@/templates/brand-assets"
 
-export type SampleVideo = { name: string; set: "sunglasses" | "boots" | "dress" | BrandSet; size: string; mp4: string; webm?: string; poster: string }
+export type SampleVideo = { name: string; set: "sunglasses" | "boots" | "dress" | "made" | BrandSet; size: string; mp4: string; webm?: string; poster: string }
 /**
  * Sample generated videos, in three product sets. The first of each set is its reference video;
  * the rest are its variations. Sunglasses are 9:16 with WebM + MP4; boots and dresses are MP4 only.
@@ -57,6 +57,28 @@ export const GENERATED_VIDEOS: SampleVideo[] = [
   // brand templates' videos come after the samples (see templates/brand-assets.ts)
   ...BRAND_VIDEOS,
 ]
+/**
+ * Real videos made with the AI server join the list (set "made", so samples never pick them) and are
+ * remembered on this device, so a project that uses one still finds it after a reload.
+ */
+const MADE_KEY = "flam.videos"
+try {
+  const saved = JSON.parse(localStorage.getItem(MADE_KEY) ?? "[]") as SampleVideo[]
+  saved.forEach((v) => GENERATED_VIDEOS.push({ ...v, set: "made" }))
+} catch {
+  /* storage unavailable */
+}
+export function addMadeVideo(v: { name: string; size: string; mp4: string; poster: string }) {
+  GENERATED_VIDEOS.push({ ...v, set: "made" })
+  try {
+    localStorage.setItem(MADE_KEY, JSON.stringify(GENERATED_VIDEOS.filter((x) => x.set === "made")))
+  } catch {
+    /* storage full: kept for this visit */
+  }
+  return GENERATED_VIDEOS.length - 1
+}
+export const isMadeVideo = (i?: number) => i !== undefined && GENERATED_VIDEOS[i]?.set === "made"
+
 /** How many of GENERATED_VIDEOS are the generic samples (the rest belong to brand templates). */
 export const SAMPLE_VIDEO_COUNT = 10
 /** Each new generation from the home box starts the next set: sunglasses, boots, dresses. */

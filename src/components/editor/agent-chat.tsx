@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react"
+import { createContext, useContext, useEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Add01Icon, Alert02Icon, ArrowDown01Icon, BookOpen01Icon, CheckmarkBadge01Icon, Globe02Icon, ArrowUp02Icon, ImageAdd01Icon, Loading03Icon, PaintBoardIcon, RefreshIcon, SparklesIcon, StopIcon, Tick02Icon, Cancel01Icon } from "@hugeicons/core-free-icons"
+import { Add01Icon, Alert02Icon, ArrowDown01Icon, BookOpen01Icon, CheckmarkBadge01Icon, Globe02Icon, ArrowUp02Icon, ImageAdd01Icon, Loading03Icon, PencilEdit01Icon, LeftToRightListNumberIcon, PaintBoardIcon, RefreshIcon, SparklesIcon, StopIcon, Tick02Icon, Cancel01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -23,6 +23,24 @@ export type AgentCtx = {
   brand?: Brand
   /** the build's steps, read live */
   progress: () => { label: string; state: "done" | "working" | "waiting" }[]
+}
+
+/** true inside the choices panel (planning, beside the chat): cards get room, options become numbered rows */
+export const StageContext = createContext(false)
+/** cards still waiting for the user: unanswered questions, image requests, a plan to approve */
+export const isOpenChoice = (it: Item) => (it.kind === "question" && it.answer === undefined) || (it.kind === "assets" && !it.done) || (it.kind === "plan" && it.state === "open")
+
+/** in the chat, where a choice opened in the panel: one line that points to it */
+export function ChoicePointer({ item, onShow }: { item: Item; onShow: () => void }) {
+  const what = item.kind === "question" ? item.question : item.kind === "assets" ? item.message : item.kind === "plan" ? item.plan.title : ""
+  return (
+    <button type="button" onClick={onShow} className="flex items-start gap-2 rounded-lg px-1 text-left text-xs text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+      <HugeiconsIcon icon={LeftToRightListNumberIcon} className="mt-px size-3.5 shrink-0" />
+      <span>
+        {item.kind === "plan" ? "Opened the plan" : item.kind === "assets" ? "Asked for images" : "Opened a choice"}: <span className="text-foreground">{what}</span>
+      </span>
+    </button>
+  )
 }
 
 const FIELD_LABEL = { label: "Label", headline: "Headline", subheading: "Subheading", cta: "Button" } as const
@@ -133,13 +151,33 @@ function Said({ text, streaming }: { text: string; streaming?: boolean }) {
   )
 }
 
-const Card = ({ children, className }: { children: React.ReactNode; className?: string }) => (
-  <div className={cn("mr-2 flex flex-col gap-3 rounded-2xl bg-background p-3 shadow-xs ring-1 ring-foreground/10", className)}>{children}</div>
-)
+function Card({ children, className }: { children: React.ReactNode; className?: string }) {
+  const stage = useContext(StageContext)
+  return <div className={cn("mr-2 flex flex-col gap-3 rounded-2xl bg-background p-3 shadow-xs ring-1 ring-foreground/10", className, stage && "mr-0 gap-4 p-5")}>{children}</div>
+}
 
 function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question" }>; agent: Agent; ctx: AgentCtx }) {
   const [picked, setPicked] = useState<string[]>([])
   const [other, setOther] = useState("")
+  const stage = useContext(StageContext)
+  const rows = stage && item.display === "chips"
+  const open = item.answer === undefined
+  // in the panel, number keys pick (the first open question only)
+  const self = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!rows || !open) return
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement
+      if (e.metaKey || e.ctrlKey || e.altKey || t.closest("input, textarea, [contenteditable]")) return
+      const first = document.querySelector("[data-open-question]")
+      if (first !== self.current) return
+      const n = Number(e.key)
+      if (n >= 1 && n <= item.options.length) (e.preventDefault(), pickRef.current(item.options[n - 1]))
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [rows, open, item.options])
+  const pickRef = useRef((_: Choice) => {})
   // answered: just the question and the answer, nothing left to press
   if (item.answer !== undefined)
     return (
@@ -152,11 +190,65 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
       </div>
     )
   const pick = (o: Choice) => (item.multi ? setPicked((p) => (p.includes(o.label) ? p.filter((x) => x !== o.label) : [...p, o.label])) : agent.answer(item.id, o.label, o))
+  pickRef.current = pick
   const visual = item.display === "layouts" || item.display === "thumbnails"
+  const send = () => agent.answer(item.id, [...picked, ...(other.trim() ? [other.trim()] : [])].join(", "))
   return (
-    <Card className="animate-in fade-in-0 slide-in-from-bottom-1 duration-300">
-      <p className="text-sm font-medium">{item.question}</p>
-      {item.display === "chips" ? (
+    <div ref={self} data-open-question={rows ? "" : undefined} className="flex flex-col">
+    <Card className={cn("animate-in fade-in-0 slide-in-from-bottom-1 duration-300", rows && "gap-2 px-2 pb-2")}>
+      <p className={cn("text-sm font-medium", stage && "text-base", rows && "px-3")}>
+        {item.question}
+        {rows && item.multi && <span className="ml-2 text-xs font-normal text-muted-foreground">Pick any</span>}
+      </p>
+      {rows ? (
+        <div className="flex flex-col" role={item.multi ? "group" : "radiogroup"} aria-label={item.question}>
+          {item.options.map((o, i) => {
+            const on = picked.includes(o.label)
+            return (
+              <button
+                key={o.label}
+                type="button"
+                role={item.multi ? "checkbox" : "radio"}
+                aria-checked={on}
+                disabled={agent.busy}
+                onClick={() => pick(o)}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm outline-none transition-colors hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60",
+                  on && "bg-primary/8 text-primary hover:bg-primary/10",
+                )}
+              >
+                <span className={cn("grid size-6 shrink-0 place-items-center rounded-md bg-muted text-xs font-medium tabular-nums text-muted-foreground", on && "bg-primary text-primary-foreground")}>
+                  {on ? <HugeiconsIcon icon={Tick02Icon} className="size-3.5" strokeWidth={2.5} /> : i + 1}
+                </span>
+                <span className="flex flex-col">
+                  {o.label}
+                  {o.description && <span className="text-xs text-muted-foreground">{o.description}</span>}
+                </span>
+              </button>
+            )
+          })}
+          {item.custom && (
+            <label className="flex items-center gap-3 rounded-lg px-3 py-1.5 transition-colors focus-within:bg-muted/50 hover:bg-muted/50">
+              <span className="grid size-6 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground">
+                <HugeiconsIcon icon={PencilEdit01Icon} className="size-3.5" />
+              </span>
+              <input
+                value={other}
+                onChange={(e) => setOther(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && other.trim() && send()}
+                placeholder="Something else…"
+                aria-label="Your own answer"
+                className="h-8 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              />
+            </label>
+          )}
+          {(item.multi ? picked.length > 0 || other.trim() : other.trim()) && (
+            <Button size="sm" onClick={send} disabled={agent.busy} className="mx-3 mt-2 self-end">
+              Continue
+            </Button>
+          )}
+        </div>
+      ) : item.display === "chips" ? (
         <div className="flex flex-wrap gap-1.5" role={item.multi ? "group" : "radiogroup"} aria-label={item.question}>
           {item.options.map((o) => (
             <Button
@@ -208,7 +300,7 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
           ))}
         </div>
       )}
-      {(item.custom || item.multi) && (
+      {!rows && (item.custom || item.multi) && (
         <div className="flex gap-2">
           {item.custom && (
             <Input
@@ -228,6 +320,7 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
         </div>
       )}
     </Card>
+    </div>
   )
 }
 

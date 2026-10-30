@@ -31,10 +31,10 @@ import { CanvasStage } from "@/components/editor/canvas-stage"
 import { ElementToolbar, ToolbarGrip } from "@/components/editor/element-toolbar"
 import { useAgent, type EditorApi, type ElementSpec } from "@/ai/agent"
 import { boxOf, buildDesign, color as colorOf, contrast, describeDesign, elementFor, fontName, freeY, headlineLimit, feedOfField, FIELD_FEED, FIELDS, patchDesign, restack, type Brand, type Field } from "@/ai/design"
-import { isLive, useAiConfig } from "@/ai/client"
+import { generateVideo, isLive, posterOf, useAiConfig, videoAspectOf } from "@/ai/client"
 import { AgentComposer, AgentItemView, type AgentCtx } from "@/components/editor/agent-chat"
 import { PlanningView, PlanSteps } from "@/components/editor/planning-view"
-import { BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, defaultFill, defaultInk, GENERATED_VIDEOS, SAMPLE_UPLOADS, inSet, clampStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload } from "@/components/editor/elements"
+import { addMadeVideo, isMadeVideo, BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, defaultFill, defaultInk, GENERATED_VIDEOS, SAMPLE_UPLOADS, inSet, clampStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload } from "@/components/editor/elements"
 
 export type Generation = {
   id: string
@@ -235,7 +235,7 @@ export function GenerationCanvas({
     setTimeout(() => setFocusFeed((f) => ({ id, n: (f?.n ?? 0) + 1 })), 30)
   }
   const now = useClock(slides.map((s) => (s.startedAt ? s.startedAt + ms : 0)))
-  const status = (s: Slide): SlideStatus => (!s.startedAt ? "empty" : now >= s.startedAt + ms ? "done" : "generating")
+  const status = (s: Slide): SlideStatus => (!s.startedAt ? "empty" : s.job ? "generating" : now >= s.startedAt + ms ? "done" : "generating")
   const activeSlide = slides.find((s) => s.id === active) ?? slides[0]
   const activeStatus = status(activeSlide)
   const done = activeStatus === "done"
@@ -542,6 +542,7 @@ export function GenerationCanvas({
   const agentMode = !!generation.agent
   const [brand, setBrand] = useState<Brand | undefined>()
   // tools can run before React re-renders: they read the latest slides from here
+  const liveRef = useRef(false)
   const slidesNow = useRef(slides)
   slidesNow.current = slides
   const findSlide = (target: string) => {
@@ -795,7 +796,7 @@ export function GenerationCanvas({
       setSelected([])
       if (plan.title?.trim()) setTitle(plan.title.trim())
       const per = made.map((f) => f.name)
-      return withIssues(`Generating the reference video and ${vs.length} variations (${cost.toLocaleString()} credits); they take about ${dev.generationSeconds * 2} seconds. The design is on the canvas${per.length ? `, with ${per.join(", ")} set per variation (feeds)` : ""}. Thumbnails are empty until set.`)
+      return withIssues(`Generating the reference video and ${vs.length} variations (${cost.toLocaleString()} credits); they take ${liveRef.current ? "a few minutes (real videos, made in parallel)" : `about ${dev.generationSeconds * 2} seconds`}. The design is on the canvas${per.length ? `, with ${per.join(", ")} set per variation (feeds)` : ""}. Thumbnails are empty until set.`)
     },
     updateDesign(d) {
       if (!slidesNow.current[0].startedAt) return "Error: Approve the plan first."
@@ -1076,6 +1077,40 @@ export function GenerationCanvas({
   }
   const agent = useAgent(agentApi, { prompt: agentMode ? generation.prompt : undefined, imageUrls: agentMode ? (generation.refs ?? []).filter((r) => !r.failed).map((r) => ({ url: r.url, name: r.name })) : [], autoStart: agentMode })
   const live = isLive(useAiConfig())
+  liveRef.current = live
+  // real videos: with the AI server connected, every video started here is made for real (720p).
+  // The slide keeps a stand-in video until it's ready; a failure refunds and leaves it empty.
+  const jobs = useRef(new Set<string>())
+  useEffect(() => {
+    if (!live) return
+    for (const sl of slides) {
+      if (!sl.startedAt || sl.startedAt <= 1 || sl.job || isMadeVideo(sl.video) || !sl.used?.prompt) continue
+      const key = `${sl.id}:${sl.startedAt}`
+      if (jobs.current.has(key)) continue
+      jobs.current.add(key)
+      const ref = slidesNow.current[0].used?.prompt
+      const prompt = sl.id !== "main" && sl.used.fromReference && ref ? `${ref}\nThis version: ${sl.used.prompt}` : sl.used.prompt
+      const mine = (x: Slide) => x.id === sl.id && x.startedAt === sl.startedAt
+      const patchJob = (p: Partial<Slide>) => commitSlides(slidesNow.current.map((x) => (mine(x) ? { ...x, ...p } : x)))
+      patchJob({ job: { status: "starting", since: Date.now() } })
+      generateVideo({ prompt, aspect: videoAspectOf(generation.size), seconds: generation.duration ?? 8 }, (status) =>
+        commitSlides(slidesNow.current.map((x) => (mine(x) && x.job ? { ...x, job: { ...x.job, status } } : x))),
+      ).then(
+        async ({ url, poster }) => {
+          const still = poster ?? (await posterOf(url)) ?? GENERATED_VIDEOS[sl.video ?? generation.video ?? 0].poster
+          const video = addMadeVideo({ name: `${slideName(sl, slidesNow.current.indexOf(sl))}-${sl.startedAt}`, size: generation.size, mp4: url, poster: still })
+          patchJob({ video, job: undefined })
+        },
+        (e) => {
+          if (!slidesNow.current.some(mine)) return
+          setDev((d) => ({ credits: d.credits + VIDEO_COST }))
+          patchJob({ job: undefined, startedAt: undefined, video: undefined, prompt: sl.used?.prompt, used: undefined })
+          toast({ title: `${slideName(sl, slidesNow.current.findIndex(mine))} didn’t generate`, description: `${e instanceof Error ? e.message : "The video failed."} Credits refunded.` })
+        },
+      )
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live, slides])
   // the composer in chat mode: talk to the chat, or write a video's prompt yourself
   const [composeMode, setComposeMode] = useState<"chat" | "prompt">("chat")
   const chatting = agentMode && (composeMode === "chat" || !slides[0].startedAt)
@@ -1606,7 +1641,7 @@ export function GenerationCanvas({
                   {/* status just above the frame's top-right corner, off the design */}
                   <div className="pointer-events-none absolute bottom-full right-0 z-30 mb-2 flex whitespace-nowrap items-center gap-1.5 rounded-full bg-background/85 py-1 pl-2 pr-2.5 text-xs font-medium shadow-sm ring-1 ring-foreground/10 backdrop-blur-md">
                     <HugeiconsIcon icon={Loading03Icon} className="size-3.5 animate-spin text-primary" />
-                    Generating
+                    {activeSlide.job ? (activeSlide.job.status === "queued" ? "Queued · a few minutes" : "Generating · a few minutes") : "Generating"}
                   </div>
                 </>
               )}
