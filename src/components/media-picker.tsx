@@ -3,17 +3,15 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { CloudUploadIcon, PauseIcon, PlayIcon, Scissor01Icon, Search01Icon, Tick02Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/components/ui-extra/toaster"
 import { GENERATED_VIDEOS, SAMPLE_UPLOADS, SAMPLE_VIDEO_COUNT } from "@/components/editor/elements"
 import { SAMPLE_ASSETS } from "@/components/assets-page"
 import { isLive, library, type LibraryItem } from "@/ai/client"
-import { MAX_REF_SECONDS, MAX_VIDEO_MB, clock, cutClip, isVideoFile, probeVideo, sessionUploads, stillsAt, useSessionUploads, type MediaItem, type PickedMedia } from "@/lib/media"
+import { MAX_REF_SECONDS, MAX_VIDEO_MB, clock, cutClip, length, isVideoFile, probeVideo, sessionUploads, stillsAt, useSessionUploads, type MediaItem, type PickedMedia } from "@/lib/media"
 import { cn } from "@/lib/utils"
 
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"]
@@ -112,8 +110,7 @@ export function useMediaAdd(onAdd: (items: PickedMedia[]) => void, opts: { proje
   return { openPicker: () => setOpen(true), addFiles: (f: Iterable<File> | ArrayLike<File>) => void intake(f), ui }
 }
 
-type Source = "all" | "upload" | "generated"
-type Type = "all" | "image" | "video"
+type Tab = "all" | "image" | "video" | "generated" | "upload"
 
 /** The media picker: everything uploaded or made, to pick references from. */
 export function MediaPicker({
@@ -134,10 +131,7 @@ export function MediaPicker({
   const session = useSessionUploads()
   const [server, setServer] = useState<MediaItem[] | null>(null)
   const [failed, setFailed] = useState(false)
-  const [source, setSource] = useState<Source>("all")
-  const [type, setType] = useState<Type>("all")
-  const [scope, setScope] = useState<string>("all")
-  const [sort, setSort] = useState<"new" | "old">("new")
+  const [tab, setTab] = useState<Tab>("all")
   const [q, setQ] = useState("")
   const [picked, setPicked] = useState<string[]>([])
   const [over, setOver] = useState(false)
@@ -162,14 +156,11 @@ export function MediaPicker({
     const list = [...session, ...(server ?? []), ...(live ? [] : SAMPLES)].filter((x) => !seen.has(x.url) && seen.add(x.url))
     return list.map((x) => (durations[x.id] && !x.duration ? { ...x, duration: durations[x.id] } : x))
   }, [session, server, live, durations])
-  const projects = useMemo(() => [...new Set(all.map((x) => x.project).filter((p): p is string => !!p))].sort(), [all])
   const words = q.toLowerCase().split(/\s+/).filter(Boolean)
   const shown = all
-    .filter((x) => source === "all" || x.source === source)
-    .filter((x) => type === "all" || x.kind === type)
-    .filter((x) => scope === "all" || (scope === "this" ? x.project === project : x.project === scope))
+    .filter((x) => tab === "all" || x.kind === tab || x.source === tab)
     .filter((x) => words.every((w) => `${x.name} ${x.prompt ?? ""} ${x.project ?? ""}`.toLowerCase().includes(w)))
-    .sort((a, b) => (sort === "new" ? b.created - a.created : a.created - b.created))
+    .sort((a, b) => b.created - a.created)
   const toggle = (id: string) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))
   const upload = async (files: FileList | File[]) => {
     const items = await onUpload([...files])
@@ -189,52 +180,19 @@ export function MediaPicker({
           <DialogTitle>Add photos and videos</DialogTitle>
           <DialogDescription className="sr-only">Pick from your uploads and generated work, or upload new files. Videos over {MAX_REF_SECONDS} seconds are trimmed first.</DialogDescription>
           <div className="flex flex-wrap items-center gap-2">
-            <Tabs value={source} onValueChange={(v) => setSource(v as Source)}>
-              <TabsList>
-                <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="upload">Uploads</TabsTrigger>
-                <TabsTrigger value="generated">Generated</TabsTrigger>
-              </TabsList>
-            </Tabs>
-            <div className="relative min-w-40 flex-1">
+            <div className="relative min-w-48 flex-1 sm:max-w-72">
               <HugeiconsIcon icon={Search01Icon} className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search names, prompts, projects" aria-label="Search media" className="pl-8" />
             </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Select value={type} onValueChange={(v) => setType(v as Type)}>
-              <SelectTrigger size="sm" aria-label="Type" className="w-44">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Photos and videos</SelectItem>
-                <SelectItem value="image">Photos</SelectItem>
-                <SelectItem value="video">Videos</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={scope} onValueChange={setScope}>
-              <SelectTrigger size="sm" aria-label="Project" className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All projects</SelectItem>
-                {project && <SelectItem value="this">This project</SelectItem>}
-                {projects.filter((p) => p !== project).map((p) => (
-                  <SelectItem key={p} value={p}>
-                    {p}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={sort} onValueChange={(v) => setSort(v as "new" | "old")}>
-              <SelectTrigger size="sm" aria-label="Sort" className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="new">Newest first</SelectItem>
-                <SelectItem value="old">Oldest first</SelectItem>
-              </SelectContent>
-            </Select>
+            <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
+              <TabsList>
+                <TabsTrigger value="all">All</TabsTrigger>
+                <TabsTrigger value="image">Images</TabsTrigger>
+                <TabsTrigger value="video">Videos</TabsTrigger>
+                <TabsTrigger value="generated">Generated</TabsTrigger>
+                <TabsTrigger value="upload">Uploaded</TabsTrigger>
+              </TabsList>
+            </Tabs>
             <span className="ml-auto text-xs text-muted-foreground tabular-nums">{loading ? "Loading…" : `${shown.length} item${shown.length === 1 ? "" : "s"}`}</span>
           </div>
         </DialogHeader>
@@ -311,7 +269,7 @@ function Tile({ x, on, onToggle, onInfo, onDuration }: { x: MediaItem; on: boole
         {x.kind === "video" && (
           <span className="absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[11px] font-medium text-white tabular-nums backdrop-blur-sm">
             <HugeiconsIcon icon={long ? Scissor01Icon : PlayIcon} className="size-3" />
-            {x.duration !== undefined ? clock(x.duration).replace(/\.\d$/, "") : "Video"}
+            {x.duration !== undefined ? length(x.duration) : "Video"}
           </span>
         )}
         <span className={cn("absolute right-1.5 top-1.5 grid size-5 place-items-center rounded-full border-2 border-white/90 shadow-sm transition-opacity", on ? "bg-primary text-primary-foreground opacity-100" : "bg-black/20 opacity-0 group-hover/tile:opacity-100")}>
@@ -368,7 +326,6 @@ export function VideoTrimmer({ item, onDone }: { item: MediaItem | null; onDone:
   const [range, setRange] = useState<[number, number]>([0, MAX_REF_SECONDS])
   const [strip, setStrip] = useState<string[]>([])
   const [playing, setPlaying] = useState(false)
-  const [cutting, setCutting] = useState<number | null>(null)
   const [error, setError] = useState("")
   const video = useRef<HTMLVideoElement>(null)
   const track = useRef<HTMLDivElement>(null)
@@ -378,7 +335,6 @@ export function VideoTrimmer({ item, onDone }: { item: MediaItem | null; onDone:
     if (!item) return
     setStrip([])
     setError("")
-    setCutting(null)
     setPlaying(false)
     let gone = false
     probeVideo(item.url)
@@ -442,28 +398,26 @@ export function VideoTrimmer({ item, onDone }: { item: MediaItem | null; onDone:
       setPlaying(true)
     } else (v.pause(), setPlaying(false))
   }
+  /** adds the clip straight away; it's cut in the background and shows as uploading till it's ready */
   const use = async () => {
     if (!item) return
     video.current?.pause()
     setPlaying(false)
-    setCutting(0)
-    try {
-      const file = await cutClip(item.url, item.name, range[0], range[1], setCutting)
-      const url = URL.createObjectURL(file)
-      onDone({ ...item, id: crypto.randomUUID(), name: file.name, url, file, duration: len, trim: { start: range[0], end: range[1] }, poster: strip[0] ?? item.poster })
-    } catch {
-      setCutting(null)
-      setError("Couldn’t make the clip. Try again, or use a shorter video.")
-    }
+    const [start, end] = range
+    const poster = await stillsAt(item.url, [start + 0.05], 480)
+      .then((b) => URL.createObjectURL(b[0]))
+      .catch(() => item.poster)
+    const clip = cutClip(item.url, item.name, start, end)
+    onDone({ ...item, id: crypto.randomUUID(), name: item.name.replace(/\.[^.]+$/, "") + "-clip", duration: end - start, trim: { start, end }, poster, file: undefined, clip })
   }
 
   return (
-    <Dialog open={!!item} onOpenChange={(v) => !v && cutting === null && onDone(null)}>
-      <DialogContent className="sm:max-w-2xl" showCloseButton={cutting === null}>
+    <Dialog open={!!item} onOpenChange={(v) => !v && onDone(null)}>
+      <DialogContent className="sm:max-w-2xl" >
         <DialogHeader>
           <DialogTitle>Trim your video</DialogTitle>
           <DialogDescription>
-            Pick up to {MAX_REF_SECONDS} seconds to use as a reference. {item?.duration ? `This one is ${clock(item.duration).replace(/\.\d$/, "")}.` : ""}
+            Pick up to {MAX_REF_SECONDS} seconds to use as a reference. {item?.duration ? `This one is ${length(item.duration)}.` : ""}
           </DialogDescription>
         </DialogHeader>
         {item && (
@@ -514,22 +468,16 @@ export function VideoTrimmer({ item, onDone }: { item: MediaItem | null; onDone:
                 {len.toFixed(1)}s of {MAX_REF_SECONDS}s
               </span>
             </div>
-            {cutting !== null && (
-              <div className="grid gap-1.5">
-                <Progress value={cutting * 100} aria-label="Making the clip" />
-                <p className="text-xs text-muted-foreground">Making the clip… it takes as long as the clip plays.</p>
-              </div>
-            )}
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
         )}
         <DialogFooter>
-          <Button variant="outline" disabled={cutting !== null} onClick={() => onDone(null)}>
+          <Button variant="outline" onClick={() => onDone(null)}>
             Skip this video
           </Button>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button disabled={!dur || cutting !== null || !!error} onClick={use}>
+              <Button disabled={!dur || !!error} onClick={use}>
                 <HugeiconsIcon icon={Scissor01Icon} className="size-4" />
                 Use clip
               </Button>

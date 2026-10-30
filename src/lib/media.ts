@@ -25,8 +25,11 @@ export type MediaItem = {
   file?: File
 }
 
-/** What the picker hands back. A trimmed video comes with its clip as file. */
-export type PickedMedia = MediaItem & { trim?: { start: number; end: number } }
+/**
+ * What the picker hands back. A trimmed video is added straight away: `clip` resolves to the cut
+ * file once it's made (in the background), and the prompt box shows it as uploading till then.
+ */
+export type PickedMedia = MediaItem & { trim?: { start: number; end: number }; clip?: Promise<File> }
 
 // this session's uploads, newest first (with the AI server on, they're also in its library)
 let local: MediaItem[] = []
@@ -130,9 +133,19 @@ export async function cutClip(url: string, name: string, start: number, end: num
 
 /** A picked item as a file (fetched when it isn't one already). */
 export async function asFile(m: PickedMedia): Promise<File> {
+  if (m.clip) return m.clip
   if (m.file) return m.file
   const blob = await (await fetch(m.url)).blob()
   return new File([blob], m.name, { type: blob.type || (m.kind === "video" ? "video/mp4" : "image/jpeg") })
 }
 
-export const clock = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, "0")}`
+/** 1:05.3 (to a tenth; rounded first, so 119.97 s reads 2:00.0, not 1:60.0) */
+export const clock = (s: number) => {
+  const t = Math.round(s * 10)
+  return `${Math.floor(t / 600)}:${((t % 600) / 10).toFixed(1).padStart(4, "0")}`
+}
+/** 2:00 (whole seconds, for lengths on thumbnails) */
+export const length = (s: number) => {
+  const t = Math.round(s)
+  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`
+}

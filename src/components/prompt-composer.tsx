@@ -313,12 +313,26 @@ export function useReferenceUploads(setRefs: (fn: (r: Reference[]) => Reference[
     setRefs((r) => r.map((x) => (ids.includes(x.id) ? { ...x, loading: true, failed: false } : x)))
     uploads.run(items, settle, retry)
   }
-  /** picked photos and videos: new files upload (shimmer, then the thumbnail); library items are ready */
+  /**
+   * Picked photos and videos go in at once. New files upload (shimmer, then the thumbnail); a trimmed
+   * clip shows as uploading while it's cut, then uploads; library items are ready.
+   */
   const addPicked = (items: PickedMedia[]) => {
     if (!items.length) return
-    const refs: Reference[] = items.map((m) => ({ id: crypto.randomUUID(), name: m.name, url: m.url, media: m.kind, poster: m.poster, duration: m.duration, loading: !!m.file }))
+    const refs: Reference[] = items.map((m) => ({ id: crypto.randomUUID(), name: m.name, url: m.url, media: m.kind, poster: m.poster, duration: m.duration, loading: !!m.file || !!m.clip }))
     setRefs((r) => [...r, ...refs])
-    uploads.run(refs.filter((r) => r.loading).map((r) => ({ id: r.id, name: r.name })), settle, retry)
+    uploads.run(refs.filter((r, i) => r.loading && !items[i].clip).map((r) => ({ id: r.id, name: r.name })), settle, retry)
+    items.forEach((m, i) => {
+      if (!m.clip) return
+      const r = refs[i]
+      m.clip.then(
+        (file) => {
+          setRefs((list) => list.map((x) => (x.id === r.id ? { ...x, url: URL.createObjectURL(file), name: file.name } : x)))
+          uploads.run([{ id: r.id, name: file.name }], settle, retry)
+        },
+        () => settle(r.id, false),
+      )
+    })
   }
   return { addPicked, retry }
 }

@@ -354,7 +354,18 @@ function Assets({ item, agent, bare }: { item: Extract<Item, { kind: "assets" }>
   const [over, setOver] = useState(false)
   const previews = useRef(new Map<File, string>())
   const url = (f: File) => previews.current.get(f) ?? (previews.current.set(f, URL.createObjectURL(f)), previews.current.get(f)!)
-  const media = useMediaAdd((items) => void Promise.all(items.map(asFile)).then((f) => setFiles((x) => [...x, ...f].slice(0, 8))))
+  // added at once; a trimmed clip shows as preparing while it's cut, then joins the files
+  const [preparing, setPreparing] = useState<{ key: string; poster?: string; name: string }[]>([])
+  const media = useMediaAdd((items) =>
+    items.forEach((m) => {
+      const key = crypto.randomUUID()
+      if (m.clip) setPreparing((p) => [...p, { key, poster: m.poster, name: m.name }])
+      asFile(m)
+        .then((f) => setFiles((x) => [...x, f].slice(0, 8)))
+        .catch(() => {})
+        .finally(() => setPreparing((p) => p.filter((x) => x.key !== key)))
+    }),
+  )
   const addFiles = (list: FileList | File[]) => media.addFiles(list)
   if (item.done)
     return (
@@ -387,9 +398,10 @@ function Assets({ item, agent, bare }: { item: Extract<Item, { kind: "assets" }>
           over && "border-primary bg-primary/5",
         )}
       >
-        {files.length ? (
+        {files.length || preparing.length ? (
           <>
             {files.map((f) => <FileThumb key={url(f)} file={f} url={url(f)} className="size-14" />)}
+            {preparing.map((p) => <Preparing key={p.key} poster={p.poster} name={p.name} className="size-14" />)}
             <span className="grid size-14 place-items-center rounded-lg border border-dashed border-foreground/20">
               <HugeiconsIcon icon={Add01Icon} className="size-4" />
             </span>
@@ -406,13 +418,23 @@ function Assets({ item, agent, bare }: { item: Extract<Item, { kind: "assets" }>
         <Button size="sm" variant="ghost" disabled={agent.busy} onClick={() => agent.addAssets(item.id, [])}>
           Skip
         </Button>
-        <Button size="sm" disabled={agent.busy || !files.length} onClick={() => agent.addAssets(item.id, files)}>
+        <Button size="sm" disabled={agent.busy || !files.length || preparing.length > 0} onClick={() => agent.addAssets(item.id, files)}>
           Add{files.length > 0 ? ` ${files.length}` : ""}
         </Button>
       </div>
     </>
   )
   return bare ? <div className="flex flex-col gap-3 px-4 pb-3">{body}</div> : <Card>{body}</Card>
+}
+
+/** A trimmed clip still being cut: its first frame under a shimmer. */
+function Preparing({ poster, name, className }: { poster?: string; name: string; className?: string }) {
+  return (
+    <span className={cn("relative block shrink-0 overflow-hidden rounded-lg ring-1 ring-foreground/10", className)} aria-label={`Preparing ${name}`} title="Preparing the clip…">
+      {poster && <img src={poster} alt="" className="size-full object-cover opacity-60" />}
+      <span className="shimmer absolute inset-0" />
+    </span>
+  )
 }
 
 /** A photo, or a video's first frame with a play mark, for files waiting to be sent. */
@@ -699,9 +721,20 @@ export function AgentComposer({ agent, placeholder }: { agent: Agent; placeholde
   const [files, setFiles] = useState<File[]>([])
   const urls = useRef(new Map<File, string>())
   const url = (f: File) => urls.current.get(f) ?? (urls.current.set(f, URL.createObjectURL(f)), urls.current.get(f)!)
-  const can = (text.trim() || files.length) && !agent.busy
   // photos and videos: picked from uploads and generated work, or dropped or pasted (long videos trimmed first)
-  const media = useMediaAdd((items) => void Promise.all(items.map(asFile)).then((f) => setFiles((x) => [...x, ...f].slice(0, 8))))
+  // added at once; a trimmed clip shows as preparing while it's cut, then joins the files
+  const [preparing, setPreparing] = useState<{ key: string; poster?: string; name: string }[]>([])
+  const media = useMediaAdd((items) =>
+    items.forEach((m) => {
+      const key = crypto.randomUUID()
+      if (m.clip) setPreparing((p) => [...p, { key, poster: m.poster, name: m.name }])
+      asFile(m)
+        .then((f) => setFiles((x) => [...x, f].slice(0, 8)))
+        .catch(() => {})
+        .finally(() => setPreparing((p) => p.filter((x) => x.key !== key)))
+    }),
+  )
+  const can = (text.trim() || files.length) && !agent.busy && !preparing.length
   const send = () => {
     if (!can) return
     agent.send(text.trim(), files)
@@ -715,8 +748,9 @@ export function AgentComposer({ agent, placeholder }: { agent: Agent; placeholde
       onDrop={(e) => (e.preventDefault(), media.addFiles(e.dataTransfer.files))}
     >
       {media.ui}
-      {files.length > 0 && (
+      {files.length + preparing.length > 0 && (
         <div className="flex gap-2 overflow-x-auto px-1 pb-1 pt-1.5">
+          {preparing.map((p) => <Preparing key={p.key} poster={p.poster} name={p.name} className="size-12" />)}
           {files.map((f) => (
             <div key={url(f)} className="group/f relative size-12 shrink-0">
               <FileThumb file={f} url={url(f)} className="size-12" />
