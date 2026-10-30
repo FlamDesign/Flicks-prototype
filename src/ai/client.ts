@@ -98,6 +98,12 @@ export type Block =
   | { type: "image"; source: { type: "base64"; media_type: string; data: string } }
   /** web search and page reads Claude runs itself (kept exactly as received: the API needs them back) */
   | { type: "server_tool_use" | "web_search_tool_result" | "web_fetch_tool_result"; id?: string; name?: string; input?: Record<string, unknown>; [k: string]: unknown }
+  /** Claude's own reasoning; sent back unchanged with its signature */
+  | { type: "thinking"; thinking: string; signature?: string }
+  | { type: "redacted_thinking"; data: string }
+/** The API refuses empty text blocks and thinking blocks without their text or signature */
+export const keepable = (b: Block | undefined): b is Block =>
+  !!b && !(b.type === "text" && !b.text.trim()) && !(b.type === "thinking" && (!b.thinking || !b.signature))
 export type Message = { role: "user" | "assistant"; content: Block[] }
 export type Tool = { name: string; description?: string; input_schema?: Record<string, unknown>; type?: string; [k: string]: unknown }
 export type ChatRequest = { system: string; messages: Message[]; tools: Tool[]; max_tokens?: number }
@@ -156,6 +162,8 @@ export async function streamChat(req: ChatRequest, onText: (text: string) => voi
           text += ev.delta.text
           onText(text)
         } else if (ev.delta.type === "input_json_delta" && b) b.json += ev.delta.partial_json
+        else if (ev.delta.type === "thinking_delta" && b?.type === "thinking") b.thinking += ev.delta.thinking
+        else if (ev.delta.type === "signature_delta" && b?.type === "thinking") b.signature = (b.signature ?? "") + ev.delta.signature
         else if (ev.delta.type === "citations_delta" && b?.type === "text") (b as { citations?: unknown[] }).citations = [...((b as { citations?: unknown[] }).citations ?? []), ev.delta.citation]
       } else if (ev.type === "content_block_stop") {
         const b = blocks[ev.index]
@@ -172,7 +180,7 @@ export async function streamChat(req: ChatRequest, onText: (text: string) => voi
     }
   }
   // the API refuses empty text blocks when they're sent back
-  return { content: blocks.filter((b) => b && !(b.type === "text" && !b.text.trim())), stop }
+  return { content: blocks.filter(keepable), stop }
 }
 
 /* ---------- images ---------- */

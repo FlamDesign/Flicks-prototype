@@ -4,7 +4,7 @@
  * scripted stand-in calls the same tools, so the flow can always be demoed.
  */
 import { useCallback, useEffect, useRef, useState } from "react"
-import { AiError, aspectOf, generateImage, imageBlock, library, shareable, type LibraryItem, isLive, readWebsite, siteImage, streamChat, type Block, type Message, type SiteRead, type Tool } from "@/ai/client"
+import { AiError, aspectOf, keepable, generateImage, imageBlock, library, shareable, type LibraryItem, isLive, readWebsite, siteImage, streamChat, type Block, type Message, type SiteRead, type Tool } from "@/ai/client"
 import type { Brand, Design, Plan, PlanVariation } from "@/ai/design"
 import { mockReply } from "@/ai/mock"
 import { findSkill, SKILLS } from "@/ai/skills"
@@ -536,7 +536,12 @@ export const SERVER_TOOLS: Tool[] = [
   { type: "web_fetch_20250910", name: "web_fetch", max_uses: 6, max_content_tokens: 12000 },
 ]
 
-export function cachedRequest(system: string, msgs: Message[], state: unknown) {
+export function cachedRequest(system: string, raw: Message[], state: unknown) {
+  // saved chats can hold blocks the API refuses (empty thinking from older builds); drop them
+  const msgs = raw.map((m) => {
+    const content = m.content.filter(keepable)
+    return { ...m, content: content.length ? content : [{ type: "text", text: "(thinking)" } as Block] }
+  })
   const cache = { cache_control: { type: "ephemeral" } }
   const tools = [...SERVER_TOOLS, ...TOOLS]
   const last = msgs[msgs.length - 1]
