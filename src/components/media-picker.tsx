@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { CloudUploadIcon, PauseIcon, PlayIcon, Scissor01Icon, Search01Icon, Tick02Icon } from "@hugeicons/core-free-icons"
+import { ArrowExpand01Icon, CloudUploadIcon, PauseIcon, PlayIcon, Scissor01Icon, Search01Icon, Tick02Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useToast } from "@/components/ui-extra/toaster"
 import { GENERATED_VIDEOS, SAMPLE_UPLOADS, SAMPLE_VIDEO_COUNT } from "@/components/editor/elements"
 import { SAMPLE_ASSETS } from "@/components/assets-page"
+import { MediaViewer, type ViewerItem } from "@/components/media-viewer"
 import { isLive, library, shareable, type LibraryItem } from "@/ai/client"
 
 /** keeps a session upload on the AI server; the picker then knows its server copy */
@@ -122,7 +123,8 @@ export function useMediaAdd(onAdd: (items: PickedMedia[]) => void, opts: { proje
   return { openPicker: () => setOpen(true), addFiles: (f: Iterable<File> | ArrayLike<File>) => void intake(f), ui }
 }
 
-type Tab = "all" | "image" | "video" | "generated" | "upload"
+type Type = "all" | "image" | "video"
+type Source = "all" | "generated" | "upload"
 
 /** The media picker: everything uploaded or made, to pick references from. */
 export function MediaPicker({
@@ -143,12 +145,13 @@ export function MediaPicker({
   const session = useSessionUploads()
   const [server, setServer] = useState<MediaItem[] | null>(null)
   const [failed, setFailed] = useState(false)
-  const [tab, setTab] = useState<Tab>("all")
+  const [type, setType] = useState<Type>("all")
+  const [source, setSource] = useState<Source>("all")
   const [q, setQ] = useState("")
   const [picked, setPicked] = useState<string[]>([])
   const [over, setOver] = useState(false)
   const [durations, setDurations] = useState<Record<string, number>>({})
-  const [showing, setShowing] = useState<MediaItem | null>(null)
+  const [viewing, setViewing] = useState<number | null>(null)
   const file = useRef<HTMLInputElement>(null)
   const live = isLive()
 
@@ -171,7 +174,8 @@ export function MediaPicker({
   }, [session, server, live, durations])
   const words = q.toLowerCase().split(/\s+/).filter(Boolean)
   const shown = all
-    .filter((x) => tab === "all" || x.kind === tab || x.source === tab)
+    .filter((x) => type === "all" || x.kind === type)
+    .filter((x) => source === "all" || x.source === source)
     .filter((x) => words.every((w) => `${x.name} ${x.prompt ?? ""} ${x.project ?? ""}`.toLowerCase().includes(w)))
     .sort((a, b) => b.created - a.created)
   const toggle = (id: string) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))
@@ -197,11 +201,16 @@ export function MediaPicker({
               <HugeiconsIcon icon={Search01Icon} className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search names, prompts, projects" aria-label="Search media" className="pl-8" />
             </div>
-            <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
-              <TabsList>
+            <Tabs value={type} onValueChange={(v) => setType(v as Type)}>
+              <TabsList aria-label="Type">
                 <TabsTrigger value="all">All</TabsTrigger>
                 <TabsTrigger value="image">Images</TabsTrigger>
                 <TabsTrigger value="video">Videos</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <Tabs value={source} onValueChange={(v) => setSource(v as Source)}>
+              <TabsList aria-label="Source">
+                <TabsTrigger value="all">All</TabsTrigger>
                 <TabsTrigger value="generated">Generated</TabsTrigger>
                 <TabsTrigger value="upload">Uploaded</TabsTrigger>
               </TabsList>
@@ -226,7 +235,7 @@ export function MediaPicker({
             {loading
               ? Array.from({ length: 7 }, (_, i) => <Skeleton key={i} className="aspect-square rounded-xl" />)
               : shown.map((x) => (
-                  <Tile key={x.id} x={x} on={picked.includes(x.id)} onToggle={() => toggle(x.id)} onInfo={() => setShowing(x)} onDuration={(d) => setDurations((m) => (m[x.id] ? m : { ...m, [x.id]: d }))} />
+                  <Tile key={x.id} x={x} on={picked.includes(x.id)} onToggle={() => toggle(x.id)} onOpen={() => setViewing(shown.indexOf(x))} onDuration={(d) => setDurations((m) => (m[x.id] ? m : { ...m, [x.id]: d }))} />
                 ))}
           </div>
           {!loading && !shown.length && <p className="py-10 text-center text-sm text-muted-foreground">{all.length ? "Nothing matches. Try other filters." : "Nothing here yet. Upload photos or videos to start."}</p>}
@@ -256,13 +265,37 @@ export function MediaPicker({
           </div>
         </DialogFooter>
       </DialogContent>
-      <MadeFrom item={showing} onClose={() => setShowing(null)} />
+      <MediaViewer
+        items={shown.map(toViewer)}
+        index={viewing}
+        onIndex={setViewing}
+        onClose={() => setViewing(null)}
+        useLabel="Select"
+        onUse={(v) => (setPicked((p) => (p.includes(v.id) ? p : [...p, v.id])), setViewing(null))}
+      />
     </Dialog>
   )
 }
 
+/** For the full-screen viewer: the media, and for generated work its final prompt and references. */
+const toViewer = (x: MediaItem): ViewerItem => ({
+  id: x.id,
+  kind: x.kind,
+  src: x.url,
+  poster: x.poster,
+  name: x.name,
+  prompt: x.prompt,
+  refs: x.refs?.map((r, i) => ({ kind: "image" as const, src: r, name: `Reference ${i + 1}`, source: "Uploaded" as const })),
+  details: [
+    ["Source", x.source === "upload" ? "Uploaded" : "Generated"],
+    ["Type", x.kind === "video" ? `Video${x.duration ? ` · ${length(x.duration)}` : ""}` : "Image"],
+    ...(x.project ? [["Project", x.project] as [string, string]] : []),
+    ["Added", new Date(x.created).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })],
+  ],
+})
+
 /** One item: thumbnail, a check when picked, a video's length; generated work opens what it was made from. */
-function Tile({ x, on, onToggle, onInfo, onDuration }: { x: MediaItem; on: boolean; onToggle: () => void; onInfo: () => void; onDuration: (s: number) => void }) {
+function Tile({ x, on, onToggle, onOpen, onDuration }: { x: MediaItem; on: boolean; onToggle: () => void; onOpen: () => void; onDuration: (s: number) => void }) {
   const long = x.kind === "video" && (x.duration ?? 0) > MAX_REF_SECONDS + 0.05
   return (
     <div className="group/tile relative">
@@ -285,48 +318,35 @@ function Tile({ x, on, onToggle, onInfo, onDuration }: { x: MediaItem; on: boole
             {x.duration !== undefined ? length(x.duration) : "Video"}
           </span>
         )}
-        <span className={cn("absolute right-1.5 top-1.5 grid size-5 place-items-center rounded-full border-2 border-white/90 shadow-sm transition-opacity", on ? "bg-primary text-primary-foreground opacity-100" : "bg-black/20 opacity-0 group-hover/tile:opacity-100")}>
+        <span className={cn("absolute right-1.5 top-1.5 z-10 grid size-5 place-items-center rounded-full border-2 border-white/90 shadow-sm transition-opacity", on ? "bg-primary text-primary-foreground opacity-100" : "bg-black/20 opacity-0 group-hover/tile:opacity-100")}>
           {on && <HugeiconsIcon icon={Tick02Icon} className="size-3" strokeWidth={3} />}
         </span>
       </button>
+      {/* full screen, left of the select mark */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={onOpen}
+            aria-label={`View ${x.name} full screen`}
+            className="absolute right-8 top-1.5 grid size-5 place-items-center rounded-full bg-black/45 text-white opacity-0 shadow-sm outline-none backdrop-blur-sm transition-opacity hover:bg-black/65 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring group-hover/tile:opacity-100"
+          >
+            <HugeiconsIcon icon={ArrowExpand01Icon} className="size-3" strokeWidth={2.25} />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>Full screen</TooltipContent>
+      </Tooltip>
       <div className="mt-1 flex items-center gap-1">
         <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={x.name}>
           {x.name}
         </span>
         {x.source === "generated" && (x.prompt || x.refs?.length) && (
-          <Button variant="link" size="sm" className="h-auto shrink-0 p-0 text-xs" onClick={onInfo}>
+          <Button variant="link" size="sm" className="h-auto shrink-0 p-0 text-xs" onClick={onOpen}>
             Prompt
           </Button>
         )}
       </div>
     </div>
-  )
-}
-
-/** Generated work: the final prompt and references it was made from. */
-function MadeFrom({ item, onClose }: { item: MediaItem | null; onClose: () => void }) {
-  return (
-    <Dialog open={!!item} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="truncate pr-8">{item?.name}</DialogTitle>
-          <DialogDescription>The final prompt and references it was made from.</DialogDescription>
-        </DialogHeader>
-        {item && (
-          <div className="grid gap-4">
-            {item.kind === "video" ? <video src={item.url} poster={item.poster} controls muted className="max-h-64 w-full rounded-xl bg-black object-contain" /> : <img src={item.url} alt="" className="max-h-64 w-full rounded-xl object-contain" />}
-            {item.prompt && <p className="whitespace-pre-wrap text-sm leading-relaxed">{item.prompt}</p>}
-            {!!item.refs?.length && (
-              <div className="flex flex-wrap gap-2">
-                {item.refs.map((r) => (
-                  <img key={r} src={r} alt="Reference" className="size-14 rounded-lg object-cover ring-1 ring-foreground/10" />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
   )
 }
 

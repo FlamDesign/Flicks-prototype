@@ -551,7 +551,7 @@ const ENTRIES: Entry[] = [
   {
     name: "Media picker",
     kind: "Editor",
-    about: "Opened by + in every prompt box (Create, the canvas and the AI chat). Search, then tabs for All, Images, Videos, Generated and Uploaded; generated items show their final prompt and references. Upload tile and drop take photos and videos (up to 100 MB). Videos over 15 s open the trimmer; Use clip adds it at once and it's cut in the background, for that prompt only.",
+    about: "Opened by + in every prompt box (Create, the canvas and the AI chat). Search, then two tab sets (All, Images, Videos; All, Generated, Uploaded); generated items show their final prompt and references. Upload tile and drop take photos and videos (up to 100 MB). Videos over 15 s open the trimmer; Use clip adds it at once and it's cut in the background, for that prompt only.",
     render: () => <MediaPickerDemo />,
   },
   {
