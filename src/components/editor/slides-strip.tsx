@@ -24,6 +24,8 @@ export type Slide = {
   used?: { prompt: string; refs: Reference[]; fromReference: boolean }
   /** a real video being made by the AI server (the video above is a stand-in until it's ready) */
   job?: { status: string; since: number; id?: string }
+  /** the reference video: the startedAt of the version the user approved (variations are made only from an approved one) */
+  approvedRef?: number
 }
 /** a slide's name when the user hasn't named it: numbers stay put when others are removed */
 export const slideName = (s: Slide, index: number) =>

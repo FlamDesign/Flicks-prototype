@@ -11,6 +11,9 @@ when: Before spending credits on videos, after the build, and after any big chan
   made without asking.
 - **At checkpoints that set the direction or the final result:** the concept or storyline, the plan,
   and any change that means regenerating videos.
+- **The reference video, always, before any variation is made.** When it's ready, ask the user to
+  review it. Approve → the variations are made from it. Changes → regenerate the reference with them,
+  and ask again; variations always use the latest approved reference.
 
 ## Change on your own (no need to ask)
 - Fix layout problems: anything overlapping, cropped, unreadable or not working.

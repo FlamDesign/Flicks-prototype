@@ -185,8 +185,9 @@ async function steady(path: string, init?: RequestInit) {
 /** imageUrls: public addresses of the user's photos or a website's images (see shareable), so the product in the picture is theirs */
 /** what a generation is for: kept with it in the library */
 export type GenMeta = { project?: string; variation?: string; purpose?: string }
-export async function generateImage(prompt: string, aspect: string, signal?: AbortSignal, onStatus?: (status: string) => void, imageUrls: string[] = [], meta: GenMeta = {}): Promise<string> {
-  const { id } = (await (await steady("/image", { method: "POST", body: JSON.stringify({ prompt, aspect_ratio: aspect, image_urls: imageUrls, meta }), signal })).json()) as { id: string }
+/** opts.text: the image must carry readable text (another model renders it); opts.quality: "draft" for previews */
+export async function generateImage(prompt: string, aspect: string, signal?: AbortSignal, onStatus?: (status: string) => void, imageUrls: string[] = [], meta: GenMeta = {}, opts: { text?: boolean; quality?: "draft" | "final" } = {}): Promise<string> {
+  const { id } = (await (await steady("/image", { method: "POST", body: JSON.stringify({ prompt, aspect_ratio: aspect, image_urls: imageUrls, meta, ...opts }), signal })).json()) as { id: string }
   onStatus?.("queued")
   const until = Date.now() + 240_000
   let wait = 2000
@@ -248,10 +249,10 @@ export function videoAspectOf(size: string) {
 }
 
 /** Starts a real video (720p) and waits for it: a few minutes. `image` (a public https address) becomes the first frame. */
-export async function generateVideo(input: { prompt: string; aspect: string; seconds: number; image?: string; meta?: GenMeta; resume?: string; onId?: (id: string) => void }, onStatus?: (status: string) => void, signal?: AbortSignal): Promise<{ url: string; poster?: string }> {
+export async function generateVideo(input: { prompt: string; aspect: string; seconds: number; image?: string; video?: string; meta?: GenMeta; resume?: string; onId?: (id: string) => void }, onStatus?: (status: string) => void, signal?: AbortSignal): Promise<{ url: string; poster?: string }> {
   // a video started before a reload carries on from its id
   const { id } = input.resume ? { id: input.resume } : ((await (
-    await steady("/video", { method: "POST", body: JSON.stringify({ prompt: input.prompt, aspect_ratio: input.aspect, duration: input.seconds, image_url: input.image, meta: input.meta }), signal })
+    await steady("/video", { method: "POST", body: JSON.stringify({ prompt: input.prompt, aspect_ratio: input.aspect, duration: input.seconds, image_url: input.image, video_urls: input.video ? [input.video] : undefined, meta: input.meta }), signal })
   ).json()) as { id: string })
   input.onId?.(id)
   onStatus?.("queued")

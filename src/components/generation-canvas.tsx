@@ -131,7 +131,10 @@ export function GenerationCanvas({
       used: { prompt: generation.prompt, refs: generation.refs ?? [], fromReference: false },
     }
     // reopened: finished videos count as made long ago; a real video still being made keeps going
-    if (savedSnap) return savedSnap.slides.map((x, i) => ({ ...x, n: x.n ?? (i || undefined), job: x.job?.id ? x.job : undefined, startedAt: x.startedAt ? (x.job?.id ? x.startedAt : 1) : undefined }))
+    if (savedSnap) {
+      const going = (x: Slide) => !!x.job?.id || x.job?.status === "waiting"
+      return savedSnap.slides.map((x, i) => ({ ...x, n: x.n ?? (i || undefined), job: going(x) ? x.job : undefined, startedAt: x.startedAt ? (going(x) ? x.startedAt : 1) : undefined }))
+    }
     // a sample project: the reference video and two variations, all made long ago (startedAt 1)
     if (generation.sample)
       return [
@@ -718,6 +721,8 @@ export function GenerationCanvas({
       video_cost: VIDEO_COST,
       title,
       planned: !!slidesNow.current[0].startedAt,
+      // real videos: variations wait until the user approves the reference video
+      reference_review: !liveRef.current || !agentMode ? undefined : !isMadeVideo(slidesNow.current[0].video) || slidesNow.current[0].job ? "reference still generating" : slidesNow.current[0].approvedRef === slidesNow.current[0].startedAt ? "approved: variations are made from it" : "ready: waiting for the user's approval before variations are made",
       brand,
       videos: slidesNow.current.map((x, i) => ({
         name: nameOfSlide(x),
@@ -797,7 +802,7 @@ export function GenerationCanvas({
       setSelected([])
       if (plan.title?.trim()) setTitle(plan.title.trim())
       const per = made.map((f) => f.name)
-      return withIssues(`Generating the reference video and ${vs.length} variations (${cost.toLocaleString()} credits); they take ${liveRef.current ? "a few minutes (real videos, made in parallel)" : `about ${dev.generationSeconds * 2} seconds`}. The design is on the canvas${per.length ? `, with ${per.join(", ")} set per variation (feeds)` : ""}. Thumbnails are empty until set.`)
+      return withIssues(`Generating the reference video and ${vs.length} variations (${cost.toLocaleString()} credits); ${liveRef.current ? "the reference video comes first (a few minutes); the user reviews it, and the variations are made from it once they approve (or after you regenerate it with their changes)" : `they take about ${dev.generationSeconds * 2} seconds`}. The design is on the canvas${per.length ? `, with ${per.join(", ")} set per variation (feeds)` : ""}. Thumbnails are empty until set.`)
     },
     updateDesign(d) {
       if (!slidesNow.current[0].startedAt) return "Error: Approve the plan first."
@@ -1082,6 +1087,20 @@ export function GenerationCanvas({
   // real videos: only in projects made with the AI chat, with the AI server connected; every video
   // started there is made for real (720p). Projects without the AI chat keep the sample videos.
   // The slide keeps a stand-in video until it's ready; a failure refunds and leaves it empty.
+  // the reference video, ready and not yet approved, with variations waiting on it
+  const mainNow = slides[0]
+  const refReady = isMadeVideo(mainNow.video) && !mainNow.job
+  const needsReview = agentMode && live && refReady && mainNow.approvedRef !== mainNow.startedAt && slides.some((x) => x.job?.status === "waiting")
+  const approveRef = () => {
+    commitSlides(slidesNow.current.map((x, i) => (i === 0 ? { ...x, approvedRef: x.startedAt } : x)))
+    toast({ title: "Making the variations", description: "From the reference video you approved." })
+  }
+  const changeRef = () => {
+    select("main")
+    setComposeMode("chat")
+    setChatHidden(false)
+    agentCtx.focusComposer()
+  }
   const jobs = useRef(new Set<string>())
   useEffect(() => {
     if (!live || !agentMode) return
@@ -1090,15 +1109,26 @@ export function GenerationCanvas({
       const key = `${sl.id}:${sl.startedAt}`
       if (jobs.current.has(key)) continue
       // a job from before a reload: keep checking it (one that never got an id is lost)
-      if (sl.job && !sl.job.id) continue
-      jobs.current.add(key)
-      const resume = sl.job?.id
-      const ref = slidesNow.current[0].used?.prompt
-      const prompt = sl.id !== "main" && sl.used.fromReference && ref ? `${ref}\nThis version: ${sl.used.prompt}` : sl.used.prompt
+      if (sl.job && !sl.job.id && sl.job.status !== "waiting") continue
       const mine = (x: Slide) => x.id === sl.id && x.startedAt === sl.startedAt
       const patchJob = (p: Partial<Slide>) => commitSlides(slidesNow.current.map((x) => (mine(x) ? { ...x, ...p } : x)))
+      // variations are made from the finished reference video (they copy its motion, camera and timing),
+      // so they wait for it
+      const fromRef = sl.id !== "main" && sl.used.fromReference
+      const main = slides[0]
+      // ...and for the user to approve it: always the latest version of the reference
+      const refVideo = isMadeVideo(main.video) && !main.job && main.approvedRef === main.startedAt ? GENERATED_VIDEOS[main.video!].mp4 : undefined
+      if (fromRef && !refVideo && !sl.job?.id) {
+        if (!sl.job) patchJob({ job: { status: "waiting", since: Date.now() } })
+        continue
+      }
+      jobs.current.add(key)
+      const resume = sl.job?.id
+      const prompt = fromRef
+        ? `Keep the input video exactly as it is: the same camera, framing, motion, timing, setting and lighting. Change only this: ${sl.used.prompt}`
+        : sl.used.prompt
       if (!resume) patchJob({ job: { status: "starting", since: Date.now() } })
-      generateVideo({ prompt, aspect: videoAspectOf(generation.size), seconds: generation.duration ?? 8, resume, onId: (id) => commitSlides(slidesNow.current.map((x) => (mine(x) && x.job ? { ...x, job: { ...x.job, id } } : x))), meta: { project: title, variation: slideName(sl, slidesNow.current.indexOf(sl)), purpose: "video" } }, (status) =>
+      generateVideo({ prompt, video: fromRef ? refVideo : undefined, aspect: videoAspectOf(generation.size), seconds: generation.duration ?? 8, resume, onId: (id) => commitSlides(slidesNow.current.map((x) => (mine(x) && x.job ? { ...x, job: { ...x.job, id } } : x))), meta: { project: title, variation: slideName(sl, slidesNow.current.indexOf(sl)), purpose: "video" } }, (status) =>
         commitSlides(slidesNow.current.map((x) => (mine(x) && x.job ? { ...x, job: { ...x.job, status } } : x))),
       ).then(
         async ({ url, poster }) => {
@@ -1111,6 +1141,14 @@ export function GenerationCanvas({
           setDev((d) => ({ credits: d.credits + VIDEO_COST }))
           patchJob({ job: undefined, startedAt: undefined, video: undefined, prompt: sl.used?.prompt, used: undefined })
           toast({ title: `${slideName(sl, slidesNow.current.findIndex(mine))} didn’t generate`, description: `${e instanceof Error ? e.message : "The video failed."} Credits refunded.` })
+          // without the reference video, the variations waiting for it can't be made: refunded too
+          if (sl.id === "main") {
+            const waiting = slidesNow.current.filter((x) => x.job?.status === "waiting")
+            if (waiting.length) {
+              setDev((d) => ({ credits: d.credits + VIDEO_COST * waiting.length }))
+              commitSlides(slidesNow.current.map((x) => (x.job?.status === "waiting" ? { ...x, job: undefined, startedAt: undefined, video: undefined, prompt: x.used?.prompt, used: undefined } : x)))
+            }
+          }
         },
       )
     }
@@ -1646,9 +1684,21 @@ export function GenerationCanvas({
                   {/* status just above the frame's top-right corner, off the design */}
                   <div className="pointer-events-none absolute bottom-full right-0 z-30 mb-2 flex whitespace-nowrap items-center gap-1.5 rounded-full bg-background/85 py-1 pl-2 pr-2.5 text-xs font-medium shadow-sm ring-1 ring-foreground/10 backdrop-blur-md">
                     <HugeiconsIcon icon={Loading03Icon} className="size-3.5 animate-spin text-primary" />
-                    {activeSlide.job ? (activeSlide.job.status === "queued" ? "Queued · a few minutes" : "Generating · a few minutes") : "Generating"}
+                    {activeSlide.job ? (activeSlide.job.status === "waiting" ? (refReady ? "Waiting for your review of the reference video" : "Waiting for the reference video") : activeSlide.job.status === "queued" ? "Queued · a few minutes" : "Generating · a few minutes") : "Generating"}
                   </div>
                 </>
+              )}
+              {/* the reference video is ready: the user reviews it before any variation is made */}
+              {needsReview && !previewing && (
+                <div role="region" aria-label="Review the reference video" className="absolute bottom-full left-1/2 z-30 mb-3 flex -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded-2xl bg-background py-1.5 pl-4 pr-1.5 text-sm shadow-lg ring-1 ring-foreground/10 animate-in fade-in-0 slide-in-from-bottom-1">
+                  <span>Happy with the reference video? Variations are made from it.</span>
+                  <Button size="sm" variant="ghost" onClick={changeRef}>
+                    Change it
+                  </Button>
+                  <Button size="sm" onClick={approveRef}>
+                    Make the variations
+                  </Button>
+                </div>
               )}
             </div>
           </div>

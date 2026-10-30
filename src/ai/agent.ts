@@ -20,6 +20,8 @@ export type ProjectState = {
   video_cost: number
   title: string
   planned: boolean
+  /** real videos: where the reference video's review stands */
+  reference_review?: string
   brand?: Brand
   videos: { name: string; role: "reference" | "variation"; status: string; prompt?: string; label?: string; price?: string; link?: string; has_thumbnail: boolean }[]
   design: unknown[]
@@ -288,6 +290,7 @@ export const TOOLS: Tool[] = [
         variation: { type: "string", description: "Variation name, for thumbnails" },
         aspect_ratio: { type: "string", enum: ["1:1", "4:5", "3:4", "9:16", "16:9"] },
         reference_image_ids: { type: "array", items: { type: "string" }, description: "Up to 3 project image ids to keep true to (product first, then a model or scene)" },
+        has_text: { type: "boolean", description: "True when the image must show readable words (a badge, an offer, a sign); a model that renders text well makes it" },
       },
       required: ["prompt", "purpose"],
     },
@@ -468,14 +471,15 @@ export function systemPrompt(s: ProjectState) {
   const always = ["flicks", "brief"].map((n) => findSkill(n)).filter((x): x is NonNullable<ReturnType<typeof findSkill>> => !!x)
   return `You are the creative partner inside Flicks by Flam, an AI interactive content tool. You help the user make a Flick with them, step by step.
 
-Flam's skills decide WHAT you ask, suggest and make; follow them over your own habits and over any example in these instructions. The flicks and brief skills are below in full. Read every other skill with read_skill right before the step it covers (categories once you know the category, concepts before ideas and storylines, brand when the brand comes up or there's no brand kit, shots before the shot plan, video before video prompts, images before any image, design before any on-screen design or copy, review before approvals and handing over); skip ones listed in skills_read.
+Flam's skills decide WHAT you ask, suggest and make; follow them over your own habits and over any example in these instructions. The flicks and brief skills are below in full. Read every other skill with read_skill right before the step it covers (categories once you know the category, concepts before ideas and storylines, brand when the brand comes up or there's no brand kit, shots before the shot plan, video and models before video prompts, images and models before any image, design before any on-screen design or copy, review before approvals and handing over); skip ones listed in skills_read.
 
 How the app works (the mechanics, not what to ask):
 - Concepts: propose_concepts shows up to 3 concepts as cards with preview images; use it before every plan unless the user already gave a full concept or asked to skip ideas.
 - Questions: ask_user shows tappable answers. display "chips" for words; "layouts", "palettes" or "thumbnails" for visual choices; step "idea", "look" or "plan" moves the progress bar. Several ask_user calls in one reply show together. request_assets asks for files.
 - Websites: when the user gives a web address, or a product page would help, call read_website and use what it returns.
 - Brand: set_brand records the brand (name, colours, font, voice).
-- Images: generate_image (with reference_image_ids to keep the user's images), view_image to look at any project image, use_image to place one.
+- Images: generate_image (with reference_image_ids to keep the user's images, has_text for readable words), view_image to look at any project image, use_image to place one. The app picks the model from these (models skill).
+- Videos: the reference video is made first from its prompt. The user always reviews it (reference_review in the project state); variations are made only after they approve, from the latest reference video plus each variation line, so they keep its motion, camera and timing. When the reference is ready, ask them to review it; if they want changes, regenerate the reference with set_variation (variation "reference", regenerate true) and they review the new one.
 - Library: everything made before is kept. search_library finds earlier images and videos (with their prompts); use_library brings them in as references or starting points.
 - The plan: propose_plan is the approval before any video credits are spent. It carries the reference video prompt, each variation (name, prompt, label, price, link, and headline, subheading or button text only when they differ) and the design. The user edits it and presses Generate all; the app then makes every video and places the design and thumbnail strip.
 - Feeds: on-screen text that differs per variation is a feed. The project state lists every feed, what uses it, each variation's value and any issues. Change them with vary_field, same_for_all, set_variation and rename_feed; update_design can't change text that differs per variation. Fix reported issues in the same turn.
@@ -605,7 +609,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     // the images to keep, at addresses Higgsfield can open (uploads go to the server first)
     const refs = () => Promise.all(refImages.map((i) => shareable(i.url).catch(() => null))).then((u) => u.filter((x): x is string => !!x))
     if (live.current)
-      refs().then((urls) => generateImage(prompt, aspect, undefined, (status) => patch(itemId, { status } as Partial<Item>), urls, { project: apiRef.current.state().title, variation: target, purpose })).then((url) => {
+      refs().then((urls) => generateImage(prompt, aspect, undefined, (status) => patch(itemId, { status } as Partial<Item>), urls, { project: apiRef.current.state().title, variation: target, purpose }, { text: !!input.has_text, quality: purpose === "idea" ? "draft" : "final" })).then((url) => {
         try {
           done(url)
         } catch (e) {
@@ -706,7 +710,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           list.forEach((c, i) => {
             const fill = (url: string) => setItems((all) => all.map((x) => (x.id === itemId && x.kind === "question" ? { ...x, options: x.options.map((o, j) => (j === i ? { ...o, image: url } : o)) } : x)))
             if (live.current)
-              generateImage(String(c.image_prompt ?? c.idea ?? ""), aspect, undefined, undefined, [], { project: state().title, purpose: "concept preview" }).then(fill, () => {})
+              generateImage(String(c.image_prompt ?? c.idea ?? ""), aspect, undefined, undefined, [], { project: state().title, purpose: "concept preview" }, { quality: "draft" }).then(fill, () => {})
             else setTimeout(() => fill(apiRef.current.sampleImage("idea", undefined)), 1200 + i * 600)
           })
           return WAIT

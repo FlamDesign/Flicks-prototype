@@ -12,7 +12,8 @@ when: Before generating any image: storyline previews, style options, thumbnails
 | storyline previews, style and layout options, anything that barely affects the final Flick | fast | quick and cheap; it's for deciding |
 | thumbnails, images placed on the canvas | quality | it ends up in the Flick |
 | anything that must keep the user's product, character or style | image to image (pass reference_image_ids) | keeps their real product; you describe only what changes |
-(The app picks the model from the purpose and the references you pass.)
+| images with readable words (a badge, an offer, a sign) | text-rendering (set has_text: true) | other models garble text |
+(The app picks the model from the purpose, the references you pass and has_text; see the models skill.)
 
 ## Using the user's images
 - When their images match the prompt, use them as references. Product first, then a model or scene.

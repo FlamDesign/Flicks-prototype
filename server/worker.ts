@@ -48,6 +48,8 @@ export interface Env {
   /** Higgsfield video model paths (text-to-video and image-to-video) */
   HF_VIDEO_PATH?: string
   HF_VIDEO_IMAGE_PATH?: string
+  HF_VIDEO_REF_PATH?: string
+  HF_IMAGE_TEXT_PATH?: string
   /** Higgsfield image model path, e.g. /higgsfield-ai/soul/standard */
   HF_IMAGE_PATH?: string
   /** Higgsfield API host, if a key needs a different one */
@@ -154,7 +156,7 @@ export default {
 
       if (req.method === "POST" && url.pathname === "/image") {
         if (!hasHf(env)) return json({ error: "images_not_set_up" }, 503, cors)
-        const body = (await req.json()) as { prompt?: string; aspect_ratio?: string; image_urls?: string[]; meta?: Meta }
+        const body = (await req.json()) as { prompt?: string; aspect_ratio?: string; image_urls?: string[]; meta?: Meta; text?: boolean; quality?: "draft" | "final" }
         const prompt = String(body.prompt ?? "").trim().slice(0, 2000)
         if (!prompt) return json({ error: "no_prompt" }, 400, cors)
         if (!(await take(env, `img:${day}`, caps.images))) return json({ error: "daily_limit", what: "images" }, 429, cors)
@@ -185,10 +187,29 @@ export default {
           return json({ error: "image_error", status: lastRef.status, message: hfMessage(lastRef.status, lastRef.text) }, 502, cors)
         }
         // the configured model first, then the documented ones; a model that rejects aspect_ratio gets the prompt alone
+        // readable text in the image (a badge, an offer): Ideogram renders text best
+        if (body.text) {
+          const IDEO = ["1:1", "4:5", "5:4", "9:16", "16:9", "2:3", "3:2", "3:4", "4:3"]
+          const path = env.HF_IMAGE_TEXT_PATH || "/ideogram/v4.0"
+          const res = await hf(env, hfBase(env) + path, { method: "POST", headers: { "content-type": "application/json", "idempotency-key": crypto.randomUUID() }, body: JSON.stringify({ prompt, aspect_ratio: IDEO.includes(aspect) ? aspect : "1:1", rendering_speed: "DEFAULT" }) })
+          const text = await res.text()
+          let out: { request_id?: string } = {}
+          try {
+            out = JSON.parse(text)
+          } catch {
+            /* not JSON */
+          }
+          if (res.ok && out.request_id) return started("image", out.request_id, prompt, path, body.meta)
+          console.log("higgsfield text image failed", res.status, text.slice(0, 300))
+          if ([401, 402, 403, 429].includes(res.status)) return json({ error: "image_error", status: res.status, message: hfMessage(res.status, text) }, 502, cors)
+          // otherwise fall through to the usual model
+        }
+        // previews and options: 720p; anything that ends up in the Flick: 1080p
+        const resolution = body.quality === "draft" ? "720p" : "1080p"
         const paths = [...new Set([env.HF_IMAGE_PATH, "/higgsfield-ai/soul/v2/standard", "/higgsfield-ai/soul/standard"].filter((p): p is string => !!p))]
         let last = { status: 0, text: "" }
         for (const path of paths) {
-          for (const payload of [{ prompt, aspect_ratio: aspect }, { prompt }]) {
+          for (const payload of [{ prompt, aspect_ratio: aspect, resolution }, { prompt, aspect_ratio: aspect }, { prompt }]) {
             const res = await hf(env, hfBase(env) + path, {
               method: "POST",
               headers: { "content-type": "application/json", "idempotency-key": crypto.randomUUID() },
@@ -236,16 +257,24 @@ export default {
 
       if (req.method === "POST" && url.pathname === "/video") {
         if (!hasHf(env)) return json({ error: "videos_not_set_up" }, 503, cors)
-        const body = (await req.json()) as { prompt?: string; aspect_ratio?: string; duration?: number; image_url?: string; meta?: Meta }
+        const body = (await req.json()) as { prompt?: string; aspect_ratio?: string; duration?: number; image_url?: string; video_urls?: string[]; meta?: Meta }
         const prompt = String(body.prompt ?? "").trim().slice(0, 2000)
         if (!prompt) return json({ error: "no_prompt" }, 400, cors)
         if (!(await take(env, `vid:${day}`, caps.videos))) return json({ error: "daily_limit", what: "videos" }, 429, cors)
         const aspect = VIDEO_ASPECTS.includes(String(body.aspect_ratio)) ? String(body.aspect_ratio) : "16:9"
         const duration = Math.max(4, Math.min(15, Math.round(Number(body.duration) || 8)))
         const image = body.image_url && /^https:\/\//.test(body.image_url) ? body.image_url : undefined
-        // 720p only, no sound: Flicks play muted
-        const payload = { prompt, duration, resolution: "720p", generate_audio: false, ...(image ? { image_url: image } : { aspect_ratio: aspect }) }
-        const path = image ? env.HF_VIDEO_IMAGE_PATH || "/bytedance/seedance-2.5/image-to-video" : env.HF_VIDEO_PATH || "/bytedance/seedance-2.5/text-to-video"
+        // a variation: made from the finished reference video, so it keeps its motion, camera and timing
+        const videos = (body.video_urls ?? []).filter((u) => typeof u === "string" && /^https:\/\//.test(u)).slice(0, 1)
+        // 720p, no sound: Flicks play muted
+        const payload = videos.length
+          ? { prompt, duration, resolution: "720p", generate_audio: false, aspect_ratio: aspect, video_urls: videos }
+          : { prompt, duration, resolution: "720p", generate_audio: false, ...(image ? { image_url: image } : { aspect_ratio: aspect }) }
+        const path = videos.length
+          ? env.HF_VIDEO_REF_PATH || "/bytedance/seedance-2.5/reference-to-video"
+          : image
+            ? env.HF_VIDEO_IMAGE_PATH || "/bytedance/seedance-2.5/image-to-video"
+            : env.HF_VIDEO_PATH || "/bytedance/seedance-2.5/text-to-video"
         const res = await hf(env, hfBase(env) + path, { method: "POST", headers: { "content-type": "application/json", "idempotency-key": crypto.randomUUID() }, body: JSON.stringify(payload) })
         const text = await res.text()
         let out: { request_id?: string } = {}
@@ -254,7 +283,7 @@ export default {
         } catch {
           /* not JSON */
         }
-        if (res.ok && out.request_id) return started("video", out.request_id, prompt, path, body.meta, image ? [image] : [])
+        if (res.ok && out.request_id) return started("video", out.request_id, prompt, path, body.meta, videos.length ? videos : image ? [image] : [])
         console.log("higgsfield video submit failed", path, res.status, text.slice(0, 300))
         return json({ error: "video_error", status: res.status, message: hfMessage(res.status, text) }, 502, cors)
       }

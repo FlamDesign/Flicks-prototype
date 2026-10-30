@@ -14,11 +14,15 @@ DAILY_VIDEO_CAP = "20"
 # videos: Higgsfield, 720p only
 HF_VIDEO_PATH = "/bytedance/seedance-2.5/text-to-video"
 HF_VIDEO_IMAGE_PATH = "/bytedance/seedance-2.5/image-to-video"
+# variations: made from the finished reference video
+HF_VIDEO_REF_PATH = "/bytedance/seedance-2.5/reference-to-video"
 # images from a prompt alone
 HF_IMAGE_PATH = "/higgsfield-ai/soul/v2/standard"
 # images that keep the user's product (from their photos): the main model, then the fallback
 HF_IMAGE_REF_PATH = "/marketing-studio/image"
 HF_IMAGE_EDIT_PATH = "/alibaba/qwen-image-3/edit"
+# images with readable text (badges, offers)
+HF_IMAGE_TEXT_PATH = "/ideogram/v4.0"
 
 # logs in the Cloudflare dashboard (Workers > flicks-ai > Logs), for debugging failures
 [observability]

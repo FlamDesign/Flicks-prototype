@@ -9,7 +9,10 @@ when: Right before writing the plan's video prompts, and before any regenerate.
 ## Model and settings
 - The model is **Flam Forge**. Never name any other model or provider.
 - Default 720p; choose by size and use (the app makes 720p today). Sound is always off: Flicks play muted.
-- Always make **one video first (the reference), then its variations.**
+- Always make **one video first (the reference), then its variations.** The app does this for you:
+  variations wait for the finished reference, the user reviews and approves it, and then the
+  variations are made from it (see the models skill). If the user wants changes, regenerate the
+  reference; variations always use the latest approved version.
 
 ## The reference prompt
 Write 60 to 100 words, most important first (models follow the start of a prompt best).
@@ -31,10 +34,10 @@ easing in and out. Golden-hour light, warm tones, shallow depth of field, clean 
 No on-screen text, no logos, no extra people, smooth motion, no face or hand distortion."
 
 ## Variation prompts: what they must say, and what they never repeat
-*Why this matters:* a variation is the reference video with one thing changed. The app builds each
-variation's prompt from the reference prompt plus your variation line. If your line re-describes
-the camera, light or action, the model treats them as new instructions and the variations stop
-matching.
+*Why this matters:* a variation is the reference video with one thing changed. The app makes each
+variation from the finished reference video itself, plus your variation line (and tells the model
+to keep everything else exactly the same). If your line re-describes the camera, light or action,
+the model treats them as new instructions and the variations stop matching.
 - **Must say:** only what changes, plus everything that changes with it, concretely:
   "Same scene and motion; the can is lime green with lime slices floating around it."
 - **Never repeat:** the camera, the light, the setting or the action. Never add a new action.
