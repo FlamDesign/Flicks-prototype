@@ -239,6 +239,12 @@ export async function generateImage(prompt: string, aspect: string, signal?: Abo
 /* ---------- sharing images ---------- */
 
 const shared = new Map<string, Promise<string>>()
+/** an address that's being saved another way (a smaller copy of a video): later uses get its server address */
+export const shareAs = (src: string, job: Promise<string>) => {
+  shared.set(src, job)
+  job.catch(() => shared.delete(src))
+  return job
+}
 /**
  * A public address for an image, so Higgsfield can use it: one already on the web stays as it is;
  * one that only lives in this browser (an upload, a blob) is kept by the server for 7 days.

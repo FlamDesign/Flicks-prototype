@@ -11,7 +11,20 @@ import { useToast } from "@/components/ui-extra/toaster"
 import { GENERATED_VIDEOS, SAMPLE_UPLOADS, SAMPLE_VIDEO_COUNT } from "@/components/editor/elements"
 import { SAMPLE_ASSETS } from "@/components/assets-page"
 import { MediaViewer, type ViewerItem } from "@/components/media-viewer"
-import { isLive, library, shareable, type LibraryItem } from "@/ai/client"
+import { isLive, library, shareAs, shareable, type LibraryItem } from "@/ai/client"
+
+/**
+ * A short video, saved as it is when it's small enough for the server (up to 20 MB); a bigger one
+ * (4K phone video) is saved as a 1280 px copy made in the browser, under the same name.
+ */
+const saveVideo = (it: MediaItem) => {
+  if (!it.file || it.file.size <= 20 * 1_048_576) return save(it.id, it.url, it.name)
+  const job = cutClip(it.url, it.name, 0, it.duration ?? MAX_REF_SECONDS)
+    .then((f) => shareable(blobUrl(f), { name: it.name, purpose: "upload" }))
+  shareAs(it.url, job)
+    .then((saved) => sessionUploads.update(it.id, { saved }))
+    .catch(() => {})
+}
 
 /** keeps a session upload on the AI server; the picker then knows its server copy */
 const save = (id: string, url: string, name: string) =>
@@ -93,8 +106,13 @@ export function useMediaAdd(onAdd: (items: PickedMedia[]) => void, opts: { proje
       items.push(it)
     }
     if (items.length) sessionUploads.add(items)
-    // photos are saved on the AI server right away (original videos aren't: only the clips used)
-    if (isLive()) for (const it of items.filter((i) => i.kind === "image")) save(it.id, it.url, it.name)
+    // saved on the AI server right away: photos, and videos short enough to use as they are
+    // (long originals aren't; their trimmed clips are, once cut)
+    if (isLive())
+      for (const it of items) {
+        if (it.kind === "image") save(it.id, it.url, it.name)
+        else if ((it.duration ?? Infinity) <= MAX_REF_SECONDS + 0.05) saveVideo(it)
+      }
     if (direct) choose(items)
     return items
   }
