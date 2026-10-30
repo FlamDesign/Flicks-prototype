@@ -1,5 +1,7 @@
 name: Deploy to GitHub Pages
 
+# main deploys the site; other branches are built alongside it at /<branch>/ (pushing a branch
+# alone doesn't redeploy: run this workflow, or push main)
 on:
   push:
     branches: [main]
@@ -19,6 +21,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -30,6 +35,18 @@ jobs:
         env:
           # the AI server's address (a repository variable, not a secret); the passcode is typed in dev tools
           VITE_AI_URL: ${{ vars.AI_SERVER_URL }}
+      # every other branch is published too, at /<branch>/, so versions can be compared live
+      - name: Build other branches
+        env:
+          VITE_AI_URL: ${{ vars.AI_SERVER_URL }}
+        run: |
+          for ref in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin | grep -v -e '^origin$' -e '^origin/HEAD$' -e '^origin/main$'); do
+            name=${ref#origin/}
+            echo "Building $name"
+            rm -rf /tmp/b && git worktree add -f /tmp/b "$ref"
+            (cd /tmp/b && ./scripts/scan-secrets.sh && npm ci --silent && npx vite build -c vite.artifact.config.ts --outDir /tmp/out --emptyOutDir) && mkdir -p "dist-artifact/$name" && cp -r /tmp/out/. "dist-artifact/$name/" || echo "Skipped $name (build failed)"
+            git worktree remove -f /tmp/b; rm -rf /tmp/out
+          done
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
