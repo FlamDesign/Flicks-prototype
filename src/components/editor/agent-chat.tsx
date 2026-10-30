@@ -11,7 +11,7 @@ import { FlickPreview } from "@/components/editor/flick-preview"
 import { skillTitle } from "@/ai/skills"
 import { cn } from "@/lib/utils"
 import { useMediaAdd } from "@/components/media-picker"
-import { asFile } from "@/lib/media"
+import { asFile, blobUrl } from "@/lib/media"
 
 type Agent = ReturnType<typeof useAgent>
 export type AgentCtx = {
@@ -352,8 +352,7 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
 function Assets({ item, agent, bare }: { item: Extract<Item, { kind: "assets" }>; agent: Agent; bare?: boolean }) {
   const [files, setFiles] = useState<File[]>([])
   const [over, setOver] = useState(false)
-  const previews = useRef(new Map<File, string>())
-  const url = (f: File) => previews.current.get(f) ?? (previews.current.set(f, URL.createObjectURL(f)), previews.current.get(f)!)
+  const url = (f: File) => blobUrl(f)
   // added at once; a trimmed clip shows as preparing while it's cut, then joins the files
   const [preparing, setPreparing] = useState<{ key: string; poster?: string; name: string }[]>([])
   const media = useMediaAdd((items) =>
@@ -719,8 +718,7 @@ function ImageCard({ item, ctx, agent }: { item: Extract<Item, { kind: "image" }
 export function AgentComposer({ agent, placeholder }: { agent: Agent; placeholder?: string }) {
   const [text, setText] = useState("")
   const [files, setFiles] = useState<File[]>([])
-  const urls = useRef(new Map<File, string>())
-  const url = (f: File) => urls.current.get(f) ?? (urls.current.set(f, URL.createObjectURL(f)), urls.current.get(f)!)
+  const url = (f: File) => blobUrl(f)
   // photos and videos: picked from uploads and generated work, or dropped or pasted (long videos trimmed first)
   // added at once; a trimmed clip shows as preparing while it's cut, then joins the files
   const [preparing, setPreparing] = useState<{ key: string; poster?: string; name: string }[]>([])

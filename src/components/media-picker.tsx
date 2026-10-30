@@ -10,8 +10,14 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useToast } from "@/components/ui-extra/toaster"
 import { GENERATED_VIDEOS, SAMPLE_UPLOADS, SAMPLE_VIDEO_COUNT } from "@/components/editor/elements"
 import { SAMPLE_ASSETS } from "@/components/assets-page"
-import { isLive, library, type LibraryItem } from "@/ai/client"
-import { MAX_REF_SECONDS, MAX_VIDEO_MB, clock, cutClip, length, isVideoFile, probeVideo, sessionUploads, stillsAt, useSessionUploads, type MediaItem, type PickedMedia } from "@/lib/media"
+import { isLive, library, shareable, type LibraryItem } from "@/ai/client"
+
+/** keeps a session upload on the AI server; the picker then knows its server copy */
+const save = (id: string, url: string, name: string) =>
+  shareable(url, { name })
+    .then((saved) => sessionUploads.update(id, { saved }))
+    .catch(() => {})
+import { MAX_REF_SECONDS, MAX_VIDEO_MB, blobUrl, clock, cutClip, length, isVideoFile, probeVideo, sessionUploads, stillsAt, useSessionUploads, type MediaItem, type PickedMedia } from "@/lib/media"
 import { cn } from "@/lib/utils"
 
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"]
@@ -68,7 +74,7 @@ export function useMediaAdd(onAdd: (items: PickedMedia[]) => void, opts: { proje
     const ok = list.filter((f) => !bad.includes(f) && !big.includes(f))
     const items: MediaItem[] = []
     for (const f of ok) {
-      const url = URL.createObjectURL(f)
+      const url = blobUrl(f)
       const it: MediaItem = { id: crypto.randomUUID(), kind: isVideoFile(f) ? "video" : "image", name: f.name, url, source: "upload", project: opts.project, created: Date.now(), file: f }
       if (it.kind === "video") {
         try {
@@ -82,6 +88,8 @@ export function useMediaAdd(onAdd: (items: PickedMedia[]) => void, opts: { proje
       items.push(it)
     }
     if (items.length) sessionUploads.add(items)
+    // photos are saved on the AI server right away (original videos aren't: only the clips used)
+    if (isLive()) for (const it of items.filter((i) => i.kind === "image")) save(it.id, it.url, it.name)
     if (direct) choose(items)
     return items
   }
@@ -152,8 +160,9 @@ export function MediaPicker({
   }, [open, live])
 
   const all = useMemo(() => {
-    const seen = new Set<string>()
-    const list = [...session, ...(server ?? []), ...(live ? [] : SAMPLES)].filter((x) => !seen.has(x.url) && seen.add(x.url))
+    // a session upload already saved on the server shows once (as the session's copy)
+    const seen = new Set<string>(session.flatMap((x) => (x.saved ? [x.saved] : [])))
+    const list = [...session.filter((x) => !seen.has(x.url)), ...(server ?? []), ...(live ? [] : SAMPLES)].filter((x) => !seen.has(x.url) && seen.add(x.url))
     return list.map((x) => (durations[x.id] && !x.duration ? { ...x, duration: durations[x.id] } : x))
   }, [session, server, live, durations])
   const words = q.toLowerCase().split(/\s+/).filter(Boolean)
@@ -408,6 +417,8 @@ export function VideoTrimmer({ item, onDone }: { item: MediaItem | null; onDone:
       .then((b) => URL.createObjectURL(b[0]))
       .catch(() => item.poster)
     const clip = cutClip(item.url, item.name, start, end)
+    // the clip is saved on the AI server once it's cut (the original video isn't)
+    if (isLive()) clip.then((f) => shareable(blobUrl(f), { name: f.name })).catch(() => {})
     onDone({ ...item, id: crypto.randomUUID(), name: item.name.replace(/\.[^.]+$/, "") + "-clip", duration: end - start, trim: { start, end }, poster, file: undefined, clip })
   }
 

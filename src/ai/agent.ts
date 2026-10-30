@@ -9,7 +9,7 @@ import type { Brand, Design, Plan, PlanVariation } from "@/ai/design"
 import { mockReply } from "@/ai/mock"
 import { findSkill, SKILLS } from "@/ai/skills"
 import { loadSaved, saver } from "@/ai/sync"
-import { probeVideo, stillsAt } from "@/lib/media"
+import { blobUrl, probeVideo, sameUrl, stillsAt } from "@/lib/media"
 
 /* ---------- what the editor offers the chat ---------- */
 
@@ -718,7 +718,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     const names: string[] = []
     const shows: string[] = []
     for (const f of files) {
-      const url = URL.createObjectURL(f)
+      const url = blobUrl(f)
       if (!f.type.startsWith("video/")) {
         const it = keep(url, f.name, "upload", kind)
         blocks.push(await imageBlock(f))
@@ -1349,7 +1349,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       (opts.imageUrls ?? []).map(async (r) => {
         try {
           const blob = await (await fetch(r.url)).blob()
-          return new File([blob], r.name, { type: blob.type || "image/jpeg" })
+          return sameUrl(new File([blob], r.name, { type: blob.type || "image/jpeg" }), r.url) as File
         } catch {
           return null
         }

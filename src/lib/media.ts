@@ -23,6 +23,8 @@ export type MediaItem = {
   duration?: number
   /** this session's uploads keep their file */
   file?: File
+  /** this session's uploads: their address on the AI server once saved there */
+  saved?: string
 }
 
 /**
@@ -39,11 +41,24 @@ export const sessionUploads = {
     local = [...items, ...local]
     subs.forEach((f) => f())
   },
+  update(id: string, p: Partial<MediaItem>) {
+    local = local.map((x) => (x.id === id ? { ...x, ...p } : x))
+    subs.forEach((f) => f())
+  },
   get: () => local,
 }
 export const useSessionUploads = () => useSyncExternalStore((f) => (subs.add(f), () => subs.delete(f)), () => local)
 
 export const isVideoFile = (f: File) => f.type.startsWith("video/")
+
+/**
+ * One blob: address per file, shared by the prompt boxes, the chat and the server sync, so a file
+ * is uploaded to the AI server once however many places use it.
+ */
+const blobUrls = new WeakMap<Blob, string>()
+export const blobUrl = (f: Blob) => blobUrls.get(f) ?? (blobUrls.set(f, URL.createObjectURL(f)), blobUrls.get(f)!)
+/** a file rebuilt from an existing address keeps that address (so it isn't uploaded twice) */
+export const sameUrl = (f: Blob, url: string) => (url.startsWith("blob:") && blobUrls.set(f, url), f)
 
 /** A video's length and size, read from its metadata. */
 export function probeVideo(url: string): Promise<{ duration: number; width: number; height: number }> {

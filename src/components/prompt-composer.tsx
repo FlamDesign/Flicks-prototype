@@ -29,7 +29,7 @@ import { RatioGlyph } from "@/components/ratio-glyph"
 import { cn } from "@/lib/utils"
 import { useImageUploads } from "@/lib/uploads"
 import { useMediaAdd } from "@/components/media-picker"
-import type { PickedMedia } from "@/lib/media"
+import { blobUrl, type PickedMedia } from "@/lib/media"
 import { MediaViewer, type ViewerItem } from "@/components/media-viewer"
 import { videoCost } from "@/components/credits-card"
 
@@ -327,7 +327,7 @@ export function useReferenceUploads(setRefs: (fn: (r: Reference[]) => Reference[
       const r = refs[i]
       m.clip.then(
         (file) => {
-          setRefs((list) => list.map((x) => (x.id === r.id ? { ...x, url: URL.createObjectURL(file), name: file.name } : x)))
+          setRefs((list) => list.map((x) => (x.id === r.id ? { ...x, url: blobUrl(file), name: file.name } : x)))
           uploads.run([{ id: r.id, name: file.name }], settle, retry)
         },
         () => settle(r.id, false),
