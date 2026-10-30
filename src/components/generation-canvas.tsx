@@ -1100,6 +1100,7 @@ export function GenerationCanvas({
     setComposeMode("chat")
     setChatHidden(false)
     agentCtx.focusComposer()
+    toast({ title: "Tell the chat what to change", description: "It makes a new reference video; you review that one before any variation." })
   }
   const jobs = useRef(new Set<string>())
   useEffect(() => {
@@ -1688,18 +1689,6 @@ export function GenerationCanvas({
                   </div>
                 </>
               )}
-              {/* the reference video is ready: the user reviews it before any variation is made */}
-              {needsReview && !previewing && (
-                <div role="region" aria-label="Review the reference video" className="absolute bottom-full left-1/2 z-30 mb-3 flex -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded-2xl bg-background py-1.5 pl-4 pr-1.5 text-sm shadow-lg ring-1 ring-foreground/10 animate-in fade-in-0 slide-in-from-bottom-1">
-                  <span>Happy with the reference video? Variations are made from it.</span>
-                  <Button size="sm" variant="ghost" onClick={changeRef}>
-                    Change it
-                  </Button>
-                  <Button size="sm" onClick={approveRef}>
-                    Make the variations
-                  </Button>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -1862,6 +1851,26 @@ export function GenerationCanvas({
             composer={
               chatting ? (
                 <div className="flex flex-col gap-2">
+                  {/* the reference video is ready: the user reviews it here before any variation is made */}
+                  {needsReview && (
+                    <section aria-label="Review the reference video" className="flex flex-col gap-3 rounded-2xl bg-background p-3 shadow-lg ring-1 ring-foreground/10 animate-in fade-in-0 slide-in-from-bottom-2">
+                      <div className="flex items-center gap-3">
+                        <img src={GENERATED_VIDEOS[mainNow.video!].poster} alt="" className="size-12 shrink-0 rounded-lg object-cover ring-1 ring-foreground/10" />
+                        <div className="min-w-0">
+                          <p className="text-[15px] font-medium leading-snug">Happy with the reference video?</p>
+                          <p className="text-xs text-muted-foreground">Every variation is made from it. Play it on the canvas, then decide.</p>
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="ghost" onClick={changeRef}>
+                          Change it
+                        </Button>
+                        <Button size="sm" onClick={approveRef}>
+                          Make the variations
+                        </Button>
+                      </div>
+                    </section>
+                  )}
                   <QuestionDeck agent={agent} ctx={agentCtx} />
                   <AgentComposer agent={agent} placeholder={agent.waiting ? "Or reply directly…" : slides[0].startedAt ? "Ask for a change: a headline, a colour, another variation" : undefined} />
                 </div>
