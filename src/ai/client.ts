@@ -105,7 +105,7 @@ export type ChatResult = { content: Block[]; stop: string }
  * One Claude reply, streamed: `onText` gets the reply's text so far; tool calls come back whole in
  * the result. Parses the Messages API's server-sent events.
  */
-export async function streamChat(req: ChatRequest, onText: (text: string) => void, signal?: AbortSignal): Promise<ChatResult> {
+export async function streamChat(req: ChatRequest, onText: (text: string) => void, signal?: AbortSignal, onTool?: (name: string) => void): Promise<ChatResult> {
   const res = await call("/chat", { method: "POST", body: JSON.stringify({ ...req, model: config.model }), signal })
   const reader = res.body!.getReader()
   const dec = new TextDecoder()
@@ -136,6 +136,7 @@ export async function streamChat(req: ChatRequest, onText: (text: string) => voi
       if (ev.type === "content_block_start") {
         const b = ev.content_block
         blocks[ev.index] = b.type === "tool_use" ? { type: "tool_use", id: b.id, name: b.name, input: {}, json: "" } : { type: "text", text: "" }
+        if (b.type === "tool_use") onTool?.(b.name)
       } else if (ev.type === "content_block_delta") {
         const b = blocks[ev.index]
         if (ev.delta.type === "text_delta" && b?.type === "text") {

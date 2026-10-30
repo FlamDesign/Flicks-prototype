@@ -62,7 +62,21 @@ export function AgentItemView({ item, agent, ctx }: { item: Item; agent: Agent; 
         </div>
       )
     case "assistant":
-      return <Said text={item.text} streaming={item.streaming} />
+      return (
+        <div className="flex flex-col gap-2">
+          {(item.text || !item.streaming) && <Said text={item.text} />}
+          {item.streaming && (
+            <span aria-live="polite" className="flex h-6 items-center gap-2 px-1 text-xs text-muted-foreground">
+              <span className="flex gap-1">
+                {[0, 1, 2].map((i) => (
+                  <span key={i} className="size-1.5 animate-pulse rounded-full bg-foreground/40" style={{ animationDelay: `${i * 160}ms` }} />
+                ))}
+              </span>
+              {item.activity && <span className="animate-in fade-in-0">{item.activity}…</span>}
+            </span>
+          )}
+        </div>
+      )
     case "question":
       return <Question item={item} agent={agent} ctx={ctx} />
     case "assets":
@@ -160,12 +174,13 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
   const [picked, setPicked] = useState<string[]>([])
   const [other, setOther] = useState("")
   const stage = useContext(StageContext)
-  const rows = stage && item.display === "chips"
+  // text answers: a numbered vertical list, everywhere (number keys pick only in the choices panel)
+  const rows = item.display === "chips"
   const open = item.answer === undefined
   // in the panel, number keys pick (the first open question only)
   const self = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    if (!rows || !open) return
+    if (!rows || !open || !stage) return
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement
       if (e.metaKey || e.ctrlKey || e.altKey || t.closest("input, textarea, [contenteditable]")) return
@@ -176,7 +191,7 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [rows, open, item.options])
+  }, [rows, open, stage, item.options])
   const pickRef = useRef((_: Choice) => {})
   // answered: just the question and the answer, nothing left to press
   if (item.answer !== undefined)
@@ -196,7 +211,7 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
   return (
     <div ref={self} data-open-question={rows ? "" : undefined} className="flex flex-col">
     <Card className={cn("animate-in fade-in-0 slide-in-from-bottom-1 duration-300", rows && "gap-2 px-2 pb-2")}>
-      <p className={cn("text-sm font-medium", stage && "text-base", rows && "px-3")}>
+      <p className={cn("text-sm font-medium", stage && "text-lg", rows && "px-3")}>
         {item.question}
         {rows && item.multi && <span className="ml-2 text-xs font-normal text-muted-foreground">Pick any</span>}
       </p>
@@ -213,12 +228,20 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
                 disabled={agent.busy}
                 onClick={() => pick(o)}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm outline-none transition-colors hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60",
-                  on && "bg-primary/8 text-primary hover:bg-primary/10",
+                  "group/row relative flex items-center gap-3 px-3 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60",
+                  stage ? "py-3 text-[15px]" : "py-2.5 text-sm",
+                  // a hairline between rows, hidden around the hovered or picked one
+                  "after:absolute after:inset-x-3 after:bottom-0 after:h-px after:bg-foreground/8 hover:rounded-lg hover:bg-muted/70 hover:after:opacity-0",
+                  on && "rounded-lg bg-primary/10 text-primary after:opacity-0 hover:bg-primary/12",
                 )}
               >
-                <span className={cn("grid size-6 shrink-0 place-items-center rounded-md bg-muted text-xs font-medium tabular-nums text-muted-foreground", on && "bg-primary text-primary-foreground")}>
-                  {on ? <HugeiconsIcon icon={Tick02Icon} className="size-3.5" strokeWidth={2.5} /> : i + 1}
+                <span
+                  className={cn(
+                    "grid size-7 shrink-0 place-items-center rounded-md text-xs font-medium tabular-nums text-muted-foreground ring-1 ring-foreground/10",
+                    on && "bg-primary text-primary-foreground ring-primary",
+                  )}
+                >
+                  {on && item.multi ? <HugeiconsIcon icon={Tick02Icon} className="size-3.5" strokeWidth={2.5} /> : i + 1}
                 </span>
                 <span className="flex flex-col">
                   {o.label}
@@ -228,8 +251,8 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
             )
           })}
           {item.custom && (
-            <label className="flex items-center gap-3 rounded-lg px-3 py-1.5 transition-colors focus-within:bg-muted/50 hover:bg-muted/50">
-              <span className="grid size-6 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground">
+            <label className={cn("flex items-center gap-3 rounded-lg px-3 transition-colors focus-within:bg-muted/50 hover:bg-muted/50", stage ? "py-2" : "py-1.5")}>
+              <span className="grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground ring-1 ring-foreground/10">
                 <HugeiconsIcon icon={PencilEdit01Icon} className="size-3.5" />
               </span>
               <input

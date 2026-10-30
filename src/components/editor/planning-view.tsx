@@ -81,7 +81,10 @@ export function PlanningView({
   const open = agent.items.filter(isOpenChoice)
   const openKey = open.map((x) => x.id).join()
   // new choices: back to the top of the panel
-  useEffect(() => panel.current?.scrollTo({ top: 0, behavior: "smooth" }), [openKey])
+  useEffect(() => {
+    // braces: newer browsers return a promise from scrollTo, and an effect may only return a cleanup
+    panel.current?.scrollTo({ top: 0, behavior: "smooth" })
+  }, [openKey])
   const show = (id: string) => document.getElementById(`choice-${id}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" })
 
   const hasLook = Object.keys(design).length > 0
@@ -139,9 +142,6 @@ export function PlanningView({
                 </div>
               </StageContext.Provider>
             </div>
-            <aside aria-label="Preview" className="hidden w-[300px] shrink-0 flex-col items-center justify-center border-l bg-background p-6 xl:flex">
-              {preview(false)}
-            </aside>
           </>
         ) : (
           <div className="flex flex-1 items-center justify-center p-8">{preview(true)}</div>

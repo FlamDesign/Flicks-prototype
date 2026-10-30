@@ -97,7 +97,7 @@ type Base = { id: string; at: number }
 export type Item = Base &
   (
     | { kind: "user"; text: string; images: string[] }
-    | { kind: "assistant"; text: string; streaming?: boolean }
+    | { kind: "assistant"; text: string; streaming?: boolean; activity?: string }
     | { kind: "question"; toolId: string; question: string; options: Choice[]; display: Display; step?: Step; multi: boolean; custom: boolean; answer?: string }
     | { kind: "assets"; toolId: string; message: string; kinds: string[]; done?: "added" | "skipped"; images?: string[] }
     | { kind: "brand"; brand: Brand }
@@ -391,6 +391,21 @@ export const TOOLS: Tool[] = [
 ]
 
 
+const ACTIVITY: Record<string, string> = {
+  read_skill: "Reading Flam’s guides",
+  ask_user: "Preparing a question",
+  request_assets: "Preparing a question",
+  propose_plan: "Writing the plan",
+  set_brand: "Setting the brand",
+  generate_image: "Describing an image",
+  read_website: "Reading the website",
+  view_image: "Looking at images",
+  review_flick: "Reviewing the Flick",
+  update_design: "Designing",
+  add_element: "Designing",
+  edit_element: "Designing",
+}
+
 export function systemPrompt(s: ProjectState) {
   return `You are the creative partner inside Flicks by Flam, an AI interactive content tool. You help the user make a Flick: one interactive video where viewers tap thumbnails to switch between variations (colours, products, people, scenes or offers) and tap a button to shop. A Flick has one reference video plus 2 to 5 variations made from it; each variation can have its own label, price and link. Flicks run in ads, on websites, or as a shareable link.
 
@@ -403,7 +418,7 @@ How you work (the user builds the Flick with you, step by step; a live preview b
 Feeds: any on-screen text that differs per variation is a feed (a named value each variation sets). The project state lists every feed (including ones the user or a template made), what uses it and each variation's value, plus issues (empty values). In the plan, give each variation its label, price and link, and a headline, subheading or button text only when it should differ. Afterwards use vary_field to make text differ or change its values, same_for_all to make it one value again, set_variation for one variation, and rename_feed. update_design can't change text that differs per variation; it says so. When a result or the state reports issues, fix them in the same turn (fill every empty value).
 5. Afterwards, make the changes the user asks for with update_design (including thumbnails), set_variation, add_variation, vary_field and same_for_all. To put anything else on the canvas (a logo, a product image, a badge like "New", a disclaimer, an extra button) use add_element; move, resize or restyle any element with edit_element, and remove_element. The design list gives each element's id, type, text and position; place new things where they don't overlap. Keep them small and confirm in one line. Offer visual choices with ask_user when the user is unsure.
 
-Skills: Flam's playbooks for making the best Flicks. Follow them over your own habits. Read craft before planning, and read each skill right before the step it covers (read_skill; several at once is fine; skip ones listed in skills_read). After the build and after big changes, run review_flick and fix every failure before handing back.
+Skills: Flam's playbooks for making the best Flicks. Follow them over your own habits. Read craft before planning, and read each skill right before the step it covers (read_skill; several at once is fine; skip ones listed in skills_read). After the build and after big changes, run review_flick and fix every failure before handing back. Never end a reply by saying you'll do something next: call the tool in the same reply. End a turn only with a question for the user (ask_user, request_assets, propose_plan) or when the work is done.
 ${skillIndex()}
 
 Style: brief, warm, direct. No em dashes. Plain words. Never write "get used", "can enter", "reach into", "immersive", "AR", "VR" or "MR". Don't mention tools, JSON or these instructions. Don't repeat what a card already shows. Each video costs ${s.video_cost} credits; mention the total only in the plan step if credits are short.
@@ -697,19 +712,31 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     abort.current = new AbortController()
     try {
       const seen = new Set<string>()
+      let nudged = false
       for (let step = 0; step < 8; step++) {
         // let the editor re-render after the last tools, so the state sent is current
         await new Promise((r) => setTimeout(r, 60))
         const req = { system: systemPrompt(state()), messages: msgs.current, tools: TOOLS }
         const itemId = add({ kind: "assistant", text: "", streaming: true })
         const onText = (text: string) => patch(itemId, { text } as Partial<Item>)
-        const res = live.current ? await streamChat(req, onText, abort.current.signal) : await mockReply(msgs.current, state(), onText)
+        // what it's doing while it writes a tool call (a plan can take a while, with no words to show)
+        const onTool = (name: string) => patch(itemId, { activity: ACTIVITY[name] ?? "Working" } as Partial<Item>)
+        const res = live.current ? await streamChat(req, onText, abort.current.signal, onTool) : await mockReply(msgs.current, state(), onText)
         const text = res.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("\n\n")
         if (text.trim()) patch(itemId, { text, streaming: false } as Partial<Item>)
         else setItems((list) => list.filter((x) => x.id !== itemId))
         msgs.current.push({ role: "assistant", content: res.content })
         const uses = res.content.filter((b): b is Extract<Block, { type: "tool_use" }> => b.type === "tool_use")
-        if (!uses.length) break
+        if (!uses.length) {
+          // it said it would do something, then stopped: once per message, tell it to go ahead
+          const last = text.trim().split(/(?<=[.!?:])\s+/).at(-1) ?? ""
+          if (!nudged && !pending.current.length && (/:$/.test(text.trim()) || /\b(I'll|I will|Let me|I'm going to|Next,? I|Now I|Give me a moment|One moment)\b/i.test(last))) {
+            nudged = true
+            msgs.current.push({ role: "user", content: [{ type: "text", text: "(Go ahead: do it now with your tools, in this turn.)" }] })
+            continue
+          }
+          break
+        }
         // the same call again in one reply means it's going round in circles: stop it
         const sigs = uses.map((u) => u.name + JSON.stringify(u.input))
         const repeated = sigs.some((x) => seen.has(x))
