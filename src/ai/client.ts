@@ -243,7 +243,8 @@ const shared = new Map<string, Promise<string>>()
  * A public address for an image, so Higgsfield can use it: one already on the web stays as it is;
  * one that only lives in this browser (an upload, a blob) is kept by the server for 7 days.
  */
-export function shareable(src: string, about: { name?: string; project?: string } = {}): Promise<string> {
+/** about.purpose "upload": the user's own file (shown under Uploaded); anything else is the app's working copy */
+export function shareable(src: string, about: { name?: string; project?: string; purpose?: "upload" } = {}): Promise<string> {
   if (/^https:\/\//.test(src) && !src.startsWith(location.origin)) return Promise.resolve(src)
   const known = shared.get(src)
   if (known) return known

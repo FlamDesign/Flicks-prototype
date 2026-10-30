@@ -14,7 +14,7 @@ import { isLive, library, shareable, type LibraryItem } from "@/ai/client"
 
 /** keeps a session upload on the AI server; the picker then knows its server copy */
 const save = (id: string, url: string, name: string) =>
-  shareable(url, { name })
+  shareable(url, { name, purpose: "upload" })
     .then((saved) => sessionUploads.update(id, { saved }))
     .catch(() => {})
 import { MAX_REF_SECONDS, MAX_VIDEO_MB, blobUrl, clock, cutClip, length, isVideoFile, probeVideo, sessionUploads, stillsAt, useSessionUploads, type MediaItem, type PickedMedia } from "@/lib/media"
@@ -22,12 +22,16 @@ import { cn } from "@/lib/utils"
 
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"]
 const VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm"]
+/** saved before uploads were labelled: the chat's website images and unnamed working copies */
+const APP_COPY = /^(Uploaded (image|video)|.+ image \d+)$/
 /** previews and option images aren't final work: left out of Generated */
 const DRAFT = /preview|idea|option|draft|look/i
 
 /** The server library as picker items: uploads, and final generated work with its prompt and references. */
 const fromLibrary = (x: LibraryItem): MediaItem | null => {
   if (!x.file) return null
+  // the user's own files only: images the chat took from websites, stills and other working copies stay out
+  if (x.model === "upload" && (x.purpose !== "upload" || APP_COPY.test(x.prompt ?? ""))) return null
   const upload = x.purpose === "upload" || x.model === "upload"
   if (!upload && DRAFT.test(x.purpose ?? "")) return null
   const kind = x.kind === "video" || (x.type ?? "").startsWith("video/") ? "video" : "image"
@@ -418,7 +422,7 @@ export function VideoTrimmer({ item, onDone }: { item: MediaItem | null; onDone:
       .catch(() => item.poster)
     const clip = cutClip(item.url, item.name, start, end)
     // the clip is saved on the AI server once it's cut (the original video isn't)
-    if (isLive()) clip.then((f) => shareable(blobUrl(f), { name: f.name })).catch(() => {})
+    if (isLive()) clip.then((f) => shareable(blobUrl(f), { name: f.name, purpose: "upload" })).catch(() => {})
     onDone({ ...item, id: crypto.randomUUID(), name: item.name.replace(/\.[^.]+$/, "") + "-clip", duration: end - start, trim: { start, end }, poster, file: undefined, clip })
   }
 

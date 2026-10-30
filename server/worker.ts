@@ -153,7 +153,7 @@ export default {
         // kept for good and listed in the library, like everything made here
         await env.USAGE?.put(`file:${id}`, bytes, { metadata: { type } })
         const q = url.searchParams
-        await env.USAGE?.put(`lib:${id}`, JSON.stringify({ id, kind: video ? "video" : "image", prompt: (q.get("name") ?? (video ? "Uploaded video" : "Uploaded image")).slice(0, 200), model: "upload", refs: [], ...pick({ project: q.get("project") ?? undefined, purpose: "upload" }), created: Date.now(), saved: true, bytes: bytes.byteLength, type }))
+        await env.USAGE?.put(`lib:${id}`, JSON.stringify({ id, kind: video ? "video" : "image", prompt: (q.get("name") ?? (video ? "Uploaded video" : "Uploaded image")).slice(0, 200), model: "upload", refs: [], ...pick({ project: q.get("project") ?? undefined, purpose: q.get("purpose") === "upload" ? "upload" : "app" }), created: Date.now(), saved: true, bytes: bytes.byteLength, type }))
         return json({ url: `${url.origin}/file/${id}` }, 200, cors)
       }
 

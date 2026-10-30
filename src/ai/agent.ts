@@ -705,7 +705,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     const img = { id: `img-${images.current.length + 1}`, name, url, from, ...(kind ? { kind } : {}) }
     images.current.push(img)
     // the user's own images are kept in the library too (and are then ready to share with Higgsfield)
-    if (from === "upload" && live.current) shareable(url, { name, project: apiRef.current.state().title }).catch(() => {})
+    if (from === "upload" && live.current) shareable(url, { name, project: apiRef.current.state().title, purpose: "upload" }).catch(() => {})
     return img
   }
 
@@ -731,7 +731,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         const stills = await stillsAt(url, [0.1, 0.5, 0.9].map((k) => k * duration), 768)
         const it = { id: `vid-${images.current.filter((x) => x.kind === "video").length + 1}`, name: f.name, url, from: "upload" as const, kind: "video" }
         images.current.push(it)
-        if (live.current) shareable(url, { name: f.name, project: apiRef.current.state().title }).catch(() => {})
+        if (live.current) shareable(url, { name: f.name, project: apiRef.current.state().title, purpose: "upload" }).catch(() => {})
         for (const b of stills) blocks.push(await imageBlock(b))
         names.push(`${it.id} (${f.name}, a ${duration.toFixed(1)} s video; the 3 stills above are its start, middle and end)`)
         shows.push(URL.createObjectURL(stills[0]))
