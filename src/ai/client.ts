@@ -115,7 +115,7 @@ export type ChatResult = { content: Block[]; stop: string }
  * One Claude reply, streamed: `onText` gets the reply's text so far; tool calls come back whole in
  * the result. Parses the Messages API's server-sent events.
  */
-export async function streamChat(req: ChatRequest, onText: (text: string) => void, signal?: AbortSignal, onTool?: (name: string) => void): Promise<ChatResult> {
+export async function streamChat(req: ChatRequest, onText: (text: string) => void, signal?: AbortSignal, onTool?: (name: string) => void, onToolJson?: (id: string, name: string, json: string) => void): Promise<ChatResult> {
   const res = await call("/chat", { method: "POST", body: JSON.stringify({ ...req, model: config.model }), signal })
   const reader = res.body!.getReader()
   const dec = new TextDecoder()
@@ -163,7 +163,11 @@ export async function streamChat(req: ChatRequest, onText: (text: string) => voi
           b.text += ev.delta.text
           text += ev.delta.text
           onText(text)
-        } else if (ev.delta.type === "input_json_delta" && b) b.json += ev.delta.partial_json
+        } else if (ev.delta.type === "input_json_delta" && b) {
+          b.json += ev.delta.partial_json
+          // a tool call's input so far, for work that can start before it's finished (concept previews)
+          if (b.type === "tool_use") onToolJson?.(b.id, b.name, b.json ?? "")
+        }
         else if (ev.delta.type === "thinking_delta" && b?.type === "thinking") b.thinking += ev.delta.thinking
         else if (ev.delta.type === "signature_delta" && b?.type === "thinking") b.signature = (b.signature ?? "") + ev.delta.signature
         else if (ev.delta.type === "citations_delta" && b?.type === "text") (b as { citations?: unknown[] }).citations = [...((b as { citations?: unknown[] }).citations ?? []), ev.delta.citation]
@@ -216,7 +220,8 @@ export async function generateImage(prompt: string, aspect: string, signal?: Abo
   const { id } = (await (await steady("/image", { method: "POST", body: JSON.stringify({ prompt, aspect_ratio: aspect, image_urls: imageUrls, meta, ...opts }), signal })).json()) as { id: string }
   onStatus?.("queued")
   const until = Date.now() + 240_000
-  let wait = 2000
+  // checks often, so a finished image shows within a couple of seconds
+  let wait = 1500
   while (Date.now() < until) {
     await new Promise((r) => setTimeout(r, wait))
     if (signal?.aborted) throw new AiError("aborted", "Stopped.")
@@ -226,7 +231,7 @@ export async function generateImage(prompt: string, aspect: string, signal?: Abo
     if (s.status === "completed") throw new AiError("image_failed", "Higgsfield finished but sent no image. Try again.")
     if (s.status === "failed" || s.status === "canceled") throw new AiError("image_failed", "The image didn't generate. Try again.")
     if (s.status === "nsfw") throw new AiError("image_blocked", "Higgsfield blocked this image. Try a different description.")
-    wait = Math.min(wait * 1.4, 6000)
+    wait = Math.min(wait * 1.25, 3000)
   }
   throw new AiError("image_timeout", "The image is taking too long. Try again.")
 }

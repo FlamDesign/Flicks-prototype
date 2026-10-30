@@ -552,6 +552,63 @@ export const SERVER_TOOLS: Tool[] = [
   { type: "web_fetch_20250910", name: "web_fetch", max_uses: 6, max_content_tokens: 12000 },
 ]
 
+/** Where a key's value starts in JSON that may still be arriving (a top-level key of the object) */
+function valueStart(json: string, key: string) {
+  const m = new RegExp(`"${key}"\\s*:\\s*`).exec(json)
+  return m ? m.index + m[0].length : -1
+}
+/** From the start of a value, the index just past it once it's complete, or -1 */
+function valueEnd(json: string, from: number) {
+  let depth = 0
+  let str = false
+  for (let i = from; i < json.length; i++) {
+    const ch = json[i]
+    if (str) {
+      if (ch === "\\") i++
+      else if (ch === '"') str = false
+      continue
+    }
+    if (ch === '"') str = true
+    else if (ch === "{" || ch === "[") depth++
+    else if (ch === "}" || ch === "]") {
+      depth--
+      if (depth === 0) return i + 1
+    }
+  }
+  return -1
+}
+/** A key's value from partial JSON, once that value is complete */
+export function finishedValue(json: string, key: string): unknown {
+  const start = valueStart(json, key)
+  if (start < 0) return undefined
+  const end = valueEnd(json, start)
+  if (end < 0) return undefined
+  try {
+    return JSON.parse(json.slice(start, end))
+  } catch {
+    return undefined
+  }
+}
+/** The items of an array (under key) that are complete so far, in partial JSON */
+export function finishedItems(json: string, key: string): unknown[] {
+  const start = valueStart(json, key)
+  if (start < 0 || json[start] !== "[") return []
+  const out: unknown[] = []
+  let i = start + 1
+  for (;;) {
+    while (i < json.length && /[\s,]/.test(json[i])) i++
+    if (i >= json.length || json[i] === "]" || json[i] !== "{") return out
+    const end = valueEnd(json, i)
+    if (end < 0) return out
+    try {
+      out.push(JSON.parse(json.slice(i, end)))
+    } catch {
+      return out
+    }
+    i = end
+  }
+}
+
 /**
  * Tool inputs sometimes carry stray call markup inside a text field ('<parameter name="prompt">…').
  * A field that is only that markup becomes the fields it names; any leftover tags are removed.
@@ -750,6 +807,39 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     }
   }
 
+  /**
+   * Concept previews: a quick image of each concept's style, using the user's own images (product,
+   * person, style) as references so it shows their real product. Started as soon as each concept is
+   * written (see onToolJson), so they're under way while Claude writes the rest.
+   */
+  const previews = useRef(new Map<string, { prompt: string; job: Promise<string> }>())
+  const previewFor = (toolId: string, i: number, c: Record<string, unknown>) => {
+    const prompt = String(c.image_prompt ?? c.idea ?? "")
+    const key = `${toolId}:${i}`
+    const known = previews.current.get(key)
+    if (known && known.prompt === prompt) return known.job
+    const own = images.current.filter((x) => x.from === "upload" || x.from === "website" || x.from === "library").slice(0, 3)
+    const picked = ((c.reference_image_ids as string[] | undefined) ?? []).map((r) => images.current.find((x) => x.id === r)).filter((x): x is ProjectImage => !!x)
+    const refs = (picked.length ? picked : own).slice(0, 3)
+    const job = Promise.all(refs.map((r) => shareable(r.url).catch(() => null))).then((urls) =>
+      generateImage(prompt, aspectOf(state().flick_size), undefined, undefined, urls.filter((x): x is string => !!x), { project: state().title, purpose: "concept preview" }, { quality: "draft" }),
+    )
+    job.catch(() => previews.current.delete(key))
+    previews.current.set(key, { prompt, job })
+    return job
+  }
+  /** while propose_concepts streams in: start a preview for each concept that's complete (only once what varies is settled) */
+  const onToolJson = (id: string, name: string, json: string) => {
+    if (name !== "propose_concepts" || !live.current) return
+    const done = finishedItems(json, "concepts")
+    if (!done.length) return
+    const from = finishedValue(json, "variations_from")
+    if (!variationsSettled(from, false)) return
+    done.forEach((c, i) => {
+      if (i < 3 && c && typeof c === "object" && (c as { image_prompt?: unknown }).image_prompt) previewFor(id, i, c as Record<string, unknown>).catch(() => {})
+    })
+  }
+
   /** concepts and plans wait until what varies is settled: a variations question answered, or the user's own words */
   const variationsSettled = (from: unknown, forPlan: boolean) => {
     const answered = new Set(msgs.current.flatMap((m) => (m.role === "user" ? m.content.flatMap((b) => (b.type === "tool_result" ? [b.tool_use_id] : [])) : [])))
@@ -796,18 +886,10 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           }))
           const itemId = add({ kind: "question", toolId: u.id, question: "Pick a concept", options, display: "concepts", step: "idea", multi: false, custom: true })
           pending.current.push({ toolId: u.id, itemId })
-          // quick previews of each concept's style, filled in as they arrive; they use the user's own
-          // images (product, person, style) as references, so the preview shows their real product
-          const aspect = aspectOf(state().flick_size)
-          const own = images.current.filter((i) => i.from === "upload" || i.from === "website" || i.from === "library").slice(0, 3)
+          // previews fill in as they arrive; most already started while Claude was still writing the concepts
           list.forEach((c, i) => {
             const fill = (url: string) => setItems((all) => all.map((x) => (x.id === itemId && x.kind === "question" ? { ...x, options: x.options.map((o, j) => (j === i ? { ...o, image: url } : o)) } : x)))
-            const picked = ((c.reference_image_ids as string[] | undefined) ?? []).map((r) => images.current.find((x) => x.id === r)).filter((x): x is ProjectImage => !!x)
-            const refs = (picked.length ? picked : own).slice(0, 3)
-            if (live.current)
-              Promise.all(refs.map((r) => shareable(r.url).catch(() => null)))
-                .then((urls) => generateImage(String(c.image_prompt ?? c.idea ?? ""), aspect, undefined, undefined, urls.filter((u): u is string => !!u), { project: state().title, purpose: "concept preview" }, { quality: "draft" }))
-                .then(fill, () => {})
+            if (live.current) previewFor(u.id, i, c).then(fill, () => {})
             else setTimeout(() => fill(apiRef.current.sampleImage("idea", undefined)), 1200 + i * 600)
           })
           return WAIT
@@ -989,7 +1071,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         const onText = (text: string) => patch(itemId, { text } as Partial<Item>)
         // what it's doing while it writes a tool call (a plan can take a while, with no words to show)
         const onTool = (name: string) => patch(itemId, { activity: ACTIVITY[name] ?? "Working" } as Partial<Item>)
-        const ask = (r: typeof req) => (live.current ? streamChat(r, onText, abort.current!.signal, onTool) : mockReply(msgs.current, state(), onText))
+        const ask = (r: typeof req) => (live.current ? streamChat(r, onText, abort.current!.signal, onTool, onToolJson) : mockReply(msgs.current, state(), onText))
         // if the API refuses how earlier searches or thinking were sent back, send them once more as plain notes
         const res = await ask(req).catch((e) => {
           if (e instanceof Error && /tool_result|thinking|signature/i.test(e.message)) return ask(cachedRequest(systemPrompt(now), msgs.current, now, true))
