@@ -47,7 +47,7 @@ function paletteOf(answer?: string) {
 }
 
 const tool = (name: string, input: Record<string, unknown>): Block => ({ type: "tool_use", id: `mock_${crypto.randomUUID().slice(0, 12)}`, name, input })
-const WAITING = new Set(["ask_user", "request_assets", "propose_plan"])
+const WAITING = new Set(["ask_user", "request_assets", "propose_plan", "propose_concepts"])
 
 /** types the text out like a streamed reply */
 async function type(text: string, onText: (t: string) => void) {
@@ -218,6 +218,19 @@ export async function mockReply(messages: Message[], s: ProjectState, onText: (t
       }),
     )
 
+  // ideas before the plan
+  if (!used("propose_concepts").length)
+    return reply(
+      "Three directions. Pick one, or tell me what to mix.",
+      tool("read_skill", { names: ["categories", "concepts"] }),
+      tool("propose_concepts", {
+        concepts: [
+          { title: "Find your lens", idea: "One athlete, three lens colours, the same slow turn to camera.", question: "Which lens is yours?", swap: "lens colour", variations: sample.variations.map((v) => v.name), beats: ["Leaning on a sunlit wall", "Turns slowly to camera", "Lenses catch the light"], image_prompt: "athlete in sport sunglasses on a sunlit concrete wall" },
+          { title: "Golden hour run", idea: "A runner pauses at sunset; the lenses change with the mood.", question: "Which mood?", swap: "lens colour", variations: sample.variations.map((v) => v.name), beats: ["Runner slows down", "Looks into the sun", "Close-up on the lenses"], image_prompt: "runner at sunset wearing sport sunglasses" },
+          { title: "Studio hero", idea: "The sunglasses alone on a plinth, slow orbit.", question: "Which pair?", swap: "frame and lens", variations: sample.variations.map((v) => v.name), beats: ["Plinth in soft light", "Slow orbit", "Hero three-quarter view"], image_prompt: "sport sunglasses on a studio plinth" },
+        ],
+      }),
+    )
   const reference = first.trim().length > 24 ? first.trim() : sample.reference
   return reply(
     "Here's the plan. Edit anything in place, add or remove variations, then generate it all in one go.",

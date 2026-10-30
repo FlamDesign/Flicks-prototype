@@ -849,7 +849,52 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
         {pager}
       </header>
       <div className="max-h-[50vh] overflow-y-auto px-2">
-        {q.display === "chips" || q.display === "cards" ? (
+        {q.display === "concepts" ? (
+          <div className="flex flex-col gap-2 p-1" role="radiogroup" aria-label={q.question}>
+            {q.options.map((o, n) => (
+              <button
+                key={o.label}
+                type="button"
+                role="radio"
+                aria-checked={chosen(o)}
+                disabled={agent.busy}
+                onClick={() => pick(o)}
+                className={cn(
+                  "flex gap-3 rounded-xl p-2 text-left outline-none ring-1 ring-foreground/10 transition-[box-shadow,background-color] hover:bg-muted/60 hover:ring-foreground/30 focus-visible:ring-2 focus-visible:ring-ring",
+                  chosen(o) && "bg-primary/10 ring-2 ring-primary",
+                )}
+              >
+                <span className="relative w-24 shrink-0 overflow-hidden rounded-lg bg-muted" style={{ aspectRatio: ctx.ratio }}>
+                  {o.image ? (
+                    <img src={o.image} alt="" className="absolute inset-0 size-full object-cover animate-in fade-in-0 duration-500" />
+                  ) : (
+                    <span className="absolute inset-0 grid place-items-center">
+                      <HugeiconsIcon icon={Loading03Icon} className="size-4 animate-spin text-muted-foreground" />
+                    </span>
+                  )}
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col gap-1 py-0.5">
+                  <span className="flex items-baseline gap-2 text-sm font-medium">
+                    <span className="text-xs tabular-nums text-muted-foreground">{n + 1}</span>
+                    {o.label}
+                  </span>
+                  {o.description && <span className="text-xs leading-snug text-muted-foreground">{o.description}</span>}
+                  {o.question && <span className="text-xs italic text-muted-foreground">“{o.question}”</span>}
+                  {!!o.variations?.length && (
+                    <span className="flex flex-wrap gap-1 pt-0.5">
+                      {o.variations.map((v) => (
+                        <span key={v} className="rounded-full bg-muted px-2 py-0.5 text-[11px]">
+                          {v}
+                        </span>
+                      ))}
+                    </span>
+                  )}
+                  {!!o.beats?.length && <span className="text-[11px] leading-snug text-muted-foreground">{o.beats.join(" → ")}</span>}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : q.display === "chips" || q.display === "cards" ? (
           <div className="flex flex-col" role={q.multi ? "group" : "radiogroup"} aria-label={q.question}>
             {q.options.map((o, n) => {
               const on = chosen(o)

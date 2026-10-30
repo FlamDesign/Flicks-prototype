@@ -16,11 +16,13 @@ One line each:
   close-up, can turns to camera").
 - **The video type** (see the list below).
 
-## Offering concepts
+## Offering concepts (always, before the plan)
+- Use **propose_concepts** before every plan, unless the user already gave a complete concept or
+  asked to skip ideas. It shows each concept as a card with a preview image the app makes from your
+  image_prompt, so the user sees the style before any video credits are spent.
 - Suggest up to 3, clearly different from each other (not three versions of one idea).
-- Show each with a quick preview image from the fast image model, so the user sees the style before
-  anything is generated. Say it's a preview of the style, not a final frame.
-- Present them as a visual choice; the user can pick, mix or change one. Confirm before moving on.
+- Write image_prompt as one frame of the concept: subject, setting, light, style; no text.
+- The user can pick one, or type a mix or a change. Then plan the picked concept.
 
 ## Choosing what changes
 - **Anything that makes sense** can change: product, colour, flavour, size, person, outfit, pet,

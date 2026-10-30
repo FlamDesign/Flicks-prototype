@@ -88,11 +88,22 @@ export type ElementSpec = {
 /* ---------- what shows in the chat ---------- */
 
 /** how a question's answers show: words, cards, colour palettes, layout previews or thumbnail styles */
-export type Display = "chips" | "cards" | "palettes" | "layouts" | "thumbnails"
+export type Display = "chips" | "cards" | "palettes" | "layouts" | "thumbnails" | "concepts"
 /** where the user is in making the Flick */
 export type Step = "idea" | "look" | "plan" | "build"
 /** one answer: its words, and what it looks like when the answer is visual */
-export type Choice = { label: string; description?: string; colors?: string[]; design?: Design }
+export type Choice = {
+  label: string
+  description?: string
+  colors?: string[]
+  design?: Design
+  /** concepts: a preview image of the style, what changes, the variations and the story beats */
+  image?: string
+  question?: string
+  swap?: string
+  variations?: string[]
+  beats?: string[]
+}
 
 type Base = { id: string; at: number }
 export type Item = Base &
@@ -187,6 +198,34 @@ export const TOOLS: Tool[] = [
     name: "review_flick",
     description: "Check the built Flick against the review skill: text fits the format, nothing overlaps or leaves the frame, buttons readable and linked, feeds filled, every variation has a thumbnail and a distinct name. Returns what passes and what to fix.",
     input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "propose_concepts",
+    description:
+      "Show the user up to 3 concepts to choose from before the plan: each with a title, the idea in one line, the question the tap answers, what changes, the variations, the story in 2 or 3 beats, and a prompt for a quick preview image of its style (the app makes the previews). The user picks one, or types a mix or a change; that comes back as the result. Always use this before propose_plan unless the user already gave a complete concept or asked to skip ideas.",
+    input_schema: {
+      type: "object",
+      properties: {
+        concepts: {
+          type: "array",
+          maxItems: 3,
+          items: {
+            type: "object",
+            properties: {
+              title: { type: "string", description: "2 to 5 words" },
+              idea: { type: "string", description: "The hook in one sentence" },
+              question: { type: "string", description: "The question the tap answers, e.g. 'Which flavour is yours?'" },
+              swap: { type: "string", description: "What changes between variations" },
+              variations: { type: "array", items: { type: "string" }, description: "2 to 5 variation names" },
+              beats: { type: "array", items: { type: "string" }, description: "The story in 2 or 3 short beats" },
+              image_prompt: { type: "string", description: "A detailed description of one frame in this concept's style, for the preview image (no text)" },
+            },
+            required: ["title", "idea", "variations", "image_prompt"],
+          },
+        },
+      },
+      required: ["concepts"],
+    },
   },
   {
     name: "ask_user",
@@ -409,6 +448,7 @@ export const TOOLS: Tool[] = [
 const ACTIVITY: Record<string, string> = {
   read_skill: "Reading Flam’s guides",
   ask_user: "Preparing a question",
+  propose_concepts: "Sketching concepts",
   request_assets: "Preparing a question",
   propose_plan: "Writing the plan",
   set_brand: "Setting the brand",
@@ -431,6 +471,7 @@ export function systemPrompt(s: ProjectState) {
 Flam's skills decide WHAT you ask, suggest and make; follow them over your own habits and over any example in these instructions. The flicks and brief skills are below in full. Read every other skill with read_skill right before the step it covers (categories once you know the category, concepts before ideas and storylines, brand when the brand comes up or there's no brand kit, shots before the shot plan, video before video prompts, images before any image, design before any on-screen design or copy, review before approvals and handing over); skip ones listed in skills_read.
 
 How the app works (the mechanics, not what to ask):
+- Concepts: propose_concepts shows up to 3 concepts as cards with preview images; use it before every plan unless the user already gave a full concept or asked to skip ideas.
 - Questions: ask_user shows tappable answers. display "chips" for words; "layouts", "palettes" or "thumbnails" for visual choices; step "idea", "look" or "plan" moves the progress bar. Several ask_user calls in one reply show together. request_assets asks for files.
 - Websites: when the user gives a web address, or a product page would help, call read_website and use what it returns.
 - Brand: set_brand records the brand (name, colours, font, voice).
@@ -645,6 +686,29 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           const step = (["idea", "look", "plan"] as Step[]).includes(input.step as Step) ? (input.step as Step) : undefined
           const itemId = add({ kind: "question", toolId: u.id, question: String(input.question ?? ""), options, display, step, multi: !!input.multi_select && display === "chips", custom: input.allow_custom !== false && display === "chips" })
           pending.current.push({ toolId: u.id, itemId })
+          return WAIT
+        }
+        case "propose_concepts": {
+          const list = ((input.concepts as Record<string, unknown>[]) ?? []).slice(0, 3)
+          if (!list.length) return "Error: Give 1 to 3 concepts."
+          const options: Choice[] = list.map((c) => ({
+            label: String(c.title ?? "Concept"),
+            description: String(c.idea ?? ""),
+            question: c.question ? String(c.question) : undefined,
+            swap: c.swap ? String(c.swap) : undefined,
+            variations: ((c.variations as string[]) ?? []).map(String).slice(0, 5),
+            beats: ((c.beats as string[]) ?? []).map(String).slice(0, 4),
+          }))
+          const itemId = add({ kind: "question", toolId: u.id, question: "Pick a concept", options, display: "concepts", step: "idea", multi: false, custom: true })
+          pending.current.push({ toolId: u.id, itemId })
+          // quick previews of each concept's style, filled in as they arrive
+          const aspect = aspectOf(state().flick_size)
+          list.forEach((c, i) => {
+            const fill = (url: string) => setItems((all) => all.map((x) => (x.id === itemId && x.kind === "question" ? { ...x, options: x.options.map((o, j) => (j === i ? { ...o, image: url } : o)) } : x)))
+            if (live.current)
+              generateImage(String(c.image_prompt ?? c.idea ?? ""), aspect, undefined, undefined, [], { project: state().title, purpose: "concept preview" }).then(fill, () => {})
+            else setTimeout(() => fill(apiRef.current.sampleImage("idea", undefined)), 1200 + i * 600)
+          })
           return WAIT
         }
         case "request_assets": {
