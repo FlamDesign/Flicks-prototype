@@ -1078,11 +1078,12 @@ export function GenerationCanvas({
   const agent = useAgent(agentApi, { prompt: agentMode ? generation.prompt : undefined, imageUrls: agentMode ? (generation.refs ?? []).filter((r) => !r.failed).map((r) => ({ url: r.url, name: r.name })) : [], autoStart: agentMode })
   const live = isLive(useAiConfig())
   liveRef.current = live
-  // real videos: with the AI server connected, every video started here is made for real (720p).
+  // real videos: only in projects made with the AI chat, with the AI server connected; every video
+  // started there is made for real (720p). Projects without the AI chat keep the sample videos.
   // The slide keeps a stand-in video until it's ready; a failure refunds and leaves it empty.
   const jobs = useRef(new Set<string>())
   useEffect(() => {
-    if (!live) return
+    if (!live || !agentMode) return
     for (const sl of slides) {
       if (!sl.startedAt || sl.startedAt <= 1 || sl.job || isMadeVideo(sl.video) || !sl.used?.prompt) continue
       const key = `${sl.id}:${sl.startedAt}`
@@ -1110,7 +1111,7 @@ export function GenerationCanvas({
       )
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [live, slides])
+  }, [live, agentMode, slides])
   // the composer in chat mode: talk to the chat, or write a video's prompt yourself
   const [composeMode, setComposeMode] = useState<"chat" | "prompt">("chat")
   const chatting = agentMode && (composeMode === "chat" || !slides[0].startedAt)
