@@ -368,16 +368,6 @@ function Tile({ x, on, onToggle, onOpen, onDuration }: { x: MediaItem; on: boole
         </TooltipTrigger>
         <TooltipContent>Full screen</TooltipContent>
       </Tooltip>
-      <div className="mt-1 flex items-center gap-1">
-        <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={x.name}>
-          {x.name}
-        </span>
-        {x.source === "generated" && (x.prompt || x.refs?.length) && (
-          <Button variant="link" size="sm" className="h-auto shrink-0 p-0 text-xs" onClick={onOpen}>
-            Prompt
-          </Button>
-        )}
-      </div>
     </div>
   )
 }
