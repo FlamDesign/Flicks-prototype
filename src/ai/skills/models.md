@@ -31,8 +31,8 @@ Every video is 720p with no sound. Pick the way it's made by what you give the p
 | Video | What you give | How it's made | Use when |
 |---|---|---|---|
 | Reference | the prompt only | text to video | no images to work from |
-| Reference | reference.first_frame_id (and optionally last_frame_id) | image to video: opens exactly on that image (ends on the last one) | the user has the exact shot, or you made and they approved a look frame; a controlled reveal from one frame to another |
-| Reference | reference.image_ids | reference to video: stays true to those images | the product, person or style must match photos, but there's no exact first frame |
+| Reference | first_frame_id (and optionally last_frame_id) | image to video: opens exactly on that image (ends on the last one) | the user has the exact shot, or you made and they approved a look frame; a controlled reveal from one frame to another |
+| Reference | reference_image_ids | reference to video: stays true to those images | the product, person or style must match photos, but there's no exact first frame |
 | Variation | (default) method "edit", plus image_ids if you have images of its change | video edit: edits the approved reference video, changing only what you describe, matching the images | almost always: colour, flavour, product swaps of the same shape, outfits, time of day |
 | Variation | method "regenerate", plus image_ids | reference to video, following the approved reference video | bigger changes the edit can't make cleanly: a different product shape, a new setting |
 

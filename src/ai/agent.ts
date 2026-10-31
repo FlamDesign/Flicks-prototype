@@ -193,15 +193,13 @@ const choiceSchema = {
   ],
 }
 
-/** how the variations were settled; concepts and plans are refused until they are */
+/**
+ * How the variations were settled; concepts and plans are refused until they are. Flat fields (not a
+ * nested object): nested objects in tool input sometimes came back garbled, losing their fields.
+ */
 const variationsFrom = {
-  type: "object",
-  description: "How you know what changes between variations",
-  properties: {
-    basis: { type: "string", enum: ["asked", "user_message"], description: "asked: the user answered your ask_user with purpose 'variations' (also how you confirm products seen in the images); user_message: the user said it themselves in a message" },
-    quote: { type: "string", description: "For user_message: the user's own words naming what varies, copied exactly" },
-  },
-  required: ["basis"],
+  variations_basis: { type: "string", enum: ["asked", "user_message"], description: "How you know what changes between variations. asked: the user answered your ask_user with purpose 'variations' (also how you confirm products seen in the images); user_message: the user said it themselves in a message" },
+  variations_quote: { type: "string", description: "For user_message: the user's own words naming what varies, copied exactly" },
 }
 
 export const TOOLS: Tool[] = [
@@ -222,7 +220,7 @@ export const TOOLS: Tool[] = [
     input_schema: {
       type: "object",
       properties: {
-        variations_from: variationsFrom,
+        ...variationsFrom,
         concepts: {
           type: "array",
           maxItems: 3,
@@ -242,7 +240,7 @@ export const TOOLS: Tool[] = [
           },
         },
       },
-      required: ["variations_from", "concepts"],
+      required: ["variations_basis", "concepts"],
     },
   },
   {
@@ -297,21 +295,15 @@ export const TOOLS: Tool[] = [
       type: "object",
       properties: {
         title: { type: "string", description: "Project name, 2 to 5 words" },
-        reference: {
-          type: "object",
-          properties: {
-            prompt: { type: "string", description: "The reference video: subject, setting, camera motion, light, style. 1 to 3 sentences." },
-            first_frame_id: { type: "string", description: "A project image id to open the video on, exactly (the user's shot, or an approved look frame)" },
-            last_frame_id: { type: "string", description: "Optional: a project image id the video ends on (a controlled reveal); needs first_frame_id" },
-            image_ids: { type: "array", items: { type: "string" }, description: "Project image ids the video must stay true to (product, person, style) when there's no first frame" },
-          },
-          required: ["prompt"],
-        },
-        variations_from: variationsFrom,
+        reference_prompt: { type: "string", description: "The reference video: subject, setting, camera motion, light, style. 1 to 3 sentences." },
+        first_frame_id: { type: "string", description: "A project image id the reference video opens on, exactly (image to video): the user's shot, or a look frame they approved" },
+        last_frame_id: { type: "string", description: "Optional: a project image id the reference video ends on (a controlled reveal); needs first_frame_id" },
+        reference_image_ids: { type: "array", items: { type: "string" }, description: "Project image ids the reference video must stay true to (product, person, style) when there's no first frame (reference to video). Always set this or first_frame_id when the user has product or people images." },
+        ...variationsFrom,
         variations: { type: "array", items: variationSchema, minItems: 2, maxItems: 5 },
         design: designSchema,
       },
-      required: ["title", "reference", "variations", "design"],
+      required: ["title", "reference_prompt", "variations", "design"],
     },
   },
   {
@@ -525,7 +517,7 @@ How the app works (the mechanics, not what to ask):
 - Web: web_search finds pages; web_fetch reads a page or PDF (text) that appeared in the conversation or in search results; read_website reads a product page for its products, prices, colours and images (and keeps the images for the project). Use them on your own whenever a brand or product is hinted.
 - Brand: set_brand records the brand (name, colours, font, voice).
 - Images: generate_image (with reference_image_ids to keep the user's images, has_text for readable words), view_image to look at any project image, use_image to place one. The app picks the model from these (models skill).
-- Videos: the reference video is made first: from its prompt alone, or opening on a first frame (reference.first_frame_id, optionally ending on last_frame_id), or kept true to images (reference.image_ids). Give variations image_ids when you have images of their changed thing, and method "regenerate" only for big changes (default "edit"). See the models skill. The user always reviews it (reference_review in the project state); variations are made only after they approve, from the latest reference video plus each variation line, so they keep its motion, camera and timing. When the reference is ready, ask them to review it; if they want changes, regenerate the reference with set_variation (variation "reference", regenerate true) and they review the new one.
+- Videos: the reference video is made first: from its prompt alone, or opening on a first frame (first_frame_id, optionally ending on last_frame_id), or kept true to images (reference_image_ids). When the user has product or people images, the reference video must use them (one of those two); a plan without them is refused. Give variations image_ids when you have images of their changed thing, and method "regenerate" only for big changes (default "edit"). See the models skill. The user always reviews it (reference_review in the project state); variations are made only after they approve, from the latest reference video plus each variation line, so they keep its motion, camera and timing. When the reference is ready, ask them to review it; if they want changes, regenerate the reference with set_variation (variation "reference", regenerate true) and they review the new one.
 - Library: everything made before is kept. search_library finds earlier images and videos (with their prompts); use_library brings them in as references or starting points.
 - The plan: propose_plan is the approval before any video credits are spent. It carries the reference video prompt, each variation (name, prompt, label, price, link, and headline, subheading or button text only when they differ) and the design. The user edits it and presses Generate all; the app then makes every video and places the design and thumbnail strip.
 - Feeds: on-screen text that differs per variation is a feed. The project state lists every feed, what uses it, each variation's value and any issues. Change them with vary_field, same_for_all, set_variation and rename_feed; update_design can't change text that differs per variation. Fix reported issues in the same turn.
@@ -868,7 +860,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     if (name !== "propose_concepts" || !live.current) return
     const done = finishedItems(json, "concepts")
     if (!done.length) return
-    const from = finishedValue(json, "variations_from")
+    const from = { basis: finishedValue(json, "variations_basis"), quote: finishedValue(json, "variations_quote") }
     if (!variationsSettled(from, false)) return
     done.forEach((c, i) => {
       if (i < 3 && c && typeof c === "object" && (c as { image_prompt?: unknown }).image_prompt) previewFor(id, i, c as Record<string, unknown>).catch(() => {})
@@ -890,6 +882,24 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   }
   const NOT_SETTLED =
     "Not shown: what changes between variations isn't settled yet. Ask first with ask_user (purpose \"variations\"): if the inputs show different products, name them and ask to confirm; if they show one product, offer options from your research (other products in the brand's range by name, or this product only with different serves, scenes, moods, people or offers, and \"I'll add more products\"). Then come back to this."
+
+  /** what varies, from the flat fields (or the older nested shape) */
+  const fromOf = (input: Record<string, unknown>) => {
+    const old = input.variations_from as { basis?: string; quote?: string } | undefined
+    return { basis: (input.variations_basis as string | undefined) ?? old?.basis, quote: (input.variations_quote as string | undefined) ?? old?.quote }
+  }
+  /** the reference video, from the flat fields, the older nested object, or a garbled mix of both */
+  const referenceOf = (input: Record<string, unknown>): Plan["reference"] => {
+    const r = input.reference
+    const nested = (r && typeof r === "object" ? r : typeof r === "string" ? { prompt: r } : {}) as Partial<Plan["reference"]>
+    const ids = (v: unknown) => (Array.isArray(v) ? v.map(String).filter(Boolean) : undefined)
+    return {
+      prompt: String(input.reference_prompt ?? nested.prompt ?? "").trim(),
+      first_frame_id: (input.first_frame_id as string | undefined) ?? nested.first_frame_id,
+      last_frame_id: (input.last_frame_id as string | undefined) ?? nested.last_frame_id,
+      image_ids: ids(input.reference_image_ids) ?? ids(nested.image_ids) ?? ids(input.image_ids),
+    }
+  }
 
   /**
    * The plan card shows the Flick with stills standing in for the videos: one quick draft image per
@@ -930,7 +940,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           return WAIT
         }
         case "propose_concepts": {
-          if (live.current && !variationsSettled(input.variations_from, false)) return NOT_SETTLED
+          if (live.current && !variationsSettled(fromOf(input), false)) return NOT_SETTLED
           const list = ((input.concepts as Record<string, unknown>[]) ?? []).slice(0, 3)
           if (!list.length) return "Error: Give 1 to 3 concepts."
           const options: Choice[] = list.map((c) => ({
@@ -959,11 +969,14 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         case "propose_plan": {
           // a newer plan replaces any open one
           setItems((list) => list.map((x) => (x.kind === "plan" && x.state === "open" ? { ...x, state: "skipped" } : x)))
-          if (live.current && !variationsSettled(input.variations_from, true)) return NOT_SETTLED
-          // a reference given as bare text is its prompt
-          if (typeof input.reference === "string") input.reference = { prompt: input.reference }
-          const raw = input as unknown as Plan
+          if (live.current && !variationsSettled(fromOf(input), true)) return NOT_SETTLED
+          const raw = { ...(input as unknown as Plan), reference: referenceOf(input) }
+          if (!raw.reference.prompt) return "Error: give the reference video's prompt (reference_prompt)."
           if (!raw.variations?.length) return "Error: a plan needs at least two variations."
+          // the user's own product or people images must shape the reference video
+          const theirs = images.current.filter((x) => x.kind !== "video" && (x.from === "upload" || x.from === "website" || x.from === "library"))
+          if (live.current && theirs.length && !raw.reference.first_frame_id && !raw.reference.image_ids?.length)
+            return `Not shown: the reference video doesn't use the user's images, so it would be made from text alone and the product wouldn't match. Set reference_image_ids (the product or person to keep: ${theirs.slice(0, 8).map((x) => `${x.id} ${x.name}`).join(", ")}) or first_frame_id, then propose the plan again.`
           // the look the user picked carries into the plan's design
           const plan = { ...raw, design: { ...draft.current, ...(raw.design ?? {}), thumbnails: { ...draft.current.thumbnails, ...(raw.design?.thumbnails ?? {}) } } }
           const vars = plan.variations.slice(0, 5)

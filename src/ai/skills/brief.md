@@ -87,8 +87,8 @@ Never invent brand details; if a search finds nothing reliable, say so and ask.
 
 ## What changes between variations (always settled before concepts)
 Concepts and plans are refused until it is. Ways to settle it:
-- The user already said it ("one per flavour", "Red, Black and Gold Label"): quote their words in
-  variations_from.
+- The user already said it ("one per flavour", "Red, Black and Gold Label"): set variations_basis
+  "user_message" and quote their words in variations_quote.
 - Otherwise ask once (ask_user, purpose "variations"), with options from your research. Example for
   two photos of Johnnie Walker Red Label:
   - "Across the range: Red, Black, Gold, Blue Label"

@@ -61,10 +61,10 @@ End every prompt with the relevant part of the list, in plain words ("no on-scre
 logos, no extra people, smooth motion").
 
 ## Images and the reference video as inputs
-- **The user gave the exact opening shot, or approved a look frame:** set reference.first_frame_id
+- **The user gave the exact opening shot, or approved a look frame:** set first_frame_id
   (and last_frame_id for a reveal). The video opens on it exactly; the prompt then describes only
   the motion and camera from there.
-- **The product or person must match photos:** set reference.image_ids, and name what they show in
+- **The product or person must match photos:** set reference_image_ids, and name what they show in
   the prompt ("the bottle from the photos").
 - **Variations:** give each variation image_ids when you have images of its change (each colour's
   product photo). Leave method as "edit" unless the change is too big for an edit (see the models skill).
