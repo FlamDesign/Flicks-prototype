@@ -13,6 +13,17 @@ import { SAMPLE_ASSETS } from "@/components/assets-page"
 import { MediaViewer, type ViewerItem } from "@/components/media-viewer"
 import { isLive, library, shareAs, shareable, type LibraryItem } from "@/ai/client"
 
+/** a video's length and a still from its start (left as it is if it can't be read in time) */
+const withStill = (i: MediaItem): Promise<MediaItem> =>
+  Promise.race([
+    (async () => {
+      const { duration } = await probeVideo(i.url)
+      const poster = i.poster ?? URL.createObjectURL((await stillsAt(i.url, [Math.min(0.1, duration / 2)], 480))[0])
+      return { ...i, duration: i.duration ?? duration, poster }
+    })(),
+    new Promise<MediaItem>((ok) => setTimeout(() => ok(i), 6000)),
+  ]).catch(() => i)
+
 /**
  * A short video, saved as it is when it's small enough for the server (up to 20 MB); a bigger one
  * (4K phone video) is saved as a 1280 px copy made in the browser, under the same name.
@@ -118,7 +129,10 @@ export function useMediaAdd(onAdd: (items: PickedMedia[]) => void, opts: { proje
   }
 
   /** chosen items: short ones go straight in; long videos open the trimmer one by one */
-  const choose = (items: MediaItem[]) => {
+  const choose = async (picked: MediaItem[]) => {
+    // videos from the library come without a length or a still: read both first (a second or so),
+    // so long ones are trimmed and every thumbnail has a picture
+    const items = await Promise.all(picked.map((i) => (i.kind === "video" && (i.duration === undefined || !i.poster) ? withStill(i) : i)))
     const long = items.filter((i) => i.kind === "video" && (i.duration ?? 0) > MAX_REF_SECONDS + 0.05)
     const ready = items.filter((i) => !long.includes(i))
     if (!long.length) return ready.length && onAdd(ready)
