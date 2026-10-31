@@ -357,6 +357,12 @@ export function FailedRefsNote({ refs, onRetry }: { refs: Reference[]; onRetry: 
   )
 }
 
+/** A reference's picture: the photo, a video's poster, or (with no poster) the video's first frame. */
+export function RefStill({ r, className }: { r: Pick<Reference, "url" | "name" | "media" | "poster">; className?: string }) {
+  if (r.media === "video" && !r.poster) return <video src={`${r.url}#t=0.1`} muted playsInline preload="metadata" crossOrigin="anonymous" aria-label={r.name} className={className} />
+  return <img src={r.poster ?? r.url} alt={r.name} className={className} />
+}
+
 /** 56px reference thumbnail. Shimmer while uploading, a retry state if it failed, remove button on hover. */
 export function ReferenceThumb({ r, onRemove, onRetry, onOpen }: { r: Reference; onRemove: () => void; onRetry?: () => void; onOpen?: () => void }) {
   return (
@@ -373,7 +379,7 @@ export function ReferenceThumb({ r, onRemove, onRetry, onOpen }: { r: Reference;
               aria-label={`Retry uploading ${r.name}`}
               className="relative block size-14 overflow-hidden rounded-xl ring-2 ring-destructive/60 outline-none focus-visible:ring-ring"
             >
-              <img src={r.poster ?? r.url} alt="" className="size-full object-cover opacity-50 grayscale" />
+              <RefStill r={r} className="size-full object-cover opacity-50 grayscale" />
               <span className="absolute inset-0 grid place-items-center bg-destructive/25 text-white">
                 <span className="grid size-6 place-items-center rounded-full bg-destructive shadow-sm">
                   <HugeiconsIcon icon={RefreshIcon} className="size-3.5" strokeWidth={2.25} />
@@ -382,11 +388,7 @@ export function ReferenceThumb({ r, onRemove, onRetry, onOpen }: { r: Reference;
             </button>
           ) : (
             <button type="button" onClick={onOpen} disabled={!onOpen} aria-label={`View ${r.name}`} className="block size-14 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default">
-              <img
-                src={r.poster ?? r.url}
-                alt={r.name}
-                className="animate-in fade-in-0 zoom-in-95 size-14 rounded-xl object-cover ring-1 ring-foreground/10 duration-300"
-              />
+              <RefStill r={r} className="animate-in fade-in-0 zoom-in-95 size-14 rounded-xl object-cover ring-1 ring-foreground/10 duration-300" />
               {r.media === "video" && (
                 <span className="absolute bottom-1 left-1 flex items-center gap-0.5 rounded bg-black/60 px-1 text-[10px] font-medium text-white tabular-nums">
                   <HugeiconsIcon icon={PlayIcon} className="size-2.5" />

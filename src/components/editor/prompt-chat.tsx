@@ -3,7 +3,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Alert02Icon, Loading03Icon, PanelRightCloseIcon, SparklesIcon } from "@hugeicons/core-free-icons"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Button } from "@/components/ui/button"
-import type { Reference } from "@/components/prompt-composer"
+import { RefStill, type Reference } from "@/components/prompt-composer"
 import { cn } from "@/lib/utils"
 import { MediaViewer } from "@/components/media-viewer"
 
@@ -13,7 +13,7 @@ export type HistoryItem = {
   /** which video it was for */
   slideId: string
   prompt: string
-  refs: { url: string; name: string }[]
+  refs: { url: string; name: string; media?: "image" | "video"; poster?: string }[]
   /** the reference video was attached automatically (variations) */
   fromReference?: boolean
   /** the sample video it produced, and when it started (to tell if it's still generating) */
@@ -147,7 +147,7 @@ export function PromptChat({
                     {h.fromReference && <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">From the reference video</span>}
                     {h.refs.map((r, i) => (
                       <button key={i} type="button" onClick={() => setViewing({ h: h.id, i })} aria-label={`View ${r.name}`} className="rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                        <img src={r.url} alt={r.name} className="size-9 rounded-lg object-cover ring-1 ring-foreground/10" />
+                        <RefStill r={r} className="size-9 rounded-lg object-cover ring-1 ring-foreground/10" />
                       </button>
                     ))}
                   </div>
@@ -245,7 +245,7 @@ export function PromptChat({
         </div>
       </div>
       <MediaViewer
-        items={viewRefs.map((r, i) => ({ id: String(i), kind: "image", src: r.url, name: r.name, details: [["Source", "Uploaded"], ["Type", "Image"]] }))}
+        items={viewRefs.map((r, i) => ({ id: String(i), kind: r.media === "video" ? "video" : "image", src: r.url, poster: r.poster, name: r.name, details: [["Source", "Uploaded"], ["Type", r.media === "video" ? "Video" : "Image"]] }))}
         index={viewing ? viewing.i : null}
         onIndex={(i) => viewing && setViewing({ ...viewing, i })}
         onClose={() => setViewing(null)}
@@ -272,7 +272,7 @@ export function TargetChip({ name, poster, removed, onClick }: { name: string; p
 }
 
 /** a history entry's image references, from the prompt box's references */
-export const refsOf = (refs: Reference[] | undefined) => (refs ?? []).filter((r) => !r.loading).map((r) => ({ url: r.url, name: r.name }))
+export const refsOf = (refs: Reference[] | undefined) => (refs ?? []).filter((r) => !r.loading).map((r) => ({ url: r.url, name: r.name, media: r.media, poster: r.poster }))
 
 /**
  * Bring the prompt box into focus from elsewhere (a tip, the strip). With a label, it's also

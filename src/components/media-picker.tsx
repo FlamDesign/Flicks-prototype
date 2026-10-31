@@ -325,11 +325,11 @@ function Tile({ x, on, onToggle, onOpen, onDuration }: { x: MediaItem; on: boole
         className={cn("relative block aspect-square w-full overflow-hidden rounded-xl bg-muted outline-none ring-1 ring-foreground/10 focus-visible:ring-2 focus-visible:ring-ring", on && "ring-2 ring-primary")}
       >
         {x.kind === "video" && !x.poster ? (
-          <video src={x.url} muted preload="metadata" crossOrigin="anonymous" onLoadedMetadata={(e) => onDuration(e.currentTarget.duration)} className="size-full object-cover" />
+          <video src={`${x.url}#t=0.1`} muted playsInline preload="metadata" crossOrigin="anonymous" onLoadedMetadata={(e) => onDuration(e.currentTarget.duration)} className="size-full object-cover" />
         ) : (
           <img src={x.poster ?? x.url} alt="" loading="lazy" className="size-full object-cover" />
         )}
-        {x.kind === "video" && x.poster && x.duration === undefined && <video src={x.url} muted preload="metadata" crossOrigin="anonymous" onLoadedMetadata={(e) => onDuration(e.currentTarget.duration)} className="hidden" />}
+        {x.kind === "video" && x.poster && x.duration === undefined && <video src={`${x.url}#t=0.1`} muted playsInline preload="metadata" crossOrigin="anonymous" onLoadedMetadata={(e) => onDuration(e.currentTarget.duration)} className="hidden" />}
         {x.kind === "video" && (
           <span className="absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[11px] font-medium text-white tabular-nums backdrop-blur-sm">
             <HugeiconsIcon icon={long ? Scissor01Icon : PlayIcon} className="size-3" />
