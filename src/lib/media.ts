@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react"
+import { shareAs } from "@/ai/client"
 
 /** Longest video a reference can be, in seconds; longer ones are trimmed first. */
 export const MAX_REF_SECONDS = 15
@@ -58,7 +59,15 @@ export const isVideoFile = (f: File) => f.type.startsWith("video/")
 const blobUrls = new WeakMap<Blob, string>()
 export const blobUrl = (f: Blob) => blobUrls.get(f) ?? (blobUrls.set(f, URL.createObjectURL(f)), blobUrls.get(f)!)
 /** a file rebuilt from an existing address keeps that address (so it isn't uploaded twice) */
-export const sameUrl = (f: Blob, url: string) => (url.startsWith("blob:") && blobUrls.set(f, url), f)
+/**
+ * A file rebuilt from an address keeps it, so it isn't uploaded again: a blob: address is reused as
+ * is; a file fetched from the server (or the web) is known to live there already.
+ */
+export const sameUrl = <T extends Blob>(f: T, url: string): T => {
+  if (url.startsWith("blob:")) blobUrls.set(f, url)
+  else if (/^https?:\/\//.test(url)) shareAs(blobUrl(f), Promise.resolve(url))
+  return f
+}
 
 /** A video's length and size, read from its metadata. */
 export function probeVideo(url: string): Promise<{ duration: number; width: number; height: number }> {
@@ -190,7 +199,7 @@ export async function asFile(m: PickedMedia): Promise<File> {
   if (m.clip) return m.clip
   if (m.file) return m.file
   const blob = await (await fetch(m.url)).blob()
-  return new File([blob], m.name, { type: blob.type || (m.kind === "video" ? "video/mp4" : "image/jpeg") })
+  return sameUrl(new File([blob], m.name, { type: blob.type || (m.kind === "video" ? "video/mp4" : "image/jpeg") }), m.url)
 }
 
 /** 1:05.3 (to a tenth; rounded first, so 119.97 s reads 2:00.0, not 1:60.0) */

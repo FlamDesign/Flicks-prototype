@@ -1373,7 +1373,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       (opts.imageUrls ?? []).map(async (r) => {
         try {
           const blob = await (await fetch(r.url)).blob()
-          return sameUrl(new File([blob], r.name, { type: blob.type || "image/jpeg" }), r.url) as File
+          return sameUrl(new File([blob], r.name, { type: blob.type || "image/jpeg" }), r.url)
         } catch {
           return null
         }

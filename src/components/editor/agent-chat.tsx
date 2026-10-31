@@ -954,46 +954,44 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
       </header>
       <div className="max-h-[50vh] overflow-y-auto px-2">
         {q.display === "concepts" ? (
-          <div className="flex flex-col gap-2 p-1" role="radiogroup" aria-label={q.question}>
+          // big pictures, little text: the title and the idea; what changes shows over the picture on hover
+          <div className="grid grid-cols-1 gap-2.5 p-1 sm:grid-cols-3" role="radiogroup" aria-label={q.question}>
             {q.options.map((o, n) => (
               <button
                 key={o.label}
                 type="button"
                 role="radio"
                 aria-checked={chosen(o)}
+                aria-description={[o.question, o.variations?.length ? `Variations: ${o.variations.join(", ")}` : "", o.beats?.join(", then ")].filter(Boolean).join(". ")}
                 disabled={agent.busy}
                 onClick={() => pick(o)}
                 className={cn(
-                  "flex gap-3 rounded-xl p-2 text-left outline-none ring-1 ring-foreground/10 transition-[box-shadow,background-color] hover:bg-muted/60 hover:ring-foreground/30 focus-visible:ring-2 focus-visible:ring-ring",
+                  "group/c flex flex-col gap-2 rounded-2xl p-1.5 text-left outline-none ring-1 ring-foreground/10 transition-[box-shadow,background-color] hover:bg-muted/50 hover:ring-foreground/25 focus-visible:ring-2 focus-visible:ring-ring",
                   chosen(o) && "bg-primary/10 ring-2 ring-primary",
                 )}
               >
-                <span className="relative w-24 shrink-0 overflow-hidden rounded-lg bg-muted" style={{ aspectRatio: ctx.ratio }}>
+                <span className="relative w-full overflow-hidden rounded-xl bg-muted" style={{ aspectRatio: Math.max(ctx.ratio, 0.8) }}>
                   {o.image ? (
-                    <img src={o.image} alt="" className="absolute inset-0 size-full object-cover animate-in fade-in-0 duration-500" />
+                    <img src={o.image} alt="" className="absolute inset-0 size-full object-cover transition-transform duration-500 animate-in fade-in-0 group-hover/c:scale-[1.03]" />
                   ) : (
-                    <span className="absolute inset-0 grid place-items-center">
+                    <span className="shimmer absolute inset-0 grid place-items-center">
                       <HugeiconsIcon icon={Loading03Icon} className="size-4 animate-spin text-muted-foreground" />
                     </span>
                   )}
-                </span>
-                <span className="flex min-w-0 flex-1 flex-col gap-1 py-0.5">
-                  <span className="flex items-baseline gap-2 text-sm font-medium">
-                    <span className="text-xs tabular-nums text-muted-foreground">{n + 1}</span>
-                    {o.label}
-                  </span>
-                  {o.description && <span className="text-xs leading-snug text-muted-foreground">{o.description}</span>}
-                  {o.question && <span className="text-xs italic text-muted-foreground">“{o.question}”</span>}
+                  <span className="absolute left-2 top-2 grid size-6 place-items-center rounded-full bg-black/55 text-[11px] font-medium text-white tabular-nums backdrop-blur-sm">{n + 1}</span>
                   {!!o.variations?.length && (
-                    <span className="flex flex-wrap gap-1 pt-0.5">
+                    <span className="absolute inset-x-0 bottom-0 flex flex-wrap gap-1 bg-gradient-to-t from-black/70 to-transparent p-2 pt-6 opacity-0 transition-opacity group-hover/c:opacity-100 group-focus-visible/c:opacity-100">
                       {o.variations.map((v) => (
-                        <span key={v} className="rounded-full bg-muted px-2 py-0.5 text-[11px]">
+                        <span key={v} className="rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-medium text-black">
                           {v}
                         </span>
                       ))}
                     </span>
                   )}
-                  {!!o.beats?.length && <span className="text-[11px] leading-snug text-muted-foreground">{o.beats.join(" → ")}</span>}
+                </span>
+                <span className="flex min-w-0 flex-col gap-0.5 px-1 pb-1">
+                  <span className="truncate text-sm font-medium">{o.label}</span>
+                  {o.description && <span className="line-clamp-2 text-xs leading-snug text-muted-foreground">{o.description}</span>}
                 </span>
               </button>
             ))}
