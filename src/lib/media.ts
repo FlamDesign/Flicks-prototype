@@ -105,10 +105,49 @@ export async function stillsAt(url: string, times: number[], size = 320): Promis
 const RECORD_TYPES = ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm"]
 
 /**
- * Cuts start..end out of a video, in the browser: plays that part once and records it (no sound;
- * the video models don't use it). Takes as long as the clip. Longest side up to 1280 px.
+ * Cuts start..end out of a video, in the browser, with no sound (the video models don't use it) and
+ * the longest side up to 1280 px. Fast: decodes and encodes with the browser's video hardware
+ * (WebCodecs), much quicker than the clip's length, and copies the frames untouched when no
+ * re-encode is needed. If the browser can't, it falls back to playing the part once and recording it.
  */
 export async function cutClip(url: string, name: string, start: number, end: number, onProgress?: (done: number) => void): Promise<File> {
+  try {
+    return await fastCut(url, name, start, end, onProgress)
+  } catch (e) {
+    console.info("[Flicks] fast trim unavailable, recording instead", e)
+    return recordCut(url, name, start, end, onProgress)
+  }
+}
+
+async function fastCut(url: string, name: string, start: number, end: number, onProgress?: (done: number) => void): Promise<File> {
+  const mb = await import("mediabunny")
+  const blob = await (await fetch(url)).blob()
+  const input = new mb.Input({ source: new mb.BlobSource(blob), formats: mb.ALL_FORMATS })
+  const track = await input.getPrimaryVideoTrack()
+  if (!track) throw new Error("no video track")
+  // MP4 with H.264 where the browser can encode it (it plays everywhere); WebM with VP9 otherwise
+  const mp4 = await mb.canEncodeVideo("avc")
+  const target = new mb.BufferTarget()
+  const output = new mb.Output({ format: mp4 ? new mb.Mp4OutputFormat({ fastStart: "in-memory" }) : new mb.WebMOutputFormat(), target })
+  const w = track.displayWidth
+  const h = track.displayHeight
+  const big = Math.max(w, h) > 1280
+  const conversion = await mb.Conversion.init({
+    input,
+    output,
+    trim: { start, end },
+    audio: { discard: true },
+    video: { codec: mp4 ? "avc" : "vp9", ...(big ? (w >= h ? { width: 1280 } : { height: 1280 }) : {}), bitrate: mb.QUALITY_HIGH },
+  })
+  if (!conversion.isValid) throw new Error("can't convert this video")
+  conversion.onProgress = (p) => onProgress?.(p)
+  await conversion.execute()
+  const base = name.replace(/\.[^.]+$/, "")
+  return new File([target.buffer!], `${base}-clip.${mp4 ? "mp4" : "webm"}`, { type: mp4 ? "video/mp4" : "video/webm" })
+}
+
+/** the fallback: plays the part once and records it, so it takes as long as the clip */
+async function recordCut(url: string, name: string, start: number, end: number, onProgress?: (done: number) => void): Promise<File> {
   const v = document.createElement("video")
   v.muted = true
   v.playsInline = true
