@@ -116,7 +116,7 @@ export type Item = Base &
     | { kind: "question"; toolId: string; question: string; options: Choice[]; display: Display; step?: Step; multi: boolean; custom: boolean; answer?: string }
     | { kind: "assets"; toolId: string; message: string; kinds: string[]; done?: "added" | "skipped"; images?: string[] }
     | { kind: "brand"; brand: Brand }
-    | { kind: "plan"; toolId: string; plan: Plan; state: "open" | "approved" | "skipped" }
+    | { kind: "plan"; toolId: string; plan: Plan; state: "open" | "approved" | "skipped"; previews?: (string | undefined)[] }
     | { kind: "image"; prompt: string; purpose: string; target?: string; aspect?: string; state: "working" | "done" | "failed"; url?: string; error?: string; placed?: boolean; status?: string; startedAt?: number }
     | { kind: "note"; text: string }
     /** skills the chat read (shown as one line) */
@@ -891,6 +891,28 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   const NOT_SETTLED =
     "Not shown: what changes between variations isn't settled yet. Ask first with ask_user (purpose \"variations\"): if the inputs show different products, name them and ask to confirm; if they show one product, offer options from your research (other products in the brand's range by name, or this product only with different serves, scenes, moods, people or offers, and \"I'll add more products\"). Then come back to this."
 
+  /**
+   * The plan card shows the Flick with stills standing in for the videos: one quick draft image per
+   * variation that has no image of its own, made from the reference shot plus that variation's
+   * change, with the user's images as references so it's their product.
+   */
+  const planPreviews = (itemId: string, plan: Plan) => {
+    const fill = (i: number, url: string) =>
+      setItems((list) => list.map((x) => (x.id === itemId && x.kind === "plan" ? { ...x, previews: Object.assign([...(x.previews ?? [])], { [i]: url }) } : x)))
+    const own = images.current.filter((x) => x.kind !== "video" && (x.from === "upload" || x.from === "website" || x.from === "library"))
+    const refIds = [plan.reference.first_frame_id, ...(plan.reference.image_ids ?? [])].filter((x): x is string => !!x)
+    const refs = (refIds.length ? refIds.map((r) => images.current.find((x) => x.id === r)).filter((x): x is ProjectImage => !!x) : own).slice(0, 3)
+    plan.variations.forEach((v, i) => {
+      if (v.image_ids?.length) return
+      if (!live.current) return void setTimeout(() => fill(i, apiRef.current.sampleImage("variation", String(i))), 900 + i * 500)
+      Promise.all(refs.map((r) => shareable(r.url).catch(() => null)))
+        .then((urls) =>
+          generateImage(`${plan.reference.prompt} ${v.prompt}`.trim(), aspectOf(state().flick_size), undefined, undefined, urls.filter((x): x is string => !!x), { project: state().title, variation: v.name, purpose: "plan preview" }, { quality: "draft" }),
+        )
+        .then((url) => fill(i, url), () => {})
+    })
+  }
+
   const runTool = async (u: Extract<Block, { type: "tool_use" }>): Promise<string | Block[] | typeof WAIT> => {
     const a = apiRef.current
     const input = cleanInput(u.input ?? {}) as Record<string, unknown>
@@ -944,8 +966,10 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           if (!raw.variations?.length) return "Error: a plan needs at least two variations."
           // the look the user picked carries into the plan's design
           const plan = { ...raw, design: { ...draft.current, ...(raw.design ?? {}), thumbnails: { ...draft.current.thumbnails, ...(raw.design?.thumbnails ?? {}) } } }
-          const itemId = add({ kind: "plan", toolId: u.id, plan: { ...plan, variations: plan.variations.slice(0, 5), design: plan.design ?? {} }, state: "open" })
+          const vars = plan.variations.slice(0, 5)
+          const itemId = add({ kind: "plan", toolId: u.id, plan: { ...plan, variations: vars, design: plan.design ?? {} }, state: "open", previews: [] })
           pending.current.push({ toolId: u.id, itemId })
+          planPreviews(itemId, { ...plan, variations: vars })
           return WAIT
         }
         case "set_brand": {
@@ -1357,5 +1381,10 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     ).then((files) => send(opts.prompt!.trim(), files.filter((f): f is File => !!f)))
   }
 
-  return { items, busy, send, answer, pendingIds: pending.current.map((p) => p.itemId), addAssets, decidePlan, editPlan, retryImage, stop, retry, waiting: pending.current.length > 0, draft: draftView, plan: plan?.plan, step }
+  /** a project image's address by id (for the plan's preview) */
+  const imageUrl = (imageId?: string) => (imageId ? images.current.find((x) => x.id === imageId)?.url : undefined)
+  /** the user's own images, newest last (a fallback picture for the plan's preview) */
+  const ownImages = () => images.current.filter((x) => x.kind !== "video" && (x.from === "upload" || x.from === "library" || x.from === "website")).map((x) => x.url)
+
+  return { imageUrl, ownImages, items, busy, send, answer, pendingIds: pending.current.map((p) => p.itemId), addAssets, decidePlan, editPlan, retryImage, stop, retry, waiting: pending.current.length > 0, draft: draftView, plan: plan?.plan, step }
 }

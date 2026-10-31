@@ -1076,6 +1076,8 @@ export function GenerationCanvas({
       }
     },
     sampleImage(purpose, target) {
+      // the plan's stills in the demo: the sample set's variations, in order
+      if (purpose === "variation") return GENERATED_VIDEOS[inSet(generation.video ?? 0, Number(target) + 1)].poster
       const sl = target ? findSlide(target) : undefined
       if (sl?.video !== undefined) return GENERATED_VIDEOS[sl.video % GENERATED_VIDEOS.length].poster
       void purpose

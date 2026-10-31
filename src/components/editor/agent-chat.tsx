@@ -487,6 +487,7 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
   const set = (p: Partial<Plan>) => agent.editPlan(item.id, { ...plan, ...p })
   const setVar = (i: number, p: Partial<PlanVariation>) => set({ variations: plan.variations.map((v, j) => (j === i ? { ...v, ...p } : v)) })
   const [open, setOpen] = useState(false)
+  const [active, setActive] = useState(0)
   const videos = 1 + plan.variations.length
   const total = videos * ctx.videoCost
   // fields some variation sets for itself: every variation gets a box for them
@@ -518,12 +519,51 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
       </div>
     )
   const quiet = "rounded-md border-0 bg-transparent px-1.5 shadow-none outline-none transition-colors hover:bg-muted/70 focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-ring/40 dark:bg-transparent"
+  // the Flick as planned, with pictures for videos: each variation's own image, else the reference's,
+  // else the concept picked, else the user's photo
+  const picked = [...agent.items].reverse().find((x): x is Q => x.kind === "question" && x.display === "concepts" && x.answer !== undefined)
+  const conceptImage = picked?.options.find((o) => o.label === picked.answer)?.image
+  const base = agent.imageUrl(plan.reference.first_frame_id) ?? agent.imageUrl(plan.reference.image_ids?.[0]) ?? conceptImage ?? agent.ownImages()[0] ?? ctx.posters[0]
+  // a variation's own image, else its draft still (made when the plan opened), else the base picture
+  const posters = plan.variations.map((v, i) => agent.imageUrl(v.image_ids?.[0]) ?? item.previews?.[i] ?? base ?? "")
+  const making = plan.variations.some((v, i) => !v.image_ids?.length && !item.previews?.[i])
+  const shown = Math.min(active, plan.variations.length - 1)
+  const sv = plan.variations[shown]
   return (
     <Card className="gap-0 overflow-hidden p-0 animate-in fade-in-0 slide-in-from-bottom-1 duration-300">
       <div className="flex flex-col gap-3 p-3">
         <div className="flex items-center gap-2">
           <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">Plan</span>
           <input value={plan.title} onChange={(e) => set({ title: e.target.value })} aria-label="Project name" className={cn(quiet, "h-7 min-w-0 flex-1 text-sm font-medium")} />
+        </div>
+        {/* the Flick as it will look: layout, copy and buttons, with images standing in for the videos */}
+        <div className="flex flex-col items-center gap-2 rounded-xl bg-muted/40 p-3">
+          <FlickPreview
+            design={plan.design}
+            brand={ctx.brand}
+            ratio={ctx.ratio}
+            posters={posters}
+            active={shown}
+            values={{ label: sv?.label ?? sv?.name, price: sv?.price, headline: sv?.headline, subheading: sv?.subheading, cta: sv?.cta }}
+            className="w-full"
+            style={{ maxWidth: `min(100%, ${Math.round(340 * Math.min(1.6, ctx.ratio))}px)`, maxHeight: 420 }}
+          />
+          <div role="tablist" aria-label="Variations" className="flex max-w-full gap-1 overflow-x-auto rounded-lg bg-background p-0.5 ring-1 ring-foreground/10">
+            {plan.variations.map((v, i) => (
+              <button
+                key={i}
+                type="button"
+                role="tab"
+                aria-selected={i === shown}
+                onClick={() => setActive(i)}
+                className={cn("flex shrink-0 items-center gap-1.5 rounded-md py-1 pl-1 pr-2 text-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring", i === shown ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground")}
+              >
+                {posters[i] ? <img src={posters[i]} alt="" className="size-5 rounded object-cover" /> : <span className="size-5 rounded bg-muted" />}
+                {v.name}
+              </button>
+            ))}
+          </div>
+          <p className="text-center text-[11px] text-muted-foreground">{making ? "Making a still for each variation…" : "Stills stand in for the videos until they’re made."}</p>
         </div>
         {/* the outline: one card per video, edited in place */}
         <ol className="flex flex-col gap-1.5">
@@ -535,8 +575,12 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
             </div>
           </li>
           {plan.variations.map((v, i) => (
-            <li key={i} className="group/v relative flex gap-2.5 rounded-xl bg-muted/50 p-2">
-              <span className="grid size-6 shrink-0 place-items-center rounded-md bg-background text-[11px] font-medium tabular-nums ring-1 ring-foreground/10">{i + 1}</span>
+            <li key={i} onFocusCapture={() => setActive(i)} onClick={() => setActive(i)} className={cn("group/v relative flex gap-2.5 rounded-xl bg-muted/50 p-2", i === shown && "ring-1 ring-foreground/15")}>
+              {posters[i] ? (
+                <img src={posters[i]} alt="" className="size-6 shrink-0 rounded-md object-cover ring-1 ring-foreground/10" />
+              ) : (
+                <span className="grid size-6 shrink-0 place-items-center rounded-md bg-background text-[11px] font-medium tabular-nums ring-1 ring-foreground/10">{i + 1}</span>
+              )}
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <div className="flex items-center gap-1">
                   <input value={v.name} onChange={(e) => setVar(i, { name: e.target.value })} aria-label={`Variation ${i + 1} name`} className={cn(quiet, "h-6 min-w-0 flex-1 text-sm font-medium")} />
