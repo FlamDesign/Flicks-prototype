@@ -488,7 +488,8 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
   const setVar = (i: number, p: Partial<PlanVariation>) => set({ variations: plan.variations.map((v, j) => (j === i ? { ...v, ...p } : v)) })
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
-  const videos = 1 + plan.variations.length
+  // the reference video is Variation 1, so one video per variation
+  const videos = plan.variations.length
   const total = videos * ctx.videoCost
   // fields some variation sets for itself: every variation gets a box for them
   const perVar = (["label", "headline", "subheading", "cta"] as const).filter((f) => plan.variations.some((v) => v[f] !== undefined))
@@ -507,11 +508,10 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
         </button>
         {open && (
           <ol className="flex flex-col gap-1 border-l pl-3 text-xs text-muted-foreground">
-            <li>Reference: {plan.reference.prompt}</li>
             {plan.variations.map((v, i) => (
               <li key={i}>
                 <span className="font-medium text-foreground">{v.name}</span>
-                {v.price ? ` · ${v.price}` : ""}: {v.prompt}
+                {v.price ? ` · ${v.price}` : ""}: {i === 0 ? plan.reference.prompt : v.prompt}
               </li>
             ))}
           </ol>
@@ -567,13 +567,6 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
         </div>
         {/* the outline: one card per video, edited in place */}
         <ol className="flex flex-col gap-1.5">
-          <li className="flex gap-2.5 rounded-xl bg-muted/50 p-2">
-            <span className="grid size-6 shrink-0 place-items-center rounded-md bg-background text-[11px] font-medium text-muted-foreground ring-1 ring-foreground/10">R</span>
-            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <span className="px-1.5 text-xs font-medium text-muted-foreground">Reference video</span>
-              <textarea value={plan.reference.prompt} onChange={(e) => set({ reference: { prompt: e.target.value } })} aria-label="Reference video prompt" rows={1} className={cn(quiet, "field-sizing-content min-h-0 resize-none py-0.5 text-sm leading-relaxed")} />
-            </div>
-          </li>
           {plan.variations.map((v, i) => (
             <li key={i} onFocusCapture={() => setActive(i)} onClick={() => setActive(i)} className={cn("group/v relative flex gap-2.5 rounded-xl bg-muted/50 p-2", i === shown && "ring-1 ring-foreground/15")}>
               {posters[i] ? (
@@ -586,7 +579,15 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
                   <input value={v.name} onChange={(e) => setVar(i, { name: e.target.value })} aria-label={`Variation ${i + 1} name`} className={cn(quiet, "h-6 min-w-0 flex-1 text-sm font-medium")} />
                   <input value={v.price ?? ""} onChange={(e) => setVar(i, { price: e.target.value || undefined })} placeholder="Price" aria-label={`${v.name} price`} className={cn(quiet, "h-6 w-16 text-right text-sm tabular-nums placeholder:text-muted-foreground/60")} />
                 </div>
-                <textarea value={v.prompt} onChange={(e) => setVar(i, { prompt: e.target.value })} aria-label={`${v.name} prompt`} rows={1} className={cn(quiet, "field-sizing-content min-h-0 resize-none py-0.5 text-sm leading-relaxed text-foreground/80")} />
+                {/* Variation 1 is the reference video: its prompt is the reference prompt; the others say what changes */}
+                {i === 0 ? (
+                  <>
+                    <span className="px-1.5 text-[11px] text-muted-foreground">Made first; the others are made from it</span>
+                    <textarea value={plan.reference.prompt} onChange={(e) => set({ reference: { ...plan.reference, prompt: e.target.value } })} aria-label={`${v.name} prompt (reference video)`} rows={1} className={cn(quiet, "field-sizing-content min-h-0 resize-none py-0.5 text-sm leading-relaxed text-foreground/80")} />
+                  </>
+                ) : (
+                  <textarea value={v.prompt} onChange={(e) => setVar(i, { prompt: e.target.value })} aria-label={`${v.name} prompt`} rows={1} className={cn(quiet, "field-sizing-content min-h-0 resize-none py-0.5 text-sm leading-relaxed text-foreground/80")} />
+                )}
                 {/* on-screen text this plan sets per variation (feeds) */}
                 {perVar.length > 0 && (
                   <div className="flex flex-wrap gap-x-1">
@@ -600,7 +601,7 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
                 )}
                 <input value={v.link ?? ""} onChange={(e) => setVar(i, { link: e.target.value || undefined })} placeholder="Add a link for the button" aria-label={`${v.name} link`} className={cn(quiet, "h-6 text-xs text-muted-foreground placeholder:text-muted-foreground/60")} />
               </div>
-              {plan.variations.length > 2 && (
+              {plan.variations.length > 2 && i > 0 && (
                 <Button variant="ghost" size="icon-xs" aria-label={`Remove ${v.name}`} onClick={() => set({ variations: plan.variations.filter((_, j) => j !== i) })} className="absolute -right-1.5 -top-1.5 size-5 rounded-full bg-background opacity-0 shadow-sm ring-1 ring-foreground/10 group-hover/v:opacity-100 focus-visible:opacity-100">
                   <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
                 </Button>

@@ -71,7 +71,7 @@ export function VariationPanel({
             <HugeiconsIcon icon={Alert02Icon} className="size-4" />
             Needs regenerating
           </p>
-          <p className="text-xs text-muted-foreground">The reference video changed. Regenerate this variation so it matches.</p>
+          <p className="text-xs text-muted-foreground">Variation 1 changed. Regenerate this variation so it matches.</p>
         </div>
       )}
 

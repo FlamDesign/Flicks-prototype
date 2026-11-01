@@ -52,7 +52,7 @@ export function PromptChat({
   title = "Prompts",
   badge,
   extra = [],
-  emptyText = "Prompts for the reference video and each variation show up here.",
+  emptyText = "Prompts for Variation 1 and each other variation show up here.",
   head,
 }: {
   /** replaces "Creating for" above the composer */
@@ -144,7 +144,7 @@ export function PromptChat({
                 {h.prompt && <p className="whitespace-pre-line text-sm leading-relaxed">{h.prompt}</p>}
                 {(h.fromReference || h.refs.length > 0) && (
                   <div className="flex flex-wrap gap-1.5">
-                    {h.fromReference && <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">From the reference video</span>}
+                    {h.fromReference && <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">From Variation 1</span>}
                     {h.refs.map((r, i) => (
                       <button key={i} type="button" onClick={() => setViewing({ h: h.id, i })} aria-label={`View ${r.name}`} className="rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring">
                         <RefStill r={r} className="size-9 rounded-lg object-cover ring-1 ring-foreground/10" />
@@ -173,7 +173,7 @@ export function PromptChat({
                 <span className="flex min-w-0 flex-col">
                   <span className="text-sm font-medium">{generating ? "Generating…" : current ? "Video ready" : "Replaced"}</span>
                   <span className="truncate text-xs text-muted-foreground">
-                    {generating ? `${name ?? "Video"}${h.batch ? ", after the reference video" : ""}` : current ? `Showing on ${name}` : "A newer video replaced this one"}
+                    {generating ? `${name ?? "Video"}${h.batch ? ", after Variation 1" : ""}` : current ? `Showing on ${name}` : "A newer video replaced this one"}
                   </span>
                 </span>
               </button>

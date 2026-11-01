@@ -111,7 +111,7 @@ const SECTIONS: Section[] = [
           ["Project", "An editable draft in the editor. Has a name, a size and its content. Saves as you work."],
           ["Flick", "What exporting a project makes: the interactive video ad, fixed once exported. Has a link, embed code and analytics. Change it by remixing."],
           ["Remix", "Starts a new project from a Flick\u2019s exact state, named \u201c<Flick>_copy\u201d. The Flick stays as it is."],
-          ["Reference video", "The first video, generated from the prompt. Variations are made from it. Shown to viewers only if included as a variation."],
+          ["Reference video", "Always Variation 1: the first video, generated from the prompt, and part of the Flick like any other variation (its own name, label, price, link and thumbnail; the Flick starts on it by default). The other variations (2, 3\u2026) are made from it. In a plan, the first variation is the reference video, so N variations means N videos."],
           ["Variation", "One of 2 to 5 videos made from the reference video with its own prompt. Viewers switch between variations."],
           ["Starting variation", "The variation a viewer sees first. In the UI: \u201cStart the Flick here\u201d a solid play button on its thumbnail (\u201cThe Flick starts here\u201d)."],
           ["Element", "Anything placed on the canvas: text, button, icon button, image, thumbnail strip. Elements are shared by all variations."],

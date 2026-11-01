@@ -105,14 +105,13 @@ export async function mockReply(messages: Message[], s: ProjectState, onText: (t
   const planResult = resultOf("propose_plan")
   if (planResult?.startsWith("Approved")) {
     const fromSite = s.images.filter((i) => i.from === "website")
-    const vars = s.videos.filter((v) => v.role === "variation")
+    // every video is a variation in the Flick, Variation 1 (the reference) included
+    const vars = s.videos
     if (fromSite.length) return reply("", tool("read_skill", { names: ["images", "review"] }), ...vars.map((v, i) => tool("use_image", { image_id: fromSite[i % fromSite.length].id, as: "thumbnail", variation: v.name })))
     return reply(
       "",
       tool("read_skill", { names: ["images", "review"] }),
-      ...s.videos
-        .filter((v) => v.role === "variation")
-        .map((v) => tool("generate_image", { prompt: `${v.label ?? v.name}, product close-up on a clean studio background`, purpose: "thumbnail", variation: v.name, aspect_ratio: "1:1" })),
+      ...s.videos.map((v) => tool("generate_image", { prompt: `${v.label ?? v.name}, product close-up on a clean studio background`, purpose: "thumbnail", variation: v.name, aspect_ratio: "1:1" })),
     )
   }
   if (used("propose_plan").length && !s.planned && !typed) return reply("Tell me what to change, or press Generate all when it looks right.")

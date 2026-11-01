@@ -290,7 +290,7 @@ export const TOOLS: Tool[] = [
   {
     name: "propose_plan",
     description:
-      "Show the full plan for approval: a title, the reference video prompt, 2 to 5 variations and the on-screen design. The user can edit it, then Generate all. The result says whether it was approved (and generated) or what to change.",
+      "Show the full plan for approval: a title, the reference video prompt, 2 to 5 variations and the on-screen design. The reference video IS Variation 1: variations[0] is it (its name, label, price, link; its prompt is reference_prompt), and variations[1..] are made from it. So 3 variations means 3 videos. The user can edit it, then Generate all. The result says whether it was approved (and generated) or what to change.",
     input_schema: {
       type: "object",
       properties: {
@@ -300,7 +300,7 @@ export const TOOLS: Tool[] = [
         last_frame_id: { type: "string", description: "Optional: a project image id the reference video ends on (a controlled reveal); needs first_frame_id" },
         reference_image_ids: { type: "array", items: { type: "string" }, description: "Project image ids the reference video must stay true to (product, person, style) when there's no first frame (reference to video). Always set this or first_frame_id when the user has product or people images." },
         ...variationsFrom,
-        variations: { type: "array", items: variationSchema, minItems: 2, maxItems: 5 },
+        variations: { type: "array", items: variationSchema, minItems: 2, maxItems: 5, description: "Every variation in the Flick, in order. The first is the reference video itself (Variation 1): give its name, label, price and link; its prompt can repeat reference_prompt. The others say only what changes from it." },
         design: designSchema,
       },
       required: ["title", "reference_prompt", "variations", "design"],
@@ -517,9 +517,9 @@ How the app works (the mechanics, not what to ask):
 - Web: web_search finds pages; web_fetch reads a page or PDF (text) that appeared in the conversation or in search results; read_website reads a product page for its products, prices, colours and images (and keeps the images for the project). Use them on your own whenever a brand or product is hinted.
 - Brand: set_brand records the brand (name, colours, font, voice).
 - Images: generate_image (with reference_image_ids to keep the user's images, has_text for readable words), view_image to look at any project image, use_image to place one. The app picks the model from these (models skill).
-- Videos: the reference video is made first: from its prompt alone, or opening on a first frame (first_frame_id, optionally ending on last_frame_id), or kept true to images (reference_image_ids). When the user has product or people images, the reference video must use them (one of those two); a plan without them is refused. Give variations image_ids when you have images of their changed thing, and method "regenerate" only for big changes (default "edit"). See the models skill. The user always reviews it (reference_review in the project state); variations are made only after they approve, from the latest reference video plus each variation line, so they keep its motion, camera and timing. When the reference is ready, ask them to review it; if they want changes, regenerate the reference with set_variation (variation "reference", regenerate true) and they review the new one.
+- Videos: the reference video is Variation 1 (the first video in state.videos, role "reference"): it is in the Flick like the others, with its own name, label, thumbnail and link, and the other variations are made from it. It is made first: from its prompt alone, or opening on a first frame (first_frame_id, optionally ending on last_frame_id), or kept true to images (reference_image_ids). When the user has product or people images, the reference video must use them (one of those two); a plan without them is refused. Give variations image_ids when you have images of their changed thing, and method "regenerate" only for big changes (default "edit"). See the models skill. The user always reviews it (reference_review in the project state); variations are made only after they approve, from the latest reference video plus each variation line, so they keep its motion, camera and timing. When the reference is ready, ask them to review it; if they want changes, regenerate the reference with set_variation (variation "reference", regenerate true) and they review the new one.
 - Library: everything made before is kept. search_library finds earlier images and videos (with their prompts); use_library brings them in as references or starting points.
-- The plan: propose_plan is the approval before any video credits are spent. It carries the reference video prompt, each variation (name, prompt, label, price, link, and headline, subheading or button text only when they differ) and the design. The user edits it and presses Generate all; the app then makes every video and places the design and thumbnail strip.
+- The plan: propose_plan is the approval before any video credits are spent. It carries the reference video prompt (that video is Variation 1, the first in the list, not an extra one), each variation (name, prompt, label, price, link, and headline, subheading or button text only when they differ) and the design. The user edits it and presses Generate all; the app then makes every video and places the design and thumbnail strip.
 - Feeds: on-screen text that differs per variation is a feed. The project state lists every feed, what uses it, each variation's value and any issues. Change them with vary_field, same_for_all, set_variation and rename_feed; update_design can't change text that differs per variation. Fix reported issues in the same turn.
 - After the build: update_design, set_variation, add_variation, add_element, edit_element and remove_element change the Flick. The design list gives each element's id, type, text and position. run review_flick after the build and after big changes, and fix every failure.
 - Never end a reply by saying you'll do something next: call the tool in the same reply. End a turn only with a question for the user (ask_user, request_assets, propose_plan) or when the work is done.
@@ -917,7 +917,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       if (!live.current) return void setTimeout(() => fill(i, apiRef.current.sampleImage("variation", String(i))), 900 + i * 500)
       Promise.all(refs.map((r) => shareable(r.url).catch(() => null)))
         .then((urls) =>
-          generateImage(`${plan.reference.prompt} ${v.prompt}`.trim(), aspectOf(state().flick_size), undefined, undefined, urls.filter((x): x is string => !!x), { project: state().title, variation: v.name, purpose: "plan preview" }, { quality: "draft" }),
+          generateImage((i === 0 ? plan.reference.prompt : `${plan.reference.prompt} ${v.prompt}`).trim(), aspectOf(state().flick_size), undefined, undefined, urls.filter((x): x is string => !!x), { project: state().title, variation: v.name, purpose: "plan preview" }, { quality: "draft" }),
         )
         .then((url) => fill(i, url), () => {})
     })

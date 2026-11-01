@@ -189,7 +189,7 @@ export function GenerationCanvas({
     if (announced.current) return
     if (generation.fromAsset) {
       announced.current = true
-      return void toast({ title: "New project created", description: "Your video is the reference video. Add variations next." })
+      return void toast({ title: "New project created", description: "Your video is Variation 1. Add more variations next; they\u2019re made from it." })
     }
     if (generation.remixOf) {
       announced.current = true
@@ -202,7 +202,8 @@ export function GenerationCanvas({
   }, [])
   const [preview, setPreview] = useState<string | null>(null)
   // the reference video is only shown to viewers when included as a variation
-  const [includeRef, setIncludeRef] = useState(savedSnap?.includeRef ?? false)
+  // the reference video is always Variation 1: in the Flick like the others
+  const includeRef = true
   const included = includeRef ? slides : slides.slice(1)
   const [start, setStart] = useState(() => savedSnap?.start ?? slides[1].id)
   const [feeds, setFeeds] = useState<Feed[]>(savedSnap?.feeds ?? [])
@@ -522,13 +523,13 @@ export function GenerationCanvas({
     activeSlide.id === "main"
       ? anyGenerating
         ? activeStatus === "generating"
-          ? "Wait for the reference video to finish"
+          ? "Wait for Variation 1 to finish"
           : "Wait for the variations to finish"
         : undefined
       : activeStatus === "generating"
         ? "Wait for this variation to finish"
         : !mainDone
-          ? "Waiting for the reference video"
+          ? "Waiting for Variation 1"
           : undefined
   const busy = !!busyReason
   // the very first reference video is still on its way: just the canvas and the prompts
@@ -746,7 +747,8 @@ export function GenerationCanvas({
     approvePlan(plan) {
       const vars = plan.variations.filter((v) => v.name?.trim()).slice(0, 5)
       if (vars.length < 2) return "Error: The plan needs at least two variations."
-      const cost = VIDEO_COST * (1 + vars.length)
+      // the reference video is Variation 1 (the plan's first variation); the rest are made from it
+      const cost = VIDEO_COST * vars.length
       if (dev.credits < cost) {
         onGetCredits()
         return `Error: This needs ${cost.toLocaleString()} credits and you have ${dev.credits.toLocaleString()}. Get credits, then press Generate all again.`
@@ -775,9 +777,8 @@ export function GenerationCanvas({
         if ((f === "headline" || f === "subheading" || f === "cta") && !design[f]) design[f] = vals[0]
       }
       const valuesFor = (v: (typeof vars)[number]) => Object.fromEntries(FIELDS.flatMap((f) => (ids[f] ? [[ids[f]!, valueOf(v, f)]] : [])))
-      // the reference video shows the first variation's values, so the design never shows empty {placeholders}
-      const main: Slide = { id: "main", prompt: "", refs: [], video: base, startedAt: now, used: { prompt: plan.reference.prompt, refs: generation.refs ?? [], fromReference: false, media: plan.reference.media }, feeds: valuesFor(vars[0]) }
-      const vs: Slide[] = vars.map((v, i) => ({
+      const main: Slide = { id: "main", name: vars[0].name.trim() || undefined, prompt: "", refs: [], video: base, startedAt: now, used: { prompt: plan.reference.prompt, refs: generation.refs ?? [], fromReference: false, media: plan.reference.media }, feeds: valuesFor(vars[0]) }
+      const vs: Slide[] = vars.slice(1).map((v, i) => ({
         id: crypto.randomUUID(),
         n: i + 1,
         name: v.name.trim(),
@@ -794,16 +795,15 @@ export function GenerationCanvas({
       setHistory([main, ...vs].map((x) => ({ id: crypto.randomUUID(), slideId: x.id, prompt: x.used!.prompt, refs: refsOf(x.used!.refs), fromReference: x.id !== "main", video: x.video!, startedAt: x.startedAt!, batch: x.id !== "main", at: now })))
       commitFeeds(made)
       stripAdded.current = true
-      const els = buildDesign(design, { ratio, count: vs.length, feeds: ids, brand })
+      const els = buildDesign(design, { ratio, count: vars.length, feeds: ids, brand })
       elementsNow.current = els
       setShared(els)
-      setIncludeRef(false)
-      setStart(vs[0].id)
+      setStart("main")
       setActive("main")
       setSelected([])
       if (plan.title?.trim()) setTitle(plan.title.trim())
       const per = made.map((f) => f.name)
-      return withIssues(`Generating the reference video and ${vs.length} variations (${cost.toLocaleString()} credits); ${liveRef.current ? "the reference video comes first (a few minutes); the user reviews it, and the variations are made from it once they approve (or after you regenerate it with their changes)" : `they take about ${dev.generationSeconds * 2} seconds`}. The design is on the canvas${per.length ? `, with ${per.join(", ")} set per variation (feeds)` : ""}. Thumbnails are empty until set.`)
+      return withIssues(`Generating ${vars.length} videos (${cost.toLocaleString()} credits): ${main.name ?? "Variation 1"} (the reference video) first, then the other ${vs.length}; ${liveRef.current ? "Variation 1 comes first (a few minutes); the user reviews it, and the others are made from it once they approve (or after you regenerate it with their changes)" : `they take about ${dev.generationSeconds * 2} seconds`}. The design is on the canvas${per.length ? `, with ${per.join(", ")} set per variation (feeds)` : ""}. Thumbnails are empty until set.`)
     },
     updateDesign(d) {
       if (!slidesNow.current[0].startedAt) return "Error: Approve the plan first."
@@ -884,7 +884,7 @@ export function GenerationCanvas({
       commitSlides([...slidesNow.current, sl])
       if (gen && v.prompt && slidesNow.current[0].startedAt) startVideo(id, v.prompt)
       return withIssues(
-        `Added ${v.name || `Variation ${n}`}${gen ? " and started its video" : ""}.${copied.length ? ` Copied ${copied.join(", ")} from ${nameOfSlide(first)}; change them with set_variation if they should differ.` : ""}`,
+        `Added ${v.name || `Variation ${n + 1}`}${gen ? " and started its video" : ""}.${copied.length ? ` Copied ${copied.join(", ")} from ${nameOfSlide(first)}; change them with set_variation if they should differ.` : ""}`,
       )
     },
     varyField(field, feed, values) {
@@ -1096,14 +1096,14 @@ export function GenerationCanvas({
   const needsReview = agentMode && live && refReady && mainNow.approvedRef !== mainNow.startedAt && slides.some((x) => x.job?.status === "waiting")
   const approveRef = () => {
     commitSlides(slidesNow.current.map((x, i) => (i === 0 ? { ...x, approvedRef: x.startedAt } : x)))
-    toast({ title: "Making the variations", description: "From the reference video you approved." })
+    toast({ title: "Making the variations", description: "From Variation 1, which you approved." })
   }
   const changeRef = () => {
     select("main")
     setComposeMode("chat")
     setChatHidden(false)
     agentCtx.focusComposer()
-    toast({ title: "Tell the chat what to change", description: "It makes a new reference video; you review that one before any variation." })
+    toast({ title: "Tell the chat what to change", description: "It makes Variation 1 again; you review it before the others are made." })
   }
   const jobs = useRef(new Set<string>())
   useEffect(() => {
@@ -1195,7 +1195,7 @@ export function GenerationCanvas({
     progress: () => {
       const vs = slides.slice(1)
       return [
-        { label: "Reference video", state: status(slides[0]) === "done" ? "done" : "working" },
+        { label: "Variation 1", state: status(slides[0]) === "done" ? "done" : "working" },
         { label: `${vs.length} variations`, state: vs.every((v) => status(v) === "done") ? "done" : mainDone ? "working" : "waiting" },
         { label: "Headline, button and thumbnail strip", state: elements.some((e) => e.kind === "strip") ? "done" : "working" },
         { label: "Thumbnail images", state: vs.every((v) => v.thumb) ? "done" : "working" },
@@ -1217,8 +1217,8 @@ export function GenerationCanvas({
       : included.some((s) => status(s) !== "done")
       ? [{ text: "Generate videos for every variation before export.", blocking: true }]
       : []),
-    ...(includeRef && !slides[0].thumb ? [{ text: "Add a thumbnail for the reference video to export.", blocking: true }] : []),
-    ...included.filter(stale).map((s) => ({ text: `${nameOf(s)} was made from the old reference video` })),
+    ...(includeRef && !slides[0].thumb ? [{ text: "Add a thumbnail for Variation 1 to export.", blocking: true }] : []),
+    ...included.filter(stale).map((s) => ({ text: `${nameOf(s)} was made from an older Variation 1` })),
     ...feeds
       .filter((f) => included.some((s) => !s.feeds?.[f.id]?.trim()))
       .map((f) => ({ text: `Feed ${f.name} is empty on some variations` })),
@@ -1247,7 +1247,6 @@ export function GenerationCanvas({
     setSlides(snap.slides)
     setFeeds(snap.feeds)
     setStart(snap.start)
-    setIncludeRef(snap.includeRef)
     setSelected([])
     setEditing(null)
     if (!snap.slides.some((x) => x.id === active)) setActive("main")
@@ -1705,7 +1704,7 @@ export function GenerationCanvas({
                   {/* status just above the frame's top-right corner, off the design */}
                   <div className="pointer-events-none absolute bottom-full right-0 z-30 mb-2 flex whitespace-nowrap items-center gap-1.5 rounded-full bg-background/85 py-1 pl-2 pr-2.5 text-xs font-medium shadow-sm ring-1 ring-foreground/10 backdrop-blur-md">
                     <HugeiconsIcon icon={Loading03Icon} className="size-3.5 animate-spin text-primary" />
-                    {activeSlide.job ? (activeSlide.job.status === "waiting" ? (refReady ? "Waiting for your review of the reference video" : "Waiting for the reference video") : activeSlide.job.status === "queued" ? "Queued · a few minutes" : "Generating · a few minutes") : "Generating"}
+                    {activeSlide.job ? (activeSlide.job.status === "waiting" ? (refReady ? "Waiting for your review of Variation 1" : "Waiting for Variation 1") : activeSlide.job.status === "queued" ? "Queued · a few minutes" : "Generating · a few minutes") : "Generating"}
                   </div>
                 </>
               )}
@@ -1732,18 +1731,14 @@ export function GenerationCanvas({
             select(id)
             // straight to writing its prompt
             setChatHidden(false)
-            focusPromptBox(`Describe Variation ${n} here`)
+            focusPromptBox(`Describe Variation ${n + 1} here`)
           }}
           onRemove={setConfirmRemove}
           start={start}
           onPreview={setPreview}
           stale={stale}
           onRename={(id, name) => patchSlide(id, { name: name || undefined })}
-          includeRef={includeRef}
-          onIncludeRef={(on) => {
-            setIncludeRef(on)
-            if (!on && start === "main") setStart(slides[1].id)
-          }}
+          includeRef
           onSetStart={setStart}
         />
         )}
@@ -1762,14 +1757,14 @@ export function GenerationCanvas({
         <Dialog open={confirmRegen} onOpenChange={setConfirmRegen}>
           <DialogContent className="sm:max-w-sm" data-keep-selection>
             <DialogHeader>
-              <DialogTitle>Regenerate reference video?</DialogTitle>
+              <DialogTitle>Regenerate Variation 1?</DialogTitle>
               <DialogDescription>
                 {made.length === 1 ? "Your variation was made from this video. Regenerate it too so it matches." : `Your ${made.length} variations were made from this video. Regenerate them too so they match.`}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="sm:flex-col sm:items-stretch">
               <Button onClick={() => (setConfirmRegen(false), generate("main"))} className="justify-between">
-                Reference video only
+                Variation 1 only
                 <span className="opacity-80">{VIDEO_COST}</span>
               </Button>
               <Button variant="secondary" onClick={() => (setConfirmRegen(false), regenerateAll())} className="justify-between">
@@ -1873,12 +1868,12 @@ export function GenerationCanvas({
                 <div className="flex flex-col gap-2">
                   {/* the reference video is ready: the user reviews it here before any variation is made */}
                   {needsReview && (
-                    <section aria-label="Review the reference video" className="flex flex-col gap-3 rounded-2xl bg-background p-3 shadow-lg ring-1 ring-foreground/10 animate-in fade-in-0 slide-in-from-bottom-2">
+                    <section aria-label="Review Variation 1" className="flex flex-col gap-3 rounded-2xl bg-background p-3 shadow-lg ring-1 ring-foreground/10 animate-in fade-in-0 slide-in-from-bottom-2">
                       <div className="flex items-center gap-3">
                         <img src={GENERATED_VIDEOS[mainNow.video!].poster} alt="" className="size-12 shrink-0 rounded-lg object-cover ring-1 ring-foreground/10" />
                         <div className="min-w-0">
-                          <p className="text-[15px] font-medium leading-snug">Happy with the reference video?</p>
-                          <p className="text-xs text-muted-foreground">Every variation is made from it. Play it on the canvas, then decide.</p>
+                          <p className="text-[15px] font-medium leading-snug">Happy with Variation 1?</p>
+                          <p className="text-xs text-muted-foreground">The other variations are made from it. Play it on the canvas, then decide.</p>
                         </div>
                       </div>
                       <div className="flex justify-end gap-2">
@@ -1896,7 +1891,7 @@ export function GenerationCanvas({
                 </div>
               ) : // a template's reference video is fixed, so it has no prompt
               fixedRef && activeIndex === 0 ? (
-                <p className="rounded-2xl bg-background p-3 text-sm text-muted-foreground ring-1 ring-foreground/5">The reference video comes with this template. Pick a variation to write its prompt.</p>
+                <p className="rounded-2xl bg-background p-3 text-sm text-muted-foreground ring-1 ring-foreground/5">Variation 1 comes with this template. Pick a variation to write its prompt.</p>
               ) : (
                 <SlidePrompt
               key={activeSlide.id}

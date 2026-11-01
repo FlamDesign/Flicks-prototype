@@ -29,9 +29,13 @@ export type Slide = {
   /** the reference video: the startedAt of the version the user approved (variations are made only from an approved one) */
   approvedRef?: number
 }
-/** a slide's name when the user hasn't named it: numbers stay put when others are removed */
+/**
+ * A slide's name when the user hasn't named it. The reference video is Variation 1 (it's in the
+ * Flick like any other; the rest are made from it), so the others count from 2. Numbers stay put
+ * when others are removed.
+ */
 export const slideName = (s: Slide, index: number) =>
-  s.name?.trim() || (s.id === "main" ? "Reference video" : `Variation ${s.n ?? index}`)
+  s.name?.trim() || (s.id === "main" ? "Variation 1" : `Variation ${(s.n ?? index) + 1}`)
 
 export type SlideStatus = "empty" | "generating" | "done"
 
@@ -96,11 +100,9 @@ export function SlidesStrip({
           slide={main}
           label={slideName(main, 0)}
           onRename={onRename && ((name) => onRename(main.id, name))}
-          defaultLabel="Reference video"
+          defaultLabel="Variation 1"
           menu={{
-            include: onIncludeRef && { on: !!includeRef, set: onIncludeRef },
-            setStart: onSetStart && (includeRef ? () => onSetStart(main.id) : undefined),
-            startHint: includeRef ? undefined : "Include it in the Flick to start here",
+            setStart: onSetStart && (() => onSetStart(main.id)),
           }}
           start={start === main.id} onPreview={() => onPreview(main.id)} width={w} height={h} status={status(main)} active={active === main.id} onSelect={() => onSelect(main.id)} />
 
@@ -276,7 +278,7 @@ function Thumb({
             <TooltipTrigger asChild>
               <span aria-label="Needs regenerating" className="size-1.5 shrink-0 rounded-full bg-red-500" />
             </TooltipTrigger>
-            <TooltipContent>Needs regenerating: the reference video changed</TooltipContent>
+            <TooltipContent>Needs regenerating: Variation 1 changed</TooltipContent>
           </Tooltip>
         )}
         <Label label={label} active={active} onRename={onRename} placeholder={defaultLabel} />

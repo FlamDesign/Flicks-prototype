@@ -37,7 +37,7 @@ export function VideoLightbox({
       name: `${nameOf(s)}.mp4`,
       prompt: used.prompt || undefined,
       refs: [
-        ...(used.fromReference && ref ? [{ kind: "video" as const, src: ref.mp4, webm: ref.webm, poster: ref.poster, name: "Reference video", source: "Generated" as const }] : []),
+        ...(used.fromReference && ref ? [{ kind: "video" as const, src: ref.mp4, webm: ref.webm, poster: ref.poster, name: "Variation 1", source: "Generated" as const }] : []),
         ...used.refs.map((r) => ({ kind: "image" as const, src: r.url, name: r.name, source: "Uploaded" as const })),
       ],
       details: [
