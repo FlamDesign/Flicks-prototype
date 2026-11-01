@@ -193,7 +193,7 @@ function SceneVideo() {
         <Clip look={LOOKS[0]} video round={14} className="size-full shadow-xl" />
       </div>
       <Chip cx={326 + 86} y={222} style={a("hfw-up", 0.4, vidAt + 0.4)}>
-        <span className="size-[0.55em] rounded-full bg-success" />
+        <span className="size-[0.55em] rounded-full bg-primary" />
         Your video
       </Chip>
     </>

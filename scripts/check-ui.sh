@@ -5,8 +5,9 @@ cd "$(dirname "$0")/.."
 fail=0
 check() { local what="$1" pat="$2"; local hits; hits=$(grep -rnE "$pat" src --include=*.tsx | grep -vE "coach-art|email-gallery|/templates/|/data" || true)
   if [ -n "$hits" ]; then echo "✗ $what"; echo "$hits" | head -20; fail=1; fi }
-check "text sizes outside the scale (use text-2xs, xs, sm, md, base… display, hero)" 'text-\[[0-9.]+px\]'
-check "raw status colours (use text-success, text-warning, text-destructive)" '(text|bg|ring|border)-(emerald|green|amber|yellow|red)-[0-9]'
+check "text sizes outside the scale (use the preset scale: text-xs, sm, base, lg…)" 'text-\[[0-9.]+px\]'
+check "raw palette colours (use the preset's tokens: primary, muted, destructive…)" '(text|bg|ring|border)-(emerald|green|amber|yellow|red|blue|sky)-[0-9]'
+check "custom type sizes or tokens outside the preset" 'text-(2xs|md|display|hero)\b'
 check "fonts other than the preset (use font-sans)" 'font-\[|fontFamily: *"(DM Sans|Inter)'
 [ $fail = 0 ] && echo "✓ UI follows the preset"
 exit $fail

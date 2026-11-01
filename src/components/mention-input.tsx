@@ -202,7 +202,7 @@ export const MentionTextarea = forwardRef<
           {!list.length && <p className="px-2 py-1.5 text-xs text-muted-foreground">Nothing called “{query.text}”.</p>}
           {Object.entries(groups).map(([g, items]) => (
             <div key={g} className="py-0.5">
-              <p className="px-2 pb-0.5 pt-1 text-2xs font-medium text-muted-foreground">{g}</p>
+              <p className="px-2 pb-0.5 pt-1 text-xs font-medium text-muted-foreground">{g}</p>
               {items.map(({ o, i }) => (
                 <div key={o.key} role="option" aria-selected={i === hi} onMouseEnter={() => setHi(i)} onClick={() => choose(i)} className={cn("group/m flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm", i === hi && "bg-muted")}>
                   <span className="relative grid size-7 shrink-0 place-items-center overflow-hidden rounded-md bg-muted text-muted-foreground">
@@ -211,7 +211,7 @@ export const MentionTextarea = forwardRef<
                   </span>
                   <span className="flex min-w-0 flex-1 flex-col">
                     <span className="truncate">@{o.label}</span>
-                    {o.hint && <span className="truncate text-2xs text-muted-foreground">{o.hint}</span>}
+                    {o.hint && <span className="truncate text-xs text-muted-foreground">{o.hint}</span>}
                   </span>
                   {o.element && (
                     <Button variant="ghost" size="icon-xs" aria-label={`Edit ${o.label}`} onClick={(e) => (e.stopPropagation(), (pending.current = null), setCreating({ edit: o.element }))} className="opacity-0 group-hover/m:opacity-100 focus-visible:opacity-100">

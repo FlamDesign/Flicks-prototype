@@ -148,7 +148,7 @@ function ToastCard({
         icon={t.kind === "info" ? InformationCircleIcon : t.kind === "error" ? Alert02Icon : CheckmarkCircle02Icon}
         className={cn(
           "mt-0.5 size-4 shrink-0 transition-opacity",
-          t.kind === "info" ? "text-muted-foreground" : t.kind === "error" ? "text-destructive" : "text-success",
+          t.kind === "info" ? "text-muted-foreground" : t.kind === "error" ? "text-destructive" : "text-foreground",
           !expanded && index > 0 && "opacity-0",
         )}
       />

@@ -87,7 +87,7 @@ export function AiLibrary() {
               <li key={x.id} className="group relative overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/10">
                 {x.kind === "video" ? <video src={x.file} muted loop playsInline preload="metadata" onMouseEnter={(e) => e.currentTarget.play()} onMouseLeave={(e) => e.currentTarget.pause()} className="aspect-square w-full object-cover" /> : <img src={x.file} alt="" className="aspect-square w-full object-cover" />}
                 <div className="flex items-center gap-1 p-1.5">
-                  <p className="min-w-0 flex-1 truncate text-2xs" title={x.prompt}>
+                  <p className="min-w-0 flex-1 truncate text-xs" title={x.prompt}>
                     {x.variation || x.project || x.prompt}
                   </p>
                   <Button size="icon-xs" variant="ghost" aria-label="Download" onClick={() => download(x)}>

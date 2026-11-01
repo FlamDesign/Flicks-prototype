@@ -56,7 +56,7 @@ export function PlaceAnalyticsCard({ kind, id }: { kind: "placement" | "embed"; 
                 <div className="flex items-center justify-between gap-2 text-sm">
                   <span className="flex min-w-0 items-center gap-1.5">
                     <span className="truncate">{v.name}</span>
-                    {v.i === meta.start && <Badge variant="secondary" className="h-5 shrink-0 px-1.5 text-2xs font-normal">Starts here</Badge>}
+                    {v.i === meta.start && <Badge variant="secondary" className="h-5 shrink-0 px-1.5 text-xs font-normal">Starts here</Badge>}
                   </span>
                   <span className="shrink-0 tabular-nums">
                     {Math.round((v.shown / shownTotal) * views).toLocaleString()} <span className="text-xs text-muted-foreground">· {Math.round((v.shown / shownTotal) * 100)}%</span>

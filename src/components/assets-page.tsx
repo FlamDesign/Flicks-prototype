@@ -290,8 +290,8 @@ function AssetCard({ a, onOpen }: { a: Asset; onOpen: () => void }) {
           )}
           {/* on hover: length and size */}
           <span className="pointer-events-none absolute bottom-2 right-2 flex gap-1 opacity-0 transition-opacity group-hover/asset:opacity-100 group-focus-within/asset:opacity-100">
-            <span className="rounded-md bg-black/55 px-1.5 py-0.5 text-2xs font-medium tabular-nums text-white backdrop-blur-sm">{clockLabel(a.duration)}</span>
-            <span className="rounded-md bg-black/55 px-1.5 py-0.5 text-2xs font-medium tabular-nums text-white backdrop-blur-sm">{a.size}</span>
+            <span className="rounded-md bg-black/55 px-1.5 py-0.5 text-xs font-medium tabular-nums text-white backdrop-blur-sm">{clockLabel(a.duration)}</span>
+            <span className="rounded-md bg-black/55 px-1.5 py-0.5 text-xs font-medium tabular-nums text-white backdrop-blur-sm">{a.size}</span>
           </span>
         </button>
         <div className="absolute right-2 top-2 flex gap-1">

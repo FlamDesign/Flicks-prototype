@@ -704,7 +704,7 @@ function ElementBox({
                 key={which}
                 title={`Feed: ${n}`}
                 onPointerDown={(e) => (e.stopPropagation(), onBadge(which))}
-                className="flex cursor-pointer items-center whitespace-nowrap rounded-t-md bg-neutral-800 px-1.5 py-1 text-2xs font-medium leading-none text-white shadow-sm hover:bg-neutral-700"
+                className="flex cursor-pointer items-center whitespace-nowrap rounded-t-md bg-neutral-800 px-1.5 py-1 text-xs font-medium leading-none text-white shadow-sm hover:bg-neutral-700"
               >
                 {n}
               </span>
@@ -1060,7 +1060,7 @@ function ButtonLinkFloat({
       >
         {feedTab && <div className="absolute bottom-full left-3">{feedTab}</div>}
         {link.trim() ? (
-          <a href={/^https?:/.test(link) ? link : `https://${link}`} target="_blank" rel="noreferrer" className="min-w-0 truncate text-sm font-medium text-sky-400 hover:underline" title={link}>
+          <a href={/^https?:/.test(link) ? link : `https://${link}`} target="_blank" rel="noreferrer" className="min-w-0 truncate text-sm font-medium text-white underline-offset-2 hover:underline" title={link}>
             {host}
           </a>
         ) : (

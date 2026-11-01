@@ -244,7 +244,7 @@ function Delta({ cur, prev, invert, neutral }: { cur: number; prev: number; inve
   const up = c >= 0
   const good = invert ? !up : up
   return (
-    <span className={cn("flex items-center gap-0.5 text-xs font-medium", Math.abs(c) < 0.005 || neutral ? "text-muted-foreground" : good ? "text-success" : "text-destructive")}>
+    <span className={cn("flex items-center gap-0.5 text-xs font-medium", Math.abs(c) < 0.005 || neutral ? "text-muted-foreground" : good ? "text-foreground" : "text-destructive")}>
       <HugeiconsIcon icon={up ? ArrowUp01Icon : ArrowDown01Icon} className="size-3.5" />
       {fmtPct(Math.abs(c), Math.abs(c) < 0.1 ? 1 : 0)}
       <span className="ml-1 font-normal text-muted-foreground">vs previous</span>
@@ -581,7 +581,7 @@ function MomentsCard({ meta, t }: { meta: FlickMeta; t: Totals }) {
             onLoadedMetadata={(e) => (e.currentTarget.currentTime = bin / 2 + 0.25)}
             className="size-full object-cover"
           />
-          <span className="absolute bottom-1.5 left-1.5 rounded-md bg-black/65 px-1.5 py-0.5 text-2xs tabular-nums text-white">{(bin / 2).toFixed(1)}s</span>
+          <span className="absolute bottom-1.5 left-1.5 rounded-md bg-black/65 px-1.5 py-0.5 text-xs tabular-nums text-white">{(bin / 2).toFixed(1)}s</span>
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <MomentChart bins={meta.timeline} seconds={VIDEO_SECONDS} total={t.switches} active={bin} onActive={setActive} />
@@ -725,7 +725,7 @@ function LeaderChip({ name, confidence }: { name: string; confidence: number }) 
   return (
     <span className="flex items-center gap-1.5">
       <span className="font-medium">{name}</span>
-      <span className={cn("rounded-full px-1.5 py-0.5 text-2xs", sure ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>{sure ? "Clear lead" : likely ? "Likely" : "Too early"}</span>
+      <span className={cn("rounded-full px-1.5 py-0.5 text-xs", sure ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>{sure ? "Clear lead" : likely ? "Likely" : "Too early"}</span>
     </span>
   )
 }
@@ -790,8 +790,8 @@ function FlickView({ data, meta, filter }: { data: Dataset; meta: FlickMeta; fil
                           <span aria-hidden className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full ring-2 ring-card" style={{ background: SERIES[i % SERIES.length] }} />
                         </span>
                         <span className="font-medium">{v.name}</span>
-                        {i === meta.start && <Badge variant="secondary" className="h-5 px-1.5 text-2xs font-normal">Starts here</Badge>}
-                        {best && <Badge className="h-5 px-1.5 text-2xs font-normal">Most clicks per view</Badge>}
+                        {i === meta.start && <Badge variant="secondary" className="h-5 px-1.5 text-xs font-normal">Starts here</Badge>}
+                        {best && <Badge className="h-5 px-1.5 text-xs font-normal">Most clicks per view</Badge>}
                       </span>
                     </td>
                     <td className="py-2 pl-4">
@@ -989,7 +989,7 @@ function DataTable({ rows, cols, empty = "Nothing in this period.", nameLabel = 
                   <span className="min-w-0">
                     <span className="flex items-center gap-1.5">
                       <span className="truncate font-medium">{r.name}</span>
-                      {r.badge && <Badge variant="secondary" className="h-5 shrink-0 px-1.5 text-2xs font-normal">{r.badge}</Badge>}
+                      {r.badge && <Badge variant="secondary" className="h-5 shrink-0 px-1.5 text-xs font-normal">{r.badge}</Badge>}
                     </span>
                     {r.sub && <span className="block truncate text-xs text-muted-foreground">{r.sub}</span>}
                   </span>
@@ -1029,7 +1029,7 @@ function TopLists({ data, filter, go, onTab }: { data: Dataset; filter: Filter; 
               <span className="min-w-0 flex-1 truncate font-medium">{x.name}</span>
               <span className="shrink-0 text-right tabular-nums">
                 {value(x.t)}
-                <span className="block text-2xs text-muted-foreground">{x.t.played ? `${fmtPct(M.interaction(x.t), 0)} interact` : "No views"}</span>
+                <span className="block text-xs text-muted-foreground">{x.t.played ? `${fmtPct(M.interaction(x.t), 0)} interact` : "No views"}</span>
               </span>
             </button>
           </li>

@@ -204,7 +204,7 @@ export function ShareSection({
                     <span className="text-muted-foreground">Checking</span>
                   </>
                 )}
-                {avail === "free" && <HugeiconsIcon icon={Tick02Icon} className="size-4 text-success" aria-label="Available" />}
+                {avail === "free" && <HugeiconsIcon icon={Tick02Icon} className="size-4 text-foreground" aria-label="Available" />}
                 {avail === "taken" && <span className="text-destructive">Taken</span>}
               </span>
             )}
@@ -285,7 +285,7 @@ export function EmbedSection({ link }: { link: string }) {
             <Button
               size="sm"
               variant="ghost"
-              className={cn("gap-1.5 text-muted-foreground transition-colors", copied && "text-success hover:text-success")}
+              className={cn("gap-1.5 text-muted-foreground transition-colors", copied && "text-foreground hover:text-foreground")}
               onClick={() => {
                 navigator.clipboard?.writeText(embedCode(link))
                 setCopied(true)
@@ -350,7 +350,7 @@ export function Issues({ issues }: { issues: Issue[] }) {
   return (
     <ul className="flex flex-col gap-1">
       {issues.map((x) => (
-        <li key={x.text} className={cn("text-xs", x.blocking ? "text-muted-foreground" : "text-warning")}>
+        <li key={x.text} className={cn("text-xs", x.blocking ? "text-muted-foreground" : "text-primary")}>
           {x.text}
         </li>
       ))}

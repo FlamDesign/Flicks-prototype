@@ -4,6 +4,7 @@ import "./index.css"
 import App from "./App"
 import { DevStateProvider } from "@/dev/state"
 import { startSync } from "@/ai/sync"
+import { SmallScreenNotice } from "@/components/small-screen"
 
 const HelpCenter = lazy(() => import("@/help/help-center").then((m) => ({ default: m.HelpCenter })))
 const isHelp = () => location.hash.startsWith("#help")
@@ -23,6 +24,7 @@ function Root() {
   ) : (
     <DevStateProvider>
       <App />
+      <SmallScreenNotice />
     </DevStateProvider>
   )
 }

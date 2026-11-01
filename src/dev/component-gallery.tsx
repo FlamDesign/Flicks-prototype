@@ -1,4 +1,5 @@
 import { useMediaAdd } from "@/components/media-picker"
+import { SmallScreenNotice } from "@/components/small-screen"
 import { MentionTextarea, useMentionOptions } from "@/components/mention-input"
 import { useEffect, useState } from "react"
 import { WelcomeGiftDialog } from "@/components/welcome-gift-page"
@@ -125,7 +126,7 @@ function States({ states, className }: { states: State[]; className?: string }) 
           <div data-force={s.force} className="flex flex-1 items-center justify-center bg-muted/30 p-4 [&_*]:!transition-none">
             {s.node}
           </div>
-          <figcaption className="border-t px-2.5 py-1.5 text-2xs text-muted-foreground">{s.label}</figcaption>
+          <figcaption className="border-t px-2.5 py-1.5 text-xs text-muted-foreground">{s.label}</figcaption>
         </figure>
       ))}
     </div>
@@ -550,6 +551,12 @@ const ENTRIES: Entry[] = [
     ),
   },
   {
+    name: "Small screen note",
+    kind: "Feedback",
+    about: "Covers the app on phones (under 768 px): Flicks is made for laptops and desktops.",
+    render: () => <div className="relative h-72 w-full overflow-hidden rounded-xl ring-1 ring-foreground/10 [&>[role=alert]]:absolute [&>[role=alert]]:flex"><SmallScreenNotice /></div>,
+  },
+  {
     name: "Mention input",
     kind: "Editor",
     about: "Prompt boxes with @mentions: type @ for this prompt's photos and videos, saved elements, variations and the brand; mentions show highlighted. New element makes one from the list.",
@@ -791,11 +798,11 @@ function PromptsDemo() {
     <div className="flex gap-4">
       <figure className="flex h-[560px] flex-col overflow-hidden rounded-xl ring-1 ring-foreground/10">
         <div className="flex min-h-0 flex-1"><PromptChat {...props} target={{ id: "s2", name: "Variation 2", isReference: false }} busy /></div>
-        <figcaption className="border-t px-2.5 py-1.5 text-2xs text-muted-foreground">Generating (prompt box dimmed)</figcaption>
+        <figcaption className="border-t px-2.5 py-1.5 text-xs text-muted-foreground">Generating (prompt box dimmed)</figcaption>
       </figure>
       <figure className="flex h-[560px] flex-col overflow-hidden rounded-xl ring-1 ring-foreground/10">
         <div className="flex min-h-0 flex-1"><PromptChat {...props} history={history.slice(0, 3)} target={{ id: "s1", name: "Variation 1", poster: GENERATED_VIDEOS[2].poster, isReference: false }} busy={false} /></div>
-        <figcaption className="border-t px-2.5 py-1.5 text-2xs text-muted-foreground">Ready</figcaption>
+        <figcaption className="border-t px-2.5 py-1.5 text-xs text-muted-foreground">Ready</figcaption>
       </figure>
     </div>
   )
@@ -844,7 +851,7 @@ export function ComponentGallery({ open, onOpenChange }: { open: boolean; onOpen
           <nav className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto" aria-label="Components">
             {kinds.map((k) => (
               <div key={k} className="flex flex-col gap-0.5">
-                <p className="px-2 pb-1 text-2xs font-medium uppercase tracking-wide text-muted-foreground/70">{k}</p>
+                <p className="px-2 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground/70">{k}</p>
                 {list
                   .filter((e) => e.kind === k)
                   .map((e) => (
@@ -967,7 +974,7 @@ function ChatCardsDemo() {
       {states.map((x) => (
         <figure key={x.label} className="flex flex-col overflow-hidden rounded-xl ring-1 ring-foreground/10">
           <div className="flex flex-1 flex-col justify-center bg-[color-mix(in_oklch,var(--muted),var(--foreground)_4%)] p-3">{x.node}</div>
-          <figcaption className="border-t px-2.5 py-1.5 text-2xs text-muted-foreground">{x.label}</figcaption>
+          <figcaption className="border-t px-2.5 py-1.5 text-xs text-muted-foreground">{x.label}</figcaption>
         </figure>
       ))}
     </div>

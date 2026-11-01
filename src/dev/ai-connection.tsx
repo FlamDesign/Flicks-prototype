@@ -30,7 +30,7 @@ export function AiConnection() {
     <section className="space-y-3 rounded-xl border p-4">
       <div className="flex items-center justify-between">
         <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Connection</h4>
-        <span className={cn("rounded-full px-2 py-0.5 text-2xs font-medium", isLive(c) ? "bg-success/10 text-success" : "bg-muted text-muted-foreground")}>
+        <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", isLive(c) ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
           {isLive(c) ? "Live AI" : "Scripted demo"}
         </span>
       </div>
@@ -65,7 +65,7 @@ export function AiConnection() {
         <Button size="sm" variant="outline" disabled={!isLive(c) || test.state === "testing"} onClick={run}>
           {test.state === "testing" ? "Testing…" : "Test connection"}
         </Button>
-        {test.text && <p className={cn("text-xs", test.state === "ok" ? "text-success" : "text-destructive")}>{test.text}</p>}
+        {test.text && <p className={cn("text-xs", test.state === "ok" ? "text-foreground" : "text-destructive")}>{test.text}</p>}
       </div>
       {test.h && (
         <p className="text-xs text-muted-foreground">

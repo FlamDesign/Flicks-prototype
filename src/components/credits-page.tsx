@@ -161,7 +161,7 @@ function UsageHistory({ activity }: { activity: Activity[] }) {
                   <p className="flex min-w-0 items-center gap-1.5 text-sm font-medium">
                     <span className="truncate">{a.label}</span>
                     {a.size && (
-                      <Badge variant="secondary" className="h-5 shrink-0 px-1.5 text-2xs font-normal tabular-nums">
+                      <Badge variant="secondary" className="h-5 shrink-0 px-1.5 text-xs font-normal tabular-nums">
                         {a.size}
                       </Badge>
                     )}

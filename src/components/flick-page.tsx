@@ -331,7 +331,7 @@ function Analytics({ f, onAnalytics }: { f: FlickRecord; onAnalytics: () => void
                 <div className="flex items-center justify-between gap-2 text-sm">
                   <span className="flex min-w-0 items-center gap-1.5">
                     <span className="truncate">{v.name}</span>
-                    {i === f.start && <Badge variant="secondary" className="h-5 shrink-0 px-1.5 text-2xs font-normal">Starts here</Badge>}
+                    {i === f.start && <Badge variant="secondary" className="h-5 shrink-0 px-1.5 text-xs font-normal">Starts here</Badge>}
                   </span>
                   <span className="shrink-0 tabular-nums">
                     {v.views.toLocaleString()} <span className="text-xs text-muted-foreground">· {Math.round((v.views / total) * 100)}%</span>

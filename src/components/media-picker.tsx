@@ -345,7 +345,7 @@ function Tile({ x, on, onToggle, onOpen, onDuration }: { x: MediaItem; on: boole
         )}
         {x.kind === "video" && x.poster && x.duration === undefined && <video src={`${x.url}#t=0.1`} muted playsInline preload="metadata" crossOrigin="anonymous" onLoadedMetadata={(e) => onDuration(e.currentTarget.duration)} className="hidden" />}
         {x.kind === "video" && (
-          <span className="absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 text-2xs font-medium text-white tabular-nums backdrop-blur-sm">
+          <span className="absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 text-xs font-medium text-white tabular-nums backdrop-blur-sm">
             <HugeiconsIcon icon={long ? Scissor01Icon : PlayIcon} className="size-3" />
             {x.duration !== undefined ? length(x.duration) : "Video"}
           </span>
@@ -490,7 +490,7 @@ export function VideoTrimmer({ item, onDone }: { item: MediaItem | null; onDone:
               <div className="absolute inset-y-0 left-0 bg-background/70" style={{ width: `${pct(range[0])}%` }} />
               <div className="absolute inset-y-0 right-0 bg-background/70" style={{ width: `${100 - pct(range[1])}%` }} />
               <div className="absolute inset-y-0 cursor-grab rounded-md border-2 border-primary active:cursor-grabbing" style={{ left: `${pct(range[0])}%`, width: `${pct(len)}%` }} onPointerDown={grab("move")} aria-hidden>
-                <span className="absolute -top-px left-1/2 -translate-x-1/2 rounded-b-md bg-primary px-1.5 text-2xs font-medium text-primary-foreground tabular-nums">{len.toFixed(1)}s</span>
+                <span className="absolute -top-px left-1/2 -translate-x-1/2 rounded-b-md bg-primary px-1.5 text-xs font-medium text-primary-foreground tabular-nums">{len.toFixed(1)}s</span>
               </div>
               {(["start", "end"] as const).map((w, i) => (
                 <div
