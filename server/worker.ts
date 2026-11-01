@@ -11,7 +11,7 @@
  *   POST /upload          keeps a photo or video the user added (in the library too) and returns a public address for it, so Higgsfield can use it
  *   GET  /file/:id        a kept image or video (public: the address is unguessable)
  *   GET  /media?u=        a generated video, passed through (Higgsfield's hosts only), for poster frames
- *   GET  /store/:key      saved app data: "state" (projects, Flicks, made videos) or "chat-<project id>"
+ *   GET  /store/:key      saved app data: "state" (projects, Flicks, made videos), "elements" (named products, characters, logos) or "chat-<project id>"
  *   PUT  /store/:key      saves it (JSON, whole value replaced)
  *   GET  /library         every image and video made here, newest first (each kept on our side once it finishes)
  *   POST /library/import  keeps copies of finished images or videos the app still has links to
@@ -317,7 +317,7 @@ export default {
       }
 
       // saved app data, so projects and chats survive a reload and follow you to other devices
-      const st = url.pathname.match(/^\/store\/(state|chat-[\w-]{4,80})$/)
+      const st = url.pathname.match(/^\/store\/(state|elements|chat-[\w-]{4,80})$/)
       if (st && req.method === "GET") return new Response((await env.USAGE?.get(`store:${st[1]}`)) ?? "null", { headers: { ...cors, "content-type": "application/json", "cache-control": "no-store" } })
       if (st && req.method === "PUT") {
         const text = await req.text()

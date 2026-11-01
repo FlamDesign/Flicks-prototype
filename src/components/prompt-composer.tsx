@@ -10,7 +10,6 @@ import {
   RefreshIcon,
 } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -29,6 +28,7 @@ import { RatioGlyph } from "@/components/ratio-glyph"
 import { cn } from "@/lib/utils"
 import { useImageUploads } from "@/lib/uploads"
 import { useMediaAdd } from "@/components/media-picker"
+import { MentionTextarea, useMentionOptions, type MentionTextareaHandle } from "@/components/mention-input"
 import { blobUrl, type PickedMedia } from "@/lib/media"
 import { MediaViewer, type ViewerItem } from "@/components/media-viewer"
 import { videoCost } from "@/components/credits-card"
@@ -76,7 +76,7 @@ export function PromptComposer({
   const [duration, setDuration] = useState(8)
   const [dragging, setDragging] = useState(false)
   const firstSize = useRef(true)
-  const ref = useRef<HTMLTextAreaElement>(null)
+  const ref = useRef<MentionTextareaHandle>(null)
 
   useEffect(() => {
     if (!pulse) return
@@ -106,6 +106,7 @@ export function PromptComposer({
   const failedRefs = refs.some((r) => r.failed)
   const media = useMediaAdd(refUploads.addPicked)
   const addFiles = (files: FileList | File[]) => media.addFiles(files)
+  const mentionOptions = useMentionOptions({ refs: refs.filter((r) => !r.failed).map((r) => ({ url: r.url, name: r.name, video: r.media === "video", poster: r.poster })) })
 
   const remove = (id: string) =>
     // the image may still be in use by a generated video's prompt box, so its URL is kept
@@ -175,10 +176,12 @@ export function PromptComposer({
         )}
         <FailedRefsNote refs={refs} onRetry={refUploads.retry} />
 
-        <Textarea
+        <MentionTextarea
           ref={ref}
           value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
+          onChange={setPrompt}
+          options={mentionOptions}
+          menuSide="bottom"
           onPaste={(e) => {
             if (e.clipboardData.files.length) {
               e.preventDefault()
@@ -188,7 +191,7 @@ export function PromptComposer({
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) send()
           }}
-          placeholder="Describe the video you want to create"
+          placeholder="Describe the video you want to create. Type @ to mention a photo, video or element"
           rows={2}
           className="field-sizing-content min-h-[72px] max-h-[200px] overflow-y-auto resize-none rounded-none border-0 bg-transparent px-2 text-base shadow-none focus-visible:ring-0 md:text-base dark:bg-transparent"
         />

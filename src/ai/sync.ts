@@ -7,6 +7,7 @@
 import { aiConfig, isLive, shareable } from "@/ai/client"
 import { GENERATED_VIDEOS, type SampleVideo } from "@/components/editor/elements"
 import { library, watchLibrary, type LibraryState } from "@/library"
+import { elements, type FlickElement } from "@/lib/elements"
 
 const base = () => aiConfig.get().url.trim().replace(/\/+$/, "")
 const headers = () => ({ "content-type": "application/json", "x-flicks-pass": aiConfig.get().passcode.trim() })
@@ -67,6 +68,18 @@ export function startSync() {
     watchLibrary((s, silent) => {
       if (ready && !silent) put({ projects: s.projects, flicks: s.flicks, made: GENERATED_VIDEOS.filter((v) => v.set === "made") } satisfies Saved)
     })
+    // elements (named products, characters, logos) follow the user too
+    let elementsReady = false
+    const putElements = saver("elements", 1500)
+    elements.watch((all, quiet) => elementsReady && !quiet && putElements(all))
+    loadSaved<FlickElement[]>("elements")
+      .then((saved) => Array.isArray(saved) && elements.load(saved))
+      .catch(() => {})
+      .finally(() => {
+        elementsReady = true
+        // anything made before the server was connected gets saved there now
+        if (elements.get().length) putElements(elements.get())
+      })
     try {
       const saved = await loadSaved<Saved>("state")
       if (saved?.projects) {

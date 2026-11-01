@@ -2,10 +2,10 @@ import { useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Add01Icon, Loading03Icon, PlayIcon, SparklesIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { FailedRefsNote, ReferenceThumb, ReferenceViewer, scrollSideways, useReferenceUploads, type Reference } from "@/components/prompt-composer"
 import { useMediaAdd } from "@/components/media-picker"
+import { MentionTextarea, useMentionOptions } from "@/components/mention-input"
 import type { SlideStatus } from "@/components/editor/slides-strip"
 import { cn } from "@/lib/utils"
 
@@ -26,7 +26,12 @@ export function SlidePrompt({
   onOpenFixed,
   locked,
   cost,
+  mentionVariations,
+  brand,
 }: {
+  /** what @ can mention besides this box's photos and videos: the variations, and the brand kit */
+  mentionVariations?: { name: string; poster?: string }[]
+  brand?: boolean
   /** opens the attached reference video full screen */
   onOpenFixed?: () => void
   /** credits this video costs (its size and length) */
@@ -52,6 +57,7 @@ export function SlidePrompt({
   const refUploads = useReferenceUploads(setRefs)
   const [viewing, setViewing] = useState<number | null>(null)
   const media = useMediaAdd(refUploads.addPicked)
+  const mentionOptions = useMentionOptions({ refs: refs.filter((r) => !r.failed).map((r) => ({ url: r.url, name: r.name, video: r.media === "video", poster: r.poster })), variations: mentionVariations, brand })
   const addFiles = (files: FileList | File[]) => media.addFiles(files)
 
   return (
@@ -100,9 +106,10 @@ export function SlidePrompt({
       )}
       <FailedRefsNote refs={refs} onRetry={refUploads.retry} />
 
-      <Textarea
+      <MentionTextarea
         value={prompt}
-        onChange={(e) => setPrompt(e.target.value)}
+        onChange={setPrompt}
+        options={mentionOptions}
         readOnly={!!locked}
         onPaste={(e) => {
           if (e.clipboardData.files.length) (e.preventDefault(), addFiles(e.clipboardData.files))
@@ -110,7 +117,7 @@ export function SlidePrompt({
         onKeyDown={(e) => {
           if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && canSend) onGenerate()
         }}
-        placeholder={fixedRef ? "What should change? The product, character, scene or a mix" : "Describe the video you want to create"}
+        placeholder={fixedRef ? "What should change? Type @ to mention a photo, element or variation" : "Describe the video. Type @ to mention a photo, element or variation"}
         aria-label={`${label} prompt`}
         rows={3}
         className="field-sizing-content min-h-[72px] max-h-[180px] resize-none rounded-none border-0 bg-transparent px-1.5 text-sm shadow-none focus-visible:ring-0 dark:bg-transparent"

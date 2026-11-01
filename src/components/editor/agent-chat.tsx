@@ -3,7 +3,6 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Add01Icon, Alert02Icon, ArrowLeft01Icon, ArrowRight01Icon, ArrowDown01Icon, BookOpen01Icon, CheckmarkBadge01Icon, Globe02Icon, ArrowUp02Icon, ImageAdd01Icon, Loading03Icon, PencilEdit01Icon, LeftToRightListNumberIcon, PaintBoardIcon, RefreshIcon, SparklesIcon, StopIcon, Tick02Icon, Cancel01Icon, PlayIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import type { Choice, Item, useAgent } from "@/ai/agent"
 import type { Brand, Plan, PlanVariation } from "@/ai/design"
@@ -11,6 +10,8 @@ import { FlickPreview } from "@/components/editor/flick-preview"
 import { skillTitle } from "@/ai/skills"
 import { cn } from "@/lib/utils"
 import { useMediaAdd } from "@/components/media-picker"
+import { MentionTextarea, useMentionOptions } from "@/components/mention-input"
+import { elementsIn } from "@/lib/elements"
 import { asFile, blobUrl } from "@/lib/media"
 
 type Agent = ReturnType<typeof useAgent>
@@ -488,6 +489,8 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
   const setVar = (i: number, p: Partial<PlanVariation>) => set({ variations: plan.variations.map((v, j) => (j === i ? { ...v, ...p } : v)) })
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
+  // the plan's prompts can @mention elements, variations and the brand
+  const planMentions = useMentionOptions({ variations: plan.variations.map((v) => ({ name: v.name })), brand: !!ctx.brand })
   // the reference video is Variation 1, so one video per variation
   const videos = plan.variations.length
   const total = videos * ctx.videoCost
@@ -583,10 +586,10 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
                 {i === 0 ? (
                   <>
                     <span className="px-1.5 text-[11px] text-muted-foreground">Made first; the others are made from it</span>
-                    <textarea value={plan.reference.prompt} onChange={(e) => set({ reference: { ...plan.reference, prompt: e.target.value } })} aria-label={`${v.name} prompt (reference video)`} rows={1} className={cn(quiet, "field-sizing-content min-h-0 resize-none py-0.5 text-sm leading-relaxed text-foreground/80")} />
+                    <MentionTextarea options={planMentions} value={plan.reference.prompt} onChange={(prompt) => set({ reference: { ...plan.reference, prompt } })} aria-label={`${v.name} prompt (reference video)`} rows={1} className={cn(quiet, "field-sizing-content min-h-0 resize-none py-0.5 text-sm leading-relaxed text-foreground/80")} />
                   </>
                 ) : (
-                  <textarea value={v.prompt} onChange={(e) => setVar(i, { prompt: e.target.value })} aria-label={`${v.name} prompt`} rows={1} className={cn(quiet, "field-sizing-content min-h-0 resize-none py-0.5 text-sm leading-relaxed text-foreground/80")} />
+                  <MentionTextarea options={planMentions} value={v.prompt} onChange={(prompt) => setVar(i, { prompt })} aria-label={`${v.name} prompt`} rows={1} className={cn(quiet, "field-sizing-content min-h-0 resize-none py-0.5 text-sm leading-relaxed text-foreground/80")} />
                 )}
                 {/* on-screen text this plan sets per variation (feeds) */}
                 {perVar.length > 0 && (
@@ -760,9 +763,12 @@ function ImageCard({ item, ctx, agent }: { item: Extract<Item, { kind: "image" }
 }
 
 /** The chat's message box: text, images, send (or stop while it replies). */
-export function AgentComposer({ agent, placeholder }: { agent: Agent; placeholder?: string }) {
+export function AgentComposer({ agent, placeholder, variations, brand }: { agent: Agent; placeholder?: string; variations?: { name: string; poster?: string }[]; brand?: boolean }) {
   const [text, setText] = useState("")
   const [files, setFiles] = useState<File[]>([])
+  // @mentions: this message's photos and videos, saved elements, the variations, the brand
+  const planned = agent.plan?.variations.map((v) => ({ name: v.name }))
+  const mentionOptions = useMentionOptions({ refs: files.map((f) => ({ url: blobUrl(f), name: f.name, video: f.type.startsWith("video/") })), variations: variations ?? planned, brand })
   const url = (f: File) => blobUrl(f)
   // photos and videos: picked from uploads and generated work, or dropped or pasted (long videos trimmed first)
   // added at once; a trimmed clip shows as preparing while it's cut, then joins the files
@@ -780,7 +786,7 @@ export function AgentComposer({ agent, placeholder }: { agent: Agent; placeholde
   const can = (text.trim() || files.length) && !agent.busy && !preparing.length
   const send = () => {
     if (!can) return
-    agent.send(text.trim(), files)
+    agent.send(text.trim(), files, elementsIn(text))
     setText("")
     setFiles([])
   }
@@ -804,9 +810,10 @@ export function AgentComposer({ agent, placeholder }: { agent: Agent; placeholde
           ))}
         </div>
       )}
-      <Textarea
+      <MentionTextarea
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        onChange={setText}
+        options={mentionOptions}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) (e.preventDefault(), send())
         }}

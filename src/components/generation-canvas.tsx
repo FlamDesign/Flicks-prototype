@@ -1,3 +1,4 @@
+import { elementsIn } from "@/lib/elements"
 import { useEffect, useRef, useState } from "react"
 import { PendingButton } from "@/components/page-skeletons"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -459,8 +460,12 @@ export function GenerationCanvas({
   }
 
   // what a generation sends: the typed prompt, or (regenerating without typing) the last one sent
-  const sentOf = (s?: Slide) =>
-    s?.prompt?.trim() ? { prompt: s.prompt, refs: s.refs ?? [] } : { prompt: s?.used?.prompt ?? "", refs: s?.used?.refs ?? [] }
+  // @mentioned elements bring their images along as references
+  const sentOf = (s?: Slide) => {
+    const base = s?.prompt?.trim() ? { prompt: s.prompt, refs: s.refs ?? [] } : { prompt: s?.used?.prompt ?? "", refs: s?.used?.refs ?? [] }
+    const extra = elementsIn(base.prompt).flatMap((el) => el.images.slice(0, 3).map((im, i): Reference => ({ id: `${el.id}-${i}`, name: `${el.name} ${i + 1}`, url: im.url, loading: false, media: "image" })))
+    return { ...base, refs: [...base.refs, ...extra.filter((x) => !base.refs.some((r) => r.url === x.url))] }
+  }
   // variations step through the reference video's product set
   const nextVideo = useRef(tpl ? slides.length : 1)
   const generate = (id: string) => {
@@ -1887,7 +1892,12 @@ export function GenerationCanvas({
                     </section>
                   )}
                   <QuestionDeck agent={agent} ctx={agentCtx} />
-                  <AgentComposer agent={agent} placeholder={agent.waiting ? "Or reply directly…" : slides[0].startedAt ? "Ask for a change: a headline, a colour, another variation" : undefined} />
+                  <AgentComposer
+                    agent={agent}
+                    placeholder={agent.waiting ? "Or reply directly…" : slides[0].startedAt ? "Ask for a change: a headline, a colour, another variation. Type @ to mention" : undefined}
+                    variations={slides[0].startedAt ? slides.map((x) => ({ name: nameOf(x), poster: x.video !== undefined ? GENERATED_VIDEOS[x.video % GENERATED_VIDEOS.length]?.poster : undefined })) : undefined}
+                    brand={!!brand}
+                  />
                 </div>
               ) : // a template's reference video is fixed, so it has no prompt
               fixedRef && activeIndex === 0 ? (
@@ -1906,6 +1916,8 @@ export function GenerationCanvas({
               onGenerate={() => requestGenerate(activeSlide.id)}
               onOpenFixed={status(slides[0]) === "done" ? () => setPreview("main") : undefined}
               cost={VIDEO_COST}
+              mentionVariations={slides.map((x) => ({ name: nameOf(x), poster: x.video !== undefined ? GENERATED_VIDEOS[x.video % GENERATED_VIDEOS.length]?.poster : undefined }))}
+              brand={!!brand}
             />
               )
             }

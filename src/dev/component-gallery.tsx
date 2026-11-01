@@ -1,4 +1,5 @@
 import { useMediaAdd } from "@/components/media-picker"
+import { MentionTextarea, useMentionOptions } from "@/components/mention-input"
 import { useEffect, useState } from "react"
 import { WelcomeGiftDialog } from "@/components/welcome-gift-page"
 import { HowFlicksWork } from "@/components/how-flicks-work"
@@ -549,6 +550,12 @@ const ENTRIES: Entry[] = [
     ),
   },
   {
+    name: "Mention input",
+    kind: "Editor",
+    about: "Prompt boxes with @mentions: type @ for this prompt's photos and videos, saved elements, variations and the brand; mentions show highlighted. New element makes one from the list.",
+    render: () => <MentionDemo />,
+  },
+  {
     name: "Media picker",
     kind: "Editor",
     about: "Opened by + in every prompt box (Create, the canvas and the AI chat). Search, then two tab sets (All, Images, Videos; All, Generated, Uploaded); generated items show their final prompt and references. Upload tile and drop take photos and videos (up to 100 MB). Videos over 15 s open the trimmer; Use clip adds it at once and it's cut in the background, for that prompt only.",
@@ -977,6 +984,16 @@ function MediaPickerDemo() {
       </Button>
       {picked.length > 0 && <p className="text-xs text-muted-foreground">Added: {picked.join(", ")}</p>}
       {media.ui}
+    </div>
+  )
+}
+
+function MentionDemo() {
+  const [v, setV] = useState("Same shot with @Gold, logo from @Brand")
+  const options = useMentionOptions({ refs: [{ url: GENERATED_VIDEOS[1].poster, name: "lamp.png" }], variations: [{ name: "Gold", poster: GENERATED_VIDEOS[0].poster }, { name: "Sapphire", poster: GENERATED_VIDEOS[2].poster }], brand: true })
+  return (
+    <div className="w-full max-w-md rounded-2xl border bg-background p-2">
+      <MentionTextarea value={v} onChange={setV} options={options} menuSide="bottom" rows={2} className="field-sizing-content min-h-[52px] resize-none rounded-none border-0 bg-transparent px-1.5 text-sm shadow-none focus-visible:ring-0 dark:bg-transparent" />
     </div>
   )
 }

@@ -10,6 +10,8 @@ import { mockReply } from "@/ai/mock"
 import { findSkill, SKILLS } from "@/ai/skills"
 import { loadSaved, saver } from "@/ai/sync"
 import { blobUrl, probeVideo, sameUrl, stillsAt } from "@/lib/media"
+import { elements as elementStore, elementsIn, plainMentions, type FlickElement } from "@/lib/elements"
+const elementsList = () => elementStore.get()
 
 /* ---------- what the editor offers the chat ---------- */
 
@@ -513,6 +515,7 @@ The order of work (always):
 How the app works (the mechanics, not what to ask):
 - Concepts: propose_concepts shows up to 3 concepts as cards with preview images; use it before every plan unless the user already gave a full concept or asked to skip ideas.
 - Videos the user adds (vid-1, vid-2...) arrive as three stills (start, middle, end) with their length (15 seconds at most; longer ones were trimmed). Say what happens in each. Plans can't use a user's video yet: ask what it's for (a reference to change, a style to follow, or frames to use), note the answer, and plan with images and prompts for now.
+- Mentions: the user can type @ to point at things. @Image 1 / @Video 1 are that message's own files in order; @<element name> is a saved element (a product, character, logo or style saved once with its images, listed in saved_elements); it arrives with its images, kept as project images, and a [Mentions: ...] line maps each @name to image ids: use exactly those ids (reference_image_ids, a variation's image_ids, generate_image reference_image_ids). @<variation name> means that variation, @Brand the brand kit. You can suggest saved elements by name ("use @Samba OG?").
 - Questions: ask_user shows tappable answers. display "chips" for words; "layouts", "palettes" or "thumbnails" for visual choices; step "idea", "look" or "plan" moves the progress bar. Several ask_user calls in one reply show together. request_assets asks for files.
 - Web: web_search finds pages; web_fetch reads a page or PDF (text) that appeared in the conversation or in search results; read_website reads a product page for its products, prices, colours and images (and keeps the images for the project). Use them on your own whenever a brand or product is hinted.
 - Brand: set_brand records the brand (name, colours, font, voice).
@@ -709,6 +712,9 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     const blocks: Block[] = []
     const names: string[] = []
     const shows: string[] = []
+    // ids in the order added, photos and videos counted apart (for @Image 1, @Video 1)
+    const photoIds: string[] = []
+    const videoIds: string[] = []
     for (const f of files) {
       const url = blobUrl(f)
       if (!f.type.startsWith("video/")) {
@@ -716,6 +722,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         blocks.push(await imageBlock(f))
         names.push(`${it.id} (${f.name})`)
         shows.push(url)
+        photoIds.push(it.id)
         continue
       }
       try {
@@ -727,11 +734,35 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         for (const b of stills) blocks.push(await imageBlock(b))
         names.push(`${it.id} (${f.name}, a ${duration.toFixed(1)} s video; the 3 stills above are its start, middle and end)`)
         shows.push(URL.createObjectURL(stills[0]))
+        videoIds.push(it.id)
       } catch {
         names.push(`${f.name} (a video that couldn't be read)`)
       }
     }
-    return { blocks, line: names.length ? `[Added: ${names.join(", ")}]` : "", shows }
+    return { blocks, line: names.length ? `[Added: ${names.join(", ")}]` : "", shows, photoIds, videoIds }
+  }
+
+  /**
+   * Elements the user @mentioned: their images join the project (kept as library images, so nothing
+   * is uploaded again) and go to Claude, with a line saying which ids each element is.
+   */
+  const attachElements = async (els: FlickElement[]) => {
+    const blocks: Block[] = []
+    const lines: string[] = []
+    for (const el of els) {
+      const ids: string[] = []
+      for (const [i, im] of el.images.slice(0, 3).entries()) {
+        const it = images.current.find((x) => x.url === im.url) ?? keep(im.url, `${el.name} ${i + 1}`, "library", el.kind)
+        ids.push(it.id)
+        try {
+          blocks.push(await imageBlock(await (await fetch(im.url)).blob()))
+        } catch {
+          /* listed even if it can't be shown */
+        }
+      }
+      lines.push(`@${el.name} = the ${el.kind} element "${el.name}": ${ids.join(", ")}`)
+    }
+    return { blocks, lines }
   }
 
   const add = (it: NewItem) => {
@@ -1137,7 +1168,9 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         // let the editor re-render after the last tools, so the state sent is current
         await new Promise((r) => setTimeout(r, 60))
         dropOldImages(msgs.current)
-        const now = state()
+        // saved elements the user can @mention (their images come with a mention)
+        const saved = elementsList()
+        const now = saved.length ? ({ ...state(), saved_elements: saved.map((e) => ({ name: e.name, kind: e.kind, images: e.images.length })) } as ReturnType<typeof state>) : state()
         const req = cachedRequest(systemPrompt(now), msgs.current, now)
         const itemId = add({ kind: "assistant", text: "", streaming: true })
         const onText = (text: string) => patch(itemId, { text } as Partial<Item>)
@@ -1234,14 +1267,22 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   }
 
   const send = useCallback(
-    async (text: string, files: File[] = []) => {
+    async (text: string, files: File[] = [], mentioned: FlickElement[] = []) => {
       if (busy) return
       const itemId = add({ kind: "user", text, images: [] })
       const blocks: Block[] = settle({ ...held.current })
       const got = await attach(files)
-      patch(itemId, { images: got.shows } as Partial<Item>)
-      blocks.push(...got.blocks)
-      blocks.push({ type: "text", text: (text || "(files added)") + (got.line ? `\n\n${got.line}` : "") })
+      const els = await attachElements(mentioned)
+      patch(itemId, { images: [...got.shows, ...mentioned.flatMap((e) => e.images.slice(0, 1).map((i) => i.url))] } as Partial<Item>)
+      blocks.push(...got.blocks, ...els.blocks)
+      // what each @mention points at, so Claude reads them exactly
+      const refs = [
+        ...[...text.matchAll(/@Image (\d+)/gi)].flatMap((m) => (got.photoIds[+m[1] - 1] ? [`@Image ${m[1]} = ${got.photoIds[+m[1] - 1]}`] : [])),
+        ...[...text.matchAll(/@Video (\d+)/gi)].flatMap((m) => (got.videoIds[+m[1] - 1] ? [`@Video ${m[1]} = ${got.videoIds[+m[1] - 1]}`] : [])),
+        ...els.lines,
+      ]
+      const mentionLine = refs.length ? `[Mentions: ${[...new Set(refs)].join("; ")}. @<variation name> means that variation; @Brand means the brand kit.]` : ""
+      blocks.push({ type: "text", text: (text || "(files added)") + [got.line, mentionLine].filter(Boolean).map((l) => `\n\n${l}`).join("") })
       msgs.current.push({ role: "user", content: blocks })
       await turn()
     },
@@ -1299,10 +1340,14 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       // image ids become addresses the video model can use
       const url = (id?: string) => (id ? images.current.find((i) => i.id === id)?.url : undefined)
       const urls = (ids?: string[]) => (ids ?? []).map(url).filter((u): u is string => !!u).slice(0, 4)
+      // @mentioned elements in a prompt: their images go with that video, first; the @ is dropped from the text
+      const elementIds = (text: string) =>
+        elementsIn(text).flatMap((el) => el.images.slice(0, 3).map((im, i) => (images.current.find((x) => x.url === im.url) ?? keep(im.url, `${el.name} ${i + 1}`, "library", el.kind)).id))
+      const withEls = (text: string, ids?: string[]) => [...new Set([...elementIds(text), ...(ids ?? [])])]
       const r = apiRef.current.approvePlan({
         ...plan,
-        reference: { ...plan.reference, media: { first_frame: url(plan.reference.first_frame_id), last_frame: url(plan.reference.last_frame_id), images: urls(plan.reference.image_ids) } },
-        variations: plan.variations.map((v) => ({ ...v, media: { images: urls(v.image_ids), method: v.method } })),
+        reference: { ...plan.reference, prompt: plainMentions(plan.reference.prompt), media: { first_frame: url(plan.reference.first_frame_id), last_frame: url(plan.reference.last_frame_id), images: urls(withEls(plan.reference.prompt, plan.reference.image_ids)) } },
+        variations: plan.variations.map((v, i) => ({ ...v, prompt: plainMentions(v.prompt), media: { images: urls(i === 0 ? withEls(plan.reference.prompt) : withEls(v.prompt, v.image_ids)), method: v.method } })),
       })
       if (r.startsWith("Error")) {
         add({ kind: "error", text: r.replace(/^Error: /, "") })
@@ -1391,7 +1436,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           return null
         }
       }),
-    ).then((files) => send(opts.prompt!.trim(), files.filter((f): f is File => !!f)))
+    ).then((files) => send(opts.prompt!.trim(), files.filter((f): f is File => !!f), elementsIn(opts.prompt!)))
   }
 
   /** a project image's address by id (for the plan's preview) */
