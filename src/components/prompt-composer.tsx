@@ -150,7 +150,7 @@ export function PromptComposer({
           addFiles(e.dataTransfer.files)
         }}
         className={cn(
-          "relative w-full rounded-3xl border bg-background/85 p-2 shadow-[0_12px_40px_-12px_color-mix(in_oklch,var(--shadow-ink)_18%,transparent)] backdrop-blur-xl transition-shadow duration-500",
+          "relative w-full rounded-3xl border bg-background/95 p-2 shadow-[0_1px_2px_color-mix(in_oklch,var(--shadow-ink)_8%,transparent),0_16px_48px_-16px_color-mix(in_oklch,var(--shadow-ink)_28%,transparent)] backdrop-blur-xl transition-shadow duration-500 focus-within:shadow-[0_1px_2px_color-mix(in_oklch,var(--shadow-ink)_8%,transparent),0_20px_56px_-16px_color-mix(in_oklch,var(--shadow-ink)_36%,transparent)]",
           flash && "ring-2 ring-ring ring-offset-2 ring-offset-transparent",
           dragging && "border-primary ring-2 ring-primary/30",
         )}
@@ -191,7 +191,7 @@ export function PromptComposer({
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) send()
           }}
-          placeholder="Describe the video you want to create. Type @ to mention a photo, video or element"
+          placeholder="Describe your video. Type @ to mention a photo or element"
           rows={2}
           className="field-sizing-content min-h-[72px] max-h-[200px] overflow-y-auto resize-none rounded-none border-0 bg-transparent px-2 text-base shadow-none focus-visible:ring-0 md:text-base dark:bg-transparent"
         />
@@ -277,7 +277,7 @@ export function PromptComposer({
           <Tooltip>
             <TooltipTrigger asChild>
               <span tabIndex={canSend ? -1 : 0}>
-                <Button disabled={!canSend || sending} onClick={send} className={cn("gap-2 pl-3", showCost ? "pr-1.5" : "pr-3")} aria-label={planFirst ? "Start" : showCost ? `Generate video, uses ${COST} credits` : "Generate video"}>
+                <Button disabled={!canSend || sending} onClick={send} className={cn("gap-2 pl-3 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100", showCost ? "pr-1.5" : "pr-3")} aria-label={planFirst ? "Start" : showCost ? `Generate video, uses ${COST} credits` : "Generate video"}>
                   <HugeiconsIcon icon={sending ? Loading03Icon : SparklesIcon} className={cn("size-4", sending && "animate-spin")} />
                   {planFirst ? (sending ? "Starting…" : "Start") : sending ? "Generating…" : "Generate"}
                   {showCost && (

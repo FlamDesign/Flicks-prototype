@@ -53,7 +53,7 @@ export function AgentItemView({ item, agent, ctx }: { item: Item; agent: Agent; 
   switch (item.kind) {
     case "user":
       return (
-        <div className="ml-8 flex flex-col gap-2 self-end rounded-2xl rounded-br-md bg-background/60 p-3 ring-1 ring-foreground/5">
+        <div className="ml-10 flex max-w-[85%] flex-col gap-2 self-end rounded-2xl rounded-br-md bg-muted px-3.5 py-2.5">
           {item.images.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {item.images.map((u) => (
@@ -61,7 +61,7 @@ export function AgentItemView({ item, agent, ctx }: { item: Item; agent: Agent; 
               ))}
             </div>
           )}
-          {item.text && <p className="whitespace-pre-line text-sm leading-relaxed">{item.text}</p>}
+          {item.text && <p className="whitespace-pre-line text-md leading-relaxed">{item.text}</p>}
         </div>
       )
     case "assistant":
@@ -132,7 +132,7 @@ export function AgentItemView({ item, agent, ctx }: { item: Item; agent: Agent; 
       return (
         <div role="alert" className="flex items-start gap-2 rounded-xl bg-destructive/5 p-3 text-sm ring-1 ring-destructive/20">
           <HugeiconsIcon icon={Alert02Icon} className="mt-0.5 size-4 shrink-0 text-destructive" />
-          <p className="flex-1">{item.text}</p>
+          <ErrorText text={item.text} />
           <Button size="xs" variant="outline" onClick={agent.retry} className="gap-1">
             <HugeiconsIcon icon={RefreshIcon} className="size-3" />
             Retry
@@ -140,6 +140,123 @@ export function AgentItemView({ item, agent, ctx }: { item: Item; agent: Agent; 
         </div>
       )
   }
+}
+
+/** An error in plain words; the raw message (for us) sits behind "Details". */
+function ErrorText({ text }: { text: string }) {
+  const [open, setOpen] = useState(false)
+  const raw = /^[{[]|invalid_request|_error|status \d{3}/i.test(text)
+  const plain = !raw
+    ? text
+    : /overloaded|529|rate|429/i.test(text)
+      ? "Claude is busy right now. Try again in a moment."
+      : /daily_limit/i.test(text)
+        ? "Today’s limit for the AI is reached. It resets tomorrow."
+        : "Something went wrong talking to the AI. Try again."
+  return (
+    <div className="flex min-w-0 flex-1 flex-col gap-1">
+      <p>{plain}</p>
+      {raw && (
+        <>
+          <button type="button" onClick={() => setOpen((o) => !o)} className="self-start text-xs text-muted-foreground underline-offset-2 outline-none hover:underline focus-visible:underline">
+            {open ? "Hide details" : "Details"}
+          </button>
+          {open && <p className="break-all font-mono text-2xs text-muted-foreground">{text}</p>}
+        </>
+      )}
+    </div>
+  )
+}
+
+/** behind-the-scenes lines: guides read, searches, pages read, a passed review */
+const isQuiet = (it: Item) => it.kind === "skill" || it.kind === "note" || (it.kind === "review" && !it.fail.length)
+/** questions answered and image requests done: shown together as one summary */
+const isAnswered = (it: Item) => (it.kind === "question" && it.answer !== undefined && it.display !== "concepts") || (it.kind === "assets" && !!it.done)
+
+/**
+ * The conversation as groups: runs of behind-the-scenes lines fold into one "Worked" line, and runs
+ * of answered questions into one summary card, so the chat reads as a conversation, not a log.
+ */
+export function threadGroups(items: Item[], agent: Agent, ctx: AgentCtx): { key: string; at: number; node: React.ReactNode }[] {
+  const out: { key: string; at: number; node: React.ReactNode }[] = []
+  for (let i = 0; i < items.length; ) {
+    const it = items[i]
+    const run = (test: (x: Item) => boolean) => {
+      let j = i
+      while (j < items.length && test(items[j])) j++
+      return items.slice(i, j)
+    }
+    if (isQuiet(it)) {
+      const g = run(isQuiet)
+      out.push({ key: g[0].id, at: g[0].at, node: g.length === 1 ? <AgentItemView item={g[0]} agent={agent} ctx={ctx} /> : <Steps items={g} /> })
+      i += g.length
+    } else if (isAnswered(it)) {
+      const g = run(isAnswered)
+      out.push({ key: g[0].id, at: g[0].at, node: <Answers items={g} /> })
+      i += g.length
+    } else {
+      out.push({ key: it.id, at: it.at, node: <AgentItemView item={it} agent={agent} ctx={ctx} /> })
+      i++
+    }
+  }
+  return out
+}
+
+/** several behind-the-scenes lines as one: a short summary that opens to the list */
+function Steps({ items }: { items: Item[] }) {
+  const [open, setOpen] = useState(false)
+  const guides = [...new Set(items.flatMap((x) => (x.kind === "skill" ? x.names : [])))]
+  const notes = items.filter((x): x is Extract<Item, { kind: "note" }> => x.kind === "note")
+  const searches = notes.filter((n) => n.text.startsWith("Searched the web")).length
+  const reads = notes.filter((n) => n.text.startsWith("Read ")).length
+  const other = notes.length - searches - reads
+  const passed = items.find((x): x is Extract<Item, { kind: "review" }> => x.kind === "review")
+  const summary = [
+    guides.length && `read ${guides.length} guide${guides.length > 1 ? "s" : ""}`,
+    searches && `searched the web${searches > 1 ? ` ${searches}×` : ""}`,
+    reads && `read ${reads} page${reads > 1 ? "s" : ""}`,
+    other && `${other} step${other > 1 ? "s" : ""}`,
+    passed && "review passed",
+  ].filter(Boolean)
+  return (
+    <div className="flex flex-col gap-1.5 px-1">
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex items-center gap-1.5 self-start rounded-md text-xs text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+        <HugeiconsIcon icon={Tick02Icon} className="size-3.5" />
+        <span className="first-letter:uppercase">{summary.join(" · ")}</span>
+        <HugeiconsIcon icon={ArrowDown01Icon} className={cn("size-3 transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <ul className="ml-1.5 flex flex-col gap-1 border-l pl-3 text-xs text-muted-foreground animate-in fade-in-0">
+          {items.map((x) => (
+            <li key={x.id}>{x.kind === "skill" ? `Followed Flam’s guides: ${x.names.map(skillTitle).join(", ")}` : x.kind === "note" ? x.text : x.kind === "review" ? `Review passed: all ${x.pass} checks` : null}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+/** answered questions and done image requests, as one compact summary */
+function Answers({ items }: { items: Item[] }) {
+  return (
+    <dl className="mr-6 grid grid-cols-[minmax(0,auto)_1fr] gap-x-4 gap-y-1.5 rounded-xl bg-muted/40 px-3.5 py-2.5 text-sm">
+      {items.map((x) =>
+        x.kind === "question" ? (
+          <div key={x.id} className="contents">
+            <dt className="truncate text-muted-foreground">{x.question}</dt>
+            <dd className={cn("min-w-0 font-medium", x.answer === "Skipped" && "font-normal text-muted-foreground")}>{x.answer}</dd>
+          </div>
+        ) : x.kind === "assets" ? (
+          <div key={x.id} className="contents">
+            <dt className="truncate text-muted-foreground">{x.message.split(/[.:]/)[0]}</dt>
+            <dd className="flex min-w-0 flex-wrap gap-1">
+              {x.done === "added" && x.images?.length ? x.images.map((u) => <img key={u} src={u} alt="" className="size-6 rounded object-cover ring-1 ring-foreground/10" />) : <span className="text-muted-foreground">Skipped</span>}
+            </dd>
+          </div>
+        ) : null,
+      )}
+    </dl>
+  )
 }
 
 /** the chat's own words: paragraphs, bullets and **bold** */
@@ -154,7 +271,7 @@ function Said({ text, streaming }: { text: string; streaming?: boolean }) {
     )
   const bold = (s: string) => s.split(/(\*\*[^*]+\*\*)/g).map((p, i) => (p.startsWith("**") && p.endsWith("**") ? <strong key={i} className="font-medium">{p.slice(2, -2)}</strong> : p))
   return (
-    <div className="mr-6 flex flex-col gap-2 px-1 text-sm leading-relaxed">
+    <div className="mr-6 flex flex-col gap-2.5 px-1 text-md leading-relaxed">
       {text.split(/\n{2,}/).map((para, i) =>
         /^\s*[-•] /m.test(para) ? (
           <ul key={i} className="flex list-disc flex-col gap-1 pl-4">

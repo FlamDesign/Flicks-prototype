@@ -33,7 +33,7 @@ import { ElementToolbar, ToolbarGrip } from "@/components/editor/element-toolbar
 import { useAgent, type EditorApi, type ElementSpec } from "@/ai/agent"
 import { boxOf, buildDesign, color as colorOf, contrast, describeDesign, elementFor, fontName, freeY, headlineLimit, feedOfField, FIELD_FEED, FIELDS, patchDesign, restack, type Brand, type Field } from "@/ai/design"
 import { generateVideo, isLive, posterOf, shareable, useAiConfig, videoAspectOf, type VideoInput } from "@/ai/client"
-import { AgentComposer, AgentItemView, isDocked, QuestionDeck, type AgentCtx } from "@/components/editor/agent-chat"
+import { AgentComposer, isDocked, QuestionDeck, threadGroups, type AgentCtx } from "@/components/editor/agent-chat"
 import { PlanningView, PlanSteps } from "@/components/editor/planning-view"
 import { addMadeVideo, isMadeVideo, BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, defaultFill, defaultInk, GENERATED_VIDEOS, SAMPLE_UPLOADS, inSet, clampStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload } from "@/components/editor/elements"
 
@@ -1839,13 +1839,7 @@ export function GenerationCanvas({
                 </Tooltip>
               ),
               // questions waiting for an answer dock above the composer instead
-              extra: agent.items
-                .filter((it) => !isDocked(it, agent.pendingIds))
-                .map((it) => ({
-                  key: it.id,
-                  at: it.at,
-                  node: <AgentItemView item={it} agent={agent} ctx={agentCtx} />,
-                })),
+              extra: threadGroups(agent.items.filter((it) => !isDocked(it, agent.pendingIds)), agent, agentCtx),
               // once the plan is made, the box can also write one video's prompt directly
               head: slides[0].startedAt ? (
                 <div className="flex items-center gap-2 px-1 pb-2 text-xs text-muted-foreground">

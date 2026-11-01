@@ -345,9 +345,7 @@ export default function App() {
                   <h1 className="text-balance text-3xl font-medium tracking-tight md:text-hero">
                     Hey {firstName}, let’s start with a video
                   </h1>
-                  <p className="text-sm text-foreground">
-                    Add photos or videos as references. Create variants of generated video in next step.
-                  </p>
+                  <p className="text-md text-foreground/70">Describe it, add photos or videos, and make variations next.</p>
                 </div>
                 <PromptComposer
                   credits={credits}

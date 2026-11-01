@@ -1,5 +1,5 @@
 #!/bin/bash
-# Flags drift from the shadcn preset (rhea · zinc · amber · Rethink Sans): hand-picked text sizes,
+# Flags drift from the shadcn preset (b3mPrj55k: rhea · zinc · amber · DM Sans): hand-picked text sizes,
 # raw status colours and new fonts. Illustrations (onboarding art) and template data are exempt.
 cd "$(dirname "$0")/.."
 fail=0

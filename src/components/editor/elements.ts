@@ -193,8 +193,7 @@ type BaseElement =
 export type FontOption = { name: string; stack: string; google?: boolean }
 export const FONT_GROUPS: { group: string; fonts: FontOption[] }[] = [
   { group: "Sans serif", fonts: [
-    { name: "Rethink Sans", stack: '"Rethink Sans Variable", ui-sans-serif, system-ui, sans-serif' },
-    { name: "DM Sans", stack: '"DM Sans", ui-sans-serif, system-ui, sans-serif', google: true },
+    { name: "DM Sans", stack: '"DM Sans Variable", ui-sans-serif, system-ui, sans-serif' },
     { name: "Inter", stack: '"Inter", ui-sans-serif, system-ui, sans-serif', google: true },
     { name: "Roboto", stack: '"Roboto", ui-sans-serif, system-ui, sans-serif', google: true },
     { name: "Open Sans", stack: '"Open Sans", ui-sans-serif, system-ui, sans-serif', google: true },

@@ -5,7 +5,7 @@
 
 /*
   shadcn preset b3mPrj55k
-  style: rhea · baseColor: zinc · theme: amber · font: Rethink Sans (was DM Sans)
+  style: rhea · baseColor: zinc · theme: amber · font: DM Sans
   iconLibrary: hugeicons · radius: medium (0.625rem) · menuAccent: subtle · menuColor: default · chart: orange
   Values copied from shadcn registry themes.ts (zinc + amber).
 */
@@ -23,7 +23,7 @@
   --text-display--line-height: 1.15;
   --text-hero: 2.5rem;
   --text-hero--line-height: 1.15;
-  --font-sans: "Rethink Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);

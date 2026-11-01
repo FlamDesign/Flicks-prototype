@@ -3,7 +3,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Tick02Icon } from "@hugeicons/core-free-icons"
 import type { Item, Step, useAgent } from "@/ai/agent"
 import type { Design, Field } from "@/ai/design"
-import { AgentComposer, AgentItemView, isDocked, QuestionDeck, type AgentCtx } from "@/components/editor/agent-chat"
+import { AgentComposer, isDocked, QuestionDeck, threadGroups, type AgentCtx } from "@/components/editor/agent-chat"
 import { cn } from "@/lib/utils"
 
 type Agent = ReturnType<typeof useAgent>
@@ -57,13 +57,11 @@ export function PlanningView({ agent, ctx }: { agent: Agent; ctx: AgentCtx; desi
     <div className="flex min-h-0 flex-1 flex-col bg-background">
       <div ref={list} className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-[720px] flex-col gap-5 px-5 pb-6 pt-8">
-          {agent.items.map((it) =>
-            asking(it) ? null : (
-              <div key={it.id} className="flex flex-col">
-                <AgentItemView item={it} agent={agent} ctx={ctx} />
-              </div>
-            ),
-          )}
+          {threadGroups(agent.items.filter((it) => !asking(it)), agent, ctx).map((g) => (
+            <div key={g.key} className="flex flex-col">
+              {g.node}
+            </div>
+          ))}
         </div>
       </div>
       <div className="mx-auto flex w-full max-w-[720px] flex-col gap-2 px-5 pb-5" data-composer>
