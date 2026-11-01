@@ -1,7 +1,8 @@
+import { Spinner } from "@/components/ui/spinner"
 /** Pieces shared by the editor (Save as template) and the Flick page (link, embed). */
 import { useEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Cancel01Icon, ArrowUpRight01Icon, Copy01Icon, Delete02Icon, ImageAdd01Icon, RefreshIcon, Loading03Icon, Tick02Icon, Upload01Icon } from "@hugeicons/core-free-icons"
+import { Cancel01Icon, ArrowUpRight01Icon, Copy01Icon, Delete02Icon, ImageAdd01Icon, RefreshIcon, Tick02Icon, Upload01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { InputGroup, InputGroupAddon, InputGroupText, InputGroupTextarea } from "@/components/ui/input-group"
@@ -186,7 +187,7 @@ export function ShareSection({
             )}
           >
             <span className="shrink-0 text-muted-foreground">{DOMAIN}</span>
-            <input
+            <Input
               value={slug}
               onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
               onKeyDown={(e) => {
@@ -200,7 +201,7 @@ export function ShareSection({
               <span className="flex shrink-0 items-center gap-1 pr-3 text-xs">
                 {avail === "checking" && (
                   <>
-                    <HugeiconsIcon icon={Loading03Icon} className="size-3.5 animate-spin text-muted-foreground" />
+                    <Spinner className="size-3.5 text-muted-foreground" />
                     <span className="text-muted-foreground">Checking</span>
                   </>
                 )}

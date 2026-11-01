@@ -334,7 +334,7 @@ function MetricStrip({ rows, prevRows, filter, metrics, sel }: { rows: Row[]; pr
               role="tab"
               aria-selected={on}
               onClick={() => setMid(x.id)}
-              className={cn("relative flex flex-col gap-1.5 bg-card p-4 text-left outline-none last:odd:col-span-2 lg:last:odd:col-span-1 transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring", on ? "bg-[color-mix(in_oklch,var(--primary)_5%,var(--card))]" : "hover:bg-muted/50")}
+              className={cn("relative flex flex-col gap-1.5 bg-card p-4 text-left outline-none last:odd:col-span-2 lg:last:odd:col-span-1 transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring", on ? "bg-primary/5" : "hover:bg-muted/50")}
             >
               {on && <span aria-hidden className="absolute inset-x-0 top-0 h-0.5 bg-primary" />}
               <span className={cn("text-sm", on ? "font-medium text-foreground" : "text-muted-foreground")}>{x.label}</span>
@@ -581,7 +581,7 @@ function MomentsCard({ meta, t }: { meta: FlickMeta; t: Totals }) {
             onLoadedMetadata={(e) => (e.currentTarget.currentTime = bin / 2 + 0.25)}
             className="size-full object-cover"
           />
-          <span className="absolute bottom-1.5 left-1.5 rounded-md bg-black/65 px-1.5 py-0.5 text-xs tabular-nums text-white">{(bin / 2).toFixed(1)}s</span>
+          <span className="absolute bottom-1.5 left-1.5 rounded-md bg-black/70 px-1.5 py-0.5 text-xs tabular-nums text-white">{(bin / 2).toFixed(1)}s</span>
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <MomentChart bins={meta.timeline} seconds={VIDEO_SECONDS} total={t.switches} active={bin} onActive={setActive} />

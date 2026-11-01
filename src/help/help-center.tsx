@@ -659,7 +659,7 @@ function Player({
             <svg
               key={`c${step}-${run}`}
               viewBox="0 0 24 24"
-              className="relative size-7 -translate-x-[3px] -translate-y-[2px] drop-shadow-[0_2px_3px_rgb(0_0_0/0.35)]"
+              className="relative size-7 -translate-x-[3px] -translate-y-[2px] drop-shadow-md"
               style={{
                 animation:
                   target?.x !== undefined
@@ -685,7 +685,7 @@ function Player({
             onClick={toggle}
             className="absolute inset-0 z-20 grid place-items-center bg-black/30 text-white outline-none animate-in fade-in-0"
           >
-            <span className="flex items-center gap-2 rounded-full bg-black/60 px-4 py-2 text-sm font-medium">
+            <span className="flex items-center gap-2 rounded-full bg-black/70 px-4 py-2 text-sm font-medium">
               <HugeiconsIcon icon={RepeatIcon} className="size-4" />
               Watch again
             </span>

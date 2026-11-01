@@ -109,7 +109,7 @@ export function FeedsPanel({
         <p className="text-xs leading-relaxed text-muted-foreground">Show a different price, label or link in each variation.</p>
         <p className="text-xs leading-relaxed text-muted-foreground">
           Select text or a button and click{" "}
-          <span className="inline-flex translate-y-0.5 items-center rounded bg-neutral-800 px-1 text-white">
+          <span className="inline-flex translate-y-0.5 items-center rounded bg-popover px-1 text-popover-foreground ring-1 ring-foreground/10">
             <HugeiconsIcon icon={BracesIcon} className="size-3" />
           </span>
           . Then pick a variation and type.
@@ -187,7 +187,7 @@ export function FeedsPanel({
                 <li
                   key={v.id}
                   className={cn(
-                    "flex flex-col gap-2.5 rounded-2xl bg-card p-3 shadow-[0_1px_2px_rgb(0_0_0/0.04)] ring-1 transition-shadow",
+                    "flex flex-col gap-2.5 rounded-2xl bg-card p-3 shadow-xs ring-1 transition-shadow",
                     active ? "ring-primary/50" : "ring-foreground/10 hover:ring-foreground/20",
                   )}
                 >
@@ -284,7 +284,7 @@ function RenameInput({ name, taken, onDone }: { name: string; taken: string[]; o
     onDone(save && clean && clean !== name && !taken.includes(clean) ? clean : null)
   }
   return (
-    <input
+    <Input
       autoFocus
       value={draft}
       onChange={(e) => setDraft(e.target.value)}

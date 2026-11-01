@@ -395,7 +395,7 @@ function PlacementCard({ p, funded, onOpen }: { p: Placement; funded: boolean; o
         ) : (
           <span className="text-xs text-muted-foreground">No Flick yet</span>
         )}
-        <span className="absolute bottom-2 left-2 rounded-md bg-black/55 px-1.5 py-0.5 text-xs font-medium tabular-nums text-white backdrop-blur-sm">{p.size}</span>
+        <span className="absolute bottom-2 left-2 rounded-md bg-black/50 px-1.5 py-0.5 text-xs font-medium tabular-nums text-white backdrop-blur-sm">{p.size}</span>
       </span>
       <span className="flex flex-col gap-1 px-1 pb-1">
         <span className="truncate text-sm font-medium">{p.name}</span>

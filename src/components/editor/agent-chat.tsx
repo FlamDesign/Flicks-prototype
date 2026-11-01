@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react"
+import { Spinner } from "@/components/ui/spinner"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Add01Icon, Alert02Icon, ArrowLeft01Icon, ArrowRight01Icon, ArrowDown01Icon, BookOpen01Icon, CheckmarkBadge01Icon, Globe02Icon, ArrowUp02Icon, ImageAdd01Icon, Loading03Icon, PencilEdit01Icon, LeftToRightListNumberIcon, PaintBoardIcon, RefreshIcon, SparklesIcon, StopIcon, Tick02Icon, Cancel01Icon, PlayIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
@@ -375,7 +376,7 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
               <span className="grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground ring-1 ring-foreground/10">
                 <HugeiconsIcon icon={PencilEdit01Icon} className="size-3.5" />
               </span>
-              <input
+              <Input
                 value={other}
                 onChange={(e) => setOther(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && other.trim() && send()}
@@ -559,7 +560,7 @@ function FileThumb({ file, url, className }: { file: File; url: string; classNam
   return file.type.startsWith("video/") ? (
     <span className={cn("relative block shrink-0 overflow-hidden rounded-lg ring-1 ring-foreground/10", className)}>
       <video src={url} muted preload="metadata" className="size-full object-cover" aria-label={file.name} />
-      <span className="absolute bottom-0.5 left-0.5 grid size-4 place-items-center rounded bg-black/60 text-white">
+      <span className="absolute bottom-0.5 left-0.5 grid size-4 place-items-center rounded bg-black/70 text-white">
         <HugeiconsIcon icon={PlayIcon} className="size-2.5" />
       </span>
     </span>
@@ -654,7 +655,7 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
       <div className="flex flex-col gap-3 p-3">
         <div className="flex items-center gap-2">
           <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">Plan</span>
-          <input value={plan.title} onChange={(e) => set({ title: e.target.value })} aria-label="Project name" className={cn(quiet, "h-7 min-w-0 flex-1 text-sm font-medium")} />
+          <Input value={plan.title} onChange={(e) => set({ title: e.target.value })} aria-label="Project name" className={cn(quiet, "h-7 min-w-0 flex-1 text-sm font-medium")} />
         </div>
         {/* the Flick as it will look: layout, copy and buttons, with images standing in for the videos */}
         <div className="flex flex-col items-center gap-2 rounded-xl bg-muted/40 p-3">
@@ -696,8 +697,8 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
               )}
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <div className="flex items-center gap-1">
-                  <input value={v.name} onChange={(e) => setVar(i, { name: e.target.value })} aria-label={`Variation ${i + 1} name`} className={cn(quiet, "h-6 min-w-0 flex-1 text-sm font-medium")} />
-                  <input value={v.price ?? ""} onChange={(e) => setVar(i, { price: e.target.value || undefined })} placeholder="Price" aria-label={`${v.name} price`} className={cn(quiet, "h-6 w-16 text-right text-sm tabular-nums placeholder:text-muted-foreground/60")} />
+                  <Input value={v.name} onChange={(e) => setVar(i, { name: e.target.value })} aria-label={`Variation ${i + 1} name`} className={cn(quiet, "h-6 min-w-0 flex-1 text-sm font-medium")} />
+                  <Input value={v.price ?? ""} onChange={(e) => setVar(i, { price: e.target.value || undefined })} placeholder="Price" aria-label={`${v.name} price`} className={cn(quiet, "h-6 w-16 text-right text-sm tabular-nums placeholder:text-muted-foreground/60")} />
                 </div>
                 {/* Variation 1 is the reference video: its prompt is the reference prompt; the others say what changes */}
                 {i === 0 ? (
@@ -714,12 +715,12 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
                     {perVar.map((f) => (
                       <label key={f} className="flex min-w-0 flex-1 basis-32 items-center gap-1 text-xs text-muted-foreground">
                         <span className="shrink-0 pl-1.5">{FIELD_LABEL[f]}</span>
-                        <input value={v[f] ?? ""} onChange={(e) => setVar(i, { [f]: e.target.value })} aria-label={`${v.name} ${FIELD_LABEL[f]}`} className={cn(quiet, "h-6 min-w-0 flex-1 text-xs text-foreground")} />
+                        <Input value={v[f] ?? ""} onChange={(e) => setVar(i, { [f]: e.target.value })} aria-label={`${v.name} ${FIELD_LABEL[f]}`} className={cn(quiet, "h-6 min-w-0 flex-1 text-xs text-foreground")} />
                       </label>
                     ))}
                   </div>
                 )}
-                <input value={v.link ?? ""} onChange={(e) => setVar(i, { link: e.target.value || undefined })} placeholder="Add a link for the button" aria-label={`${v.name} link`} className={cn(quiet, "h-6 text-xs text-muted-foreground placeholder:text-muted-foreground/60")} />
+                <Input value={v.link ?? ""} onChange={(e) => setVar(i, { link: e.target.value || undefined })} placeholder="Add a link for the button" aria-label={`${v.name} link`} className={cn(quiet, "h-6 text-xs text-muted-foreground placeholder:text-muted-foreground/60")} />
               </div>
               {plan.variations.length > 2 && i > 0 && (
                 <Button variant="ghost" size="icon-xs" aria-label={`Remove ${v.name}`} onClick={() => set({ variations: plan.variations.filter((_, j) => j !== i) })} className="absolute -right-1.5 -top-1.5 size-5 rounded-full bg-background opacity-0 shadow-sm ring-1 ring-foreground/10 group-hover/v:opacity-100 focus-visible:opacity-100">
@@ -742,8 +743,8 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
         <div className="flex flex-col gap-1">
           <span className="px-1.5 text-xs font-medium text-muted-foreground">On screen</span>
           <div className="flex gap-1.5">
-            <input value={plan.design.headline ?? ""} onChange={(e) => set({ design: { ...plan.design, headline: e.target.value } })} placeholder="Headline" aria-label="Headline" className={cn(quiet, "h-8 min-w-0 flex-1 bg-muted/50 text-sm")} />
-            <input value={plan.design.cta ?? ""} onChange={(e) => set({ design: { ...plan.design, cta: e.target.value } })} placeholder="Button" aria-label="Button text" className={cn(quiet, "h-8 w-28 bg-muted/50 text-sm")} />
+            <Input value={plan.design.headline ?? ""} onChange={(e) => set({ design: { ...plan.design, headline: e.target.value } })} placeholder="Headline" aria-label="Headline" className={cn(quiet, "h-8 min-w-0 flex-1 bg-muted/50 text-sm")} />
+            <Input value={plan.design.cta ?? ""} onChange={(e) => set({ design: { ...plan.design, cta: e.target.value } })} placeholder="Button" aria-label="Button text" className={cn(quiet, "h-8 w-28 bg-muted/50 text-sm")} />
           </div>
         </div>
       </div>
@@ -817,7 +818,7 @@ function BuildCard({ ctx }: { ctx: AgentCtx }) {
         {steps.map((x) => (
           <li key={x.label} className="flex items-center gap-2 text-sm">
             <span className={cn("grid size-4 shrink-0 place-items-center rounded-full", x.state === "done" ? "bg-foreground text-background" : "ring-1 ring-foreground/20")}>
-              {x.state === "done" ? <HugeiconsIcon icon={Tick02Icon} className="size-2.5" strokeWidth={3} /> : x.state === "working" ? <HugeiconsIcon icon={Loading03Icon} className="size-3 animate-spin text-primary" /> : null}
+              {x.state === "done" ? <HugeiconsIcon icon={Tick02Icon} className="size-2.5" strokeWidth={3} /> : x.state === "working" ? <Spinner className="size-3 text-primary" /> : null}
             </span>
             <span className={cn(x.state === "waiting" && "text-muted-foreground")}>{x.label}</span>
           </li>
@@ -848,7 +849,7 @@ function ImageCard({ item, ctx, agent }: { item: Extract<Item, { kind: "image" }
         {item.state === "working" ? (
           <>
             <span aria-hidden className="generating-gradient absolute inset-[-50%]" />
-            <HugeiconsIcon icon={Loading03Icon} className="relative size-4 animate-spin text-primary" />
+            <Spinner className="relative size-4 text-primary" />
           </>
         ) : item.state === "done" ? (
           <a href={item.url} target="_blank" rel="noreferrer" aria-label="Open image">
@@ -1100,10 +1101,10 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
                     <img src={o.image} alt="" className="absolute inset-0 size-full object-cover transition-transform duration-500 animate-in fade-in-0 group-hover/c:scale-[1.03]" />
                   ) : (
                     <span className="shimmer absolute inset-0 grid place-items-center">
-                      <HugeiconsIcon icon={Loading03Icon} className="size-4 animate-spin text-muted-foreground" />
+                      <Spinner className="size-4 text-muted-foreground" />
                     </span>
                   )}
-                  <span className="absolute left-2 top-2 grid size-6 place-items-center rounded-full bg-black/55 text-xs font-medium text-white tabular-nums backdrop-blur-sm">{n + 1}</span>
+                  <span className="absolute left-2 top-2 grid size-6 place-items-center rounded-full bg-black/50 text-xs font-medium text-white tabular-nums backdrop-blur-sm">{n + 1}</span>
                   {!!o.variations?.length && (
                     <span className="absolute inset-x-0 bottom-0 flex flex-wrap gap-1 bg-gradient-to-t from-black/70 to-transparent p-2 pt-6 opacity-0 transition-opacity group-hover/c:opacity-100 group-focus-visible/c:opacity-100">
                       {o.variations.map((v) => (
@@ -1195,7 +1196,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
       </div>
       <footer className="flex items-center gap-2 border-t px-3 py-2">
         <HugeiconsIcon icon={PencilEdit01Icon} className="size-4 shrink-0 text-muted-foreground" />
-        <input
+        <Input
           value={typed}
           onChange={(e) => setOther((o) => ({ ...o, [q.id]: e.target.value }))}
           onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), cont())}

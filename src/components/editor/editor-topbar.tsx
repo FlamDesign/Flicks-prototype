@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react"
+import { Input } from "@/components/ui/input"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { PauseIcon, PlayIcon, SparklesIcon, ArrowDown01Icon, Clock01Icon, Copy01Icon, Delete02Icon, Home01Icon, LayoutTopIcon, PencilEdit01Icon, PencilEdit02Icon, ViewIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
@@ -71,7 +72,7 @@ export function FileTitle({
           <span className="animate-pulse">Naming…</span>
         </span>
       ) : editing ? (
-        <input
+        <Input
           ref={input}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}

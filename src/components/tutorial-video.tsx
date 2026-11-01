@@ -31,7 +31,7 @@ export function TutorialVideo() {
 
       <DialogContent showCloseButton={false} className="gap-0 overflow-hidden bg-black p-0 ring-white/10 sm:max-w-4xl">
         {/* Header overlays the video */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between bg-gradient-to-b from-black/60 to-transparent px-5 pt-4 pb-10">
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent px-5 pt-4 pb-10">
           <DialogHeader className="text-left">
             <DialogTitle className="text-base text-white">Learn to create a Flick</DialogTitle>
             <DialogDescription className="sr-only">Tutorial video</DialogDescription>
@@ -40,7 +40,7 @@ export function TutorialVideo() {
             <Button
               variant="secondary"
               size="icon-sm"
-              className="pointer-events-auto bg-white/15 text-white ring-1 ring-white/20 backdrop-blur-md hover:bg-white/25"
+              className="pointer-events-auto bg-white/20 text-white ring-1 ring-white/20 backdrop-blur-md hover:bg-white/30"
               aria-label="Close"
             >
               <HugeiconsIcon icon={Cancel01Icon} className="size-4" />

@@ -111,7 +111,7 @@ function Chip({ cx, y, children, className, style }: { cx: number; y: number; ch
   return (
     <div className="absolute -translate-x-1/2" style={{ left: u(cx), top: u(y) }}>
       <div
-        className={cn("flex items-center justify-center gap-[0.4em] whitespace-nowrap rounded-full bg-background/85 font-medium text-foreground/80 shadow-[0_4px_12px_-6px_rgb(0_0_0/0.2)] ring-1 ring-foreground/[0.07] backdrop-blur", className)}
+        className={cn("flex items-center justify-center gap-[0.4em] whitespace-nowrap rounded-full bg-background/85 font-medium text-foreground/80 shadow-md ring-1 ring-foreground/[0.07] backdrop-blur", className)}
         style={{ fontSize: u(11), height: u(22), paddingInline: u(10), ...style }}
       >
         {children}
@@ -153,7 +153,7 @@ function SceneVideo() {
   return (
     <>
       {/* composer */}
-      <div className="rounded-[4cqw] bg-card ring-1 ring-foreground/[0.06] shadow-[0_1px_2px_rgb(0_0_0/0.04),0_12px_28px_-14px_rgb(0_0_0/0.22)]" style={{ ...box(18, 40, 270, 168), ...a("hfw-up", 0.5) }}>
+      <div className="rounded-[4cqw] bg-card ring-1 ring-foreground/[0.06] shadow-lg" style={{ ...box(18, 40, 270, 168), ...a("hfw-up", 0.5) }}>
         <p className="absolute leading-snug text-foreground" style={{ left: u(16), top: u(14), right: u(16), fontSize: u(12.5) }}>
           {PROMPT.map((w, i) => (
             <span key={i} style={a("hfw-fade", 0.12, typed + i * per, "linear")}>
@@ -187,7 +187,7 @@ function SceneVideo() {
       {/* the video: slot → generating → playing */}
       <div className="rounded-[2.6cqw] border border-dashed" style={box(326, 38, 172, 172)} />
       <div className="overflow-hidden rounded-[2.6cqw] bg-muted" style={{ ...box(326, 38, 172, 172), ...a("hfw-fade", 0.25, goAt + 0.25) }}>
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent dark:via-white/10" style={{ animation: `hfw-shimmer 1s linear ${goAt + 0.25}s infinite` }} />
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/70 to-transparent dark:via-white/10" style={{ animation: `hfw-shimmer 1s linear ${goAt + 0.25}s infinite` }} />
       </div>
       <div style={{ ...box(326, 38, 172, 172), ...a("hfw-in", 0.55, vidAt, SPRING) }}>
         <Clip look={LOOKS[0]} video round={14} className="size-full shadow-xl" />
@@ -274,9 +274,9 @@ function SceneFlick() {
           </div>
         ))}
       </div>
-      <div className="rounded-[3.4cqw] bg-white shadow-[0_24px_48px_-20px_rgb(0_0_0/0.45)] ring-1 ring-black/5 dark:bg-white/10" style={{ ...box(FRAME.x - 6, FRAME.y - 6, FRAME.size + 12, FRAME.size + 12), zIndex: 1, ...a("hfw-pop", 0.45, 0.75, SPRING) }} />
+      <div className="rounded-[3.4cqw] bg-white shadow-2xl ring-1 ring-black/10 dark:bg-white/10" style={{ ...box(FRAME.x - 6, FRAME.y - 6, FRAME.size + 12, FRAME.size + 12), zIndex: 1, ...a("hfw-pop", 0.45, 0.75, SPRING) }} />
       <div className="absolute -translate-x-1/2" style={{ left: u(FRAME.x + FRAME.size / 2), top: u(FRAME.y - 13), zIndex: 8 }}>
-        <div className="rounded-full bg-black/70 font-semibold text-white shadow ring-1 ring-white/15 backdrop-blur-md" style={{ fontSize: u(10), paddingInline: u(9), lineHeight: u(18), ...a("hfw-up", 0.4, 0.85) }}>
+        <div className="rounded-full bg-black/70 font-semibold text-white shadow ring-1 ring-white/20 backdrop-blur-md" style={{ fontSize: u(10), paddingInline: u(9), lineHeight: u(18), ...a("hfw-up", 0.4, 0.85) }}>
           Flick
         </div>
       </div>
@@ -359,12 +359,12 @@ function SceneAnywhere() {
   return (
     <>
       <div style={a("hfw-in", 0.45, 0)}>
-        <div className="rounded-[3.2cqw] bg-white shadow-[0_24px_48px_-20px_rgb(0_0_0/0.45)] ring-1 ring-black/5 dark:bg-white/10" style={box(F.x - 5, F.y - 5, F.size + 10, F.size + 10)} />
+        <div className="rounded-[3.2cqw] bg-white shadow-2xl ring-1 ring-black/10 dark:bg-white/10" style={box(F.x - 5, F.y - 5, F.size + 10, F.size + 10)} />
         <div className="shadow-xl" style={{ borderRadius: u(12) }}>
           <MiniFlick x={F.x} y={F.y} size={F.size} />
         </div>
         <div
-          className="absolute rounded-full bg-black/70 font-semibold text-white shadow ring-1 ring-white/15 backdrop-blur-md"
+          className="absolute rounded-full bg-black/70 font-semibold text-white shadow ring-1 ring-white/20 backdrop-blur-md"
           style={{ left: u(F.x + F.size / 2), top: u(F.y - 12), transform: "translateX(-50%)", fontSize: u(10), paddingInline: u(9), lineHeight: u(18) }}
         >
           Flick
@@ -388,7 +388,7 @@ function SceneAnywhere() {
       {OUTS.map((o, i) => {
         const d = 0.6 + i * 0.25
         return (
-          <div key={o.title} className="rounded-[2.6cqw] bg-card ring-1 ring-foreground/[0.06] shadow-[0_1px_2px_rgb(0_0_0/0.04),0_12px_28px_-14px_rgb(0_0_0/0.22)]" style={{ ...box(OUT_X, o.y, OUT_W, 72), ...a("hfw-up", 0.45, d) }}>
+          <div key={o.title} className="rounded-[2.6cqw] bg-card ring-1 ring-foreground/[0.06] shadow-lg" style={{ ...box(OUT_X, o.y, OUT_W, 72), ...a("hfw-up", 0.45, d) }}>
             <div className="absolute rounded-[1.6cqw] bg-foreground/[0.04] ring-1 ring-foreground/[0.05]" style={box(12, 22, 28, 28)}>
               <OutIcon i={i} />
             </div>

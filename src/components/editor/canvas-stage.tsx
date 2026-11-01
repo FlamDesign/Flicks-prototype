@@ -1,4 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { ensureFont } from "@/lib/fonts"
 import { BUTTON_SIZE, BUTTON_STYLES, defaultBorder, DEFAULT_BOLD, FONTS, TEXT_STYLES, type CanvasElement, type Feed } from "@/components/editor/elements"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -13,7 +15,7 @@ type Corner = "nw" | "ne" | "sw" | "se" | "n" | "s" | "e" | "w"
 const SIDES: Corner[] = ["n", "s", "e", "w"]
 const sidePos = (c: Corner) =>
   cn(
-    "absolute z-10 rounded-full border border-primary bg-white shadow-[0_1px_3px_rgb(0_0_0/0.3)] transition-[opacity,background-color] hover:bg-primary",
+    "absolute z-10 rounded-full border border-primary bg-white shadow-md transition-[opacity,background-color] hover:bg-primary",
     c === "n" || c === "s" ? "left-1/2 h-1.5 w-4 -translate-x-1/2 cursor-ns-resize" : "top-1/2 h-4 w-1.5 -translate-y-1/2 cursor-ew-resize",
     c === "n" && "-top-[4px]",
     c === "s" && "-bottom-[4px]",
@@ -22,7 +24,7 @@ const sidePos = (c: Corner) =>
   )
 const CORNERS: Corner[] = ["nw", "ne", "sw", "se"]
 
-const HANDLE = "absolute z-10 size-2.5 rounded-full border border-primary bg-white shadow-[0_1px_3px_rgb(0_0_0/0.3)] transition-colors hover:bg-primary"
+const HANDLE = "absolute z-10 size-2.5 rounded-full border border-primary bg-white shadow-md transition-colors hover:bg-primary"
 const handlePos = (c: Corner) => // corners only
   cn(
     c.includes("n") ? "-top-[5px]" : "-bottom-[5px]",
@@ -704,7 +706,7 @@ function ElementBox({
                 key={which}
                 title={`Feed: ${n}`}
                 onPointerDown={(e) => (e.stopPropagation(), onBadge(which))}
-                className="flex cursor-pointer items-center whitespace-nowrap rounded-t-md bg-neutral-800 px-1.5 py-1 text-xs font-medium leading-none text-white shadow-sm hover:bg-neutral-700"
+                className="flex cursor-pointer items-center whitespace-nowrap rounded-t-md bg-popover px-1.5 py-1 text-xs font-medium leading-none text-popover-foreground shadow-sm ring-1 ring-foreground/10 hover:bg-accent"
               >
                 {n}
               </span>
@@ -1053,30 +1055,24 @@ function ButtonLinkFloat({
   if (!open)
     return (
       <div
-        className="pointer-events-auto absolute flex h-9 max-w-80 items-center gap-1 rounded-xl bg-neutral-900 pl-3 pr-1 text-white shadow-lg ring-1 ring-white/10"
+        className="pointer-events-auto absolute flex h-9 max-w-80 items-center gap-1 rounded-xl bg-popover pl-3 pr-1 text-popover-foreground shadow-md ring-1 ring-foreground/10"
         style={style}
         onPointerDown={stop}
         onClick={stop}
       >
         {feedTab && <div className="absolute bottom-full left-3">{feedTab}</div>}
         {link.trim() ? (
-          <a href={/^https?:/.test(link) ? link : `https://${link}`} target="_blank" rel="noreferrer" className="min-w-0 truncate text-sm font-medium text-white underline-offset-2 hover:underline" title={link}>
+          <a href={/^https?:/.test(link) ? link : `https://${link}`} target="_blank" rel="noreferrer" className="min-w-0 truncate text-sm font-medium text-primary underline-offset-2 hover:underline" title={link}>
             {host}
           </a>
         ) : (
-          <button type="button" onClick={() => setOpen(true)} className="text-sm font-medium text-white/80 hover:text-white">
+          <Button variant="link" onClick={() => setOpen(true)} className="h-auto p-0 text-muted-foreground hover:text-foreground">
             Add link
-          </button>
+          </Button>
         )}
-        <button
-          type="button"
-          aria-label="Edit link"
-          title="Edit link"
-          onClick={() => setOpen(true)}
-          className="grid size-7 shrink-0 place-items-center rounded-lg text-white/80 hover:bg-white/10 hover:text-white"
-        >
+        <Button variant="ghost" size="icon-sm" aria-label="Edit link" title="Edit link" onClick={() => setOpen(true)} className="shrink-0 text-muted-foreground">
           <HugeiconsIcon icon={PencilEdit01Icon} className="size-4" />
-        </button>
+        </Button>
       </div>
     )
 
@@ -1097,7 +1093,7 @@ function ButtonLinkFloat({
     >
       {feedTab && <div className="absolute bottom-full left-3">{feedTab}</div>}
       <HugeiconsIcon icon={Link04Icon} className="size-4 shrink-0 text-muted-foreground" />
-      <input
+      <Input
         ref={linkInput}
         value={link}
         onChange={(e) => setLink(e.target.value)}
@@ -1108,15 +1104,9 @@ function ButtonLinkFloat({
         title={linkFeed ? `This variation's link (feed: ${linkFeed.name})` : undefined}
         className="h-full min-w-0 flex-1 bg-transparent px-1.5 text-sm outline-none placeholder:text-muted-foreground"
       />
-      <button
-        type="button"
-        aria-label="Done"
-        title="Done (Enter)"
-        onClick={done}
-        className="grid size-8 shrink-0 place-items-center rounded-lg bg-foreground text-background hover:bg-foreground/85"
-      >
+      <Button size="icon-sm" aria-label="Done" title="Done (Enter)" onClick={done} className="shrink-0">
         <HugeiconsIcon icon={Tick02Icon} className="size-4" />
-      </button>
+      </Button>
     </div>
   )
 }
@@ -1179,7 +1169,7 @@ function FeedTab({
   const unlink = () =>
     onPatch((isLink ? { linkFeed: undefined, link: linked?.value.trim() || shownNow } : { feed: undefined, text: linked?.value || el.text }) as Partial<CanvasElement>)
 
-  const tab = "flex h-6 items-center rounded-t-md bg-neutral-800 px-2 text-xs font-medium text-white shadow-sm outline-none hover:bg-neutral-700 focus-visible:ring-2 focus-visible:ring-ring/50 dark:bg-neutral-700 dark:hover:bg-neutral-600"
+  const tab = "flex h-6 items-center rounded-t-md bg-popover px-2 text-xs font-medium text-popover-foreground shadow-sm ring-1 ring-foreground/10 outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50"
   const linkTo = (label: string) =>
     others.length > 0 && (
       <>

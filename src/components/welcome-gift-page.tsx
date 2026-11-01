@@ -60,12 +60,12 @@ export function WelcomeGiftDialog({ open, name, onClaim, onDone }: { open: boole
           {/* texture, a breathing glow and a slow sheen */}
           <span aria-hidden className="absolute inset-0 bg-[repeating-linear-gradient(115deg,transparent_0_22px,oklch(1_0_0/0.045)_22px_23px)]" />
           <span aria-hidden className="absolute inset-0 bg-[radial-gradient(55%_60%_at_50%_45%,oklch(1_0_0/0.22),transparent_70%)]" style={{ animation: "wg-breathe 4s ease-in-out infinite" }} />
-          <span aria-hidden className="absolute -inset-y-10 left-0 w-1/5 bg-gradient-to-r from-transparent via-white/25 to-transparent" style={{ animation: "wg-sheen 5s cubic-bezier(.4,0,.2,1) 1.6s infinite" }} />
+          <span aria-hidden className="absolute -inset-y-10 left-0 w-1/5 bg-gradient-to-r from-transparent via-white/30 to-transparent" style={{ animation: "wg-sheen 5s cubic-bezier(.4,0,.2,1) 1.6s infinite" }} />
           <Sparkles />
           <FlicksLogo className="absolute left-6 top-5 h-5 text-white" />
           <span className="relative flex flex-col items-center" style={{ animation: "wg-float 5s ease-in-out 1.8s infinite" }}>
-            <FocusNumber value={WELCOME_CREDITS.toLocaleString()} className="text-[clamp(72px,22vw,128px)] font-semibold tracking-[-0.04em] drop-shadow-[0_8px_24px_oklch(0.3_0.12_30/0.45)]" />
-            <span className="mt-2 text-sm font-medium tracking-wide text-white/85" style={{ animation: "wg-label .5s ease-out .75s both" }}>
+            <FocusNumber value={WELCOME_CREDITS.toLocaleString()} className="text-[clamp(72px,22vw,128px)] font-semibold tracking-[-0.04em] drop-shadow-xl" />
+            <span className="mt-2 text-sm font-medium tracking-wide text-white/90" style={{ animation: "wg-label .5s ease-out .75s both" }}>
               credits
             </span>
           </span>
@@ -141,7 +141,7 @@ function Sparkles() {
         <svg
           key={i}
           viewBox="0 0 16 16"
-          className="absolute text-white/60"
+          className="absolute text-white/70"
           style={{ left: `${b.left}%`, bottom: `${b.bottom}%`, width: b.size, height: b.size, animation: `wg-rise ${b.dur}s ease-out ${b.delay}s infinite` }}
         >
           <path d="M8 0l2 6 6 2-6 2-2 6-2-6-6-2 6-2z" fill="currentColor" />

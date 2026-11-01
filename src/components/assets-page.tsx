@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
+import { MediaTile, TileBadge } from "@/components/media-tile"
 import { CardsSkeleton, Loading, PendingButton } from "@/components/page-skeletons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Download01Icon, Video01Icon } from "@hugeicons/core-free-icons"
@@ -267,34 +268,23 @@ export function AssetsPage({ onCreate, onUse }: { onCreate: () => void; onUse: (
   )
 }
 
-/** A video in the grid: a uniform square tile that plays on hover; length and size bottom-right, download top-right. */
+/** A video in the grid: the shared tile; plays on hover, its prompt slides up, length and size bottom-left, download top-right. */
 function AssetCard({ a, onOpen }: { a: Asset; onOpen: () => void }) {
   const v = GENERATED_VIDEOS[a.video]
-  const [hover, setHover] = useState(false)
-  const corner = "size-7 rounded-lg bg-background/90 opacity-0 shadow-sm backdrop-blur-sm transition-opacity hover:bg-background group-hover/asset:opacity-100 focus-visible:opacity-100"
+  const corner = "size-7 rounded-lg bg-background/90 opacity-0 shadow-sm backdrop-blur-sm transition-opacity hover:bg-background group-hover/tile:opacity-100 focus-visible:opacity-100"
   return (
-    <div className="group/asset" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
-      <div className="relative">
-        <button
-          type="button"
-          onClick={onOpen}
-          aria-label={`Open video: ${a.prompt}`}
-          className="relative block aspect-square w-full overflow-hidden rounded-xl bg-muted outline-none ring-1 ring-foreground/10 focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <img src={v.poster} alt="" className="absolute inset-0 size-full object-cover" />
-          {hover && (
-            <video autoPlay muted loop playsInline poster={v.poster} className="absolute inset-0 size-full object-cover">
-              {v.webm && <source src={v.webm} type="video/webm" />}
-              <source src={v.mp4} type="video/mp4" />
-            </video>
-          )}
-          {/* on hover: length and size */}
-          <span className="pointer-events-none absolute bottom-2 right-2 flex gap-1 opacity-0 transition-opacity group-hover/asset:opacity-100 group-focus-within/asset:opacity-100">
-            <span className="rounded-md bg-black/55 px-1.5 py-0.5 text-xs font-medium tabular-nums text-white backdrop-blur-sm">{clockLabel(a.duration)}</span>
-            <span className="rounded-md bg-black/55 px-1.5 py-0.5 text-xs font-medium tabular-nums text-white backdrop-blur-sm">{a.size}</span>
-          </span>
-        </button>
-        <div className="absolute right-2 top-2 flex gap-1">
+    <div className="flex flex-col gap-1.5">
+      <MediaTile
+        src={v.poster}
+        video={{ mp4: v.mp4, webm: v.webm }}
+        badges={
+          <>
+            <TileBadge>{clockLabel(a.duration)}</TileBadge>
+            <TileBadge>{a.size}</TileBadge>
+          </>
+        }
+        details={<p className="line-clamp-3">{a.prompt}</p>}
+        actions={
           <Tooltip>
             <TooltipTrigger asChild>
               <Button variant="secondary" size="icon-xs" aria-label="Download" onClick={() => download(v.mp4, fileName(a))} className={corner}>
@@ -303,8 +293,13 @@ function AssetCard({ a, onOpen }: { a: Asset; onOpen: () => void }) {
             </TooltipTrigger>
             <TooltipContent>Download</TooltipContent>
           </Tooltip>
-        </div>
-      </div>
+        }
+      >
+        <button type="button" onClick={onOpen} aria-label={`Open video: ${a.prompt}`} className="absolute inset-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+      </MediaTile>
+      <p className="truncate px-0.5 text-xs text-muted-foreground" title={a.prompt}>
+        {a.prompt}
+      </p>
     </div>
   )
 }

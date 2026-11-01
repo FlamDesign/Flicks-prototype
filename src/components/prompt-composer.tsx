@@ -393,7 +393,7 @@ export function ReferenceThumb({ r, onRemove, onRetry, onOpen }: { r: Reference;
             <button type="button" onClick={onOpen} disabled={!onOpen} aria-label={`View ${r.name}`} className="block size-14 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default">
               <RefStill r={r} className="animate-in fade-in-0 zoom-in-95 size-14 rounded-xl object-cover ring-1 ring-foreground/10 duration-300" />
               {r.media === "video" && (
-                <span className="absolute bottom-1 left-1 flex items-center gap-0.5 rounded bg-black/60 px-1 text-xs font-medium text-white tabular-nums">
+                <span className="absolute bottom-1 left-1 flex items-center gap-0.5 rounded bg-black/70 px-1 text-xs font-medium text-white tabular-nums">
                   <HugeiconsIcon icon={PlayIcon} className="size-2.5" />
                   {r.duration ? `${Math.round(r.duration)}s` : ""}
                 </span>

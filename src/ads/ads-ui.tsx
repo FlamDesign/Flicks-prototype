@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react"
+import { Spinner } from "@/components/ui/spinner"
 import { CardsSkeleton, Loading, PendingButton, RowsSkeleton } from "@/components/page-skeletons"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Alert02Icon, Loading03Icon, PlayIcon, Search01Icon, Wallet01Icon } from "@hugeicons/core-free-icons"
+import { Alert02Icon, PlayIcon, Search01Icon, Wallet01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -108,7 +109,7 @@ export function AddFundsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
           <Label htmlFor="ad-amount">Amount</Label>
           <div className={cn("flex h-11 items-center overflow-hidden rounded-2xl bg-input/50 focus-within:ring-3 focus-within:ring-ring/30", touched && error && "ring-3 ring-destructive/20")}>
             <span className="pl-3 text-muted-foreground">$</span>
-            <input
+            <Input
               id="ad-amount"
               inputMode="decimal"
               value={raw}
@@ -156,7 +157,7 @@ export function AddFundsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
             Cancel
           </Button>
           <Button onClick={pay} disabled={paying} className="gap-2" onMouseDown={(e) => e.preventDefault()}>
-            {paying && <HugeiconsIcon icon={Loading03Icon} className="size-4 animate-spin" />}
+            {paying && <Spinner className="size-4" />}
             {paying ? "Processing…" : error ? "Add funds" : `Add ${usd(amount)}`}
           </Button>
         </DialogFooter>
@@ -474,7 +475,7 @@ export function ReplaceFlickDialog({
                     >
                       <span className="relative block aspect-square overflow-hidden rounded-lg bg-muted">
                         <img src={f.image} alt="" className="size-full object-cover" />
-                        {live && <span className="absolute left-1.5 top-1.5 rounded-md bg-black/60 px-1.5 py-0.5 text-xs font-medium text-white">Live</span>}
+                        {live && <span className="absolute left-1.5 top-1.5 rounded-md bg-black/70 px-1.5 py-0.5 text-xs font-medium text-white">Live</span>}
                       </span>
                       <span className="truncate px-0.5 text-xs font-medium">{f.name}</span>
                       <span className="px-0.5 text-xs text-muted-foreground">Created {edited(f.editedAt)}</span>
@@ -635,7 +636,7 @@ export function LiveFlick({ flick, tall, fit, videos: given, start = 0 }: { flic
   return (
     <div className={cn("flex items-center justify-center", !fit && w < h && (tall ? "h-[min(62vh,560px)]" : "h-[min(52vh,420px)]"))}>
       <div
-        className={cn("relative overflow-hidden rounded-xl bg-neutral-900 shadow-lg", !fit && (w >= h ? "w-full" : "h-full"))}
+        className={cn("relative overflow-hidden rounded-xl bg-black shadow-lg", !fit && (w >= h ? "w-full" : "h-full"))}
         // in a stage: as large as fits, by the stage's width or height, whichever runs out first
         style={{ aspectRatio: `${w} / ${h}`, maxWidth: "100%", maxHeight: "100%", containerType: "size", ...(fit ? { width: `min(100cqw, calc(100cqh * ${w / h}))` } : {}) }}
       >

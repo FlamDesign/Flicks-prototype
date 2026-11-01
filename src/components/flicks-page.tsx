@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react"
+import { Spinner } from "@/components/ui/spinner"
+import { MediaTile } from "@/components/media-tile"
 import { CardsSkeleton, Loading, PendingButton } from "@/components/page-skeletons"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Loading03Icon, Search01Icon, MoreHorizontalIcon, Copy01Icon, Delete02Icon, GitForkIcon, Link01Icon } from "@hugeicons/core-free-icons"
+import { Search01Icon, MoreHorizontalIcon, Copy01Icon, Delete02Icon, GitForkIcon, Link01Icon } from "@hugeicons/core-free-icons"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -15,7 +17,8 @@ import { flickLink, library, useExportProgress, useLibrary, type FlickRecord, ty
 import { useAds } from "@/ads/ads"
 import { cn } from "@/lib/utils"
 
-type Item = { id: string; name: string; size: string; at: number; image: string; exporting?: { from: number; until: number } }
+type Item = { id: string; name: string; size: string; at: number; image: string; exporting?: { from: number; until: number }; details?: string[] }
+const plural = (n: number, word: string) => `${n.toLocaleString()} ${word}${n === 1 ? "" : "s"}`
 type MenuItem = { label: string; icon: typeof Copy01Icon; onSelect: () => void; destructive?: boolean }
 
 /** Projects: editable drafts. Opening one opens the editor. */
@@ -30,7 +33,14 @@ export function ProjectsPage({ onOpen, onCreate }: { onOpen: (p: Project) => voi
         description="Drafts you’re working on."
         searchLabel="Search projects"
         dateLabel="Last edited"
-        items={projects.map((p) => ({ id: p.id, name: p.name, size: p.size, at: p.editedAt, image: p.image }))}
+        items={projects.map((p) => ({
+          id: p.id,
+          name: p.name,
+          size: p.size,
+          at: p.editedAt,
+          image: p.image,
+          details: [plural(p.versions.length, "saved version"), p.exports.length ? `Exported ${plural(p.exports.length, "time")}` : "Not exported yet"],
+        }))}
         when={(t, now) => formatEdited(t, now)}
         whenTitle={(t) => `Last edited ${fullDate(t)}`}
         onOpen={(it) => onOpen(projects.find((p) => p.id === it.id)!)}
@@ -77,7 +87,15 @@ export function FlicksPage({ onOpen, onRemix, onProjects }: { onOpen: (f: FlickR
         description="Flicks ready to share, embed in website or serve in ads."
         searchLabel="Search flicks"
         dateLabel="Created"
-        items={flicks.map((f) => ({ id: f.id, name: f.name, size: f.size, at: f.editedAt, image: f.image, exporting: f.exporting }))}
+        items={flicks.map((f) => ({
+          id: f.id,
+          name: f.name,
+          size: f.size,
+          at: f.editedAt,
+          image: f.image,
+          exporting: f.exporting,
+          details: "variants" in f && Array.isArray(f.variants) ? [plural(f.variants.length, "variation"), `${plural(f.variants.reduce((n: number, v: { views: number }) => n + v.views, 0), "view")}`] : undefined,
+        }))}
         when={(t, now) => formatEdited(t, now).replace("Edited", "Created")}
         whenTitle={(t) => `Created ${fullDate(t)}`}
         onOpen={(it) => onOpen(byId(it.id))}
@@ -228,10 +246,14 @@ function Card({ it, when, whenTitle, onOpen, menu }: { it: Item; when: string; w
           onKeyDown={(e) => e.target === e.currentTarget && (e.key === "Enter" || e.key === " ") && (e.preventDefault(), onOpen())}
           className="group mb-6 cursor-pointer outline-none"
         >
-          <div className="relative aspect-square overflow-hidden rounded-xl bg-muted ring-1 ring-foreground/5 transition-shadow group-hover:ring-foreground/15 group-focus-visible:ring-2 group-focus-visible:ring-ring">
-            {it.image && <img src={it.image} alt="" loading="lazy" className={cn("h-full w-full object-cover", it.exporting && "opacity-60 blur-[1px]")} />}
+          <MediaTile
+            src={it.image}
+            dim={!!it.exporting}
+            details={!it.exporting && it.details?.length ? <p className="flex flex-wrap gap-x-2">{it.details.map((d, i) => <span key={i}>{i > 0 && <span className="mr-2 text-white/50">·</span>}{d}</span>)}</p> : undefined}
+            className="group-focus-visible:ring-2 group-focus-visible:ring-ring"
+          >
             {it.exporting && <ExportingOverlay exporting={it.exporting} />}
-          </div>
+          </MediaTile>
           <div className="flex items-start gap-2 px-0.5 pt-2.5">
             <div className="min-w-0 flex-1 space-y-0.5">
               <p className="truncate text-sm font-medium">{it.name}</p>
@@ -289,7 +311,7 @@ function ExportingOverlay({ exporting }: { exporting: { from: number; until: num
   return (
     <div className="absolute inset-x-2.5 bottom-2.5 flex flex-col gap-1.5 rounded-lg bg-background/90 px-2.5 py-2 shadow-sm backdrop-blur">
       <span className="flex items-center gap-1.5 text-xs font-medium">
-        <HugeiconsIcon icon={Loading03Icon} className="size-3.5 animate-spin" />
+        <Spinner className="size-3.5" />
         Preparing… {Math.round(p * 100)}%
       </span>
       <span className="h-1 overflow-hidden rounded-full bg-foreground/10">

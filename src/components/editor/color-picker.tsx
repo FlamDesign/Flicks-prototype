@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react"
+import { Input } from "@/components/ui/input"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ColorPickerIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
@@ -115,7 +116,7 @@ export function ColorPanel({ value, onChange, onPicking }: { value: string; onCh
         <label className="flex h-8 min-w-0 flex-1 items-center gap-1.5 rounded-lg px-2 text-sm ring-1 ring-foreground/10 focus-within:ring-2 focus-within:ring-ring/50">
           <span className="size-4 shrink-0 rounded-[4px] ring-1 ring-foreground/15" style={{ background: swatchBg(toHex(c)) }} />
           <span className="text-muted-foreground">#</span>
-          <input
+          <Input
             aria-label="Hex colour"
             value={hex}
             maxLength={6}
@@ -129,7 +130,7 @@ export function ColorPanel({ value, onChange, onPicking }: { value: string; onCh
           />
         </label>
         <label className="flex h-8 w-[4.5rem] items-center gap-0.5 rounded-lg px-2 text-sm ring-1 ring-foreground/10 focus-within:ring-2 focus-within:ring-ring/50">
-          <input
+          <Input
             aria-label="Opacity percent"
             inputMode="numeric"
             value={Math.round(c.a * 100)}
@@ -203,7 +204,7 @@ function Area({
     >
       <span
         aria-hidden
-        className="pointer-events-none absolute size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-[0_0_0_1px_rgb(0_0_0/0.2),0_1px_3px_rgb(0_0_0/0.3)]"
+        className="pointer-events-none absolute size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-md ring-1 ring-black/20"
         style={{ left: `${x * 100}%`, top: `${y * 100}%`, background: thumb }}
       />
     </div>
@@ -231,7 +232,7 @@ function Track({ label, value, onChange, background, thumb }: { label: string; v
       <span aria-hidden className="absolute -inset-x-2 inset-y-0 rounded-full ring-1 ring-foreground/10" style={{ background }} />
       <span
         aria-hidden
-        className="pointer-events-none absolute top-1/2 size-[18px] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-[0_0_0_1px_rgb(0_0_0/0.2),0_1px_3px_rgb(0_0_0/0.3)]"
+        className="pointer-events-none absolute top-1/2 size-[18px] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-md ring-1 ring-black/20"
         style={{ left: `${value * 100}%`, background: thumb }}
       />
     </div>

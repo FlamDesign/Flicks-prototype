@@ -1,6 +1,8 @@
 import { useRef, useState } from "react"
+import { Spinner } from "@/components/ui/spinner"
+import { Input } from "@/components/ui/input"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { ArrowExpand01Icon, Delete02Icon, Loading03Icon, MoreHorizontalIcon, PlusSignIcon, SparklesIcon } from "@hugeicons/core-free-icons"
+import { ArrowExpand01Icon, Delete02Icon, MoreHorizontalIcon, PlusSignIcon, SparklesIcon } from "@hugeicons/core-free-icons"
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -164,7 +166,7 @@ function Label({ label, active, onRename, placeholder }: { label: string; active
   if (!onRename) return <span className={cn(cls, "truncate whitespace-nowrap")}>{label}</span>
   if (editing)
     return (
-      <input
+      <Input
         autoFocus
         value={draft}
         placeholder={placeholder}
@@ -266,7 +268,7 @@ function Thumb({
         {status === "generating" && (
           <>
             <span aria-hidden className="generating-gradient absolute inset-[-50%]" />
-            <HugeiconsIcon icon={Loading03Icon} className="relative size-4 animate-spin text-primary" />
+            <Spinner className="relative size-4 text-primary" />
           </>
         )}
         {status === "empty" && <HugeiconsIcon icon={SparklesIcon} className="size-4 text-muted-foreground" />}
@@ -305,7 +307,7 @@ function Thumb({
                   className={cn(
                     "size-5 rounded-md shadow-sm ring-1 ring-foreground/10",
                     // a soft highlight, not a primary button
-                    start ? "cursor-default bg-[color-mix(in_oklch,var(--primary)_14%,var(--background))] text-primary ring-primary/30 hover:bg-[color-mix(in_oklch,var(--primary)_14%,var(--background))]" : "bg-background/90 backdrop-blur-sm hover:bg-background",
+                    start ? "cursor-default bg-primary/10 text-primary ring-primary/30 hover:bg-primary/10" : "bg-background/90 backdrop-blur-sm hover:bg-background",
                   )}
                 >
                   <SolidPlay className="size-2.5" />

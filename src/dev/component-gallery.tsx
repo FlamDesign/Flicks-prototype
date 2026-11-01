@@ -1,5 +1,7 @@
 import { useMediaAdd } from "@/components/media-picker"
 import { SmallScreenNotice } from "@/components/small-screen"
+import { MediaTile, TileBadge } from "@/components/media-tile"
+import { Spinner } from "@/components/ui/spinner"
 import { MentionTextarea, useMentionOptions } from "@/components/mention-input"
 import { useEffect, useState } from "react"
 import { WelcomeGiftDialog } from "@/components/welcome-gift-page"
@@ -549,6 +551,24 @@ const ENTRIES: Entry[] = [
         ]}
       />
     ),
+  },
+  {
+    name: "Media tile",
+    kind: "UI",
+    about: "The one frame for photos and videos in Assets, Projects, Flicks and the picker: rounded, ringed, a slight zoom on hover. Labels (length, size) sit bottom-left, actions top-right, details slide up on hover.",
+    render: () => (
+      <div className="grid w-full max-w-md grid-cols-3 gap-3">
+        <MediaTile src={GENERATED_VIDEOS[0].poster} badges={<TileBadge>0:08</TileBadge>} details={<p>Wheat boot on wet rock, slow push in</p>} />
+        <MediaTile src={GENERATED_VIDEOS[1].poster} selected badges={<TileBadge>1080×1920</TileBadge>} />
+        <MediaTile src={GENERATED_VIDEOS[2].poster} dim />
+      </div>
+    ),
+  },
+  {
+    name: "Spinner",
+    kind: "Feedback",
+    about: "Shows work in progress inside buttons and rows.",
+    render: () => <div className="flex items-center gap-4"><Spinner /><Spinner className="size-6 text-primary" /><Button disabled size="sm"><Spinner />Saving</Button></div>,
   },
   {
     name: "Small screen note",

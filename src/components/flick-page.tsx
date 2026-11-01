@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react"
+import { Spinner } from "@/components/ui/spinner"
 import { onboarding } from "@/onboarding/onboarding"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Add01Icon, Loading03Icon, ArrowRight01Icon, Download01Icon, ArrowUpRight01Icon, Copy01Icon, Delete02Icon, GitForkIcon, MoreHorizontalIcon, PencilEdit01Icon } from "@hugeicons/core-free-icons"
+import { Add01Icon, ArrowRight01Icon, Download01Icon, ArrowUpRight01Icon, Copy01Icon, Delete02Icon, GitForkIcon, MoreHorizontalIcon, PencilEdit01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -85,9 +86,9 @@ export function FlickPage({
       {/* header: breadcrumb, then Remix and the menu */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 text-xl font-medium tracking-tight sm:text-2xl">
-          <button type="button" onClick={onBack} className="-ml-1 rounded-md px-1 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+          <Button variant="ghost" onClick={onBack} className="-ml-1 h-auto px-1 text-xl font-medium tracking-tight text-muted-foreground hover:bg-transparent hover:text-foreground sm:text-2xl">
             Flicks
-          </button>
+          </Button>
           <HugeiconsIcon icon={ArrowRight01Icon} className="size-5 shrink-0 text-muted-foreground" />
           <span className="truncate px-1" aria-current="page">
             {f.name}
@@ -149,7 +150,7 @@ export function FlickPage({
           <div className="flex min-w-0 flex-col gap-4">
             <section className="flex flex-col gap-3 rounded-2xl p-4 ring-1 ring-foreground/10 sm:p-5" aria-live="polite">
               <span className="flex items-center gap-2 text-sm font-medium">
-                <HugeiconsIcon icon={Loading03Icon} className="size-4 animate-spin" />
+                <Spinner className="size-4" />
                 Preparing… {Math.round(progress * 100)}%
               </span>
               <Progress value={progress * 100} />

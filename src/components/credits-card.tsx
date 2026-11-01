@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { Spinner } from "@/components/ui/spinner"
 import { PendingButton } from "@/components/page-skeletons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -7,7 +8,6 @@ import {
   WalletAdd02Icon,
   ArrowRight01Icon,
   Tick02Icon,
-  Loading03Icon,
 } from "@hugeicons/core-free-icons"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Button } from "@/components/ui/button"
@@ -281,7 +281,7 @@ function BuyCreditsDialog({
               <Button onClick={pay} disabled={paying}>
                 {paying ? (
                   <>
-                    <HugeiconsIcon icon={Loading03Icon} className="size-4 animate-spin" />
+                    <Spinner className="size-4" />
                     Redirecting
                   </>
                 ) : (

@@ -96,7 +96,7 @@ export function MediaViewer({
         <div className="relative flex min-w-0 flex-1 items-center justify-center p-12">
           {shown && <Media key={shown.src} m={shown} />}
           {ref && (
-            <Button variant="outline" onClick={() => setRef(null)} className="absolute left-3 top-3 gap-1.5 rounded-full border-white/15 bg-background/60 backdrop-blur-md">
+            <Button variant="outline" onClick={() => setRef(null)} className="absolute left-3 top-3 gap-1.5 rounded-full border-white/20 bg-background/60 backdrop-blur-md">
               <HugeiconsIcon icon={ArrowLeft01Icon} className="size-4" />
               Back
             </Button>
@@ -136,7 +136,7 @@ export function MediaViewer({
                               >
                                 <img src={r.kind === "video" ? r.poster : r.src} alt="" className={cn("size-full", r.kind === "video" ? "object-cover" : "object-contain p-1")} />
                                 {r.kind === "video" && (
-                                  <span className="absolute bottom-1 left-1 grid size-4 place-items-center rounded bg-black/60 text-white">
+                                  <span className="absolute bottom-1 left-1 grid size-4 place-items-center rounded bg-black/70 text-white">
                                     <HugeiconsIcon icon={Video01Icon} className="size-2.5" />
                                   </span>
                                 )}
@@ -214,9 +214,9 @@ function Clamped({ text }: { text: string }) {
         {text}
       </p>
       {long && (
-        <button type="button" onClick={() => setOpen((o) => !o)} className="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+        <Button variant="link" onClick={() => setOpen((o) => !o)} className="h-auto self-start p-0 text-xs text-muted-foreground hover:text-foreground">
           {open ? "See less" : "See more"}
-        </button>
+        </Button>
       )}
     </div>
   )
@@ -326,7 +326,7 @@ function Step({ side, onClick }: { side: "left" | "right"; onClick: () => void }
       size="icon"
       aria-label={side === "left" ? "Previous" : "Next"}
       onClick={onClick}
-      className={cn("absolute inset-y-0 my-auto rounded-full border-white/15 bg-background/60 backdrop-blur-md", side === "left" ? "left-3" : "right-3")}
+      className={cn("absolute inset-y-0 my-auto rounded-full border-white/20 bg-background/60 backdrop-blur-md", side === "left" ? "left-3" : "right-3")}
     >
       <HugeiconsIcon icon={side === "left" ? ArrowLeft01Icon : ArrowRight01Icon} className="size-4" />
     </Button>

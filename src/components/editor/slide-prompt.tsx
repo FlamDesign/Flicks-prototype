@@ -89,8 +89,8 @@ export function SlidePrompt({
                   className="group/ref relative size-14 shrink-0 overflow-hidden rounded-xl outline-none ring-1 ring-foreground/10 focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
                 >
                   <img src={fixedRef.url} alt="" className="size-full object-cover transition-transform duration-200 group-hover/ref:scale-105" />
-                  <span className="absolute inset-0 grid place-items-center bg-black/0 transition-colors group-hover/ref:bg-black/25">
-                    <span className="grid size-6 place-items-center rounded-full bg-black/45 text-white backdrop-blur-sm">
+                  <span className="absolute inset-0 grid place-items-center bg-black/0 transition-colors group-hover/ref:bg-black/30">
+                    <span className="grid size-6 place-items-center rounded-full bg-black/50 text-white backdrop-blur-sm">
                       <HugeiconsIcon icon={PlayIcon} className="size-3" />
                     </span>
                   </span>

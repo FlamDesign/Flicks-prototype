@@ -138,7 +138,7 @@ export function VideoPlayer({
           type="button"
           aria-label="Play"
           onClick={toggle}
-          className="absolute left-1/2 top-1/2 grid size-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-black/50 text-white ring-1 ring-white/15 backdrop-blur-md transition hover:scale-105 hover:bg-black/60"
+          className="absolute left-1/2 top-1/2 grid size-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-black/50 text-white ring-1 ring-white/20 backdrop-blur-md transition hover:scale-105 hover:bg-black/70"
         >
           <HugeiconsIcon icon={PlayIcon} className="size-7 translate-x-0.5 fill-current" />
         </button>
@@ -147,7 +147,7 @@ export function VideoPlayer({
       {/* controls */}
       <div
         className={cn(
-          "absolute inset-x-0 bottom-0 flex flex-col gap-1 bg-gradient-to-t from-black/75 via-black/35 to-transparent px-3 pb-2 pt-10 text-white transition-opacity duration-200",
+          "absolute inset-x-0 bottom-0 flex flex-col gap-1 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-3 pb-2 pt-10 text-white transition-opacity duration-200",
           shown ? "opacity-100" : "pointer-events-none opacity-0",
         )}
       >
@@ -159,7 +159,7 @@ export function VideoPlayer({
           value={[time]}
           onValueChange={([t]) => (setScrubbing(true), seek(t))}
           onValueCommit={() => setScrubbing(false)}
-          className="h-4 cursor-pointer [&_[data-slot=slider-range]]:bg-white [&_[data-slot=slider-thumb]]:size-3 [&_[data-slot=slider-thumb]]:opacity-0 [&_[data-slot=slider-track]]:bg-white/25 hover:[&_[data-slot=slider-thumb]]:opacity-100 [&_[data-slot=slider-thumb]]:focus-visible:opacity-100"
+          className="h-4 cursor-pointer [&_[data-slot=slider-range]]:bg-white [&_[data-slot=slider-thumb]]:size-3 [&_[data-slot=slider-thumb]]:opacity-0 [&_[data-slot=slider-track]]:bg-white/30 hover:[&_[data-slot=slider-thumb]]:opacity-100 [&_[data-slot=slider-thumb]]:focus-visible:opacity-100"
         />
         <div className="flex items-center gap-1">
           <Control label={playing ? "Pause" : "Play"} onClick={toggle}>
@@ -178,13 +178,13 @@ export function VideoPlayer({
                 step={0.01}
                 value={[muted ? 0 : volume]}
                 onValueChange={([x]) => setVol(x)}
-                className="ml-1 w-[72px] cursor-pointer [&_[data-slot=slider-range]]:bg-white [&_[data-slot=slider-thumb]]:size-3 [&_[data-slot=slider-track]]:bg-white/25"
+                className="ml-1 w-[72px] cursor-pointer [&_[data-slot=slider-range]]:bg-white [&_[data-slot=slider-thumb]]:size-3 [&_[data-slot=slider-track]]:bg-white/30"
               />
             </div>
           </div>
 
-          <span className="ml-auto pr-1 text-xs tabular-nums text-white/80">
-            {clock(time)} <span className="text-white/45">/ {clock(duration)}</span>
+          <span className="ml-auto pr-1 text-xs tabular-nums text-white/90">
+            {clock(time)} <span className="text-white/50">/ {clock(duration)}</span>
           </span>
         </div>
       </div>
@@ -200,7 +200,7 @@ function Control({ label, onClick, className, children }: { label: string; onCli
           type="button"
           aria-label={label}
           onClick={onClick}
-          className={cn("grid size-8 shrink-0 place-items-center rounded-full text-white/90 outline-none transition hover:bg-white/15 hover:text-white focus-visible:ring-2 focus-visible:ring-white/50", className)}
+          className={cn("grid size-8 shrink-0 place-items-center rounded-full text-white/90 outline-none transition hover:bg-white/20 hover:text-white focus-visible:ring-2 focus-visible:ring-white/50", className)}
         >
           {children}
         </button>

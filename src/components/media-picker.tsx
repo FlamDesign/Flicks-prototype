@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
+import { MediaTile, TileBadge } from "@/components/media-tile"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowExpand01Icon, CloudUploadIcon, PauseIcon, PlayIcon, Scissor01Icon, Search01Icon, Tick02Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
@@ -329,46 +330,40 @@ const toViewer = (x: MediaItem): ViewerItem => ({
 /** One item: thumbnail, a check when picked, a video's length; generated work opens what it was made from. */
 function Tile({ x, on, onToggle, onOpen, onDuration }: { x: MediaItem; on: boolean; onToggle: () => void; onOpen: () => void; onDuration: (s: number) => void }) {
   const long = x.kind === "video" && (x.duration ?? 0) > MAX_REF_SECONDS + 0.05
+  const probe = (e: React.SyntheticEvent<HTMLVideoElement>) => onDuration(e.currentTarget.duration)
   return (
-    <div className="group/tile relative">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-pressed={on}
-        aria-label={`${on ? "Unselect" : "Select"} ${x.name}`}
-        className={cn("relative block aspect-square w-full overflow-hidden rounded-xl bg-muted outline-none ring-1 ring-foreground/10 focus-visible:ring-2 focus-visible:ring-ring", on && "ring-2 ring-primary")}
-      >
-        {x.kind === "video" && !x.poster ? (
-          <video src={`${x.url}#t=0.1`} muted playsInline preload="metadata" crossOrigin="anonymous" onLoadedMetadata={(e) => onDuration(e.currentTarget.duration)} className="size-full object-cover" />
-        ) : (
-          <img src={x.poster ?? x.url} alt="" loading="lazy" className="size-full object-cover" />
-        )}
-        {x.kind === "video" && x.poster && x.duration === undefined && <video src={`${x.url}#t=0.1`} muted playsInline preload="metadata" crossOrigin="anonymous" onLoadedMetadata={(e) => onDuration(e.currentTarget.duration)} className="hidden" />}
-        {x.kind === "video" && (
-          <span className="absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 text-xs font-medium text-white tabular-nums backdrop-blur-sm">
+    <MediaTile
+      src={x.kind === "video" && !x.poster ? undefined : (x.poster ?? x.url)}
+      selected={on}
+      badges={
+        x.kind === "video" && (
+          <TileBadge>
             <HugeiconsIcon icon={long ? Scissor01Icon : PlayIcon} className="size-3" />
             {x.duration !== undefined ? length(x.duration) : "Video"}
+          </TileBadge>
+        )
+      }
+      actions={
+        <>
+          {/* full screen, left of the select mark */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="secondary" size="icon-xs" onClick={onOpen} aria-label={`View ${x.name} full screen`} className="size-5 rounded-full bg-black/50 text-white opacity-0 shadow-sm backdrop-blur-sm hover:bg-black/70 focus-visible:opacity-100 group-hover/tile:opacity-100">
+                <HugeiconsIcon icon={ArrowExpand01Icon} className="size-3" strokeWidth={2.25} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Full screen</TooltipContent>
+          </Tooltip>
+          <span aria-hidden className={cn("pointer-events-none grid size-5 place-items-center rounded-full border-2 border-white/90 shadow-sm transition-opacity", on ? "bg-primary text-primary-foreground opacity-100" : "bg-black/20 opacity-0 group-hover/tile:opacity-100")}>
+            {on && <HugeiconsIcon icon={Tick02Icon} className="size-3" strokeWidth={3} />}
           </span>
-        )}
-        <span className={cn("absolute right-1.5 top-1.5 z-10 grid size-5 place-items-center rounded-full border-2 border-white/90 shadow-sm transition-opacity", on ? "bg-primary text-primary-foreground opacity-100" : "bg-black/20 opacity-0 group-hover/tile:opacity-100")}>
-          {on && <HugeiconsIcon icon={Tick02Icon} className="size-3" strokeWidth={3} />}
-        </span>
-      </button>
-      {/* full screen, left of the select mark */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            onClick={onOpen}
-            aria-label={`View ${x.name} full screen`}
-            className="absolute right-8 top-1.5 grid size-5 place-items-center rounded-full bg-black/45 text-white opacity-0 shadow-sm outline-none backdrop-blur-sm transition-opacity hover:bg-black/65 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring group-hover/tile:opacity-100"
-          >
-            <HugeiconsIcon icon={ArrowExpand01Icon} className="size-3" strokeWidth={2.25} />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent>Full screen</TooltipContent>
-      </Tooltip>
-    </div>
+        </>
+      }
+    >
+      {x.kind === "video" && !x.poster && <video src={`${x.url}#t=0.1`} muted playsInline preload="metadata" crossOrigin="anonymous" onLoadedMetadata={probe} className="absolute inset-0 size-full object-cover" />}
+      {x.kind === "video" && x.poster && x.duration === undefined && <video src={`${x.url}#t=0.1`} muted playsInline preload="metadata" crossOrigin="anonymous" onLoadedMetadata={probe} className="hidden" />}
+      <button type="button" onClick={onToggle} aria-pressed={on} aria-label={`${on ? "Unselect" : "Select"} ${x.name}`} className="absolute inset-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+    </MediaTile>
   )
 }
 
@@ -381,6 +376,7 @@ export function VideoTrimmer({ item, onDone }: { item: MediaItem | null; onDone:
   const [range, setRange] = useState<[number, number]>([0, MAX_REF_SECONDS])
   const [strip, setStrip] = useState<string[]>([])
   const [playing, setPlaying] = useState(false)
+  const [at, setAt] = useState(0)
   const [error, setError] = useState("")
   const video = useRef<HTMLVideoElement>(null)
   const track = useRef<HTMLDivElement>(null)
@@ -480,8 +476,8 @@ export function VideoTrimmer({ item, onDone }: { item: MediaItem | null; onDone:
         {item && (
           <div className="grid gap-4">
             <div className="relative overflow-hidden rounded-xl bg-black">
-              <video ref={video} src={item.url} poster={item.poster} muted playsInline crossOrigin="anonymous" className="mx-auto max-h-80 w-full object-contain" onEnded={() => setPlaying(false)} />
-              <Button variant="secondary" size="icon-sm" onClick={toggle} aria-label={playing ? "Pause" : "Play the selection"} className="absolute bottom-3 left-3 rounded-full">
+              <video ref={video} src={item.url} poster={item.poster} muted playsInline crossOrigin="anonymous" className="mx-auto max-h-80 w-full object-contain" onEnded={() => setPlaying(false)} onTimeUpdate={(e) => setAt(e.currentTarget.currentTime)} />
+              <Button variant="secondary" size="icon" onClick={toggle} aria-label={playing ? "Pause" : "Play the selection"} className="absolute bottom-3 left-3 rounded-full bg-background/90 shadow-md backdrop-blur-sm">
                 <HugeiconsIcon icon={playing ? PauseIcon : PlayIcon} className="size-4" />
               </Button>
             </div>
@@ -489,9 +485,11 @@ export function VideoTrimmer({ item, onDone }: { item: MediaItem | null; onDone:
               <div className="flex h-full">{strip.length ? strip.map((s, i) => <img key={i} src={s} alt="" className="h-full min-w-0 flex-1 object-cover" />) : <Skeleton className="size-full rounded-none" />}</div>
               <div className="absolute inset-y-0 left-0 bg-background/70" style={{ width: `${pct(range[0])}%` }} />
               <div className="absolute inset-y-0 right-0 bg-background/70" style={{ width: `${100 - pct(range[1])}%` }} />
-              <div className="absolute inset-y-0 cursor-grab rounded-md border-2 border-primary active:cursor-grabbing" style={{ left: `${pct(range[0])}%`, width: `${pct(len)}%` }} onPointerDown={grab("move")} aria-hidden>
+              <div className="absolute inset-y-0 cursor-grab rounded-md border-2 border-primary transition-[left,width] duration-75 active:cursor-grabbing" style={{ left: `${pct(range[0])}%`, width: `${pct(len)}%` }} onPointerDown={grab("move")} aria-hidden>
                 <span className="absolute -top-px left-1/2 -translate-x-1/2 rounded-b-md bg-primary px-1.5 text-xs font-medium text-primary-foreground tabular-nums">{len.toFixed(1)}s</span>
               </div>
+              {/* where the preview is, while it plays */}
+              {playing && <span aria-hidden className="pointer-events-none absolute inset-y-1 z-10 w-0.5 -translate-x-1/2 rounded-full bg-white shadow-sm" style={{ left: `${pct(Math.min(Math.max(at, range[0]), range[1]))}%` }} />}
               {(["start", "end"] as const).map((w, i) => (
                 <div
                   key={w}

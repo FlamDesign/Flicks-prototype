@@ -139,7 +139,7 @@ export function DevWidget({ onStateManager, onComponents, onPrd, onEmails }: { o
               setPos(clamp((window.innerWidth - (el?.offsetWidth ?? 300)) / 2, window.innerHeight - (el?.offsetHeight ?? 40) - 16))
             }}
             aria-label="Move dev tools"
-            className={cn("flex h-7 items-center gap-1 rounded-lg pl-1 pr-1.5 text-white/60 hover:bg-white/10 hover:text-white", dragging ? "cursor-grabbing" : "cursor-grab")}
+            className={cn("flex h-7 items-center gap-1 rounded-lg pl-1 pr-1.5 text-white/70 hover:bg-white/10 hover:text-white", dragging ? "cursor-grabbing" : "cursor-grab")}
           >
             <HugeiconsIcon icon={DragDropVerticalIcon} className="size-3.5" />
             <span className="font-mono text-xs font-semibold tracking-wide">DEV</span>
@@ -147,7 +147,7 @@ export function DevWidget({ onStateManager, onComponents, onPrd, onEmails }: { o
         </TooltipTrigger>
         <TooltipContent>Drag to move · double-click to reset</TooltipContent>
       </Tooltip>
-      <span aria-hidden className="mx-0.5 h-4 w-px bg-white/15" />
+      <span aria-hidden className="mx-0.5 h-4 w-px bg-white/20" />
       {actions.map((a) => (
         <Button
           key={a.id}
@@ -160,7 +160,7 @@ export function DevWidget({ onStateManager, onComponents, onPrd, onEmails }: { o
           {open && <span className="animate-in fade-in-0 duration-150">{a.label}</span>}
         </Button>
       ))}
-      {actions.length > 0 && <span aria-hidden className="mx-0.5 h-4 w-px bg-white/15" />}
+      {actions.length > 0 && <span aria-hidden className="mx-0.5 h-4 w-px bg-white/20" />}
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
@@ -172,7 +172,7 @@ export function DevWidget({ onStateManager, onComponents, onPrd, onEmails }: { o
             onClick={() => update({ aiChat: !dev.aiChat })}
             className={cn(
               "relative h-7 gap-1.5 rounded-lg text-xs font-normal transition-none hover:bg-white/10 hover:text-white dark:hover:bg-white/10",
-              dev.aiChat ? "bg-white/15 text-white" : "text-white/60",
+              dev.aiChat ? "bg-white/20 text-white" : "text-white/70",
               open ? "px-2" : "w-7 px-0",
             )}
           >
@@ -183,7 +183,7 @@ export function DevWidget({ onStateManager, onComponents, onPrd, onEmails }: { o
         </TooltipTrigger>
         <TooltipContent>{dev.aiChat ? "On: a new prompt opens the chat, which plans the Flick first. Click to turn off." : "Off: Generate makes the video straight away. Click to turn on the chat."}</TooltipContent>
       </Tooltip>
-      <span aria-hidden className="mx-0.5 h-4 w-px bg-white/15" />
+      <span aria-hidden className="mx-0.5 h-4 w-px bg-white/20" />
       {tools.map((t) => (
         <Button
           key={t.label}
@@ -191,7 +191,7 @@ export function DevWidget({ onStateManager, onComponents, onPrd, onEmails }: { o
           size="sm"
           onClick={t.onClick}
           aria-label={t.label}
-          className={cn("h-7 gap-1.5 rounded-lg text-xs font-normal transition-none text-white/85 hover:bg-white/10 hover:text-white dark:hover:bg-white/10", open ? "px-2" : "w-7 px-0")}
+          className={cn("h-7 gap-1.5 rounded-lg text-xs font-normal transition-none text-white/90 hover:bg-white/10 hover:text-white dark:hover:bg-white/10", open ? "px-2" : "w-7 px-0")}
         >
           <HugeiconsIcon icon={t.icon} className="size-3.5" />
           {open && <span className="animate-in fade-in-0 duration-150">{t.label}</span>}

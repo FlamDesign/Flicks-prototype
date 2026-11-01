@@ -315,7 +315,7 @@ function FontControls({ el, onChange }: { el: TextLike; onChange: (p: Partial<Ca
         <Tool label="Decrease size" className="h-8 w-7" onClick={() => setPx(px - 2)}>
           <HugeiconsIcon icon={MinusSignIcon} className="size-3.5" />
         </Tool>
-        <input
+        <Input
           aria-label="Font size"
           inputMode="numeric"
           value={px}
@@ -652,7 +652,7 @@ function NumberField({
     <div className="flex items-center gap-3">
       <Slider className="flex-1" value={[Math.min(value, max)]} min={min} max={max} step={1} onValueChange={([v]) => set(v)} aria-label={label} />
       <label className="flex h-8 w-[4.5rem] shrink-0 items-center gap-0.5 rounded-lg px-2 text-sm ring-1 ring-foreground/10 focus-within:ring-2 focus-within:ring-ring/50">
-        <input
+        <Input
           aria-label={`${label} in ${unit === "%" ? "percent" : "pixels"}`}
           inputMode="numeric"
           value={draft ?? Math.round(value)}
@@ -721,7 +721,7 @@ function RadiusPopover({ id, value, onChange }: { id: string; value: number; onC
         <div className="flex items-center gap-3">
           <Slider className="flex-1" value={[value]} min={0} max={100} step={1} onValueChange={([v]) => onChange(v)} aria-label="Corner radius percent" />
           <label className="flex h-8 w-[4.5rem] shrink-0 items-center gap-0.5 rounded-lg px-2 text-sm ring-1 ring-foreground/10 focus-within:ring-2 focus-within:ring-ring/50">
-            <input
+            <Input
               aria-label="Corner radius in pixels"
               inputMode="numeric"
               value={draft ?? px}

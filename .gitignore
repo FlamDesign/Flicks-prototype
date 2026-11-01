@@ -9,3 +9,5 @@ dist-*/
 .dev.vars
 server/.dev.vars
 server/.wrangler/
+tests/screens/current/
+tests/screens/diff/

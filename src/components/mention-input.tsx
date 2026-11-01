@@ -303,7 +303,7 @@ export function ElementDialog({ open, edit, name: initial, onClose, onSaved }: {
               {images.map((im, i) => (
                 <span key={im.url + i} className="group/e relative size-16 overflow-hidden rounded-lg ring-1 ring-foreground/10">
                   <img src={im.url} alt={im.name} className="size-full object-cover" />
-                  <button type="button" aria-label={`Remove ${im.name}`} onClick={() => setImages((l) => l.filter((_, j) => j !== i))} className="absolute right-1 top-1 grid size-5 place-items-center rounded-full bg-black/55 text-white opacity-0 group-hover/e:opacity-100 focus-visible:opacity-100">
+                  <button type="button" aria-label={`Remove ${im.name}`} onClick={() => setImages((l) => l.filter((_, j) => j !== i))} className="absolute right-1 top-1 grid size-5 place-items-center rounded-full bg-black/50 text-white opacity-0 group-hover/e:opacity-100 focus-visible:opacity-100">
                     ×
                   </button>
                 </span>

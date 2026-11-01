@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { Input } from "@/components/ui/input"
 import { Loading, RowsSkeleton } from "@/components/page-skeletons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowUpRight01Icon, Cancel01Icon } from "@hugeicons/core-free-icons"
@@ -72,7 +73,7 @@ function Row<S>({ v, current, onRestore, onRename, onOpenFlick }: { v: Checkpoin
       <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-background text-xs font-medium tabular-nums">v{v.n}</span>
       <div className="min-w-0 flex-1">
         {editing ? (
-          <input
+          <Input
             autoFocus
             value={draft}
             onChange={(e) => setDraft(e.target.value)}

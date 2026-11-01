@@ -83,7 +83,7 @@ const SHOTS = [softPink, street, office, court]
 /** A video frame: a real still from the escalator Flick. */
 function Frame({ x, y, w, h, tone = 0, style, children, className = "" }: { x: number; y: number; w: number; h: number; tone?: number; style?: CSSProperties; children?: ReactNode; className?: string }) {
   return (
-    <div className={`absolute overflow-hidden rounded-md bg-muted shadow-sm ring-1 ring-black/5 ${className}`} style={{ left: x, top: y, width: w, height: h, ...style }}>
+    <div className={`absolute overflow-hidden rounded-md bg-muted shadow-sm ring-1 ring-black/10 ${className}`} style={{ left: x, top: y, width: w, height: h, ...style }}>
       <img src={SHOTS[tone % SHOTS.length]} alt="" className="absolute inset-0 size-full object-cover" draggable={false} />
       {children}
     </div>
@@ -116,7 +116,7 @@ function Reference() {
     <>
       <Frame x={52} y={18} w={54} h={96} tone={0} style={{ ...loop("ca-pulse", 0, 2.4), borderRadius: 8 }}>
         <div className="absolute inset-0 grid place-items-center">
-          <span className="grid size-5 place-items-center rounded-full bg-white/85 text-neutral-800">
+          <span className="grid size-5 place-items-center rounded-full bg-white/90 text-neutral-800">
             <HugeiconsIcon icon={PlayIcon} className="size-2.5 fill-current" />
           </span>
         </div>
@@ -175,7 +175,7 @@ function Design() {
       {[0, 1, 2].map((t, i) => (
         <Frame key={t} x={30 + i * 82} y={16} w={56} h={100} tone={t}>
           <div className="absolute inset-x-0 top-2.5 text-center text-[9px] font-semibold leading-none text-white drop-shadow" style={loop("ca-drop2")}>New in</div>
-          <img src={refBag} alt="" className="absolute right-1.5 top-[30px] size-5 rounded-[4px] object-cover shadow ring-1 ring-white/80" style={loop("ca-drop3")} />
+          <img src={refBag} alt="" className="absolute right-1.5 top-[30px] size-5 rounded-[4px] object-cover shadow ring-1 ring-white/90" style={loop("ca-drop3")} />
           <div className="absolute bottom-2.5 left-1/2 flex h-4 -translate-x-1/2 items-center whitespace-nowrap rounded-full bg-white px-2 text-[8px] font-semibold text-neutral-900 shadow" style={loop("ca-drop")}>Shop now</div>
         </Frame>
       ))}
@@ -198,7 +198,7 @@ function Export() {
           <span className="relative w-[42px] text-center">Preview</span>
         </div>
         <div className="relative flex h-5 w-[58px] items-center justify-center overflow-hidden rounded-full bg-neutral-800 text-[9px] font-medium text-white shadow-sm">
-          <span className="absolute inset-y-0 left-0 w-full origin-left bg-white/25" style={l("ca-x-progress")} />
+          <span className="absolute inset-y-0 left-0 w-full origin-left bg-white/30" style={l("ca-x-progress")} />
           <span className="relative" style={l("ca-x-label1")}>Export</span>
           <span className="absolute inset-0 grid place-items-center" style={l("ca-x-label2")}>
             <HugeiconsIcon icon={Tick02Icon} className="size-3" />
@@ -206,7 +206,7 @@ function Export() {
         </div>
       </div>
       {/* the Flick: viewers tap the thumbnails */}
-      <div className="absolute left-[92px] top-[38px] h-[86px] w-[50px] overflow-hidden rounded-md shadow-sm ring-1 ring-black/5">
+      <div className="absolute left-[92px] top-[38px] h-[86px] w-[50px] overflow-hidden rounded-md shadow-sm ring-1 ring-black/10">
         {[0, 1, 2].map((t) => (
           <img key={t} src={SHOTS[t]} alt="" className="absolute inset-0 size-full object-cover" style={l(`ca-x-shot${t + 1}`)} />
         ))}
@@ -218,7 +218,7 @@ function Export() {
           ))}
         </div>
         {/* exported: locked */}
-        <div className="absolute inset-0 grid place-items-center bg-black/35" style={l("ca-x-lock")}>
+        <div className="absolute inset-0 grid place-items-center bg-black/30" style={l("ca-x-lock")}>
           <span className="grid size-6 place-items-center rounded-full bg-white text-neutral-900 shadow">
             <HugeiconsIcon icon={LockIcon} className="size-3" />
           </span>
@@ -257,7 +257,7 @@ function Strip() {
         <span className="size-2.5 rounded-[3px] bg-foreground/20" />
       </div>
       </div>
-      <div className="absolute left-[116px] top-[34px] h-[94px] w-[64px] overflow-hidden rounded-md bg-muted shadow-sm ring-1 ring-black/5">
+      <div className="absolute left-[116px] top-[34px] h-[94px] w-[64px] overflow-hidden rounded-md bg-muted shadow-sm ring-1 ring-black/10">
         {/* picking a thumbnail shows its variation */}
         {[0, 1].map((i) => (
           <img key={i} src={SHOTS[i]} alt="" className="absolute inset-0 size-full object-cover" style={t(`ca-s-v${i}`)} draggable={false} />
@@ -265,7 +265,7 @@ function Strip() {
         {/* the strip on the frame: empty to start */}
         <div className="absolute inset-x-0 bottom-[5px] flex justify-center gap-1">
           {[0, 1, 2].map((i) => (
-            <span key={i} className="relative grid size-4 place-items-center rounded-[3px] border border-dashed border-white/85 bg-black/35 text-white">
+            <span key={i} className="relative grid size-4 place-items-center rounded-[3px] border border-dashed border-white/90 bg-black/30 text-white">
               <HugeiconsIcon icon={ImageAdd01Icon} className="size-2.5" />
               {i < 2 && <img src={SHOTS[i]} alt="" className="absolute -inset-px size-[calc(100%+2px)] max-w-none rounded-[3px] object-cover object-[50%_25%]" style={t(`ca-s-fill${i}`)} draggable={false} />}
               {i < 2 && <span className="absolute -inset-[3px] rounded-[5px] ring-[1.5px] ring-white" style={t(`ca-s-on${i}`)} />}
@@ -292,7 +292,7 @@ function Feed() {
         {/* the feed tab and its value */}
         <div className="absolute left-1/2 top-[30px] -translate-x-1/2">
           <div className="absolute bottom-full left-0 rounded-t-[4px] bg-neutral-800 px-1.5 py-0.5 text-[8px] font-medium leading-none text-white">price</div>
-          <div className="relative rounded-[3px] bg-black/25 px-1.5 py-0.5 text-[11px] font-semibold text-white ring-1 ring-white/80">
+          <div className="relative rounded-[3px] bg-black/30 px-1.5 py-0.5 text-[11px] font-semibold text-white ring-1 ring-white/90">
             {PRICES.map((p, i) => (
               <span key={p} className={i ? "absolute inset-x-1.5" : ""} style={cyc(i)}>
                 {p}
@@ -324,7 +324,7 @@ function Stale() {
   return (
     <>
       {/* the reference changes… */}
-      <div className="absolute left-[40px] top-[16px] h-[96px] w-[54px] overflow-hidden rounded-md shadow-sm ring-1 ring-black/5">
+      <div className="absolute left-[40px] top-[16px] h-[96px] w-[54px] overflow-hidden rounded-md shadow-sm ring-1 ring-black/10">
         <img src={SHOTS[0]} alt="" className="absolute inset-0 size-full object-cover" />
         <img src={SHOTS[1]} alt="" className="absolute inset-0 size-full object-cover" style={loop("ca-swap1")} />
       </div>
@@ -334,7 +334,7 @@ function Stale() {
       <div className="absolute left-[106px] top-[62px] h-px w-[44px] border-t border-dashed border-foreground/30" />
       {/* …so its variation needs regenerating, then matches */}
       <div className="absolute left-[160px] top-[30px] flex flex-col items-center gap-1.5">
-        <div className="relative h-[64px] w-[36px] overflow-hidden rounded-md shadow-sm ring-1 ring-black/5">
+        <div className="relative h-[64px] w-[36px] overflow-hidden rounded-md shadow-sm ring-1 ring-black/10">
           <img src={SHOTS[2]} alt="" className="absolute inset-0 size-full object-cover" style={loop("ca-dim")} />
           <img src={SHOTS[3]} alt="" className="absolute inset-0 size-full object-cover" style={loop("ca-swap2")} />
         </div>

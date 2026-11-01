@@ -192,7 +192,7 @@ function FeedsSection({
                 // rename in place; same rules as a new feed name
                 <span className="absolute inset-y-0 left-1.5 z-10 my-auto flex h-6 w-[6.25rem] items-center gap-0.5 rounded-md bg-background pl-1 text-xs font-medium ring-2 ring-ring/50">
                   <span className="text-muted-foreground">@</span>
-                  <input
+                  <Input
                     autoFocus
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}

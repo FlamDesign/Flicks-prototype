@@ -1,7 +1,8 @@
 import { WELCOME_CREDITS } from "@/components/welcome-gift-page"
+import { Spinner } from "@/components/ui/spinner"
 import { useEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Alert02Icon, ArrowLeft01Icon, Loading03Icon, MailOpen01Icon, Moon02Icon, Sun03Icon, TimeQuarterPassIcon } from "@hugeicons/core-free-icons"
+import { Alert02Icon, ArrowLeft01Icon, MailOpen01Icon, Moon02Icon, Sun03Icon, TimeQuarterPassIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -228,7 +229,7 @@ export function LoginPage({
                   )}
                 </p>
                 <Button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => send()} size="lg" disabled={sending || google} className="mt-2 h-11 gap-2">
-                  {sending && <HugeiconsIcon icon={Loading03Icon} className="size-4 animate-spin" />}
+                  {sending && <Spinner className="size-4" />}
                   {sending ? "Sending link…" : "Email me a sign-in link"}
                 </Button>
                 {sendError && <Problem>{sendError}</Problem>}
@@ -241,7 +242,7 @@ export function LoginPage({
               </div>
 
               <Button variant="outline" size="lg" disabled={sending || google} onClick={withGoogle} data-no-validate className="h-11 gap-2">
-                {google ? <HugeiconsIcon icon={Loading03Icon} className="size-4 animate-spin" /> : <GoogleLogo className="size-4" />}
+                {google ? <Spinner className="size-4" /> : <GoogleLogo className="size-4" />}
                 {google ? "Connecting to Google…" : "Continue with Google"}
               </Button>
               {googleError && <Problem className="mt-2">{googleError}</Problem>}
@@ -265,9 +266,9 @@ export function LoginPage({
                   {wait > 0 ? (
                     <span className="tabular-nums">resend in {wait}s</span>
                   ) : (
-                    <button type="button" onClick={resend} disabled={sending} className="font-medium text-foreground underline-offset-4 hover:underline disabled:opacity-60">
+                    <Button variant="link" onClick={resend} disabled={sending} className="h-auto p-0 font-medium text-foreground">
                       {sending ? "sending…" : "send it again"}
-                    </button>
+                    </Button>
                   )}
                   .
                 </p>
@@ -290,7 +291,7 @@ export function LoginPage({
                 Sign-in links work once, for 15 minutes. We’ll send a fresh one to <span className="font-medium text-foreground">{email.trim()}</span>.
               </p>
               <Button size="lg" className="mt-8 h-11 gap-2" disabled={sending} onClick={resend}>
-                {sending && <HugeiconsIcon icon={Loading03Icon} className="size-4 animate-spin" />}
+                {sending && <Spinner className="size-4" />}
                 {sending ? "Sending link…" : "Email me a new link"}
               </Button>
               {sendError && <Problem className="mt-2">{sendError}</Problem>}
@@ -384,7 +385,7 @@ export function FlickShowcase() {
   }, [auto, active])
 
   return (
-    <div className="relative h-full min-h-[560px] overflow-hidden rounded-[28px] bg-neutral-200 dark:bg-neutral-800">
+    <div className="relative h-full min-h-[560px] overflow-hidden rounded-[28px] bg-muted">
       {/* behind the square: the same scene, blurred, so any panel shape is filled without black bars */}
       {LOOKS.map((l, i) => (
         <img
@@ -427,7 +428,7 @@ export function FlickShowcase() {
       </div>
 
       {/* what it is, small, top left */}
-      <p className="absolute left-4 top-4 max-w-[60%] rounded-full bg-black/35 px-3 py-1.5 text-xs text-white backdrop-blur-md">Tap a thumbnail to try it</p>
+      <p className="absolute left-4 top-4 max-w-[60%] rounded-full bg-black/30 px-3 py-1.5 text-xs text-white backdrop-blur-md">Tap a thumbnail to try it</p>
 
       {/* the looks: the same strip viewers tap in a Flick, floating over the steel on the right */}
       <div role="radiogroup" aria-label="Looks in this Flick" className="absolute right-4 top-1/2 flex -translate-y-1/2 flex-col gap-2 rounded-[22px] bg-white/20 p-1.5 ring-1 ring-white/30 backdrop-blur-xl">

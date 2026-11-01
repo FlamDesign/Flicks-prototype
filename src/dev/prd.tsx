@@ -613,7 +613,7 @@ const SECTIONS: Section[] = [
         <UL
           items={[
             "Title and description (\u201cDrafts you\u2019re working on.\u201d), then search, a last-edited date filter (see Assets) and a size filter.",
-            "Cards: a square (1:1) thumbnail (the starting variation), the name, last edited and size. 4 to a row on wide screens (3 on medium, 2 on phones).",
+            "Cards: a square (1:1) thumbnail (the starting variation), the name, last edited and size. 4 to a row on wide screens (3 on medium). Hovering a card shows its saved versions and how many times it was exported over the thumbnail.",
             "A project saves as you work: anything started from Create, a template, Assets or Remix shows up here, and reopens as it was left.",
             "\u22ef and right-click: Duplicate, Delete (confirms; its Flicks stay).",
             "Empty: \u201cNo projects yet\u201d with Create; no match, with Clear filters.",

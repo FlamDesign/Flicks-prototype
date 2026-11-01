@@ -1,6 +1,5 @@
 import { useState } from "react"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { Loading03Icon } from "@hugeicons/core-free-icons"
+import { Spinner } from "@/components/ui/spinner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -49,7 +48,7 @@ export function ExportControl({
       <Tooltip open={busy ? undefined : false}>
         <TooltipTrigger asChild>
           <Button size="lg" data-tour="export" className="h-9 gap-2 px-5" onClick={() => (setName(title), setOpen(true))}>
-            {busy && <HugeiconsIcon icon={Loading03Icon} className="size-4 animate-spin" />}
+            {busy && <Spinner className="size-4" />}
             Export
           </Button>
         </TooltipTrigger>

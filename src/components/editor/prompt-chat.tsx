@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
+import { Spinner } from "@/components/ui/spinner"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Alert02Icon, Loading03Icon, PanelRightCloseIcon, SparklesIcon } from "@hugeicons/core-free-icons"
+import { Alert02Icon, PanelRightCloseIcon, SparklesIcon } from "@hugeicons/core-free-icons"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Button } from "@/components/ui/button"
 import { RefStill, type Reference } from "@/components/prompt-composer"
@@ -139,7 +140,7 @@ export function PromptChat({
           return (
             <div key={h.id} className="flex flex-col gap-2">
               {/* the prompt, like a sent message */}
-              <div className="ml-6 flex flex-col gap-2 self-end rounded-2xl rounded-br-md bg-background/60 p-3 ring-1 ring-foreground/5">
+              <div className="ml-6 flex flex-col gap-2 self-end rounded-2xl rounded-br-md bg-muted p-3">
                 <TargetChip name={name ?? "Removed variation"} removed={!name} onClick={name ? () => onSelect(h.slideId) : undefined} />
                 {h.prompt && <p className="whitespace-pre-line text-sm leading-relaxed">{h.prompt}</p>}
                 {(h.fromReference || h.refs.length > 0) && (
@@ -158,13 +159,13 @@ export function PromptChat({
                 type="button"
                 disabled={!name}
                 onClick={() => name && onSelect(h.slideId)}
-                className="mr-10 flex items-center gap-3 rounded-2xl p-1.5 pr-3 text-left outline-none hover:bg-background/70 focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none"
+                className="mr-10 flex items-center gap-3 rounded-2xl p-1.5 pr-3 text-left outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none"
               >
                 <span className="relative grid size-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-muted ring-1 ring-foreground/10">
                   {generating ? (
                     <>
                       <span aria-hidden className="generating-gradient absolute inset-[-50%]" />
-                      <HugeiconsIcon icon={Loading03Icon} className="relative size-4 animate-spin text-primary" />
+                      <Spinner className="relative size-4 text-primary" />
                     </>
                   ) : (
                     <img src={posterOf(h.video)} alt="" className={cn("absolute inset-0 size-full object-cover", !current && "opacity-50 grayscale")} />
@@ -186,8 +187,8 @@ export function PromptChat({
     <aside
       aria-label="Prompts"
       style={{ width }}
-      // a shade darker than the editor, with a thicker edge, so it reads as its own space
-      className="relative flex shrink-0 flex-col border-l-2 border-foreground/10 bg-[color-mix(in_oklch,var(--muted),var(--foreground)_4%)]"
+      // the preset's side-panel surface, so it reads as its own space
+      className="relative flex shrink-0 flex-col border-l bg-sidebar text-sidebar-foreground"
     >
       {/* drag to resize; double-click resets */}
       <div
@@ -208,7 +209,7 @@ export function PromptChat({
       >
         <span className="absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 bg-primary opacity-0 transition-opacity group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100 group-active/resize:opacity-100" />
       </div>
-      <div className="flex h-11 shrink-0 items-center gap-2 border-b border-foreground/5 pl-4 pr-2">
+      <div className="flex h-11 shrink-0 items-center gap-2 border-b pl-4 pr-2">
         <h2 className="text-sm font-medium">{title}</h2>
         {badge}
         {onCollapse && (
@@ -233,7 +234,7 @@ export function PromptChat({
       </div>
 
       {/* composer: says which video it's writing for */}
-      <div className="shrink-0 border-t-2 border-foreground/10 p-3">
+      <div className="shrink-0 border-t p-3">
         {head ?? (
           <div className="flex items-center gap-2 px-1 pb-2 text-xs text-muted-foreground">
             <span>Creating for</span>

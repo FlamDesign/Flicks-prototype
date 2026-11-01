@@ -800,7 +800,7 @@ function ListTable({
                           </button>
                         </td>
                       )}
-                      <td className={cn("sticky left-0 z-10 max-w-[200px] bg-card py-2 text-left sm:max-w-none group-hover:bg-[color-mix(in_oklch,var(--muted)_60%,var(--card))]", !expand && "pl-2")}>
+                      <td className={cn("sticky left-0 z-10 max-w-[200px] bg-card py-2 text-left sm:max-w-none group-hover:bg-muted", !expand && "pl-2")}>
                         <span className="flex items-center gap-3">
                           {r.image ? <img src={r.image} alt="" className="size-9 shrink-0 rounded-lg object-cover ring-1 ring-foreground/10" /> : null}
                           <span className="min-w-0 flex-1">

@@ -136,7 +136,7 @@ function TryFlick({ t }: { t: Template }) {
       <div className="flex min-h-[420px] items-center justify-center rounded-2xl bg-muted p-6 ring-1 ring-foreground/5 lg:h-[min(72vh,640px)]">
         <div
           className={cn(
-            "relative overflow-hidden rounded-xl bg-neutral-900 shadow-xl",
+            "relative overflow-hidden rounded-xl bg-black shadow-xl",
             wide ? "w-full" : "h-full",
           )}
           // sized by its shorter side (cqmin), so wide and tall frames look alike

@@ -1,3 +1,4 @@
+import { Spinner as UiSpinner } from "@/components/ui/spinner"
 import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { useDevState } from "@/dev/state"
@@ -325,7 +326,7 @@ export function EditorSkeleton() {
 
 /** A spinner, for buttons. */
 export function Spinner({ className }: { className?: string }) {
-  return <span aria-hidden className={cn("inline-block size-3.5 animate-spin rounded-full border-2 border-current border-r-transparent", className)} />
+  return <UiSpinner aria-hidden className={cn("size-3.5", className)} />
 }
 
 /**

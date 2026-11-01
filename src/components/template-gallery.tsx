@@ -23,7 +23,7 @@ export function TemplateGallery({ onUse, saved = [] }: { onUse: (t: Template) =>
 
 
   return (
-    <Card className="relative py-5 shadow-[0_-8px_40px_-16px_color-mix(in_oklch,var(--shadow-ink)_20%,transparent)]">
+    <Card className="relative py-5 shadow-lg">
       <CardContent>
         <div className="flex min-h-8 flex-wrap items-center justify-between gap-3">
           <h2 className="text-base font-medium">Start with templates</h2>

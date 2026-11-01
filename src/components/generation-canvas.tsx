@@ -1,8 +1,9 @@
 import { elementsIn } from "@/lib/elements"
+import { Spinner } from "@/components/ui/spinner"
 import { useEffect, useRef, useState } from "react"
 import { PendingButton } from "@/components/page-skeletons"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Copy01Icon, Delete02Icon, Loading03Icon, MinusSignIcon, PlusSignIcon, SparklesIcon, BubbleChatIcon } from "@hugeicons/core-free-icons"
+import { Copy01Icon, Delete02Icon, MinusSignIcon, PlusSignIcon, SparklesIcon, BubbleChatIcon } from "@hugeicons/core-free-icons"
 import { useCanvasView, MIN_ZOOM, MAX_ZOOM } from "@/components/editor/use-canvas-view"
 import { videoCost } from "@/components/credits-card"
 import type { Reference } from "@/components/prompt-composer"
@@ -1596,7 +1597,7 @@ export function GenerationCanvas({
             >
               <HugeiconsIcon icon={BubbleChatIcon} className="size-4" />
               Prompts
-              {slides.some((s) => status(s) === "generating") && <HugeiconsIcon icon={Loading03Icon} className="size-3.5 animate-spin text-primary" />}
+              {slides.some((s) => status(s) === "generating") && <Spinner className="size-3.5 text-primary" />}
             </Button>
           )}
           {/* zoom: collapsed to the percentage; opens on hover and while zooming */}
@@ -1634,7 +1635,7 @@ export function GenerationCanvas({
               data-tour="frame"
               aria-live="polite"
               aria-label={done ? "Video ready" : "Generating video"}
-              className="generating-frame relative shadow-[0_24px_60px_-24px_color-mix(in_oklch,var(--shadow-ink)_35%,transparent)] ring-1 ring-foreground/10"
+              className="generating-frame relative shadow-xl ring-1 ring-foreground/10"
               style={{ width: box.w * view.s, height: box.h * view.s, containerType: "size", transform: `translate(${view.x}px, ${view.y}px)`, flexShrink: 0 }}
             >
               {agentMode && !slides[0].startedAt ? (
@@ -1708,7 +1709,7 @@ export function GenerationCanvas({
                   </div>
                   {/* status just above the frame's top-right corner, off the design */}
                   <div className="pointer-events-none absolute bottom-full right-0 z-30 mb-2 flex whitespace-nowrap items-center gap-1.5 rounded-full bg-background/85 py-1 pl-2 pr-2.5 text-xs font-medium shadow-sm ring-1 ring-foreground/10 backdrop-blur-md">
-                    <HugeiconsIcon icon={Loading03Icon} className="size-3.5 animate-spin text-primary" />
+                    <Spinner className="size-3.5 text-primary" />
                     {activeSlide.job ? (activeSlide.job.status === "waiting" ? (refReady ? "Waiting for your review of Variation 1" : "Waiting for Variation 1") : activeSlide.job.status === "queued" ? "Queued · a few minutes" : "Generating · a few minutes") : "Generating"}
                   </div>
                 </>

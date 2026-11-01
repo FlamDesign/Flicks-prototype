@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
+import { Spinner } from "@/components/ui/spinner"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Loading03Icon, LockIcon } from "@hugeicons/core-free-icons"
+import { LockIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -130,7 +131,7 @@ export function AccountPage({
           <Field id="website" label="Website" error={errors.website}>
             <div className={cn("flex h-11 items-center overflow-hidden rounded-2xl bg-input/50 focus-within:ring-3 focus-within:ring-ring/30", errors.website && "ring-3 ring-destructive/20")}>
               <span className="flex h-full items-center pl-3 text-sm text-muted-foreground">https://</span>
-              <input
+              <Input
                 id="ob-website"
                 maxLength={120}
                 inputMode="url"
@@ -175,7 +176,7 @@ export function AccountPage({
           disabled={saving}
           className="gap-1.5"
         >
-          {saving && <HugeiconsIcon icon={Loading03Icon} className="size-3.5 animate-spin" />}
+          {saving && <Spinner className="size-3.5" />}
           {saving ? "Saving…" : "Save changes"}
         </Button>
       </div>

@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react"
+import { Spinner } from "@/components/ui/spinner"
 import { useLoading } from "@/components/page-skeletons"
 import { Skeleton } from "@/components/ui/skeleton"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { ArrowLeft01Icon, Joystick01Icon, Loading03Icon, Megaphone01Icon, Moon02Icon, Share08Icon, Sun03Icon, Tick02Icon, Video01Icon, WebDesign01Icon } from "@hugeicons/core-free-icons"
+import { ArrowLeft01Icon, Joystick01Icon, Megaphone01Icon, Moon02Icon, Share08Icon, Sun03Icon, Tick02Icon, Video01Icon, WebDesign01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -215,7 +216,7 @@ export function OnboardingPage({
                   <Field id="website" label="Company website" error={errors.website}>
                     <div className={cn("flex h-11 items-center overflow-hidden rounded-2xl bg-input/50 focus-within:ring-3 focus-within:ring-ring/30", errors.website && "ring-3 ring-destructive/20")}>
                       <span className="flex h-full items-center pl-3 text-sm text-muted-foreground">https://</span>
-                      <input
+                      <Input
                         id="ob-website"
                         maxLength={120}
                         onBlur={blur("website")}
@@ -300,7 +301,7 @@ export function OnboardingPage({
                   </Button>
                 )}
                 <Button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => next()} size="lg" disabled={saving} className="h-11 flex-1 gap-2">
-                  {saving && <HugeiconsIcon icon={Loading03Icon} className="size-4 animate-spin" />}
+                  {saving && <Spinner className="size-4" />}
                   {saving ? "Setting up your workspace…" : step < STEPS - 1 ? "Continue" : "Finish and open Flicks"}
                 </Button>
               </div>
@@ -312,9 +313,9 @@ export function OnboardingPage({
 
         <footer className="pb-1 text-xs text-muted-foreground">
           Signed in as <span className="font-medium text-foreground">{email}</span>.{" "}
-          <button type="button" onClick={onSignOut} className="underline underline-offset-4 hover:text-foreground">
+          <Button variant="link" onClick={onSignOut} className="h-auto p-0 text-xs text-muted-foreground underline hover:text-foreground">
             Not you?
-          </button>
+          </Button>
         </footer>
       </div>
 
