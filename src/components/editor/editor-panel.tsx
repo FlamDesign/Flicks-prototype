@@ -120,7 +120,7 @@ export function EditorPanel({
               <span className={cn("grid size-9 place-items-center rounded-xl transition-colors group-hover:bg-muted", active && "bg-muted")}>
                 <HugeiconsIcon icon={s.icon} className="size-5" />
               </span>
-              <span className={cn("text-[11px] leading-none", active && "font-medium")}>{s.label}</span>
+              <span className={cn("text-2xs leading-none", active && "font-medium")}>{s.label}</span>
             </button>
             </div>
           )
@@ -239,7 +239,7 @@ function ButtonList({ disabled, onAdd }: { disabled: boolean; onAdd: (v: ButtonV
             {b.variant === "icon" ? (
               <img src={DEFAULT_ICON} alt="" className="size-11 rounded-full" />
             ) : (
-              <span className={cn("inline-flex items-center px-6 py-2.5 text-[15px] font-medium", b.panelClassName ?? b.className)}>
+              <span className={cn("inline-flex items-center px-6 py-2.5 text-md font-medium", b.panelClassName ?? b.className)}>
                 {BUTTON_TEXT}
                 {b.arrow && <span aria-hidden className="ml-2">→</span>}
               </span>

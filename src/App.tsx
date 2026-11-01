@@ -342,7 +342,7 @@ export default function App() {
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-b from-transparent to-background" />
               <div className="relative mx-auto flex max-w-[760px] flex-col items-center gap-7">
                 <div className="space-y-3 text-center">
-                  <h1 className="text-balance text-3xl font-medium tracking-tight md:text-[40px] md:leading-[1.15]">
+                  <h1 className="text-balance text-3xl font-medium tracking-tight md:text-hero">
                     Hey {firstName}, let’s start with a video
                   </h1>
                   <p className="text-sm text-foreground">

@@ -50,7 +50,7 @@ export function StatCard({
       <CardContent className="space-y-2">
         <div className="flex min-h-5 items-center justify-between gap-2">
           <span className="text-sm text-muted-foreground">{label}</span>
-          {tag && <Badge variant="secondary" className="h-5 px-1.5 text-[11px] font-normal">{tag}</Badge>}
+          {tag && <Badge variant="secondary" className="h-5 px-1.5 text-2xs font-normal">{tag}</Badge>}
           {action}
         </div>
         <p className={cn("text-2xl font-semibold tabular-nums tracking-tight", valueClassName)}>{value}</p>

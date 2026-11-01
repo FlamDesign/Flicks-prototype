@@ -66,8 +66,8 @@ export function VariationPanel({
       )}
 
       {stale && (
-        <div role="status" className="flex flex-col gap-2 rounded-xl bg-amber-500/10 p-3 text-sm ring-1 ring-amber-500/25">
-          <p className="flex items-center gap-1.5 font-medium text-amber-700 dark:text-amber-400">
+        <div role="status" className="flex flex-col gap-2 rounded-xl bg-warning/10 p-3 text-sm ring-1 ring-warning/25">
+          <p className="flex items-center gap-1.5 font-medium text-warning">
             <HugeiconsIcon icon={Alert02Icon} className="size-4" />
             Needs regenerating
           </p>
@@ -259,7 +259,7 @@ function FeedsSection({
                         size="xs"
                         variant="ghost"
                         onClick={() => onSelectElement?.(u.id)}
-                        className="h-6 max-w-40 gap-1 rounded-md px-1.5 text-[11px] font-normal text-muted-foreground"
+                        className="h-6 max-w-40 gap-1 rounded-md px-1.5 text-2xs font-normal text-muted-foreground"
                       >
                         <HugeiconsIcon icon={u.kind === "button" ? CursorPointer02Icon : TextIcon} className="size-3 shrink-0" />
                         <span className="truncate">{u.label}</span>
@@ -365,7 +365,7 @@ export function NewFeed({
       {taken ? (
         <p id={`${inputId}-hint`} className="px-1 text-xs text-destructive">@{clean} already exists</p>
       ) : looksLikeValue ? (
-        <p id={`${inputId}-hint`} className="px-1 text-xs text-amber-600 dark:text-amber-500">
+        <p id={`${inputId}-hint`} className="px-1 text-xs text-warning">
           Looks like a {type === "link" ? "link" : "value"}. Name what it is, like @{FEED_SUGGESTIONS[type][type === "link" ? 0 : 1].name}.
         </p>
       ) : name ? (

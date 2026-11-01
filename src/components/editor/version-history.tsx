@@ -93,8 +93,8 @@ function Row<S>({ v, current, onRestore, onRename, onOpenFlick }: { v: Checkpoin
             className="-ml-1.5 h-6 max-w-full justify-start gap-1.5 rounded-md px-1.5 text-sm font-medium hover:bg-background"
           >
             <span className="truncate">{name}</span>
-            {v.exported && <Badge className="h-5 shrink-0 px-1.5 text-[11px] font-normal">Exported</Badge>}
-            {current && <Badge variant="secondary" className="h-5 shrink-0 px-1.5 text-[11px] font-normal">Current</Badge>}
+            {v.exported && <Badge className="h-5 shrink-0 px-1.5 text-2xs font-normal">Exported</Badge>}
+            {current && <Badge variant="secondary" className="h-5 shrink-0 px-1.5 text-2xs font-normal">Current</Badge>}
           </Button>
         )}
         <p className="text-xs text-muted-foreground">{when(v.at)}</p>

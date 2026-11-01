@@ -117,7 +117,7 @@ export function AgentItemView({ item, agent, ctx }: { item: Item; agent: Agent; 
         </Card>
       ) : (
         <p className="flex items-center gap-1.5 px-1 text-xs text-muted-foreground">
-          <HugeiconsIcon icon={CheckmarkBadge01Icon} className="size-3.5 text-emerald-600" />
+          <HugeiconsIcon icon={CheckmarkBadge01Icon} className="size-3.5 text-success" />
           Review passed: all {item.pass} checks
         </p>
       )
@@ -232,7 +232,7 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
                 onClick={() => pick(o)}
                 className={cn(
                   "group/row relative flex items-center gap-3 px-3 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60",
-                  stage ? "py-3 text-[15px]" : "py-2.5 text-sm",
+                  stage ? "py-3 text-md" : "py-2.5 text-sm",
                   // a hairline between rows, hidden around the hovered or picked one
                   "after:absolute after:inset-x-3 after:bottom-0 after:h-px after:bg-foreground/8 hover:rounded-lg hover:bg-muted/70 hover:after:opacity-0",
                   on && "rounded-lg bg-primary/10 text-primary after:opacity-0 hover:bg-primary/12",
@@ -321,7 +321,7 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
                 </span>
               )}
               <span className="px-1 text-xs font-medium leading-tight">{o.label}</span>
-              {o.description && <span className="px-1 pb-0.5 text-[11px] leading-snug text-muted-foreground">{o.description}</span>}
+              {o.description && <span className="px-1 pb-0.5 text-2xs leading-snug text-muted-foreground">{o.description}</span>}
             </button>
           ))}
         </div>
@@ -464,7 +464,7 @@ function BrandCard({ item }: { item: Extract<Item, { kind: "brand" }> }) {
         <span className="truncate text-xs text-muted-foreground">{[b.font, b.tone].filter(Boolean).join(" · ") || "Colours saved"}</span>
         {b.notes && <span className="mt-1 text-xs leading-snug text-muted-foreground">{b.notes}</span>}
         {!!b.sources?.length && (
-          <span className="mt-1 flex flex-wrap gap-x-2 text-[11px] text-muted-foreground">
+          <span className="mt-1 flex flex-wrap gap-x-2 text-2xs text-muted-foreground">
             From{" "}
             {b.sources.slice(0, 4).map((u) => (
               <a key={u} href={u} target="_blank" rel="noreferrer" className="underline-offset-2 hover:text-foreground hover:underline">
@@ -536,7 +536,7 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
     <Card className="gap-0 overflow-hidden p-0 animate-in fade-in-0 slide-in-from-bottom-1 duration-300">
       <div className="flex flex-col gap-3 p-3">
         <div className="flex items-center gap-2">
-          <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">Plan</span>
+          <span className="rounded-md bg-muted px-1.5 py-0.5 text-2xs font-medium text-muted-foreground">Plan</span>
           <input value={plan.title} onChange={(e) => set({ title: e.target.value })} aria-label="Project name" className={cn(quiet, "h-7 min-w-0 flex-1 text-sm font-medium")} />
         </div>
         {/* the Flick as it will look: layout, copy and buttons, with images standing in for the videos */}
@@ -566,7 +566,7 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
               </button>
             ))}
           </div>
-          <p className="text-center text-[11px] text-muted-foreground">{making ? "Making a still for each variation…" : "Stills stand in for the videos until they’re made."}</p>
+          <p className="text-center text-2xs text-muted-foreground">{making ? "Making a still for each variation…" : "Stills stand in for the videos until they’re made."}</p>
         </div>
         {/* the outline: one card per video, edited in place */}
         <ol className="flex flex-col gap-1.5">
@@ -575,7 +575,7 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
               {posters[i] ? (
                 <img src={posters[i]} alt="" className="size-6 shrink-0 rounded-md object-cover ring-1 ring-foreground/10" />
               ) : (
-                <span className="grid size-6 shrink-0 place-items-center rounded-md bg-background text-[11px] font-medium tabular-nums ring-1 ring-foreground/10">{i + 1}</span>
+                <span className="grid size-6 shrink-0 place-items-center rounded-md bg-background text-2xs font-medium tabular-nums ring-1 ring-foreground/10">{i + 1}</span>
               )}
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <div className="flex items-center gap-1">
@@ -585,7 +585,7 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
                 {/* Variation 1 is the reference video: its prompt is the reference prompt; the others say what changes */}
                 {i === 0 ? (
                   <>
-                    <span className="px-1.5 text-[11px] text-muted-foreground">Made first; the others are made from it</span>
+                    <span className="px-1.5 text-2xs text-muted-foreground">Made first; the others are made from it</span>
                     <MentionTextarea options={planMentions} value={plan.reference.prompt} onChange={(prompt) => set({ reference: { ...plan.reference, prompt } })} aria-label={`${v.name} prompt (reference video)`} rows={1} className={cn(quiet, "field-sizing-content min-h-0 resize-none py-0.5 text-sm leading-relaxed text-foreground/80")} />
                   </>
                 ) : (
@@ -943,7 +943,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
     return (
       <section aria-label="Questions" className={cn(shell, className)}>
         <header className="flex items-start gap-3 px-4 pb-2 pt-3.5">
-          <p className="flex-1 text-[15px] font-medium leading-snug">{q.message}</p>
+          <p className="flex-1 text-md font-medium leading-snug">{q.message}</p>
           {pager}
         </header>
         <Assets item={q} agent={agent} bare />
@@ -954,7 +954,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
   return (
     <section aria-label="Questions" className={cn(shell, className)}>
       <header className="flex items-start gap-3 px-4 pb-2 pt-3.5">
-        <p className="flex-1 text-[15px] font-medium leading-snug">
+        <p className="flex-1 text-md font-medium leading-snug">
           {q.question}
           {q.multi && <span className="ml-2 text-xs font-normal text-muted-foreground">Pick any</span>}
         </p>
@@ -986,11 +986,11 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
                       <HugeiconsIcon icon={Loading03Icon} className="size-4 animate-spin text-muted-foreground" />
                     </span>
                   )}
-                  <span className="absolute left-2 top-2 grid size-6 place-items-center rounded-full bg-black/55 text-[11px] font-medium text-white tabular-nums backdrop-blur-sm">{n + 1}</span>
+                  <span className="absolute left-2 top-2 grid size-6 place-items-center rounded-full bg-black/55 text-2xs font-medium text-white tabular-nums backdrop-blur-sm">{n + 1}</span>
                   {!!o.variations?.length && (
                     <span className="absolute inset-x-0 bottom-0 flex flex-wrap gap-1 bg-gradient-to-t from-black/70 to-transparent p-2 pt-6 opacity-0 transition-opacity group-hover/c:opacity-100 group-focus-visible/c:opacity-100">
                       {o.variations.map((v) => (
-                        <span key={v} className="rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-medium text-black">
+                        <span key={v} className="rounded-full bg-white/90 px-2 py-0.5 text-2xs font-medium text-black">
                           {v}
                         </span>
                       ))}
@@ -1087,7 +1087,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
           className="h-8 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
         />
         <Button size="sm" variant="ghost" disabled={agent.busy} onClick={() => commit("Skipped")} className="gap-1.5 text-muted-foreground">
-          Skip <kbd className="rounded bg-muted px-1 text-[10px] font-normal">Esc</kbd>
+          Skip <kbd className="rounded bg-muted px-1 text-2xs font-normal">Esc</kbd>
         </Button>
         {(q.multi || typed.trim()) && (
           <Button size="sm" disabled={agent.busy || !(mine.length || typed.trim())} onClick={cont}>

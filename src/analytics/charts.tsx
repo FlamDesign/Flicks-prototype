@@ -226,14 +226,14 @@ export function LinesChart({ lines, labels, format, axisFormat = format, height 
         {ticks.map((t) => (
           <g key={t}>
             <line x1={pad.l} x2={w - pad.r} y1={y(t)} y2={y(t)} stroke="var(--viz-grid)" />
-            <text x={pad.l - 8} y={y(t)} dy="0.32em" textAnchor="end" className="fill-muted-foreground text-[11px] tabular-nums">
+            <text x={pad.l - 8} y={y(t)} dy="0.32em" textAnchor="end" className="fill-muted-foreground text-2xs tabular-nums">
               {axisFormat(t)}
             </text>
           </g>
         ))}
         {labels.map((l, i) =>
           i % every === 0 || (i === n - 1 && (n - 1) % every >= Math.max(2, every * 0.8)) ? (
-            <text key={i} x={x(i)} y={height - 6} textAnchor={i === 0 ? "start" : i === n - 1 ? "end" : "middle"} className="fill-muted-foreground text-[11px]">
+            <text key={i} x={x(i)} y={height - 6} textAnchor={i === 0 ? "start" : i === n - 1 ? "end" : "middle"} className="fill-muted-foreground text-2xs">
               {l}
             </text>
           ) : null,

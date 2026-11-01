@@ -30,8 +30,8 @@ export function TemplateCard({ t, onUse }: { t: Template; onUse: (t: Template) =
       <div className="space-y-0.5 px-0.5 pt-2.5">
         <p className="truncate text-sm font-medium">{t.title}</p>
         <div className="flex flex-wrap items-center gap-1.5 pt-1">
-          <Badge variant="secondary" className="h-5 px-1.5 text-[11px] font-normal">{t.industry}</Badge>
-          <Badge variant="secondary" className="h-5 px-1.5 text-[11px] font-normal tabular-nums">{t.size}</Badge>
+          <Badge variant="secondary" className="h-5 px-1.5 text-2xs font-normal">{t.industry}</Badge>
+          <Badge variant="secondary" className="h-5 px-1.5 text-2xs font-normal tabular-nums">{t.size}</Badge>
         </div>
       </div>
     </Card>

@@ -276,7 +276,7 @@ export function FontPicker({ font, onPick }: { font: string; onPick: (name: stri
                   aria-selected={f.name === font}
                   data-font={f.name}
                   onClick={() => { ensureFont(f.name); onPick(f.name); setOpen(false) }}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[15px] outline-none hover:bg-accent focus-visible:bg-accent"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-md outline-none hover:bg-accent focus-visible:bg-accent"
                   style={{ fontFamily: f.stack }}
                 >
                   <span className="min-w-0 flex-1 truncate">{f.name}</span>

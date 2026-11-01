@@ -1623,7 +1623,7 @@ export function GenerationCanvas({
               </ZoomTool>
               <span aria-hidden className="mx-1 h-4 w-px bg-border" />
               <ZoomTool label="Actual size (100%)" onClick={() => zoomTo(actualScale)}>
-                <span className="text-[11px] font-medium tabular-nums">1:1</span>
+                <span className="text-2xs font-medium tabular-nums">1:1</span>
               </ZoomTool>
             </Reveal>
           </div>
@@ -1661,7 +1661,7 @@ export function GenerationCanvas({
                       }}
                       className="absolute bottom-full right-0 z-30 mb-2 flex items-center gap-1.5 whitespace-nowrap rounded-full bg-background/85 py-1 pl-2 pr-2.5 text-xs font-medium shadow-sm ring-1 ring-foreground/10 backdrop-blur-md outline-none transition-colors hover:bg-background focus-visible:ring-2 focus-visible:ring-ring/50"
                     >
-                      <span aria-hidden className="size-2 rounded-full bg-red-500" />
+                      <span aria-hidden className="size-2 rounded-full bg-destructive" />
                       Needs regenerating
                     </button>
                   )}
@@ -1685,7 +1685,7 @@ export function GenerationCanvas({
                       setChatHidden(false)
                       focusPromptBox(`Describe ${nameOf(activeSlide)} here`)
                     }}
-                    className="absolute bottom-full right-0 z-30 mb-2 flex items-center gap-1 whitespace-nowrap rounded-full bg-background/85 py-0.5 pl-1.5 pr-2 text-[11px] font-medium shadow-sm ring-1 ring-foreground/10 backdrop-blur-md outline-none transition-colors hover:bg-background focus-visible:ring-2 focus-visible:ring-ring/50"
+                    className="absolute bottom-full right-0 z-30 mb-2 flex items-center gap-1 whitespace-nowrap rounded-full bg-background/85 py-0.5 pl-1.5 pr-2 text-2xs font-medium shadow-sm ring-1 ring-foreground/10 backdrop-blur-md outline-none transition-colors hover:bg-background focus-visible:ring-2 focus-visible:ring-ring/50"
                   >
                     <HugeiconsIcon icon={SparklesIcon} className="size-3 text-primary" />
                     Generate this variation
@@ -1833,7 +1833,7 @@ export function GenerationCanvas({
               badge: (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-medium", live ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "bg-muted text-muted-foreground")}>{live ? "Claude" : "Demo"}</span>
+                    <span className={cn("rounded-full px-1.5 py-0.5 text-2xs font-medium", live ? "bg-success/10 text-success" : "bg-muted text-muted-foreground")}>{live ? "Claude" : "Demo"}</span>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">{live ? "Live: Claude plans and designs, Higgsfield makes images" : "Scripted demo. Connect AI in dev tools for live Claude and Higgsfield."}</TooltipContent>
                 </Tooltip>
@@ -1877,7 +1877,7 @@ export function GenerationCanvas({
                       <div className="flex items-center gap-3">
                         <img src={GENERATED_VIDEOS[mainNow.video!].poster} alt="" className="size-12 shrink-0 rounded-lg object-cover ring-1 ring-foreground/10" />
                         <div className="min-w-0">
-                          <p className="text-[15px] font-medium leading-snug">Happy with Variation 1?</p>
+                          <p className="text-md font-medium leading-snug">Happy with Variation 1?</p>
                           <p className="text-xs text-muted-foreground">The other variations are made from it. Play it on the canvas, then decide.</p>
                         </div>
                       </div>

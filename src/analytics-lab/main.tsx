@@ -72,7 +72,7 @@ function Lab() {
 
       {/* experiment controls: which data state to show */}
       <div role="toolbar" aria-label="Experiment" className="fixed bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-1 rounded-2xl bg-neutral-900/95 p-1 text-neutral-100 shadow-xl ring-1 ring-white/10 backdrop-blur">
-        <span className="px-2 font-mono text-[10px] uppercase tracking-wider text-neutral-400">Experiment</span>
+        <span className="px-2 font-mono text-2xs uppercase tracking-wider text-neutral-400">Experiment</span>
         {MODES.map((m) => (
           <button
             key={m.id}

@@ -276,7 +276,7 @@ function Thumb({
         {stale && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <span aria-label="Needs regenerating" className="size-1.5 shrink-0 rounded-full bg-red-500" />
+              <span aria-label="Needs regenerating" className="size-1.5 shrink-0 rounded-full bg-destructive" />
             </TooltipTrigger>
             <TooltipContent>Needs regenerating: Variation 1 changed</TooltipContent>
           </Tooltip>

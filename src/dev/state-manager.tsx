@@ -14,7 +14,7 @@ import { AiLibrary } from "@/dev/ai-library"
 
 export function DevBadge({ className }: { className?: string }) {
   return (
-    <Badge variant="outline" className={cn("h-4 rounded px-1 font-mono text-[10px] font-semibold tracking-wide", className)}>
+    <Badge variant="outline" className={cn("h-4 rounded px-1 font-mono text-2xs font-semibold tracking-wide", className)}>
       DEV
     </Badge>
   )

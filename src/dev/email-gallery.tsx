@@ -76,7 +76,7 @@ export function EmailGallery({ open, onOpenChange }: { open: boolean; onOpenChan
         <aside className="flex w-64 shrink-0 flex-col border-r bg-muted/40 p-3">
           <DialogHeader className="gap-1 px-2 pb-3 pt-1 text-left">
             <DialogTitle className="flex items-center gap-2 text-base">
-              Emails <Badge variant="secondary" className="font-mono text-[10px]">DEV</Badge>
+              Emails <Badge variant="secondary" className="font-mono text-2xs">DEV</Badge>
             </DialogTitle>
             <DialogDescription className="text-xs">
               {EMAILS.length} emails · {counts.P0} P0 · {counts.P1} P1 · {counts.P2} P2
@@ -97,7 +97,7 @@ export function EmailGallery({ open, onOpenChange }: { open: boolean; onOpenChan
             </Button>
             {areas.map((a) => (
               <div key={a} className="flex flex-col gap-0.5">
-                <p className="px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70">{a}</p>
+                <p className="px-2 pb-1 text-2xs font-medium uppercase tracking-wide text-muted-foreground/70">{a}</p>
                 {list
                   .filter((e) => e.area === a)
                   .map((e) => (
@@ -109,7 +109,7 @@ export function EmailGallery({ open, onOpenChange }: { open: boolean; onOpenChan
                       className={cn("h-auto min-h-8 justify-between gap-2 whitespace-normal rounded-lg px-2 py-1.5 text-left font-normal text-muted-foreground", current === e.id && "bg-background font-medium text-foreground shadow-sm hover:bg-background")}
                     >
                       <span className="min-w-0">{e.name}</span>
-                      <span className={cn("shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold", PRIORITY_CLASS[e.priority])}>{e.priority}</span>
+                      <span className={cn("shrink-0 rounded px-1.5 py-0.5 text-2xs font-semibold", PRIORITY_CLASS[e.priority])}>{e.priority}</span>
                     </Button>
                   ))}
               </div>
@@ -143,7 +143,7 @@ function EmailView({ e }: { e: EmailDef }) {
       <header className="flex flex-col gap-3 border-b px-6 py-4">
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="mr-1 text-base font-medium">{e.name}</h3>
-          <span className={cn("rounded px-1.5 py-0.5 text-[11px] font-semibold", PRIORITY_CLASS[e.priority])}>{e.priority}</span>
+          <span className={cn("rounded px-1.5 py-0.5 text-2xs font-semibold", PRIORITY_CLASS[e.priority])}>{e.priority}</span>
           <Badge variant="secondary" className="font-normal">{e.layout}</Badge>
           <Badge variant="secondary" className="font-normal">{STREAM_LABEL[e.stream]}</Badge>
           <Badge variant="outline" className="font-normal">{e.stream === "transactional" ? "Always sent" : e.stream === "marketing" ? "Opt-in, unsubscribe link" : "Can be turned off"}</Badge>

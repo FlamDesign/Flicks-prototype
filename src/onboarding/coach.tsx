@@ -149,7 +149,7 @@ export function CoachLayer() {
           {coach.art && <CoachArt art={coach.art} />}
           <div className="flex flex-col gap-1 px-1">
             <p className="text-sm font-medium">{coach.title}</p>
-            <p className="text-[13px] leading-relaxed text-muted-foreground">{coach.text}</p>
+            <p className="text-sm leading-relaxed text-muted-foreground">{coach.text}</p>
           </div>
         </div>
         {mode === "tour" ? (

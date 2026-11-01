@@ -256,7 +256,7 @@ function Updated({ at }: { at: number }) {
     <Tooltip>
       <TooltipTrigger asChild>
         <span tabIndex={0} className="flex items-center gap-1.5 rounded-md text-xs text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
-          <span aria-hidden className="size-1.5 rounded-full bg-emerald-500" />
+          <span aria-hidden className="size-1.5 rounded-full bg-success" />
           Updated {ago(at)}
         </span>
       </TooltipTrigger>
@@ -812,9 +812,9 @@ function ListTable({
                           </span>
                           {(r.badge || r.kind) && (
                             <span className="ml-auto flex shrink-0 items-center gap-1.5 pl-2 pr-4">
-                              {r.badge && <Badge className="h-5 px-1.5 text-[11px] font-normal">{r.badge}</Badge>}
+                              {r.badge && <Badge className="h-5 px-1.5 text-2xs font-normal">{r.badge}</Badge>}
                               {r.kind && (
-                                <Badge variant="outline" className="h-5 w-[72px] justify-center px-1.5 text-[11px] font-normal">
+                                <Badge variant="outline" className="h-5 w-[72px] justify-center px-1.5 text-2xs font-normal">
                                   {r.kind}
                                 </Badge>
                               )}
@@ -924,7 +924,7 @@ const sizeFilter = (sizes: string[]): ListFilter => ({ id: "size", label: "Size"
 
 function LeaderChip({ confidence }: { confidence: number }) {
   const sure = confidence >= 0.95
-  return <span className={cn("rounded-full px-1.5 py-0.5 text-[11px]", sure ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>{sure ? "Clear lead" : confidence >= 0.8 ? "Likely" : "Too early"}</span>
+  return <span className={cn("rounded-full px-1.5 py-0.5 text-2xs", sure ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>{sure ? "Clear lead" : confidence >= 0.8 ? "Likely" : "Too early"}</span>
 }
 
 function HeadTip({ label, tip, className }: { label: string; tip: string; className?: string }) {
@@ -992,13 +992,13 @@ function VariationsCard({ data, rows, country, flickIds, current }: { data: Data
                         <img src={v.poster} alt="" className="h-10 w-8 rounded-md object-cover ring-1 ring-foreground/10" />
                         <span className="font-medium">{v.name}</span>
                         {v.i === meta.start && (
-                          <Badge variant="secondary" className="h-5 px-1.5 text-[11px] font-normal">
+                          <Badge variant="secondary" className="h-5 px-1.5 text-2xs font-normal">
                             Starts here
                           </Badge>
                         )}
                         {best && (
                           <span className="flex items-center gap-1">
-                            <Badge className="h-5 px-1.5 text-[11px] font-normal">Best click rate</Badge>
+                            <Badge className="h-5 px-1.5 text-2xs font-normal">Best click rate</Badge>
                             <LeaderChip confidence={lead.confidence} />
                           </span>
                         )}
@@ -1308,7 +1308,7 @@ function CampaignsTab({ data, filter, setCountry, go }: ViewProps) {
               <span className="block truncate">{p.name}</span>
               <span className="block truncate text-xs text-muted-foreground">{p.sub}</span>
             </span>
-            {p.badge && <Badge className="h-5 px-1.5 text-[11px] font-normal">{p.badge}</Badge>}
+            {p.badge && <Badge className="h-5 px-1.5 text-2xs font-normal">{p.badge}</Badge>}
             <span className="w-20 text-right tabular-nums">{fmtCompact(p.t.views)}</span>
             <span className="w-24 text-right tabular-nums text-muted-foreground">{p.t.spend ? fmtUsdShort(p.t.spend) : "—"}</span>
           </button>

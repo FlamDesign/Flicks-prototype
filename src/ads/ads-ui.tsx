@@ -474,10 +474,10 @@ export function ReplaceFlickDialog({
                     >
                       <span className="relative block aspect-square overflow-hidden rounded-lg bg-muted">
                         <img src={f.image} alt="" className="size-full object-cover" />
-                        {live && <span className="absolute left-1.5 top-1.5 rounded-md bg-black/60 px-1.5 py-0.5 text-[11px] font-medium text-white">Live</span>}
+                        {live && <span className="absolute left-1.5 top-1.5 rounded-md bg-black/60 px-1.5 py-0.5 text-2xs font-medium text-white">Live</span>}
                       </span>
                       <span className="truncate px-0.5 text-xs font-medium">{f.name}</span>
-                      <span className="px-0.5 text-[11px] text-muted-foreground">Created {edited(f.editedAt)}</span>
+                      <span className="px-0.5 text-2xs text-muted-foreground">Created {edited(f.editedAt)}</span>
                     </button>
                   </li>
                 )

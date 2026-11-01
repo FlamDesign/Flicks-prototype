@@ -190,7 +190,7 @@ export function OnboardingPage({
           </div>
 
           <div key={step} ref={main} className="animate-in fade-in-0 slide-in-from-right-2 mt-8 duration-300">
-            <h1 className="text-balance text-[28px] font-medium leading-[1.15] tracking-tight">{titles[step][0]}</h1>
+            <h1 className="text-balance text-display font-medium tracking-tight">{titles[step][0]}</h1>
             <p className="mt-2.5 text-pretty text-sm text-muted-foreground">{titles[step][1]}</p>
 
             {/* not a <form>: sandboxed previews block form submits, so Enter and the button call next directly */}

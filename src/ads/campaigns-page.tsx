@@ -381,8 +381,8 @@ function CampaignView({ id, actionsEl, onOpen, onDeleted }: { id: string; action
 /** Serving, waiting for funds, or no Flick yet. */
 function status(p: Placement, funded: boolean) {
   if (!p.flick) return { label: "No Flick", dot: "bg-muted-foreground/40" }
-  if (!funded) return { label: "Waiting for funds", dot: "bg-amber-500" }
-  return { label: "Serving", dot: "bg-emerald-500" }
+  if (!funded) return { label: "Waiting for funds", dot: "bg-warning" }
+  return { label: "Serving", dot: "bg-success" }
 }
 
 function PlacementCard({ p, funded, onOpen }: { p: Placement; funded: boolean; onOpen: () => void }) {
@@ -395,7 +395,7 @@ function PlacementCard({ p, funded, onOpen }: { p: Placement; funded: boolean; o
         ) : (
           <span className="text-xs text-muted-foreground">No Flick yet</span>
         )}
-        <span className="absolute bottom-2 left-2 rounded-md bg-black/55 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-white backdrop-blur-sm">{p.size}</span>
+        <span className="absolute bottom-2 left-2 rounded-md bg-black/55 px-1.5 py-0.5 text-2xs font-medium tabular-nums text-white backdrop-blur-sm">{p.size}</span>
       </span>
       <span className="flex flex-col gap-1 px-1 pb-1">
         <span className="truncate text-sm font-medium">{p.name}</span>

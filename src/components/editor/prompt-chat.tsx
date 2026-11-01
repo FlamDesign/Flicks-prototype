@@ -144,7 +144,7 @@ export function PromptChat({
                 {h.prompt && <p className="whitespace-pre-line text-sm leading-relaxed">{h.prompt}</p>}
                 {(h.fromReference || h.refs.length > 0) && (
                   <div className="flex flex-wrap gap-1.5">
-                    {h.fromReference && <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">From Variation 1</span>}
+                    {h.fromReference && <span className="rounded-md bg-muted px-1.5 py-0.5 text-2xs text-muted-foreground">From Variation 1</span>}
                     {h.refs.map((r, i) => (
                       <button key={i} type="button" onClick={() => setViewing({ h: h.id, i })} aria-label={`View ${r.name}`} className="rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring">
                         <RefStill r={r} className="size-9 rounded-lg object-cover ring-1 ring-foreground/10" />

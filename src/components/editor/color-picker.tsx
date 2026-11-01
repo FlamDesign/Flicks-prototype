@@ -125,7 +125,7 @@ export function ColorPanel({ value, onChange, onPicking }: { value: string; onCh
               setHex(v)
               if (v.length === 6 || v.length === 3) set({ ...parse(`#${v}`), a: c.a })
             }}
-            className="w-full min-w-0 bg-transparent font-mono text-[13px] uppercase outline-none"
+            className="w-full min-w-0 bg-transparent font-mono text-sm uppercase outline-none"
           />
         </label>
         <label className="flex h-8 w-[4.5rem] items-center gap-0.5 rounded-lg px-2 text-sm ring-1 ring-foreground/10 focus-within:ring-2 focus-within:ring-ring/50">

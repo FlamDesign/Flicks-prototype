@@ -102,14 +102,14 @@ export function TrendChart({
         {ticks.map((t) => (
           <g key={t}>
             <line x1={pad.l} x2={w - pad.r} y1={y(t)} y2={y(t)} stroke="var(--viz-grid)" />
-            <text x={pad.l - 8} y={y(t)} dy="0.32em" textAnchor="end" className="fill-muted-foreground text-[11px] tabular-nums">
+            <text x={pad.l - 8} y={y(t)} dy="0.32em" textAnchor="end" className="fill-muted-foreground text-2xs tabular-nums">
               {axisFormat(t)}
             </text>
           </g>
         ))}
         {labels.map((l, i) =>
           i % every === 0 || (i === n - 1 && (n - 1) % every >= every / 2) ? (
-            <text key={i} x={x(i)} y={height - 6} textAnchor={i === 0 ? "start" : i === n - 1 ? "end" : "middle"} className="fill-muted-foreground text-[11px]">
+            <text key={i} x={x(i)} y={height - 6} textAnchor={i === 0 ? "start" : i === n - 1 ? "end" : "middle"} className="fill-muted-foreground text-2xs">
               {l}
             </text>
           ) : null,
@@ -213,7 +213,7 @@ export function Funnel({ steps }: { steps: { label: string; value: number }[] })
             </div>
             <span className="text-right tabular-nums">
               <span className="font-medium">{Math.round(s.value).toLocaleString()}</span>
-              {i > 0 && <span className="block text-[11px] text-muted-foreground">↓ {(100 - (s.value / (prev || 1)) * 100).toFixed(0)}% drop</span>}
+              {i > 0 && <span className="block text-2xs text-muted-foreground">↓ {(100 - (s.value / (prev || 1)) * 100).toFixed(0)}% drop</span>}
             </span>
           </li>
         )
@@ -320,7 +320,7 @@ export function MomentChart({ bins, seconds, total, active, onActive }: { bins: 
           )
         })}
         {Array.from({ length: seconds + 1 }, (_, s) => (
-          <text key={s} x={pad.l + s * 2 * bw} y={h - 6} textAnchor={s === 0 ? "start" : s === seconds ? "end" : "middle"} className="fill-muted-foreground text-[11px] tabular-nums">
+          <text key={s} x={pad.l + s * 2 * bw} y={h - 6} textAnchor={s === 0 ? "start" : s === seconds ? "end" : "middle"} className="fill-muted-foreground text-2xs tabular-nums">
             {s}s
           </text>
         ))}
@@ -378,14 +378,14 @@ export function LinesChart({ lines, labels, format, axisFormat = format, height 
         {ticks.map((t) => (
           <g key={t}>
             <line x1={pad.l} x2={w - pad.r} y1={y(t)} y2={y(t)} stroke="var(--viz-grid)" />
-            <text x={pad.l - 8} y={y(t)} dy="0.32em" textAnchor="end" className="fill-muted-foreground text-[11px] tabular-nums">
+            <text x={pad.l - 8} y={y(t)} dy="0.32em" textAnchor="end" className="fill-muted-foreground text-2xs tabular-nums">
               {axisFormat(t)}
             </text>
           </g>
         ))}
         {labels.map((l, i) =>
           i % every === 0 || (i === n - 1 && (n - 1) % every >= every / 2) ? (
-            <text key={i} x={x(i)} y={height - 6} textAnchor={i === 0 ? "start" : i === n - 1 ? "end" : "middle"} className="fill-muted-foreground text-[11px]">
+            <text key={i} x={x(i)} y={height - 6} textAnchor={i === 0 ? "start" : i === n - 1 ? "end" : "middle"} className="fill-muted-foreground text-2xs">
               {l}
             </text>
           ) : null,

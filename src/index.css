@@ -5,7 +5,7 @@
 
 /*
   shadcn preset b3mPrj55k
-  style: rhea · baseColor: zinc · theme: amber · font: DM Sans
+  style: rhea · baseColor: zinc · theme: amber · font: Rethink Sans (was DM Sans)
   iconLibrary: hugeicons · radius: medium (0.625rem) · menuAccent: subtle · menuColor: default · chart: orange
   Values copied from shadcn registry themes.ts (zinc + amber).
 */
@@ -13,7 +13,17 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  /* type scale (with Tailwind's xs 12, sm 14, base 16, lg 18, xl 20, 2xl 24, 3xl 30): the small
+     print, a 15px reading size for chat, and the two display sizes. Use these, not text-[Npx]. */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+  --text-md: 0.9375rem;
+  --text-md--line-height: 1.4rem;
+  --text-display: 1.75rem;
+  --text-display--line-height: 1.15;
+  --text-hero: 2.5rem;
+  --text-hero--line-height: 1.15;
+  --font-sans: "Rethink Sans Variable", ui-sans-serif, system-ui, sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -29,6 +39,8 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -73,6 +85,9 @@
   --accent: oklch(0.967 0.001 286.375);
   --accent-foreground: oklch(0.21 0.006 285.885);
   --destructive: oklch(0.577 0.245 27.325);
+  /* status colours: done, live, saved (success); needs attention (warning) */
+  --success: oklch(0.527 0.154 150.069);
+  --warning: oklch(0.555 0.163 48.998);
   --border: oklch(0.92 0.004 286.32);
   --input: oklch(0.92 0.004 286.32);
   --ring: oklch(0.705 0.015 286.067);
@@ -108,6 +123,8 @@
   --accent: oklch(0.274 0.006 286.033);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
+  --success: oklch(0.765 0.177 163.223);
+  --warning: oklch(0.828 0.189 84.429);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.552 0.016 285.938);

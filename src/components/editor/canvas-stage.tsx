@@ -704,7 +704,7 @@ function ElementBox({
                 key={which}
                 title={`Feed: ${n}`}
                 onPointerDown={(e) => (e.stopPropagation(), onBadge(which))}
-                className="flex cursor-pointer items-center whitespace-nowrap rounded-t-md bg-neutral-800 px-1.5 py-1 text-[10px] font-medium leading-none text-white shadow-sm hover:bg-neutral-700"
+                className="flex cursor-pointer items-center whitespace-nowrap rounded-t-md bg-neutral-800 px-1.5 py-1 text-2xs font-medium leading-none text-white shadow-sm hover:bg-neutral-700"
               >
                 {n}
               </span>

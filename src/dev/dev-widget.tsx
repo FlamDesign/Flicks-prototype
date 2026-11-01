@@ -142,7 +142,7 @@ export function DevWidget({ onStateManager, onComponents, onPrd, onEmails }: { o
             className={cn("flex h-7 items-center gap-1 rounded-lg pl-1 pr-1.5 text-white/60 hover:bg-white/10 hover:text-white", dragging ? "cursor-grabbing" : "cursor-grab")}
           >
             <HugeiconsIcon icon={DragDropVerticalIcon} className="size-3.5" />
-            <span className="font-mono text-[10px] font-semibold tracking-wide">DEV</span>
+            <span className="font-mono text-2xs font-semibold tracking-wide">DEV</span>
           </span>
         </TooltipTrigger>
         <TooltipContent>Drag to move · double-click to reset</TooltipContent>
@@ -178,7 +178,7 @@ export function DevWidget({ onStateManager, onComponents, onPrd, onEmails }: { o
           >
             <HugeiconsIcon icon={AiChat02Icon} className="size-3.5" />
             {open && <span className="animate-in fade-in-0 duration-150">AI chat {dev.aiChat ? "on" : "off"}</span>}
-            <span aria-hidden className={cn("size-1.5 rounded-full", dev.aiChat ? "bg-emerald-400" : "bg-white/30", !open && "absolute right-1 top-1")} />
+            <span aria-hidden className={cn("size-1.5 rounded-full", dev.aiChat ? "bg-success" : "bg-white/30", !open && "absolute right-1 top-1")} />
           </Button>
         </TooltipTrigger>
         <TooltipContent>{dev.aiChat ? "On: a new prompt opens the chat, which plans the Flick first. Click to turn off." : "Off: Generate makes the video straight away. Click to turn on the chat."}</TooltipContent>

@@ -245,7 +245,7 @@ function BuyCreditsDialog({
                       onClick={() => setI(STOPS.indexOf(v))}
                     >
                       {usd(v)}
-                      {v >= BONUS_FROM_USD && <span className="text-[11px] font-semibold text-primary">+{BONUS_RATE * 100}%</span>}
+                      {v >= BONUS_FROM_USD && <span className="text-2xs font-semibold text-primary">+{BONUS_RATE * 100}%</span>}
                     </Button>
                   )
                 })}
