@@ -1,4 +1,5 @@
-import { forwardRef, useImperativeHandle, useMemo, useRef, useState } from "react"
+import { forwardRef, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Add01Icon, Delete02Icon, PaintBoardIcon, PencilEdit01Icon, PlayIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
@@ -126,6 +127,25 @@ export const MentionTextarea = forwardRef<
     setCreating({ name: cleanName(query?.text ?? "") })
   }
 
+  // where the list floats: under or over the box, whichever has room (preferring menuSide)
+  const [place, setPlace] = useState<React.CSSProperties | null>(null)
+  useLayoutEffect(() => {
+    if (!query) return setPlace(null)
+    const at = () => {
+      const r = area.current?.getBoundingClientRect()
+      if (!r) return
+      const h = 300
+      const below = window.innerHeight - r.bottom
+      const up = menuSide === "top" ? r.top > h || r.top > below : below < h && r.top > below
+      const left = Math.max(8, Math.min(r.left, window.innerWidth - 296))
+      setPlace(up ? { left, bottom: window.innerHeight - r.top + 4 } : { left, top: r.bottom + 4 })
+    }
+    at()
+    window.addEventListener("resize", at)
+    window.addEventListener("scroll", at, true)
+    return () => (window.removeEventListener("resize", at), window.removeEventListener("scroll", at, true))
+  }, [!!query, menuSide])
+
   const groups = list.reduce<Record<string, { o: MentionOption; i: number }[]>>((acc, o, i) => ((acc[o.group] ??= []).push({ o, i }), acc), {})
   const parts = splitMentions(value, options)
 
@@ -170,12 +190,14 @@ export const MentionTextarea = forwardRef<
         aria-autocomplete="list"
         aria-expanded={!!query}
       />
-      {query && (
+      {query && place && createPortal(
+        // floats above the page (no container clips it); opens on the preferred side when it fits
         <div
           role="listbox"
           aria-label="Mention"
           onMouseDown={(e) => e.preventDefault()}
-          className={cn("absolute left-0 z-50 max-h-72 w-72 overflow-y-auto rounded-xl bg-popover p-1 text-popover-foreground shadow-lg ring-1 ring-foreground/10 animate-in fade-in-0 zoom-in-95", menuSide === "top" ? "bottom-full mb-1" : "top-full mt-1")}
+          style={place}
+          className="fixed z-[100] max-h-72 w-72 overflow-y-auto rounded-xl bg-popover p-1 text-popover-foreground shadow-lg ring-1 ring-foreground/10 animate-in fade-in-0 zoom-in-95"
         >
           {!list.length && <p className="px-2 py-1.5 text-xs text-muted-foreground">Nothing called “{query.text}”.</p>}
           {Object.entries(groups).map(([g, items]) => (
@@ -208,7 +230,8 @@ export const MentionTextarea = forwardRef<
               New element{query.text.trim() ? ` “${cleanName(query.text)}”` : ""}
             </div>
           )}
-        </div>
+        </div>,
+        document.body,
       )}
       <ElementDialog
         open={!!creating}
