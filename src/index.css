@@ -192,22 +192,6 @@
 /* streamed text: each new piece fades in */
 .stream-fade > :last-child { animation: fade-up var(--dur) var(--ease-out) both; }
 
-/* Generating: a field of dots with a soft band sweeping across, looping (the progress itself is a
-   separate ring or bar, so the motion never pretends to be the progress) */
-.gen-dots {
-  background-image: radial-gradient(circle, color-mix(in oklch, var(--foreground) 16%, transparent) 1.1px, transparent 1.6px);
-  background-size: 14px 14px; background-position: center;
-}
-.gen-dots-sweep {
-  background-image: radial-gradient(circle, color-mix(in oklch, var(--primary) 75%, transparent) 1.4px, transparent 1.9px);
-  -webkit-mask-image: linear-gradient(115deg, transparent 42%, #000 50%, transparent 58%);
-  mask-image: linear-gradient(115deg, transparent 42%, #000 50%, transparent 58%);
-  -webkit-mask-size: 300% 100%; mask-size: 300% 100%;
-  animation: gen-sweep 2.8s var(--ease-in-out) infinite;
-}
-@keyframes gen-sweep { from { -webkit-mask-position: 100% 0; mask-position: 100% 0 } to { -webkit-mask-position: 0% 0; mask-position: 0% 0 } }
-@media (prefers-reduced-motion: reduce) { .gen-dots-sweep { animation: none; opacity: .35; } }
-
 /* A finished video's thumbnail: one soft glow in the primary colour */
 .ready-glow { animation: ready-glow 1.6s var(--ease-out) both; }
 @keyframes ready-glow { 0% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 55%, transparent) } 100% { box-shadow: 0 0 0 10px transparent } }
@@ -261,23 +245,13 @@ textarea::-webkit-scrollbar-thumb { background: color-mix(in oklch, var(--foregr
   [style*="gift-float"], [style*="help-press"] { animation: none !important; }
 }
 
-/* Page changes (view transitions). Only the page area moves; the sidebar and everything else stay
-   still. The old page stays fully visible underneath while the new one fades in over it, so the
-   screen never dips or flashes. */
+/* Switching theme cross-fades the whole screen (view transition); page changes are instant */
 ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
-::view-transition-group(page) { animation: none; }
-::view-transition-image-pair(page) { isolation: auto; }
-::view-transition-old(page) { animation: none; mix-blend-mode: normal; }
-::view-transition-new(page) { animation: vt-in var(--dur) var(--ease-out) both; mix-blend-mode: normal; }
-/* leaving the page area for the editor (or back): the side that's alone fades */
-::view-transition-old(page):only-child { animation: vt-out var(--dur-fast) var(--ease-out) both; }
-/* switching theme: the whole screen cross-fades */
 html.vt-theme::view-transition-old(root) { animation: vt-out var(--dur-slow) var(--ease-out) both; }
 html.vt-theme::view-transition-new(root) { animation: vt-in var(--dur-slow) var(--ease-out) both; }
-html.vt-theme::view-transition-old(page), html.vt-theme::view-transition-new(page) { animation: none; }
 @keyframes vt-in { from { opacity: 0 } }
 @keyframes vt-out { to { opacity: 0 } }
-@media (prefers-reduced-motion: reduce) { ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; } }
 
 /* Create in dark mode: the welcome gift's background (soft warm glows on the plain page, no mesh or grain) */
 .dark .hero-mesh { background-image: none; background-color: var(--background); }

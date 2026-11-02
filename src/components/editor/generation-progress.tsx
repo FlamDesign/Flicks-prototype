@@ -1,18 +1,9 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
-
-/** what the model is doing, by how far along it is (named so the wait reads as work) */
-const STAGES = [
-  { until: 0.15, label: "Reading your prompt and references" },
-  { until: 0.45, label: "Composing the shot" },
-  { until: 0.85, label: "Rendering the video" },
-  { until: Infinity, label: "Finishing up" },
-]
-const left = (ms: number) => (ms > 90_000 ? `About ${Math.round(ms / 60_000)} min left` : ms > 20_000 ? "Under a minute left" : "A few seconds left")
 
 /**
  * How far a generation is: 0 to 0.95 from the time it started against how long it usually takes
- * (it holds at 95% until the video actually arrives), the stage, and the time left. Ticks each second.
+ * (it holds at 95% until the video actually arrives). Ticks each second.
  */
 export function useGenerationProgress(startedAt: number | undefined, expectedMs: number, queued?: boolean) {
   const [now, setNow] = useState(() => Date.now())
@@ -20,74 +11,169 @@ export function useGenerationProgress(startedAt: number | undefined, expectedMs:
     const id = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(id)
   }, [])
-  const f = queued || !startedAt ? 0 : Math.min(0.95, Math.max(0, (now - startedAt) / expectedMs))
-  return {
-    f,
-    stage: queued ? "Queued, starting soon" : STAGES.find((s) => f < s.until)!.label,
-    left: queued || !startedAt ? "" : left(expectedMs - (now - startedAt)),
-  }
-}
-
-/** The looping part: a field of dots with a soft band sweeping across it. Fills its parent. */
-export function GeneratingDots({ className }: { className?: string }) {
-  return (
-    <div aria-hidden className={cn("absolute inset-0 bg-muted", className)}>
-      <div className="gen-dots absolute inset-0" />
-      <div className="gen-dots gen-dots-sweep absolute inset-0" />
-    </div>
-  )
+  return queued || !startedAt ? 0 : Math.min(0.95, Math.max(0, (now - startedAt) / expectedMs))
 }
 
 /**
- * On the canvas while a video generates: the looping dot field, and in the middle a progress ring
- * with the percentage (deterministic), the stage, and the variation with the time left.
+ * The theme's colours as the canvas sees them (re-read when light/dark changes). The stage is dark
+ * in both themes, like the video it stands in for, so the design on top (often white text) reads.
  */
-export function GeneratingLoader({ name, startedAt, expectedMs, queued, waiting }: { name: string; startedAt?: number; expectedMs: number; queued?: boolean; waiting?: string }) {
-  const { f, stage, left: timeLeft } = useGenerationProgress(startedAt, expectedMs, queued)
-  const pct = Math.round(f * 100)
-  const r = 44
-  const c = 2 * Math.PI * r
-  return (
-    <div role="status" aria-label={waiting ?? `${name}: ${stage}, ${pct}%`} className="absolute inset-0 overflow-hidden">
-      <GeneratingDots />
-      <div className="absolute inset-0 grid place-items-center">
-        <div className="flex flex-col items-center gap-[3cqmin] text-center">
-          <div className="relative size-[clamp(56px,24cqmin,128px)]">
-            <svg viewBox="0 0 100 100" className="size-full -rotate-90">
-              <circle cx="50" cy="50" r={r} className="fill-background/70 stroke-foreground/10" strokeWidth="5" />
-              <circle
-                cx="50"
-                cy="50"
-                r={r}
-                fill="none"
-                className="stroke-primary transition-[stroke-dashoffset] duration-1000 ease-linear"
-                strokeWidth="5"
-                strokeLinecap="round"
-                strokeDasharray={c}
-                strokeDashoffset={c * (1 - f)}
-              />
-            </svg>
-            <span className="absolute inset-0 grid place-items-center text-[clamp(0.75rem,6cqmin,1.5rem)] font-semibold tabular-nums">{waiting ? "" : `${pct}%`}</span>
-          </div>
-          <div className="flex max-w-[80cqw] flex-col items-center gap-1 rounded-xl bg-background/70 px-3 py-1.5 backdrop-blur-sm">
-            <span key={waiting ?? stage} className="text-shimmer text-sm font-medium animate-in fade-in-0">{waiting ?? `${stage}…`}</span>
-            {!waiting && <span className="text-xs text-muted-foreground">{[name, timeLeft].filter(Boolean).join(" · ")}</span>}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
+function readColours(el: HTMLElement) {
+  const css = getComputedStyle(el)
+  const v = (name: string) => css.getPropertyValue(name).trim()
+  const dark = document.documentElement.classList.contains("dark")
+  return { primary: v("--primary"), fg: dark ? v("--foreground") : v("--background"), bg: dark ? v("--muted") : v("--foreground") }
 }
 
-/** A small version for thumbnails: the dot field with a thin progress bar along the bottom. */
-export function GeneratingThumb({ startedAt, expectedMs }: { startedAt?: number; expectedMs: number }) {
-  const { f } = useGenerationProgress(startedAt, expectedMs)
-  return (
-    <>
-      <GeneratingDots />
-      <span aria-hidden className="absolute inset-x-1.5 bottom-1.5 h-1 overflow-hidden rounded-full bg-foreground/10">
-        <span className="block h-full rounded-full bg-primary transition-[width] duration-1000 ease-linear" style={{ width: `${f * 100}%` }} />
-      </span>
-    </>
-  )
+/**
+ * The generating background: on a dark stage, a field of dots rippling on a loop, and a glowing
+ * tide that rises from the bottom as the video renders. Dots under the tide light up in the
+ * primary colour; along its bright, wavy edge they swell and sparkle. The height of the tide is the progress, shown without a
+ * number. It fills its parent and sits behind whatever is on top (the design stays editable).
+ * `progress` 0 to 1; `waiting` keeps the tide low and calm.
+ */
+export function GeneratingField({ progress, waiting, spacing = 16, className }: { progress: number; waiting?: boolean; spacing?: number; className?: string }) {
+  const ref = useRef<HTMLCanvasElement>(null)
+  // the drawing reads this each frame, so the tide eases to new values instead of jumping
+  const target = useRef(progress)
+  target.current = waiting ? 0.03 : Math.max(0.03, progress)
+  useEffect(() => {
+    const canvas = ref.current!
+    const ctx = canvas.getContext("2d")!
+    const still = matchMedia("(prefers-reduced-motion: reduce)").matches
+    let w = 0
+    let h = 0
+    let dpr = 1
+    let level = target.current
+    let colours = readColours(canvas)
+    const size = () => {
+      const r = canvas.getBoundingClientRect()
+      dpr = Math.min(2, devicePixelRatio || 1)
+      w = r.width
+      h = r.height
+      canvas.width = Math.max(1, Math.round(w * dpr))
+      canvas.height = Math.max(1, Math.round(h * dpr))
+    }
+    size()
+    const ro = new ResizeObserver(size)
+    ro.observe(canvas)
+    // light/dark switches change the class on <html>
+    const mo = new MutationObserver(() => (colours = readColours(canvas)))
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] })
+
+    const t0 = performance.now()
+    const paint = (now: number) => {
+      const t = still ? 0 : (now - t0) / 1000
+      level = still ? target.current : level + (target.current - level) * 0.05
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      ctx.globalAlpha = 1
+      ctx.fillStyle = colours.bg
+      ctx.fillRect(0, 0, w, h)
+
+      // the tide's edge: two slow waves across the width
+      const base = h * (1 - level)
+      const edge = (x: number) => base + Math.sin(x / (w * 0.16 + 1) + t * 1.3) * h * 0.022 + Math.sin(x / (w * 0.06 + 1) - t * 2) * h * 0.01
+      // a soft glow filling the tide
+      const glow = ctx.createLinearGradient(0, base - h * 0.05, 0, h)
+      glow.addColorStop(0, "transparent")
+      glow.addColorStop(0.15, colours.primary)
+      glow.addColorStop(1, colours.primary)
+      ctx.globalAlpha = 0.22
+      ctx.beginPath()
+      ctx.moveTo(0, h)
+      for (let x = 0; x <= w + 8; x += 8) ctx.lineTo(x, edge(x))
+      ctx.lineTo(w, h)
+      ctx.closePath()
+      ctx.fillStyle = glow
+      ctx.fill()
+      // the tide's bright edge, softly glowing
+      ctx.globalAlpha = 0.85
+      ctx.lineWidth = 1.5
+      ctx.strokeStyle = colours.primary
+      ctx.shadowColor = colours.primary
+      ctx.shadowBlur = 10
+      ctx.beginPath()
+      for (let x = 0; x <= w + 8; x += 8) (x ? ctx.lineTo(x, edge(x)) : ctx.moveTo(x, edge(x)))
+      ctx.stroke()
+      ctx.shadowBlur = 0
+
+      const s = spacing
+      const cols = Math.ceil(w / s) + 1
+      const rows = Math.ceil(h / s) + 1
+      const ox = (w - (cols - 1) * s) / 2
+      const oy = (h - (rows - 1) * s) / 2
+      for (let j = 0; j < rows; j++) {
+        const y = oy + j * s
+        for (let i = 0; i < cols; i++) {
+          const x = ox + i * s
+          // a ripple travelling diagonally across the whole field
+          const ripple = 0.5 + 0.5 * Math.sin((x + y) / (s * 5) - t * 2.2)
+          const d = y - edge(x) // > 0: under the tide
+          if (d > 0) {
+            // lit dots add up, so they glow where they gather
+            ctx.globalCompositeOperation = "lighter"
+            const near = Math.max(0, 1 - d / (h * 0.14 + 1))
+            const sparkle = near * (0.5 + 0.5 * Math.sin(i * 12.9898 + j * 78.233 + t * 6))
+            ctx.globalAlpha = 0.3 + 0.3 * ripple + 0.4 * sparkle
+            ctx.fillStyle = colours.primary
+            ctx.beginPath()
+            ctx.arc(x, y, s * (0.08 + 0.04 * ripple + 0.1 * sparkle), 0, Math.PI * 2)
+            ctx.fill()
+            ctx.globalCompositeOperation = "source-over"
+          } else {
+            ctx.globalAlpha = 0.1 + 0.14 * ripple
+            ctx.fillStyle = colours.fg
+            ctx.beginPath()
+            ctx.arc(x, y, s * (0.055 + 0.035 * ripple), 0, Math.PI * 2)
+            ctx.fill()
+          }
+        }
+      }
+    }
+
+    let raf = 0
+    let last = 0
+    let tick: ReturnType<typeof setInterval> | undefined
+    if (still) {
+      // less motion: a still picture, redrawn each second as the tide rises
+      paint(performance.now())
+      tick = setInterval(() => paint(performance.now()), 1000)
+    } else {
+      const loop = (now: number) => {
+        raf = requestAnimationFrame(loop)
+        // about 30 frames a second is plenty, and kinder to the laptop
+        if (now - last < 33) return
+        last = now
+        paint(now)
+      }
+      raf = requestAnimationFrame(loop)
+    }
+    return () => {
+      cancelAnimationFrame(raf)
+      clearInterval(tick)
+      ro.disconnect()
+      mo.disconnect()
+    }
+  }, [spacing])
+  return <canvas ref={ref} aria-hidden className={cn("absolute inset-0 size-full", className)} />
+}
+
+/** The field, with the progress worked out from when the video started. */
+export function GeneratingBackground({
+  startedAt,
+  expectedMs,
+  queued,
+  waiting,
+  spacing,
+  className,
+}: {
+  startedAt?: number
+  expectedMs: number
+  queued?: boolean
+  waiting?: boolean
+  spacing?: number
+  className?: string
+}) {
+  const f = useGenerationProgress(startedAt, expectedMs, queued)
+  return <GeneratingField progress={f} waiting={waiting || queued} spacing={spacing} className={className} />
 }

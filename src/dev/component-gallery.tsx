@@ -3,7 +3,7 @@ import { SmallScreenNotice } from "@/components/small-screen"
 import { MediaTile, TileBadge } from "@/components/media-tile"
 import { Spinner } from "@/components/ui/spinner"
 import { EmptyState } from "@/components/empty-state"
-import { GeneratingLoader } from "@/components/editor/generation-progress"
+import { GeneratingField } from "@/components/editor/generation-progress"
 import { Kbd, KbdGroup } from "@/components/ui/kbd"
 import { MOD } from "@/lib/keys"
 import { MentionTextarea, useMentionOptions } from "@/components/mention-input"
@@ -580,14 +580,10 @@ const ENTRIES: Entry[] = [
     ),
   },
   {
-    name: "Generating loader",
+    name: "Generating background",
     kind: "Editor",
-    about: "Fills the canvas while a video generates: a looping dot field with a sweep, and a progress ring with the percentage, the stage and the time left. Thumbnails get the dot field with a thin progress bar.",
-    render: () => (
-      <div className="relative aspect-square w-64 overflow-hidden rounded-xl ring-1 ring-foreground/10" style={{ containerType: "size" }}>
-        <GeneratingLoader name="Variation 2" startedAt={Date.now() - 40_000} expectedMs={150_000} />
-      </div>
-    ),
+    about: "Behind the design while a video generates: rippling dots and a glowing tide that rises as it renders (the progress, without a number). The design stays editable on top. Thumbnails use the same field.",
+    render: () => <GalleryField />,
   },
   {
     name: "Keyboard keys",
@@ -1058,6 +1054,25 @@ function MentionDemo() {
   return (
     <div className="w-full max-w-md rounded-2xl border bg-background p-2">
       <MentionTextarea value={v} onChange={setV} options={options} menuSide="bottom" rows={2} className="field-sizing-content min-h-[52px] resize-none rounded-none border-0 bg-transparent px-1.5 text-sm shadow-none focus-visible:ring-0 dark:bg-transparent" />
+    </div>
+  )
+}
+
+/** the generating background at a few levels, rising on its own */
+function GalleryField() {
+  const [p, setP] = useState(0.1)
+  useEffect(() => {
+    const id = setInterval(() => setP((x) => (x >= 0.95 ? 0.05 : x + 0.05)), 600)
+    return () => clearInterval(id)
+  }, [])
+  return (
+    <div className="flex items-end gap-3">
+      <div className="relative aspect-video w-72 overflow-hidden rounded-xl ring-1 ring-foreground/10">
+        <GeneratingField progress={p} />
+      </div>
+      <div className="relative h-20 w-14 overflow-hidden rounded-lg ring-1 ring-foreground/10">
+        <GeneratingField progress={p} spacing={7} />
+      </div>
     </div>
   )
 }

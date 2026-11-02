@@ -57,9 +57,7 @@ export default function App() {
   const [prompt, setPrompt] = useState("")
   const [size, setSize] = useState("1080×1080")
   const [pulse] = useState(0)
-  const [page, setPageNow] = useState("Create")
-  // page changes run as view transitions (a soft cross-fade; a project card grows into the editor)
-  const setPage = useCallback((p: string) => withTransition(() => setPageNow(p)), [])
+  const [page, setPage] = useState("Create")
   // a placement to open on Campaigns (from the editor's Serve in ads)
   const [adsTarget, setAdsTarget] = useState<string | null>(null)
   // an embed to open on Embeds (from a Flick page)
@@ -338,9 +336,7 @@ export default function App() {
           </header>
           <div
             ref={scroller}
-            // the page area cross-fades between pages; the editor covers it, so it sits out then
-            // (otherwise Create, which renders under the editor, would fade in on top of it)
-            className={cn("relative min-h-0 flex-1 overflow-y-auto rounded-2xl border bg-background", page !== "Generate" && "[view-transition-name:page]")}
+            className="relative min-h-0 flex-1 overflow-y-auto rounded-2xl border bg-background"
           >
             {page === "Template" && previewTemplate ? (
               <Suspense fallback={<DetailSkeleton />}><TemplatePreview t={previewTemplate} onBack={() => setPage("Create")} onUse={useTemplate} onOpen={openTemplate} /></Suspense>

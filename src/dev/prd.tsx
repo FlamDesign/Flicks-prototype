@@ -397,9 +397,10 @@ const SECTIONS: Section[] = [
         <H>Generating</H>
         <UL
           items={[
-            "While a video generates, the frame shows a field of dots with a soft band sweeping across it, on a loop, and in the middle a progress ring with the percentage, what\u2019s happening (Reading your prompt and references, Composing the shot, Rendering the video, Finishing up, or \u201cQueued, starting soon\u201d) and the variation with the time left (\u201cAbout 2 min left\u201d, \u201cUnder a minute left\u201d, \u201cA few seconds left\u201d). The ring holds at 95% until the video arrives. The design\u2019s elements stay in place, faded, underneath. Nothing sits over or above the frame.",
-            "While it waits for Variation 1, the ring is empty and says \u201cWaiting for Variation 1\u201d (or \u201cWaiting for your review of Variation 1\u201d).",
-            "Thumbnails in the strip and in the prompts panel show the same dot field; strip thumbnails add a thin progress bar.",
+            "While a video generates, the frame becomes a dark stage (in light and dark mode, like the video it stands in for) with a field of dots rippling on a loop, and a glowing tide that rises from the bottom as the video renders: the higher the tide, the further along, with no number shown. Dots under the tide light up in the primary colour and sparkle along its bright, wavy edge. It holds just short of the top until the video arrives.",
+            "The design stays fully editable on top while it generates: select, move, restyle and add elements as usual. Nothing sits over or above the frame.",
+            "While it waits for Variation 1 (or in a queue), the tide stays low and calm.",
+            "Thumbnails in the strip and in the prompts panel show the same stage in small.",
             "The prompt box clears when a video is sent and stays open: a new prompt can be sent right away. Sending one for a video that\u2019s still generating starts it again with the new prompt (the earlier one shows as Replaced). Variations wait only until Variation 1 exists.",
             "When a video arrives, its thumbnail in the strip fades in with one soft glow.",
             "A variation that hasn't been generated shows the reference video faded underneath its elements.",
@@ -834,7 +835,7 @@ const SECTIONS: Section[] = [
         <H>Feel</H>
         <UL
           items={[
-            "Only the page area cross-fades between pages (the sidebar stays still); a page fades in over its loading skeleton; new chat messages and prompts ease in. All motion stops when the device asks for less motion.",
+            "Pages switch instantly (after their short loading skeleton); new chat messages and prompts ease in. All motion stops when the device asks for less motion.",
             "The AI shows \u201cThinking\u2026\u201d (or what it\u2019s doing) with a soft shimmer; its replies fade in a paragraph at a time.",
             "Buttons press in slightly when clicked. Pictures fade in as they load, over a muted frame.",
             "Light, Dark or System is remembered in the browser, applied before the page shows, and switching it cross-fades the page.",

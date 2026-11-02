@@ -1,5 +1,5 @@
 import { Arrive } from "@/components/arrive"
-import { GeneratingDots } from "@/components/editor/generation-progress"
+import { GeneratingField } from "@/components/editor/generation-progress"
 import { useEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Alert02Icon, PanelRightCloseIcon, SparklesIcon } from "@hugeicons/core-free-icons"
@@ -166,7 +166,7 @@ export function PromptChat({
               >
                 <span className="relative grid size-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-muted ring-1 ring-foreground/10">
                   {generating ? (
-                    <GeneratingDots />
+                    <GeneratingField progress={0.5} spacing={6} />
                   ) : (
                     <img loading="lazy" decoding="async" src={posterOf(h.video)} alt="" className={cn("absolute inset-0 size-full object-cover", !current && "opacity-50 grayscale")} />
                   )}

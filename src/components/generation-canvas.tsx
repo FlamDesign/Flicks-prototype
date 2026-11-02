@@ -35,7 +35,7 @@ import { useAgent, type EditorApi, type ElementSpec } from "@/ai/agent"
 import { boxOf, buildDesign, color as colorOf, contrast, describeDesign, elementFor, fontName, freeY, headlineLimit, feedOfField, FIELD_FEED, FIELDS, patchDesign, restack, type Brand, type Field } from "@/ai/design"
 import { generateVideo, isLive, posterOf, shareable, useAiConfig, videoAspectOf, type VideoInput } from "@/ai/client"
 import { isTyping } from "@/lib/keys"
-import { GeneratingDots, GeneratingLoader } from "@/components/editor/generation-progress"
+import { GeneratingBackground, GeneratingField } from "@/components/editor/generation-progress"
 import { AgentComposer, isDocked, QuestionDeck, threadGroups, type AgentCtx } from "@/components/editor/agent-chat"
 import { PlanningView, PlanSteps } from "@/components/editor/planning-view"
 import { addMadeVideo, isMadeVideo, BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, defaultFill, defaultInk, GENERATED_VIDEOS, SAMPLE_UPLOADS, inSet, clampStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload } from "@/components/editor/elements"
@@ -250,7 +250,8 @@ export function GenerationCanvas({
   const done = activeStatus === "done"
   const mainDone = status(slides[0]) === "done"
   // elements can be edited on a ready video, and on a variation that hasn't been generated yet
-  const canEdit = done || (activeStatus === "empty" && mainDone)
+  // the design can be edited while its video generates, too (the generating background sits under it)
+  const canEdit = done || activeStatus === "generating" || (activeStatus === "empty" && mainDone)
 
   // one set of elements shared by every video: a change on any video applies to all
   const [elements, setShared] = useState<CanvasElement[]>(() =>
@@ -1649,7 +1650,7 @@ export function GenerationCanvas({
               {agentMode && !slides[0].startedAt ? (
                 // the chat is still planning: nothing generated yet
                 <div className="absolute inset-0 grid place-items-center overflow-hidden bg-muted">
-                  <GeneratingDots className="opacity-60" />
+                  <GeneratingField progress={0} waiting className="opacity-60" />
                   <div className="relative flex max-w-[75%] flex-col items-center gap-2 text-center">
                     <HugeiconsIcon icon={SparklesIcon} className="size-5 text-primary" />
                     <p className="text-sm font-medium">Planning your Flick</p>
@@ -1707,18 +1708,20 @@ export function GenerationCanvas({
                 </>
               ) : (
                 <>
-                  {/* the elements stay in place, faded and read-only, under the loader */}
-                  <div className="pointer-events-none absolute inset-0 opacity-30">
-                    <CanvasStage elements={elements} setElements={setElements} selected={[]} setSelected={() => {}} editing={null} setEditing={() => {}} ratio={ratio} thumbs={thumbs} activeThumb={activeThumb} feedOf={feedOf} readOnly />
+                  {/* the generating background: rippling dots and a tide that rises as the video renders
+                      (the progress, without a number); the design stays editable on top */}
+                  <div className="absolute inset-0 overflow-hidden">
+                    <GeneratingBackground
+                      startedAt={activeSlide.startedAt}
+                      expectedMs={activeSlide.job ? 150_000 : ms}
+                      queued={activeSlide.job?.status === "queued"}
+                      waiting={activeSlide.job?.status === "waiting"}
+                    />
                   </div>
-                  {/* a looping dot field with a progress ring: percentage, stage, time left */}
-                  <GeneratingLoader
-                    name={nameOf(activeSlide) ?? "Video"}
-                    startedAt={activeSlide.startedAt}
-                    expectedMs={activeSlide.job ? 150_000 : ms}
-                    queued={activeSlide.job?.status === "queued"}
-                    waiting={activeSlide.job?.status === "waiting" ? (refReady ? "Waiting for your review of Variation 1" : "Waiting for Variation 1") : undefined}
-                  />
+                  <span className="sr-only">
+                    {activeSlide.job?.status === "waiting" ? (refReady ? "Waiting for your review of Variation 1" : "Waiting for Variation 1") : `Generating ${nameOf(activeSlide)}`}
+                  </span>
+                  <CanvasStage elements={elements} setElements={setElements} selected={selected} setSelected={setSelected} editing={editing} setEditing={setEditing} ratio={ratio} thumbs={thumbs} activeThumb={activeThumb} feedOf={feedOf} onEditFeed={editFeed} onFeedValue={setFeedValue} feeds={feeds} onAddFeed={addFeed} onSeedFeed={seedFeed} onRenameFeed={renameFeed} onDeleteFeed={deleteFeed} hovered={hovered} selectedThumb={thumbSel} onSelectThumb={pickThumb} readOnly={previewing} onThumb={(n) => included[n] && select(included[n].id)} />
                 </>
               )}
             </div>
