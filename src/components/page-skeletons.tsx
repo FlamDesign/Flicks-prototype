@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils"
  */
 export function PageLoader({ ms, skeleton, children }: { ms: number; skeleton: React.ReactNode; children: React.ReactNode }) {
   const [loading, setLoading] = useState(ms > 0)
+  // only fade in when a skeleton was showing; a page with no wait appears as is
+  const waited = useRef(ms > 0)
   useEffect(() => {
     if (ms <= 0) return
     const t = setTimeout(() => setLoading(false), ms)
@@ -20,6 +22,8 @@ export function PageLoader({ ms, skeleton, children }: { ms: number; skeleton: R
     <div aria-busy="true" aria-label="Loading" className="h-full">
       {skeleton}
     </div>
+  ) : waited.current ? (
+    <div className="h-full animate-in fade-in-0 duration-200">{children}</div>
   ) : (
     <>{children}</>
   )

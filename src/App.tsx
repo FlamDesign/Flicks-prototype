@@ -175,7 +175,7 @@ export default function App() {
     } catch {
       /* storage blocked: kept for this visit */
     }
-    withTransition(() => setAppearanceNow(a))
+    withTransition(() => setAppearanceNow(a), "theme")
   }, [])
   const scroller = useRef<HTMLDivElement>(null)
 
@@ -336,7 +336,7 @@ export default function App() {
               <FlicksLogo className="h-6 text-foreground" />
             </button>
           </header>
-          <div ref={scroller} className="relative min-h-0 flex-1 overflow-y-auto rounded-2xl border bg-background">
+          <div ref={scroller} className="relative min-h-0 flex-1 overflow-y-auto rounded-2xl border bg-background [view-transition-name:page]">
             {page === "Template" && previewTemplate ? (
               <Suspense fallback={<DetailSkeleton />}><TemplatePreview t={previewTemplate} onBack={() => setPage("Create")} onUse={useTemplate} onOpen={openTemplate} /></Suspense>
             ) : page === "Campaigns" ? (

@@ -272,13 +272,24 @@ textarea::-webkit-scrollbar-thumb { background: color-mix(in oklch, var(--foregr
   [style*="gift-float"], [style*="help-press"] { animation: none !important; }
 }
 
-/* Page changes (view transitions): a short cross-fade with a slight settle; a card grows into the editor */
-::view-transition-old(root) { animation: vt-out var(--dur) var(--ease-out) both; }
-::view-transition-new(root) { animation: vt-in var(--dur-slow) var(--ease-out) both; }
+/* Page changes (view transitions). Only the page area moves; the sidebar and everything else stay
+   still. The old page stays fully visible underneath while the new one fades in over it, so the
+   screen never dips or flashes. A project card grows into the editor. */
+::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+::view-transition-group(page) { animation: none; }
+::view-transition-image-pair(page) { isolation: auto; }
+::view-transition-old(page) { animation: none; mix-blend-mode: normal; }
+::view-transition-new(page) { animation: vt-in var(--dur) var(--ease-out) both; mix-blend-mode: normal; }
+/* leaving the page area for the editor (or back): the side that's alone fades */
+::view-transition-old(page):only-child { animation: vt-out var(--dur-fast) var(--ease-out) both; }
+/* switching theme: the whole screen cross-fades */
+html.vt-theme::view-transition-old(root) { animation: vt-out var(--dur-slow) var(--ease-out) both; }
+html.vt-theme::view-transition-new(root) { animation: vt-in var(--dur-slow) var(--ease-out) both; }
+html.vt-theme::view-transition-old(page), html.vt-theme::view-transition-new(page) { animation: none; }
 ::view-transition-group(flick-hero) { animation-duration: var(--dur-slow); animation-timing-function: var(--ease-out); }
 ::view-transition-image-pair(flick-hero) { border-radius: var(--radius-xl); overflow: hidden; }
+@keyframes vt-in { from { opacity: 0 } }
 @keyframes vt-out { to { opacity: 0 } }
-@keyframes vt-in { from { opacity: 0; transform: translateY(4px) scale(.995) } }
 @media (prefers-reduced-motion: reduce) { ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; } }
 
 /* Create in dark mode: the welcome gift's background (soft warm glows on the plain page, no mesh or grain) */
