@@ -1,4 +1,7 @@
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type Modifier } from "@dnd-kit/core"
+import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 import { Spinner } from "@/components/ui/spinner"
 import { Input } from "@/components/ui/input"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -47,6 +50,25 @@ const THUMB_H = 72
 /** thumbnails never get narrower than this; tall sizes grow taller instead */
 const THUMB_MIN_W = 48
 
+/** drags stay on the strip's line */
+const restrictToX: Modifier = ({ transform }) => ({ ...transform, y: 0 })
+
+/** a variation that can be dragged to a new place in the strip (the order viewers get) */
+function Sortable({ id, children }: { id: string; children: React.ReactNode }) {
+  // pointer only: the thumbnail inside stays the button (Enter and Space still select it)
+  const { listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+      className={cn("touch-none", isDragging && "relative z-10 cursor-grabbing opacity-90 [&_[data-slot=button]]:shadow-lg")}
+    >
+      {children}
+    </div>
+  )
+}
+
 /** Bottom strip, slides-style: the main video, a separator, then its variations. */
 export function SlidesStrip({
   slides,
@@ -57,6 +79,7 @@ export function SlidesStrip({
   onSelect,
   onAdd,
   onRemove,
+  onReorder,
   start,
   onPreview,
   stale,
@@ -87,8 +110,12 @@ export function SlidesStrip({
   onSelect: (id: string) => void
   onAdd: () => void
   onRemove: (id: string) => void
+  /** the variations (not Variation 1) in a new order, after a drag */
+  onReorder?: (ids: string[]) => void
 }) {
   const [main, ...variations] = slides
+  // a small move before a drag starts, so clicks and double-clicks still work
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
   const w = Math.max(THUMB_MIN_W, Math.round(THUMB_H * ratio))
   const h = Math.max(THUMB_H, Math.round(w / ratio))
   const canRemove = variations.length > MIN_VARIATIONS
@@ -110,7 +137,19 @@ export function SlidesStrip({
 
         <Separator orientation="vertical" className="mx-1 self-start" style={{ height: h }} />
 
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          modifiers={[restrictToX]}
+          onDragEnd={({ active: a, over }) => {
+            if (!over || a.id === over.id || !onReorder) return
+            const ids = variations.map((v) => v.id)
+            onReorder(arrayMove(ids, ids.indexOf(String(a.id)), ids.indexOf(String(over.id))))
+          }}
+        >
+        <SortableContext items={variations.map((v) => v.id)} strategy={horizontalListSortingStrategy} disabled={!onReorder || locked}>
         {variations.map((s, i) => (
+          <Sortable key={s.id} id={s.id}>
           <Thumb
             key={s.id}
             slide={s}
@@ -128,7 +167,10 @@ export function SlidesStrip({
             onRename={onRename && ((name) => onRename(s.id, name))}
             defaultLabel={slideName({ ...s, name: undefined }, i + 1)}
           />
+          </Sortable>
         ))}
+        </SortableContext>
+        </DndContext>
 
         {variations.length < MAX_VARIATIONS && (
           <div className="flex shrink-0 flex-col items-center gap-1.5">
@@ -240,6 +282,18 @@ function Thumb({
   const corner = { top: 4, right: `calc(50% - ${width / 2}px + 4px)` }
   // closed by clicking elsewhere: don't hand focus back to the … button (it would stay showing)
   const closedByPointer = useRef(false)
+  // the moment a video arrives: its thumbnail fades in with a soft glow, once
+  const prev = useRef(status)
+  const [arrived, setArrived] = useState(false)
+  useEffect(() => {
+    if (prev.current === "generating" && status === "done") {
+      setArrived(true)
+      const id = setTimeout(() => setArrived(false), 1600)
+      prev.current = status
+      return () => clearTimeout(id)
+    }
+    prev.current = status
+  }, [status])
   return (
     <div
       data-tour={slide.id === "main" ? "reference" : undefined}
@@ -261,10 +315,11 @@ function Thumb({
           "relative overflow-hidden rounded-lg p-0 ring-1 ring-foreground/10 hover:ring-foreground/25",
           status === "empty" && "border border-dashed border-foreground/20 bg-muted/50 ring-0",
           active && "ring-2 ring-primary ring-offset-2 ring-offset-background hover:ring-primary",
+          arrived && "ready-glow",
         )}
         style={{ width, height }}
       >
-        {status === "done" && video && <img src={video.poster} alt="" className={cn("absolute inset-0 size-full object-cover", stale && "opacity-40")} />}
+        {status === "done" && video && <img loading="lazy" decoding="async" src={video.poster} alt="" className={cn("absolute inset-0 size-full object-cover", stale && "opacity-40", arrived && "animate-in fade-in-0 zoom-in-105 duration-700")} />}
         {status === "generating" && (
           <>
             <span aria-hidden className="generating-gradient absolute inset-[-50%]" />

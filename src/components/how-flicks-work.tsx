@@ -100,7 +100,7 @@ function Clip({ look, video, round = 12, className, style }: { look: (typeof LOO
           <source src={look.mp4} type="video/mp4" />
         </video>
       ) : (
-        <img src={look.poster} alt="" className="size-full object-cover" style={{ animation: "hfw-kb 6s ease-out both" }} />
+        <img loading="lazy" decoding="async" src={look.poster} alt="" className="size-full object-cover" style={{ animation: "hfw-kb 6s ease-out both" }} />
       )}
     </div>
   )
@@ -132,7 +132,7 @@ function Rail({ x, y, size, gap, active, style }: { x: number; y: number; size: 
     <div style={style}>
       {LOOKS.map((l, i) => (
         <div key={l.name} style={{ ...box(x, y + i * (size + gap), size, size) }}>
-          <img src={l.thumb} alt="" className="size-full object-cover shadow-md" style={{ borderRadius: u(size * 0.28) }} />
+          <img loading="lazy" decoding="async" src={l.thumb} alt="" className="size-full object-cover shadow-md" style={{ borderRadius: u(size * 0.28) }} />
           <div className="absolute inset-[-2px] border-2 border-white shadow" style={{ borderRadius: u(size * 0.32), ...active(i) }} />
         </div>
       ))}
@@ -167,7 +167,7 @@ function SceneVideo() {
             +
           </div>
           {[refModel, refBag, refShades].map((src, i) => (
-            <img key={src} src={src} alt="" className="rounded-[1.6cqw] object-cover shadow-sm ring-1 ring-foreground/10" style={{ width: u(34), height: u(34), ...a("hfw-pop", 0.4, refsAt + i * 0.18, SPRING) }} />
+            <img loading="lazy" decoding="async" key={src} src={src} alt="" className="rounded-[1.6cqw] object-cover shadow-sm ring-1 ring-foreground/10" style={{ width: u(34), height: u(34), ...a("hfw-pop", 0.4, refsAt + i * 0.18, SPRING) }} />
           ))}
         </div>
         <div
@@ -305,13 +305,13 @@ function MiniFlick({ x, y, size, rail = true }: { x: number; y: number; size: nu
   return (
     <div className="overflow-hidden" style={{ ...box(x, y, size, size), borderRadius: u(Math.max(4, size * 0.08)) }}>
       {LOOKS.map((l, i) => (
-        <img key={l.name} src={l.poster} alt="" className="absolute inset-0 size-full object-cover" style={{ animation: `hfw-c${i + 1} 4.8s linear 0.6s infinite both` }} />
+        <img loading="lazy" decoding="async" key={l.name} src={l.poster} alt="" className="absolute inset-0 size-full object-cover" style={{ animation: `hfw-c${i + 1} 4.8s linear 0.6s infinite both` }} />
       ))}
       {rail && (
         <div className="absolute flex flex-col" style={{ right: u(size * 0.05), top: "50%", transform: "translateY(-50%)", gap: u(size * 0.03) }}>
           {LOOKS.map((l, i) => (
             <div key={l.name} className="relative" style={{ width: u(size * 0.14), height: u(size * 0.14) }}>
-              <img src={l.thumb} alt="" className="size-full object-cover" style={{ borderRadius: u(size * 0.035) }} />
+              <img loading="lazy" decoding="async" src={l.thumb} alt="" className="size-full object-cover" style={{ borderRadius: u(size * 0.035) }} />
               <div className="absolute inset-[-1px] border border-white" style={{ borderRadius: u(size * 0.04), animation: `hfw-c${i + 1} 4.8s linear 0.6s infinite both` }} />
             </div>
           ))}

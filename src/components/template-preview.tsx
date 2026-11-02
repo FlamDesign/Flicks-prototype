@@ -51,7 +51,7 @@ export function TemplatePreview({
         {/* Details */}
         <aside className="flex flex-col gap-5">
           <div className="flex flex-col gap-2">
-            <h1 className="text-2xl font-medium tracking-tight">{t.title}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1>
             <p className="text-sm text-muted-foreground">{t.description}</p>
             <div className="flex flex-wrap gap-1.5 pt-1">
               <Badge variant="secondary" className="font-normal">
@@ -228,7 +228,7 @@ function TryFlick({ t }: { t: Template }) {
                           : "opacity-70 hover:opacity-100",
                       )}
                     >
-                      <img
+                      <img loading="lazy" decoding="async"
                         src={GENERATED_VIDEOS[v].poster}
                         alt=""
                         className="size-full object-cover"

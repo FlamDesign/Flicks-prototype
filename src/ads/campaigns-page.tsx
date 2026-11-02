@@ -137,7 +137,7 @@ function Crumbs({ view, setView }: { view: View; setView: (v: View) => void }) {
   const campaignId = view.kind === "campaign" ? view.id : placement?.campaignId
   const campaign = campaigns.find((c) => c.id === campaignId)
   const step = "rounded-md px-1 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-  if (view.kind === "list") return <h1 className="text-2xl font-medium tracking-tight">Campaigns</h1>
+  if (view.kind === "list") return <h1 className="text-2xl font-semibold tracking-tight">Campaigns</h1>
   return (
     <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 text-xl font-medium tracking-tight sm:text-2xl">
       {/* on small screens the trail starts at the campaign */}
@@ -391,7 +391,7 @@ function PlacementCard({ p, funded, onOpen }: { p: Placement; funded: boolean; o
     <button type="button" onClick={onOpen} className="group flex w-full flex-col gap-2.5 rounded-2xl p-2 text-left outline-none ring-1 ring-foreground/10 transition hover:ring-foreground/25 focus-visible:ring-2 focus-visible:ring-ring">
       <span className="relative grid aspect-square place-items-center overflow-hidden rounded-xl bg-muted">
         {p.flick ? (
-          <img src={p.flick.image} alt="" className="absolute inset-0 size-full object-cover" />
+          <img loading="lazy" decoding="async" src={p.flick.image} alt="" className="absolute inset-0 size-full object-cover" />
         ) : (
           <span className="text-xs text-muted-foreground">No Flick yet</span>
         )}
@@ -679,7 +679,7 @@ function PlacementView({
                   return (
                     <li key={`${h.flick.id}-${h.from}`} className="flex items-center gap-3 px-4 py-3 text-sm">
                       <button type="button" onClick={() => setPreview(h)} aria-label={`Preview ${h.flick.name}`} className="relative size-11 shrink-0 overflow-hidden rounded-lg outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring">
-                        <img src={h.flick.image} alt="" className="size-full object-cover" />
+                        <img loading="lazy" decoding="async" src={h.flick.image} alt="" className="size-full object-cover" />
                       </button>
                       <div className="min-w-0 flex-1">
                         <p className="truncate">{h.flick.name}</p>

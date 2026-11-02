@@ -1,3 +1,4 @@
+import { EmptyState } from "@/components/empty-state"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { MediaTile, TileBadge } from "@/components/media-tile"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -271,7 +272,14 @@ export function MediaPicker({
                   <Tile key={x.id} x={x} on={picked.includes(x.id)} onToggle={() => toggle(x.id)} onOpen={() => setViewing(shown.indexOf(x))} onDuration={(d) => setDurations((m) => (m[x.id] ? m : { ...m, [x.id]: d }))} />
                 ))}
           </div>
-          {!loading && !shown.length && <p className="py-10 text-center text-sm text-muted-foreground">{all.length ? "Nothing matches. Try other filters." : "Nothing here yet. Upload photos or videos to start."}</p>}
+          {!loading && !shown.length && (
+            <EmptyState
+              art={all.length ? "search" : "media"}
+              title={all.length ? "Nothing matches" : "Nothing here yet"}
+              text={all.length ? "Try another search or filter." : "Upload photos or videos to start."}
+              className="mt-3 border-0 py-8"
+            />
+          )}
           {over && <div className="pointer-events-none absolute inset-2 grid place-items-center rounded-xl border-2 border-dashed border-primary text-sm font-medium text-primary">Drop to upload</div>}
         </div>
 
@@ -482,7 +490,7 @@ export function VideoTrimmer({ item, onDone }: { item: MediaItem | null; onDone:
               </Button>
             </div>
             <div ref={track} className="relative h-14 touch-none select-none overflow-hidden rounded-lg bg-muted" onPointerMove={onMove} onPointerUp={() => (drag.current = null)}>
-              <div className="flex h-full">{strip.length ? strip.map((s, i) => <img key={i} src={s} alt="" className="h-full min-w-0 flex-1 object-cover" />) : <Skeleton className="size-full rounded-none" />}</div>
+              <div className="flex h-full">{strip.length ? strip.map((s, i) => <img loading="lazy" decoding="async" key={i} src={s} alt="" className="h-full min-w-0 flex-1 object-cover" />) : <Skeleton className="size-full rounded-none" />}</div>
               <div className="absolute inset-y-0 left-0 bg-background/70" style={{ width: `${pct(range[0])}%` }} />
               <div className="absolute inset-y-0 right-0 bg-background/70" style={{ width: `${100 - pct(range[1])}%` }} />
               <div className="absolute inset-y-0 cursor-grab rounded-md border-2 border-primary transition-[left,width] duration-75 active:cursor-grabbing" style={{ left: `${pct(range[0])}%`, width: `${pct(len)}%` }} onPointerDown={grab("move")} aria-hidden>

@@ -1,55 +1,65 @@
 import { Skeleton } from "@/components/ui/skeleton"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { HelpCircleIcon } from "@hugeicons/core-free-icons"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { FlicksLogo } from "@/components/brand"
-import { HowFlicksWork } from "@/components/how-flicks-work"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+import { withTransition } from "@/lib/transition"
+import { isTyping } from "@/lib/keys"
 import { AppSidebar, type Appearance } from "@/components/app-sidebar"
 import { PromptComposer } from "@/components/prompt-composer"
 import { TemplateGallery } from "@/components/template-gallery"
-import { TemplatePreview } from "@/components/template-preview"
 import { Toaster } from "@/components/ui-extra/toaster"
 import { FlicksPage, ProjectsPage } from "@/components/flicks-page"
-import { FlickPage } from "@/components/flick-page"
 import { CoachLayer } from "@/onboarding/coach"
 import { CAPTURE, onboarding } from "@/onboarding/onboarding"
 import { SAMPLE_ID, sampleProject } from "@/onboarding/sample"
 import { useDevAction } from "@/dev/dev-actions"
 import { AccountSkeleton, DetailSkeleton, EditorSkeleton, FlickPageSkeleton, GridSkeleton, PageLoader, TableSkeleton } from "@/components/page-skeletons"
-import { CreditsPage } from "@/components/credits-page"
 import { WelcomeGiftDialog, WELCOME_CREDITS } from "@/components/welcome-gift-page"
-import { GenerationCanvas, type Generation } from "@/components/generation-canvas"
+import { type Generation } from "@/components/generation-canvas"
 import { REFERENCE_VIDEOS } from "@/components/editor/elements"
 import { type Template } from "@/data"
 import { getLibrary, library, useLibrary, type FlickRecord, type Project } from "@/library"
 import { DEV_TOOLS, useDevState } from "@/dev/state"
-import { StateManager } from "@/dev/state-manager"
-import { ComponentGallery } from "@/dev/component-gallery"
-import { PrdDialog } from "@/dev/prd"
 import { DevWidget } from "@/dev/dev-widget"
-import { AnalyticsRoute } from "@/analytics/analytics-route"
 import { OpenAnalytics } from "@/analytics/open-analytics"
 import type { AnalyticsTarget } from "@/analytics/analytics-page"
-import { EmailGallery } from "@/dev/email-gallery"
-import { LoginPage } from "@/components/login-page"
-import { OnboardingPage, type Profile } from "@/components/onboarding-page"
-import { AccountPage } from "@/components/account-page"
-import { AssetsPage } from "@/components/assets-page"
-import { CampaignsPage } from "@/ads/campaigns-page"
-import { EmbedsPage } from "@/embeds/embeds-page"
+import type { Profile } from "@/components/onboarding-page"
 import { embeds } from "@/embeds/embeds"
-import { AdBalancePage } from "@/ads/ad-balance-page"
 import { ads } from "@/ads/ads"
 import { useToast } from "@/components/ui-extra/toaster"
+
+// pages and dev tools load when first opened, so the first screen arrives sooner
+const HowFlicksWork = lazy(() => import("@/components/how-flicks-work").then((m) => ({ default: m.HowFlicksWork })))
+const OnboardingPage = lazy(() => import("@/components/onboarding-page").then((m) => ({ default: m.OnboardingPage })))
+const CommandPalette = lazy(() => import("@/components/command-palette").then((m) => ({ default: m.CommandPalette })))
+const StateManager = lazy(() => import("@/dev/state-manager").then((m) => ({ default: m.StateManager })))
+const ComponentGallery = lazy(() => import("@/dev/component-gallery").then((m) => ({ default: m.ComponentGallery })))
+const PrdDialog = lazy(() => import("@/dev/prd").then((m) => ({ default: m.PrdDialog })))
+const EmailGallery = lazy(() => import("@/dev/email-gallery").then((m) => ({ default: m.EmailGallery })))
+const AnalyticsRoute = lazy(() => import("@/analytics/analytics-route").then((m) => ({ default: m.AnalyticsRoute })))
+const CampaignsPage = lazy(() => import("@/ads/campaigns-page").then((m) => ({ default: m.CampaignsPage })))
+const EmbedsPage = lazy(() => import("@/embeds/embeds-page").then((m) => ({ default: m.EmbedsPage })))
+const AdBalancePage = lazy(() => import("@/ads/ad-balance-page").then((m) => ({ default: m.AdBalancePage })))
+const AccountPage = lazy(() => import("@/components/account-page").then((m) => ({ default: m.AccountPage })))
+const CreditsPage = lazy(() => import("@/components/credits-page").then((m) => ({ default: m.CreditsPage })))
+const FlickPage = lazy(() => import("@/components/flick-page").then((m) => ({ default: m.FlickPage })))
+const AssetsPage = lazy(() => import("@/components/assets-page").then((m) => ({ default: m.AssetsPage })))
+const LoginPage = lazy(() => import("@/components/login-page").then((m) => ({ default: m.LoginPage })))
+const GenerationCanvas = lazy(() => import("@/components/generation-canvas").then((m) => ({ default: m.GenerationCanvas })))
+const TemplatePreview = lazy(() => import("@/components/template-preview").then((m) => ({ default: m.TemplatePreview })))
 
 export default function App() {
   const [template, setTemplate] = useState<Template | null>(null)
   const [prompt, setPrompt] = useState("")
   const [size, setSize] = useState("1080×1080")
   const [pulse] = useState(0)
-  const [page, setPage] = useState("Create")
+  const [page, setPageNow] = useState("Create")
+  // page changes run as view transitions (a soft cross-fade; a project card grows into the editor)
+  const setPage = useCallback((p: string) => withTransition(() => setPageNow(p)), [])
   // a placement to open on Campaigns (from the editor's Serve in ads)
   const [adsTarget, setAdsTarget] = useState<string | null>(null)
   // an embed to open on Embeds (from a Flick page)
@@ -134,12 +144,44 @@ export default function App() {
     scroller.current?.scrollTo({ top: 0 })
   }, [])
   const [buyOpen, setBuyOpen] = useState(false)
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  const pageRef = useRef(page)
+  pageRef.current = page
+  const newVideoRef = useRef(() => {})
+  // the palette's code loads on first ⌘K
+  useEffect(() => {
+    const on = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey) && !paletteOpen) (e.preventDefault(), setPaletteOpen(true))
+      // N: a new video, from anywhere outside a text box (not in the editor, which has its own keys)
+      else if (e.key.toLowerCase() === "n" && !e.metaKey && !e.ctrlKey && !e.altKey && !isTyping(e) && pageRef.current !== "Generate") (e.preventDefault(), newVideoRef.current())
+    }
+    window.addEventListener("keydown", on)
+    return () => window.removeEventListener("keydown", on)
+  }, [paletteOpen])
   const [autoOpen, setAutoOpen] = useState(false)
-  const [appearance, setAppearance] = useState<Appearance>("light")
+  // remembered in this browser; Light until the user picks
+  const [appearance, setAppearanceNow] = useState<Appearance>(() => {
+    try {
+      const a = localStorage.getItem("flam.appearance")
+      return a === "dark" || a === "auto" || a === "light" ? a : "light"
+    } catch {
+      return "light"
+    }
+  })
+  // switching theme cross-fades the whole page
+  const setAppearance = useCallback((a: Appearance) => {
+    try {
+      localStorage.setItem("flam.appearance", a)
+    } catch {
+      /* storage blocked: kept for this visit */
+    }
+    withTransition(() => setAppearanceNow(a))
+  }, [])
   const scroller = useRef<HTMLDivElement>(null)
 
-  // Auto follows the OS setting and updates live when it changes
-  useEffect(() => {
+  // Auto follows the OS setting and updates live when it changes (applied before paint, so the
+  // theme cross-fade captures the new colours)
+  useLayoutEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)")
     const apply = () =>
       document.documentElement.classList.toggle("dark", appearance === "dark" || (appearance === "auto" && mq.matches))
@@ -192,12 +234,28 @@ export default function App() {
   const devLayer = DEV_TOOLS && !CAPTURE && (
     <>
       <DevWidget onStateManager={() => setStateManagerOpen(true)} onComponents={() => setComponentsOpen(true)} onPrd={() => setPrdOpen(true)} onEmails={() => setEmailsOpen(true)} />
-      <StateManager open={stateManagerOpen} onOpenChange={setStateManagerOpen} />
-      {componentsOpen && <ComponentGallery open={componentsOpen} onOpenChange={setComponentsOpen} />}
-      <PrdDialog open={prdOpen} onOpenChange={setPrdOpen} />
-      {emailsOpen && <EmailGallery open={emailsOpen} onOpenChange={setEmailsOpen} />}
+      <Suspense fallback={null}>
+        {stateManagerOpen && <StateManager open={stateManagerOpen} onOpenChange={setStateManagerOpen} />}
+        {componentsOpen && <ComponentGallery open={componentsOpen} onOpenChange={setComponentsOpen} />}
+        {prdOpen && <PrdDialog open={prdOpen} onOpenChange={setPrdOpen} />}
+        {emailsOpen && <EmailGallery open={emailsOpen} onOpenChange={setEmailsOpen} />}
+      </Suspense>
     </>
   )
+  const navigate = (p: string) => {
+    setAdsTarget(null)
+    setEmbedTarget(null)
+    setAnalyticsTarget(null)
+    setNavCount((n) => n + 1)
+    setPage(p)
+    scroller.current?.scrollTo({ top: 0 })
+  }
+  // a new video: Create, with the prompt box focused
+  const newVideo = () => {
+    navigate("Create")
+    setTimeout(() => document.querySelector<HTMLTextAreaElement>("[data-create-prompt] textarea")?.focus(), 350)
+  }
+  newVideoRef.current = newVideo
   const dark = appearance === "dark" || (appearance === "auto" && isDark())
   const toggleTheme = () => setAppearance(isDark() ? "light" : "dark")
 
@@ -205,6 +263,7 @@ export default function App() {
     return (
       <TooltipProvider delayDuration={300}>
         <Toaster>
+          <Suspense fallback={null}>
           <OnboardingPage
             email={account.email}
             initialName={account.name}
@@ -219,6 +278,7 @@ export default function App() {
             dark={dark}
             onToggleTheme={toggleTheme}
           />
+          </Suspense>
           {devLayer}
         </Toaster>
       </TooltipProvider>
@@ -228,6 +288,7 @@ export default function App() {
     return (
       <TooltipProvider delayDuration={300}>
         <Toaster>
+          <Suspense fallback={null}>
           <LoginPage
             onSignIn={(email, n) => {
               // the same person signing back in keeps their details
@@ -240,6 +301,7 @@ export default function App() {
             dark={dark}
             onToggleTheme={toggleTheme}
           />
+          </Suspense>
           {devLayer}
         </Toaster>
       </TooltipProvider>
@@ -249,9 +311,24 @@ export default function App() {
     <OpenAnalytics.Provider value={openAnalytics}>
     <TooltipProvider delayDuration={300}>
       <Toaster>
+      {paletteOpen && (
+        <Suspense fallback={null}>
+          <CommandPalette
+            open={paletteOpen}
+            onOpenChange={setPaletteOpen}
+            onNavigate={navigate}
+            onOpenProject={openProject}
+            onOpenFlick={openFlickPage}
+            onNew={newVideo}
+            onHowItWorks={() => (navigate("Create"), setDev({ featureIntro: true }))}
+            dark={dark}
+            onToggleTheme={toggleTheme}
+          />
+        </Suspense>
+      )}
       {welcome && !dev.featureIntro && !dev.welcomeGift && <Welcome name={welcome} onShown={() => setWelcome(null)} />}
       <div className="flex h-screen bg-sidebar text-foreground">
-        <AppSidebar page={page === "Flick" ? "Flicks" : page} onNavigate={(p) => { setAdsTarget(null); setEmbedTarget(null); setAnalyticsTarget(null); setNavCount((n) => n + 1); setPage(p); scroller.current?.scrollTo({ top: 0 }) }} credits={credits} onAddCredits={addCredits} buyOpen={buyOpen} onBuyOpenChange={setBuyOpen} autoOpen={autoOpen} onAutoOpenChange={setAutoOpen} appearance={appearance} onAppearanceChange={setAppearance} name={name} email={account.email} photo={photo} />
+        <AppSidebar page={page === "Flick" ? "Flicks" : page} onNavigate={navigate} onSearch={() => setPaletteOpen(true)} credits={credits} onAddCredits={addCredits} buyOpen={buyOpen} onBuyOpenChange={setBuyOpen} autoOpen={autoOpen} onAutoOpenChange={setAutoOpen} appearance={appearance} onAppearanceChange={setAppearance} name={name} email={account.email} photo={photo} />
 
         <main className="flex min-w-0 flex-1 flex-col gap-2 p-2 md:pl-0">
           <header className="flex h-10 items-center px-2 md:hidden">
@@ -261,7 +338,7 @@ export default function App() {
           </header>
           <div ref={scroller} className="relative min-h-0 flex-1 overflow-y-auto rounded-2xl border bg-background">
             {page === "Template" && previewTemplate ? (
-              <TemplatePreview t={previewTemplate} onBack={() => setPage("Create")} onUse={useTemplate} onOpen={openTemplate} />
+              <Suspense fallback={<DetailSkeleton />}><TemplatePreview t={previewTemplate} onBack={() => setPage("Create")} onUse={useTemplate} onOpen={openTemplate} /></Suspense>
             ) : page === "Campaigns" ? (
               <Loaded k={loadKey} ms={dev.pageLoadMs} s={adsTarget ? <DetailSkeleton stats={4} /> : <TableSkeleton />}>
 <CampaignsPage key={`${navCount}-${adsTarget ?? "list"}`} openPlacement={adsTarget} onAdBalance={() => setPage("Ad Balance")} onRemixFlick={remixById} onOpenFlick={openFlickPage} />
@@ -290,6 +367,7 @@ export default function App() {
               />
               </Loaded>
             ) : page === "Account" ? (
+              <Suspense fallback={<AccountSkeleton />}>
               <AccountPage
                 email={account.email}
                 profile={profile ?? { ...SAMPLE_PROFILE, name: account.name ?? SAMPLE_PROFILE.name }}
@@ -301,6 +379,7 @@ export default function App() {
                 }}
                 onSignOut={signOut}
               />
+              </Suspense>
             ) : page === "Projects" ? (
               <Loaded k={loadKey} ms={dev.pageLoadMs} s={<GridSkeleton />}>
 <ProjectsPage onOpen={openProject} onCreate={() => setPage("Create")} />
@@ -342,7 +421,7 @@ export default function App() {
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-b from-transparent to-background" />
               <div className="relative mx-auto flex max-w-[760px] flex-col items-center gap-7">
                 <div className="space-y-3 text-center">
-                  <h1 className="text-balance text-3xl font-medium tracking-tight md:text-4xl">
+                  <h1 className="text-balance text-3xl font-semibold tracking-tight md:text-4xl">
                     Hey {firstName}, let’s start with a video
                   </h1>
                   <p className="text-sm text-foreground/70">Describe it, add photos or videos, and make variations next.</p>
@@ -372,11 +451,19 @@ export default function App() {
                   setSize={setSize}
                   pulse={pulse}
                 />
-                <Button variant="outline" size="sm" onClick={() => setDev({ featureIntro: true })} className="gap-1.5 rounded-full border-foreground/20 bg-transparent font-normal shadow-none hover:bg-foreground/5 dark:bg-transparent">
-                  <HugeiconsIcon icon={HelpCircleIcon} className="size-4" />
-                  How Flicks work
-                </Button>
-                <HowFlicksWork open={dev.featureIntro} onOpenChange={(o) => setDev({ featureIntro: o })} />
+                {/* starter ideas: fill the box with an example to edit (hidden once something is typed) */}
+                <div className={cn("flex flex-wrap justify-center gap-2 transition-opacity duration-200", prompt.trim() && "pointer-events-none opacity-0")} aria-hidden={!!prompt.trim()}>
+                  {STARTERS.map((s) => (
+                    <Button key={s.label} variant="outline" size="sm" className="rounded-full border-foreground/15 bg-background/60 font-normal shadow-none backdrop-blur-sm hover:bg-background" onClick={() => setPrompt(s.prompt)}>
+                      {s.label}
+                    </Button>
+                  ))}
+                  <Button variant="ghost" size="sm" onClick={() => setDev({ featureIntro: true })} className="gap-1.5 rounded-full font-normal text-foreground/70">
+                    <HugeiconsIcon icon={HelpCircleIcon} className="size-4" />
+                    How Flicks work
+                  </Button>
+                </div>
+                {dev.featureIntro && <Suspense fallback={null}><HowFlicksWork open={dev.featureIntro} onOpenChange={(o) => setDev({ featureIntro: o })} /></Suspense>}
                 {/* the welcome gift follows How Flicks work */}
                 <WelcomeGiftDialog
                   key={String(dev.welcomeGift)}
@@ -470,11 +557,19 @@ const SAMPLE_PROFILE: Profile = {
   industry: "Media & entertainment",
 }
 
+/** Example prompts under the Create box */
+const STARTERS = [
+  { label: "Product launch", prompt: "A launch video for our new running shoe: a slow push-in on the shoe on wet asphalt at dawn, then a runner takes off" },
+  { label: "Colourway variations", prompt: "The same product shot in each colourway: a slow turn on a clean studio set, soft light, one colour per variation" },
+  { label: "Holiday promo", prompt: "A warm holiday promo for our gift set: the box opening on a table with fairy lights, hands lifting each item out" },
+  { label: "Social teaser", prompt: "A punchy 8 second teaser for social: quick cuts of the product in use, bold framing, ending on the product alone" },
+]
+
 /** A page behind its skeleton for a moment; a stable component so re-renders don't reload it. */
 function Loaded({ k, ms, s: skeleton, children }: { k: string; ms: number; s: React.ReactNode; children: React.ReactNode }) {
   return (
     <PageLoader key={k} ms={ms} skeleton={skeleton}>
-      {children}
+      <Suspense fallback={skeleton}>{children}</Suspense>
     </PageLoader>
   )
 }

@@ -67,7 +67,7 @@ export function TemplateSection({ title, thumbs, onSave }: { title: string; thum
               onClick={() => setThumb(src)}
               className={cn("size-20 overflow-hidden rounded-xl p-0 ring-1 ring-foreground/10", thumb === src && "ring-2 ring-primary")}
             >
-              <img src={src} alt="" className="size-full object-cover" />
+              <img loading="lazy" decoding="async" src={src} alt="" className="size-full object-cover" />
             </Button>
           ))}
           <Button variant="outline" onClick={() => file.current?.click()} className="size-20 flex-col gap-1 rounded-xl border-dashed text-xs font-normal text-muted-foreground">
@@ -153,7 +153,7 @@ export function ShareSection({
       {/* link preview, as it unfurls in messages and social posts */}
       <div className="overflow-hidden rounded-2xl ring-1 ring-foreground/10">
         <div className="relative aspect-[1200/630] bg-muted">
-          {image && <img src={image} alt="" className="absolute inset-0 size-full object-cover" />}
+          {image && <img loading="lazy" decoding="async" src={image} alt="" className="absolute inset-0 size-full object-cover" />}
           {!image && <span className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">No image</span>}
           <div className="absolute right-3 top-3 flex gap-1.5">
             {image && <ImageAction label="Remove image" icon={Delete02Icon} onClick={() => setShare({ image: null })} />}

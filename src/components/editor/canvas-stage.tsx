@@ -503,6 +503,8 @@ export function CanvasStage({
     <div
       ref={stage}
       className="absolute inset-0 overflow-hidden"
+      // a project card grows into this frame when the editor opens
+      style={{ viewTransitionName: "flick-hero" }}
       onPointerOver={(e) => setHoverEl((e.target as HTMLElement).closest<HTMLElement>("[data-el]")?.dataset.el ?? null)}
       onPointerLeave={() => setHoverEl(null)}
       onPointerDown={() => !document.body.dataset.picking && (setSelected([]), setEditing(null))}>
@@ -775,7 +777,7 @@ function StripView({ el, ratio, thumbs, active, editable, picked }: { el: StripE
             ...(free ? { position: "absolute", left: `${offsets[i].x}cqw`, top: `${offsets[i].y}cqw` } : {}),
           }}
         >
-          {t.poster && <img src={t.poster} alt="" draggable={false} className="absolute inset-0 size-full object-cover" />}
+          {t.poster && <img loading="lazy" decoding="async" src={t.poster} alt="" draggable={false} className="absolute inset-0 size-full object-cover" />}
           {/* strip selected: each thumbnail outlines on hover; the picked one stays outlined */}
           {editable && (
             <span
@@ -905,7 +907,7 @@ function ElementView({
   if (el.kind === "image") {
     const { t, r, b, l } = el.crop
     return (
-      <img
+      <img loading="lazy" decoding="async"
         src={el.src}
         alt=""
         draggable={false}

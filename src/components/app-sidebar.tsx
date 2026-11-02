@@ -1,6 +1,7 @@
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   PlusSignIcon,
+  Search01Icon,
   AiVideoIcon,
   Layers01Icon,
   FolderLibraryIcon,
@@ -37,14 +38,16 @@ import { FlicksLogo } from "@/components/brand"
 import { CreditsCard } from "@/components/credits-card"
 import { cn } from "@/lib/utils"
 import { openHelp } from "@/help/open"
+import { Kbd, KbdGroup } from "@/components/ui/kbd"
+import { MOD } from "@/lib/keys"
 
-const NAV = [
+export const NAV = [
   { label: "Create", icon: PlusSignIcon },
   { label: "Projects", icon: Layers01Icon },
   { label: "Flicks", icon: AiVideoIcon },
   { label: "Assets", icon: FolderLibraryIcon },
 ]
-const MANAGE = [
+export const MANAGE = [
   { label: "Campaigns", icon: LayoutTopIcon },
   { label: "Embeds", icon: CodeIcon },
   { label: "Analytics", icon: ChartLineData01Icon },
@@ -72,8 +75,11 @@ export function AppSidebar({
   email = "divyansh@flamapp.ai",
   page,
   onNavigate,
+  onSearch,
   extra,
 }: {
+  /** opens the command palette (⌘K) */
+  onSearch?: () => void
   /** above the credits: Help */
   extra?: React.ReactNode
   page: string
@@ -98,6 +104,16 @@ export function AppSidebar({
           <FlicksLogo className="h-7 text-foreground" />
         </button>
       </div>
+      {onSearch && (
+        <Button variant="outline" onClick={onSearch} className="h-9 justify-start gap-2 rounded-xl bg-transparent px-3 font-normal text-muted-foreground shadow-none">
+          <HugeiconsIcon icon={Search01Icon} className="size-4" />
+          Search
+          <KbdGroup className="ml-auto">
+            <Kbd>{MOD}</Kbd>
+            <Kbd>K</Kbd>
+          </KbdGroup>
+        </Button>
+      )}
 
       <nav className="flex flex-col gap-0.5">
         {NAV.map((n) => (

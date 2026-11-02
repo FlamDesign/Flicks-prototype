@@ -2,6 +2,10 @@ import { useMediaAdd } from "@/components/media-picker"
 import { SmallScreenNotice } from "@/components/small-screen"
 import { MediaTile, TileBadge } from "@/components/media-tile"
 import { Spinner } from "@/components/ui/spinner"
+import { EmptyState } from "@/components/empty-state"
+import { GenerationProgress } from "@/components/editor/generation-progress"
+import { Kbd, KbdGroup } from "@/components/ui/kbd"
+import { MOD } from "@/lib/keys"
 import { MentionTextarea, useMentionOptions } from "@/components/mention-input"
 import { useEffect, useState } from "react"
 import { WelcomeGiftDialog } from "@/components/welcome-gift-page"
@@ -561,6 +565,39 @@ const ENTRIES: Entry[] = [
         <MediaTile src={GENERATED_VIDEOS[0].poster} badges={<TileBadge>0:08</TileBadge>} details={<p>Wheat boot on wet rock, slow push in</p>} />
         <MediaTile src={GENERATED_VIDEOS[1].poster} selected badges={<TileBadge>1080×1920</TileBadge>} />
         <MediaTile src={GENERATED_VIDEOS[2].poster} dim />
+      </div>
+    ),
+  },
+  {
+    name: "Empty state",
+    kind: "Feedback",
+    about: "shadcn Empty with a small drawing (projects, Flicks, media, search, templates), a title, one line and one action.",
+    render: () => (
+      <div className="grid w-full max-w-2xl grid-cols-2 gap-3">
+        <EmptyState art="projects" title="No projects yet" text="Start creating from templates or describe your idea." action={<Button size="sm">Create</Button>} />
+        <EmptyState art="search" title="No Flicks match" text="Try another search, date or size." action={<Button size="sm" variant="outline">Clear filters</Button>} />
+      </div>
+    ),
+  },
+  {
+    name: "Generation progress",
+    kind: "Editor",
+    about: "Above a generating frame's top-right corner: the variation, time left, a progress bar and the current stage, with a shimmer.",
+    render: () => (
+      <div className="relative mt-24 h-10 w-80">
+        <GenerationProgress name="Variation 2" startedAt={Date.now() - 40_000} expectedMs={150_000} />
+      </div>
+    ),
+  },
+  {
+    name: "Keyboard keys",
+    kind: "UI",
+    about: "Shortcut labels in tooltips and search (shadcn Kbd).",
+    render: () => (
+      <div className="flex items-center gap-3 text-sm">
+        <KbdGroup><Kbd>{MOD}</Kbd><Kbd>K</Kbd></KbdGroup>
+        <Kbd>P</Kbd>
+        <Kbd>{MOD} ↵</Kbd>
       </div>
     ),
   },

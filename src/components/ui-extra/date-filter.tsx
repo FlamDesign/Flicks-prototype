@@ -1,10 +1,13 @@
-import { useState } from "react"
+import { Suspense, lazy, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowDown01Icon, ArrowRight01Icon, Tick02Icon } from "@hugeicons/core-free-icons"
 import type { DateRange } from "react-day-picker"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
+import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
+
+// the calendar (and its date library) loads the first time Custom range opens
+const Calendar = lazy(() => import("@/components/ui/calendar").then((m) => ({ default: m.Calendar })))
 
 export type DatePreset = "all" | "today" | "7" | "30"
 /** A date filter: a preset, or a custom range (either end can be open while picking). */
@@ -97,6 +100,7 @@ export function DateFilter({ value, onChange, className, label = "Date" }: { val
           {custom && (
           <div className="border-t p-3 sm:border-t-0">
             <p className="px-1 pb-2 text-xs text-muted-foreground">Pick a start and end date</p>
+            <Suspense fallback={<Skeleton className="h-72 w-64 rounded-xl" />}>
             <Calendar
               mode="range"
               selected={range}
@@ -108,6 +112,7 @@ export function DateFilter({ value, onChange, className, label = "Date" }: { val
                 if (r?.from && r?.to && r.from.getTime() !== r.to.getTime()) setOpen(false)
               }}
             />
+            </Suspense>
           </div>
           )}
         </div>

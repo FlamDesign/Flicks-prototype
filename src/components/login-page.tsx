@@ -171,7 +171,7 @@ export function LoginPage({
         <main className="mx-auto flex w-full max-w-[380px] flex-1 flex-col justify-center py-12">
           {step === "email" && (
             <div key="email" className="animate-in fade-in-0 slide-in-from-bottom-1 flex flex-col duration-300">
-              <h1 className="text-balance text-3xl font-medium tracking-tight">Welcome to Flicks</h1>
+              <h1 className="text-balance text-3xl font-semibold tracking-tight">Welcome to Flicks</h1>
               <p className="mt-2.5 text-pretty text-sm text-muted-foreground">
                 Sign up and get {WELCOME_CREDITS.toLocaleString()} free credits.
               </p>
@@ -254,7 +254,7 @@ export function LoginPage({
               <span className="grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary">
                 <HugeiconsIcon icon={MailOpen01Icon} className="size-6" />
               </span>
-              <h1 className="mt-6 text-3xl font-medium tracking-tight">Check your inbox</h1>
+              <h1 className="mt-6 text-3xl font-semibold tracking-tight">Check your inbox</h1>
               <p className="mt-2.5 text-pretty text-sm text-muted-foreground">
                 We sent a sign-in link to <span className="font-medium text-foreground">{email.trim()}</span>. Open it on this device. It works once, for 15 minutes.
               </p>
@@ -286,7 +286,7 @@ export function LoginPage({
               <span className="grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary">
                 <HugeiconsIcon icon={TimeQuarterPassIcon} className="size-6" />
               </span>
-              <h1 className="mt-6 text-3xl font-medium tracking-tight">This link has expired</h1>
+              <h1 className="mt-6 text-3xl font-semibold tracking-tight">This link has expired</h1>
               <p className="mt-2.5 text-pretty text-sm text-muted-foreground">
                 Sign-in links work once, for 15 minutes. We’ll send a fresh one to <span className="font-medium text-foreground">{email.trim()}</span>.
               </p>
@@ -388,7 +388,7 @@ export function FlickShowcase() {
     <div className="relative h-full min-h-[560px] overflow-hidden rounded-[28px] bg-muted">
       {/* behind the square: the same scene, blurred, so any panel shape is filled without black bars */}
       {LOOKS.map((l, i) => (
-        <img
+        <img loading="lazy" decoding="async"
           key={l.name}
           src={l.poster}
           alt=""
@@ -445,7 +445,7 @@ export function FlickShowcase() {
               i === active ? "ring-2 ring-white" : "opacity-70 hover:opacity-100",
             )}
           >
-            <img src={l.thumb} alt="" className="size-full object-cover" />
+            <img loading="lazy" decoding="async" src={l.thumb} alt="" className="size-full object-cover" />
             {/* time until it moves on */}
             {i === active && auto && <span key={active} className="showcase-progress absolute inset-x-0 bottom-0 h-0.5 origin-left bg-primary" style={{ animationDuration: `${CYCLE}ms` }} />}
           </button>

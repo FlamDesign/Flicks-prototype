@@ -1,8 +1,9 @@
+import { EmptyState } from "@/components/empty-state"
 import { useEffect, useMemo, useState } from "react"
 import { MediaTile, TileBadge } from "@/components/media-tile"
 import { CardsSkeleton, Loading, PendingButton } from "@/components/page-skeletons"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Download01Icon, Video01Icon } from "@hugeicons/core-free-icons"
+import { Download01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -177,7 +178,7 @@ export function AssetsPage({ onCreate, onUse }: { onCreate: () => void; onUse: (
     <div className="mx-auto w-full max-w-[1280px] px-4 py-8 md:px-8 md:py-10">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-baseline gap-3">
-          <h1 className="text-2xl font-medium tracking-tight">Assets</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Assets</h1>
           {assets.length > 0 && <span className="text-sm text-muted-foreground">{shown.length === 1 ? "1 video" : `${shown.length} videos`}</span>}
         </div>
         {assets.length > 0 && (
@@ -197,24 +198,21 @@ export function AssetsPage({ onCreate, onUse }: { onCreate: () => void; onUse: (
       {/* filtering fetches again */}
       <Loading k={[sizeFilter, dates]} skipFirst skeleton={<div className="mt-6"><CardsSkeleton count={12} cols="grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6" aspect="aspect-[9/16]" lines={0} /></div>}>
       {assets.length === 0 ? (
-        <div className="mt-6 flex flex-col items-center gap-2 rounded-xl border border-dashed py-20 text-center">
-          <span className="grid size-12 place-items-center rounded-2xl bg-muted text-muted-foreground">
-            <HugeiconsIcon icon={Video01Icon} className="size-6" />
-          </span>
-          <p className="mt-2 text-sm font-medium">No videos yet</p>
-          <p className="max-w-xs text-sm text-muted-foreground">Every video you generate shows up here, with the prompt and references it was made from.</p>
-          <Button size="sm" className="mt-3" onClick={onCreate}>
-            Create a video
-          </Button>
-        </div>
+        <EmptyState
+          className="mt-6"
+          art="media"
+          title="No videos yet"
+          text="Every video you generate shows up here, with the prompt and references it was made from."
+          action={<Button size="sm" onClick={onCreate}>Create a video</Button>}
+        />
       ) : shown.length === 0 && filtering ? (
-        <div className="mt-6 flex flex-col items-center gap-2 rounded-xl border border-dashed py-20 text-center">
-          <p className="text-sm font-medium">No videos match these filters</p>
-          <p className="max-w-xs text-sm text-muted-foreground">Try another date or size.</p>
-          <Button size="sm" variant="outline" className="mt-3" onClick={() => (setSizeFilter("all"), setDates(ALL_DATES))}>
-            Clear filters
-          </Button>
-        </div>
+        <EmptyState
+          className="mt-6"
+          art="search"
+          title="No videos match these filters"
+          text="Try another date or size."
+          action={<Button size="sm" variant="outline" onClick={() => (setSizeFilter("all"), setDates(ALL_DATES))}>Clear filters</Button>}
+        />
       ) : (
         <div className="mt-6 flex flex-col gap-10">
           {groups.map((g) => (

@@ -163,12 +163,13 @@ export function FlickPage({
             <div className="flex items-center gap-1 rounded-xl bg-muted/70 py-1 pl-3 pr-1">
               <span className="min-w-0 flex-1 truncate text-sm">{link.replace("https://", "")}</span>
               <IconAction label="Copy link" icon={Copy01Icon} onClick={copyLink} />
-              <IconAction label="Visit link" icon={ArrowUpRight01Icon} href={link} />
+              {/* in the prototype the link opens the viewer here (phones too); the real link is flamapp.ai/f/… */}
+              <IconAction label="Visit link" icon={ArrowUpRight01Icon} href={`${location.origin}${location.pathname}#f/${f.link.slug}`} />
             </div>
             {/* how it unfurls in messages and posts */}
             <div className="flex items-center gap-3">
               <span className="aspect-[1200/630] w-24 shrink-0 overflow-hidden rounded-lg bg-muted">
-                {(f.link.image === undefined ? startPoster : f.link.image) && <img src={(f.link.image === undefined ? startPoster : f.link.image) ?? ""} alt="" className="size-full object-cover" />}
+                {(f.link.image === undefined ? startPoster : f.link.image) && <img loading="lazy" decoding="async" src={(f.link.image === undefined ? startPoster : f.link.image) ?? ""} alt="" className="size-full object-cover" />}
               </span>
               <span className="min-w-0 text-sm">
                 <span className="block truncate font-medium">{f.link.title.trim() || f.name}</span>
@@ -327,7 +328,7 @@ function Analytics({ f, onAnalytics }: { f: FlickRecord; onAnalytics: () => void
         <ul className="flex flex-col gap-3">
           {f.variants.map((v, i) => (
             <li key={`${v.name}-${i}`} className="flex items-center gap-3">
-              <img src={v.poster} alt="" className="size-10 shrink-0 rounded-lg object-cover" />
+              <img loading="lazy" decoding="async" src={v.poster} alt="" className="size-10 shrink-0 rounded-lg object-cover" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2 text-sm">
                   <span className="flex min-w-0 items-center gap-1.5">

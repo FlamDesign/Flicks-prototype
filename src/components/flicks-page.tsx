@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { Spinner } from "@/components/ui/spinner"
 import { MediaTile } from "@/components/media-tile"
+import { EmptyState } from "@/components/empty-state"
 import { CardsSkeleton, Loading, PendingButton } from "@/components/page-skeletons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Search01Icon, MoreHorizontalIcon, Copy01Icon, Delete02Icon, GitForkIcon, Link01Icon } from "@hugeicons/core-free-icons"
@@ -25,11 +26,12 @@ type MenuItem = { label: string; icon: typeof Copy01Icon; onSelect: () => void; 
 export function ProjectsPage({ onOpen, onCreate }: { onOpen: (p: Project) => void; onCreate: () => void }) {
   const { projects } = useLibrary()
   const toast = useToast()
-  const [pendingDelete, setPendingDelete] = useState<Project | null>(null)
   return (
     <>
       <LibraryList
         title="Projects"
+        // start loading the editor when a card is pointed at, so opening feels instant
+        warm={() => void import("@/components/generation-canvas")}
         description="Drafts you’re working on."
         searchLabel="Search projects"
         dateLabel="Last edited"
@@ -39,35 +41,33 @@ export function ProjectsPage({ onOpen, onCreate }: { onOpen: (p: Project) => voi
           size: p.size,
           at: p.editedAt,
           image: p.image,
-          details: [plural(p.versions.length, "saved version"), p.exports.length ? `Exported ${plural(p.exports.length, "time")}` : "Not exported yet"],
+          details: [...(p.versions.length ? [plural(p.versions.length, "saved version")] : []), p.exports.length ? `Exported ${plural(p.exports.length, "time")}` : "Not exported yet"],
         }))}
         when={(t, now) => formatEdited(t, now)}
         whenTitle={(t) => `Last edited ${fullDate(t)}`}
         onOpen={(it) => onOpen(projects.find((p) => p.id === it.id)!)}
         menu={(it) => [
-          { label: "Duplicate", icon: Copy01Icon, onSelect: () => (library.duplicateProject(it.id), toast(`“${it.name} copy” added to Projects`)) },
-          { label: "Delete", icon: Delete02Icon, destructive: true, onSelect: () => setPendingDelete(projects.find((p) => p.id === it.id) ?? null) },
+          {
+            label: "Duplicate",
+            icon: Copy01Icon,
+            onSelect: () => {
+              const copy = library.duplicateProject(it.id)
+              toast({ title: `“${it.name} copy” added to Projects`, action: copy ? { label: "Undo", onClick: () => library.deleteProject(copy.id) } : undefined })
+            },
+          },
+          {
+            label: "Delete",
+            icon: Delete02Icon,
+            destructive: true,
+            // gone at once, with Undo in the toast (its Flicks stay)
+            onSelect: () => {
+              const undo = library.deleteProject(it.id)
+              toast({ title: `“${it.name}” deleted`, description: "Its Flicks stay.", action: { label: "Undo", onClick: undo } })
+            },
+          },
         ]}
-        empty={{ title: "No projects yet", text: "Start creating from templates or describe your idea.", action: <Button size="sm" className="mt-2" onClick={onCreate}>Create</Button> }}
+        empty={{ title: "No projects yet", text: "Start creating from templates or describe your idea.", action: <Button size="sm" onClick={onCreate}>Create</Button> }}
       />
-      <Dialog open={!!pendingDelete} onOpenChange={(o) => !o && setPendingDelete(null)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Delete project?</DialogTitle>
-            <DialogDescription>
-              “{pendingDelete?.name}” will be deleted. {pendingDelete?.exports.length ? "Flicks exported from this project will not be deleted. " : ""}This can’t be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </DialogClose>
-            <PendingButton variant="destructive" onClick={() => (pendingDelete && library.deleteProject(pendingDelete.id), setPendingDelete(null), toast("Project deleted"))}>
-              Delete
-            </PendingButton>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   )
 }
@@ -84,6 +84,7 @@ export function FlicksPage({ onOpen, onRemix, onProjects }: { onOpen: (f: FlickR
     <>
       <LibraryList
         title="Flicks"
+        warm={() => void import("@/components/flick-page")}
         description="Flicks ready to share, embed in website or serve in ads."
         searchLabel="Search flicks"
         dateLabel="Created"
@@ -104,7 +105,7 @@ export function FlicksPage({ onOpen, onRemix, onProjects }: { onOpen: (f: FlickR
           { label: "Copy link", icon: Link01Icon, onSelect: () => (navigator.clipboard?.writeText(flickLink(byId(it.id))), toast("Link copied")) },
           { label: "Delete", icon: Delete02Icon, destructive: true, onSelect: () => setPendingDelete(byId(it.id)) },
         ]}
-        empty={{ title: "No Flicks yet", text: "Export a project to make a Flick.", action: <Button size="sm" variant="outline" className="mt-2" onClick={onProjects}>Go to Projects</Button> }}
+        empty={{ title: "No Flicks yet", text: "Export a project to make a Flick.", action: <Button size="sm" variant="outline" onClick={onProjects}>Go to Projects</Button> }}
       />
       <DeleteFlickDialog flick={pendingDelete} inUse={inUse} onClose={() => setPendingDelete(null)} onDeleted={() => toast("Flick deleted")} />
     </>
@@ -141,6 +142,7 @@ export function DeleteFlickDialog({ flick, inUse, onClose, onDeleted }: { flick:
 
 /** The shared list: title, search, date and size filters, and square cards. */
 function LibraryList({
+  warm,
   title,
   description,
   searchLabel,
@@ -162,6 +164,7 @@ function LibraryList({
   onOpen: (it: Item) => void
   menu: (it: Item) => MenuItem[]
   empty: { title: string; text: string; action?: React.ReactNode }
+  warm?: () => void
 }) {
   const [query, setQuery] = useState("")
   const [size, setSize] = useState("all")
@@ -177,7 +180,7 @@ function LibraryList({
     <div className="mx-auto w-full max-w-[1280px] px-4 py-8 md:px-8 md:py-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-2xl font-medium tracking-tight">{title}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
           <p className="text-sm text-muted-foreground">{description}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -208,21 +211,24 @@ function LibraryList({
         {list.length ? (
           <div className="grid grid-cols-2 gap-x-4 sm:grid-cols-3 lg:grid-cols-4">
             {list.map((it) => (
-              <Card key={it.id} it={it} when={when(it.at, now)} whenTitle={whenTitle(it.at)} onOpen={() => onOpen(it)} menu={menu(it)} />
+              <Card key={it.id} it={it} when={when(it.at, now)} whenTitle={whenTitle(it.at)} onOpen={() => onOpen(it)} menu={menu(it)} warm={warm} />
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-16 text-center">
-            <p className="text-sm font-medium">{filtered ? `No ${title.toLowerCase()} match` : empty.title}</p>
-            <p className="max-w-xs text-sm text-muted-foreground">{filtered ? "Try another search, date or size." : empty.text}</p>
-            {filtered ? (
-              <Button variant="outline" size="sm" className="mt-2" onClick={() => (setQuery(""), setSize("all"), setDates(ALL_DATES))}>
-                Clear filters
-              </Button>
-            ) : (
-              empty.action
-            )}
-          </div>
+          <EmptyState
+            art={filtered ? "search" : title === "Flicks" ? "flicks" : "projects"}
+            title={filtered ? `No ${title.toLowerCase()} match` : empty.title}
+            text={filtered ? "Try another search, date or size." : empty.text}
+            action={
+              filtered ? (
+                <Button variant="outline" size="sm" onClick={() => (setQuery(""), setSize("all"), setDates(ALL_DATES))}>
+                  Clear filters
+                </Button>
+              ) : (
+                empty.action
+              )
+            }
+          />
         )}
         </Loading>
       </div>
@@ -231,7 +237,7 @@ function LibraryList({
 }
 
 /** Square thumbnail, name, date and size. Right-click or ⋯ opens the same actions. */
-function Card({ it, when, whenTitle, onOpen, menu }: { it: Item; when: string; whenTitle: string; onOpen: () => void; menu: MenuItem[] }) {
+function Card({ it, when, whenTitle, onOpen, menu, warm }: { it: Item; when: string; whenTitle: string; onOpen: () => void; menu: MenuItem[]; warm?: () => void }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const last = menu.length - 1
   return (
@@ -241,8 +247,16 @@ function Card({ it, when, whenTitle, onOpen, menu }: { it: Item; when: string; w
           role="button"
           tabIndex={0}
           aria-label={`Open ${it.name}`}
+          onPointerEnter={warm}
+          onFocus={warm}
           // menu items render in a portal; their clicks bubble here through React, so only open for clicks on the card itself
-          onClick={(e) => e.currentTarget.contains(e.target as Node) && onOpen()}
+          onClick={(e) => {
+            if (!e.currentTarget.contains(e.target as Node)) return
+            // this card's picture grows into the page it opens
+            const tile = e.currentTarget.querySelector<HTMLElement>("[data-slot=media-tile]")
+            if (tile) tile.style.viewTransitionName = "flick-hero"
+            onOpen()
+          }}
           onKeyDown={(e) => e.target === e.currentTarget && (e.key === "Enter" || e.key === " ") && (e.preventDefault(), onOpen())}
           className="group mb-6 cursor-pointer outline-none"
         >

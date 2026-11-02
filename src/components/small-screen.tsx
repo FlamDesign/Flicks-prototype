@@ -10,7 +10,7 @@ export function SmallScreenNotice() {
       </span>
       <div className="flex max-w-xs flex-col gap-1.5">
         <h1 className="text-lg font-medium">Open Flicks on a larger screen</h1>
-        <p className="text-sm text-muted-foreground">Flicks is made for laptops and desktops. Open this link on one to create and edit.</p>
+        <p className="text-sm text-muted-foreground">Creating and editing is made for laptops and desktops. Shared Flicks play on any screen.</p>
       </div>
     </div>
   )

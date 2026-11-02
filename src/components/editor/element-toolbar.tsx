@@ -135,7 +135,7 @@ export function ElementToolbar({
               <IconTip label={thumb.src ? `Change ${thumb.name} thumbnail` : `Add ${thumb.name} thumbnail`}>
                 <Button variant="ghost" size="sm" onClick={thumb.onChoose} className="h-8 gap-2 rounded-lg pl-1 pr-2.5 font-normal">
                   <span className="grid size-6 place-items-center overflow-hidden rounded-md bg-muted ring-1 ring-foreground/10">
-                    {thumb.src ? <img src={thumb.src} alt="" className="size-full object-cover" /> : <HugeiconsIcon icon={ImageAdd01Icon} className="size-3.5 text-muted-foreground" />}
+                    {thumb.src ? <img loading="lazy" decoding="async" src={thumb.src} alt="" className="size-full object-cover" /> : <HugeiconsIcon icon={ImageAdd01Icon} className="size-3.5 text-muted-foreground" />}
                   </span>
                   <span className="max-w-32 truncate">{thumb.src ? "Change thumbnail" : "Add thumbnail"}</span>
                 </Button>
@@ -379,13 +379,13 @@ function ButtonControls({
           <IconTip label="Background image">
             <PopoverTrigger asChild>
               <Button variant="ghost" size="icon-sm" aria-label="Background image" className="size-8 rounded-lg p-1">
-                <img src={el.bgImage} alt="" className="size-full rounded-[5px] object-cover ring-1 ring-foreground/20" />
+                <img loading="lazy" decoding="async" src={el.bgImage} alt="" className="size-full rounded-[5px] object-cover ring-1 ring-foreground/20" />
               </Button>
             </PopoverTrigger>
           </IconTip>
           <PopoverContent align="center" className="w-60 gap-3 p-3">
             <p className="text-xs font-medium text-muted-foreground">Background image</p>
-            <img src={el.bgImage} alt="" className="aspect-video w-full rounded-lg object-cover ring-1 ring-foreground/10" />
+            <img loading="lazy" decoding="async" src={el.bgImage} alt="" className="aspect-video w-full rounded-lg object-cover ring-1 ring-foreground/10" />
             <div className="flex rounded-lg bg-muted p-0.5">
               {(
                 [

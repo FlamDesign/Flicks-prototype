@@ -34,6 +34,8 @@ import { ElementToolbar, ToolbarGrip } from "@/components/editor/element-toolbar
 import { useAgent, type EditorApi, type ElementSpec } from "@/ai/agent"
 import { boxOf, buildDesign, color as colorOf, contrast, describeDesign, elementFor, fontName, freeY, headlineLimit, feedOfField, FIELD_FEED, FIELDS, patchDesign, restack, type Brand, type Field } from "@/ai/design"
 import { generateVideo, isLive, posterOf, shareable, useAiConfig, videoAspectOf, type VideoInput } from "@/ai/client"
+import { isTyping } from "@/lib/keys"
+import { GenerationProgress } from "@/components/editor/generation-progress"
 import { AgentComposer, isDocked, QuestionDeck, threadGroups, type AgentCtx } from "@/components/editor/agent-chat"
 import { PlanningView, PlanSteps } from "@/components/editor/planning-view"
 import { addMadeVideo, isMadeVideo, BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, defaultFill, defaultInk, GENERATED_VIDEOS, SAMPLE_UPLOADS, inSet, clampStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload } from "@/components/editor/elements"
@@ -295,6 +297,26 @@ export function GenerationCanvas({
     // and show that video
     if (included[i]) setActive(included[i].id)
   }
+  // editor keys (outside text boxes): [ and ] step through the variations, P toggles preview,
+  // ⌘\ shows or hides the prompts panel
+  const keysRef = useRef({ included, active, selected, previewing, chatHidden })
+  keysRef.current = { included, active, selected, previewing, chatHidden }
+  useEffect(() => {
+    const on = (e: KeyboardEvent) => {
+      if (isTyping(e) || e.altKey) return
+      const k = keysRef.current
+      if ((e.metaKey || e.ctrlKey) && e.key === "\\") return void (e.preventDefault(), setChatHidden(!k.chatHidden))
+      if (e.metaKey || e.ctrlKey) return
+      const i = k.included.findIndex((x) => x.id === k.active)
+      if (e.key === "]" || e.key === "[") {
+        const next = k.included[(i + (e.key === "]" ? 1 : -1) + k.included.length) % k.included.length]
+        if (next) (e.preventDefault(), setActive(next.id))
+      } else if (e.key.toLowerCase() === "p" && !k.selected.length) (e.preventDefault(), setMode(k.previewing ? "design" : "preview"))
+    }
+    window.addEventListener("keydown", on)
+    return () => window.removeEventListener("keydown", on)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [thumbPicker, setThumbPicker] = useState(false)
   useEffect(() => {
     if (!thumbSlide) setThumbPicker(false)
@@ -1693,7 +1715,7 @@ export function GenerationCanvas({
                   </button>
                   {/* not generated yet: the reference video, faded, under this variation's elements */}
                   <div className="absolute inset-0 overflow-hidden bg-muted">
-                    <img src={GENERATED_VIDEOS[slides[0].video!].poster} alt="" className="absolute inset-0 size-full object-cover opacity-25 blur-[2px]" />
+                    <img loading="lazy" decoding="async" src={GENERATED_VIDEOS[slides[0].video!].poster} alt="" className="absolute inset-0 size-full object-cover opacity-25 blur-[2px]" />
                   </div>
                   <CanvasStage elements={elements} setElements={setElements} selected={selected} setSelected={setSelected} editing={editing} setEditing={setEditing} ratio={ratio} thumbs={thumbs} activeThumb={activeThumb} feedOf={feedOf} onEditFeed={editFeed} onFeedValue={setFeedValue} feeds={feeds} onAddFeed={addFeed} onSeedFeed={seedFeed} onRenameFeed={renameFeed} onDeleteFeed={deleteFeed} hovered={hovered} selectedThumb={thumbSel} onSelectThumb={pickThumb} readOnly={previewing} onThumb={(n) => included[n] && select(included[n].id)} />
                 </>
@@ -1707,11 +1729,21 @@ export function GenerationCanvas({
                   <div className="pointer-events-none absolute inset-0">
                     <CanvasStage elements={elements} setElements={setElements} selected={[]} setSelected={() => {}} editing={null} setEditing={() => {}} ratio={ratio} thumbs={thumbs} activeThumb={activeThumb} feedOf={feedOf} readOnly />
                   </div>
-                  {/* status just above the frame's top-right corner, off the design */}
-                  <div className="pointer-events-none absolute bottom-full right-0 z-30 mb-2 flex whitespace-nowrap items-center gap-1.5 rounded-full bg-background/85 py-1 pl-2 pr-2.5 text-xs font-medium shadow-sm ring-1 ring-foreground/10 backdrop-blur-md">
-                    <Spinner className="size-3.5 text-primary" />
-                    {activeSlide.job ? (activeSlide.job.status === "waiting" ? (refReady ? "Waiting for your review of Variation 1" : "Waiting for Variation 1") : activeSlide.job.status === "queued" ? "Queued · a few minutes" : "Generating · a few minutes") : "Generating"}
-                  </div>
+                  {/* status just above the frame's top-right corner, off the design: named stages, progress and
+                      time left while it renders; a short note while it waits for Variation 1 */}
+                  {activeSlide.startedAt && activeSlide.job?.status !== "waiting" ? (
+                    <GenerationProgress
+                      name={nameOf(activeSlide) ?? "Video"}
+                      startedAt={activeSlide.startedAt}
+                      expectedMs={activeSlide.job ? 150_000 : ms}
+                      queued={activeSlide.job?.status === "queued"}
+                    />
+                  ) : (
+                    <div className="pointer-events-none absolute bottom-full right-0 z-30 mb-2 flex whitespace-nowrap items-center gap-1.5 rounded-full bg-background/85 py-1 pl-2 pr-2.5 text-xs font-medium shadow-sm ring-1 ring-foreground/10 backdrop-blur-md">
+                      <Spinner className="size-3.5 text-primary" />
+                      {activeSlide.job?.status === "waiting" ? (refReady ? "Waiting for your review of Variation 1" : "Waiting for Variation 1") : "Generating"}
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -1720,6 +1752,7 @@ export function GenerationCanvas({
         {!previewing && !firstRun && (
         <SlidesStrip
           slides={slides}
+          onReorder={(ids) => setSlides((l) => [l[0], ...ids.map((id) => l.find((x) => x.id === id)!).filter(Boolean)])}
           active={active}
           ratio={ratio}
           status={status}
@@ -1870,7 +1903,7 @@ export function GenerationCanvas({
                   {needsReview && (
                     <section aria-label="Review Variation 1" className="flex flex-col gap-3 rounded-2xl bg-background p-3 shadow-lg ring-1 ring-foreground/10 animate-in fade-in-0 slide-in-from-bottom-2">
                       <div className="flex items-center gap-3">
-                        <img src={GENERATED_VIDEOS[mainNow.video!].poster} alt="" className="size-12 shrink-0 rounded-lg object-cover ring-1 ring-foreground/10" />
+                        <img loading="lazy" decoding="async" src={GENERATED_VIDEOS[mainNow.video!].poster} alt="" className="size-12 shrink-0 rounded-lg object-cover ring-1 ring-foreground/10" />
                         <div className="min-w-0">
                           <p className="text-base font-medium leading-snug">Happy with Variation 1?</p>
                           <p className="text-xs text-muted-foreground">The other variations are made from it. Play it on the canvas, then decide.</p>

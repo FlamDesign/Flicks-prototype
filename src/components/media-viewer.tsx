@@ -134,7 +134,7 @@ export function MediaViewer({
                                 aria-label={`View ${r.name}`}
                                 className={cn("relative block size-16 overflow-hidden rounded-lg outline-none ring-1 ring-foreground/15 transition hover:ring-foreground/40 focus-visible:ring-2 focus-visible:ring-ring", r.kind === "image" && "bg-white")}
                               >
-                                <img src={r.kind === "video" ? r.poster : r.src} alt="" className={cn("size-full", r.kind === "video" ? "object-cover" : "object-contain p-1")} />
+                                <img loading="lazy" decoding="async" src={r.kind === "video" ? r.poster : r.src} alt="" className={cn("size-full", r.kind === "video" ? "object-cover" : "object-contain p-1")} />
                                 {r.kind === "video" && (
                                   <span className="absolute bottom-1 left-1 grid size-4 place-items-center rounded bg-black/70 text-white">
                                     <HugeiconsIcon icon={Video01Icon} className="size-2.5" />
@@ -176,7 +176,7 @@ function Media({ m }: { m: ViewerMedia }) {
   return m.kind === "video" ? (
     <VideoPlayer src={m.src} webm={m.webm} poster={m.poster} />
   ) : (
-    <img src={m.src} alt={m.name} className="max-h-full max-w-full rounded-lg object-contain shadow-2xl" />
+    <img loading="lazy" decoding="async" src={m.src} alt={m.name} className="max-h-full max-w-full rounded-lg object-contain shadow-2xl" />
   )
 }
 

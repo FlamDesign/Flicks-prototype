@@ -5,6 +5,7 @@ import { PauseIcon, PlayIcon, SparklesIcon, ArrowDown01Icon, Clock01Icon, Copy01
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Kbd } from "@/components/ui/kbd"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 
@@ -187,7 +188,7 @@ export function ModeSwitch({ mode, onChange }: { mode: "design" | "preview"; onC
               {label}
             </Button>
           </TooltipTrigger>
-          <TooltipContent>{hint}</TooltipContent>
+          <TooltipContent className="flex items-center gap-2">{hint}<Kbd>P</Kbd></TooltipContent>
         </Tooltip>
       ))}
     </div>

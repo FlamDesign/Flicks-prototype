@@ -117,7 +117,7 @@ export function AddToEmbed({ flick, onOpenEmbed, onDone }: { flick: FlickRef; on
               const here = e.flick?.id === flick.id
               return (
                 <li key={e.id} className="flex items-center gap-3 px-3 py-2.5">
-                  <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-muted">{e.flick && <img src={e.flick.image} alt="" className="size-full object-cover" />}</span>
+                  <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-muted">{e.flick && <img loading="lazy" decoding="async" src={e.flick.image} alt="" className="size-full object-cover" />}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm">{e.name}</span>
                     <span className="block truncate text-xs text-muted-foreground">{e.flick ? (here ? "This Flick" : e.flick.name) : "Empty"}</span>

@@ -208,7 +208,8 @@ const SECTIONS: Section[] = [
         <H>Prompt composer</H>
         <UL
           items={[
-            "A text box: “Describe the video you want to create”.",
+            "A large text box (16px text, three lines tall to start): “Describe your video. Type @ to mention a photo or element”. \u2318\u21b5 (Ctrl \u21b5) generates; the Generate tooltip shows the shortcut.",
+            "Under the box: starter ideas (Product launch, Colourway variations, Holiday promo, Social teaser) that fill the box with an example to edit, then How Flicks work. The ideas fade out once something is typed.",
             "Image references: add images and tag each as Packshot or product photo, Character (model or mascot), or Background or setting. Uploads show progress. No limit: the row scrolls sideways when full (no scrollbar; trackpad, mouse wheel or shift-scroll).",
             "Upload problems (same in every prompt box and in the image uploader): only JPG, PNG, WebP or GIF up to 20 MB are taken. Anything else is not added and a toast says why (\u201cbrief.pdf can\u2019t be uploaded \u00b7 Use JPG, PNG, WebP or GIF images.\u201d or \u201csofa.png is too large \u00b7 Images can be up to 20 MB.\u201d).",
             "An upload that fails stays in place, greyed with a red tint and a retry button in the middle (\u201cCouldn\u2019t upload. Click to retry.\u201d), with \u00d7 to remove. A toast (\u201cCouldn\u2019t upload sofa.png\u201d, or \u201c3 images didn\u2019t upload\u201d for a batch) has Retry / Retry all. In a prompt box a red line under the images repeats it with Retry, and Generate waits until they\u2019re retried or removed. A failed upload can\u2019t be added to the canvas.",
@@ -396,7 +397,9 @@ const SECTIONS: Section[] = [
         <H>Generating</H>
         <UL
           items={[
-            "While a video generates, an animated gradient fills the frame, a “Generating” pill sits just above the frame's top-right corner, and the elements stay visible (read-only).",
+            "While a video generates, an animated gradient fills the frame and the elements stay visible (read-only). Just above the frame\u2019s top-right corner, a small card names the variation, shows a progress bar, the time left (\u201cAbout 2 min left\u201d, \u201cUnder a minute left\u201d, \u201cA few seconds left\u201d) and what\u2019s happening: Reading your prompt and references, Composing the shot, Rendering the video, Finishing up (or \u201cQueued, starting soon\u201d). The bar holds at 95% until the video arrives.",
+            "While it waits for Variation 1, the same corner shows \u201cWaiting for Variation 1\u201d (or \u201cWaiting for your review of Variation 1\u201d).",
+            "When a video arrives, its thumbnail in the strip fades in with one soft glow.",
             "A variation that hasn't been generated shows the reference video faded underneath its elements.",
           ]}
         />
@@ -577,6 +580,8 @@ const SECTIONS: Section[] = [
             "Each variation keeps the number it got when added; numbers are never reused or renumbered (removing Variation 3 leaves 1, 2, 4; the next is 5). A typed name replaces it everywhere.",
             "Rename the reference video or a variation by clicking its label under the thumbnail: type, then Enter or click away; Esc cancels; clearing it goes back to the default name (\u201cVariation 3\u201d, \u201cReference video\u201d). The reference video can be renamed the same way.",
             "Thumbnails are at least 48px wide; tall sizes get taller thumbnails.",
+            "Drag a variation to reorder it; the order is the order viewers get. Variation 1 stays first. A small move starts the drag, so clicks and double-clicks still work.",
+            "Keys (outside text boxes): [ and ] step through the variations, P switches Design and Preview (shown in their tooltips), \u2318\\ (Ctrl \\) shows or hides the prompts panel.",
             "States: ready (frame), generating (animated), not generated (dashed with sparkle), needs regenerating (faded, red dot before the name), starting variation (solid play button in the corner).",
             "Thumbnail corner (top-right): where the Flick starts, a solid play button always shows, in a soft orange highlight (\u201cThe Flick starts here: viewers see this first\u201d). Hovering any thumbnail shows the play toggle (\u201cStart the Flick here\u201d) and options (\u2026) to its right. On a reference video left out of the Flick the toggle is disabled: \u201cInclude it in the Flick to start here\u201d. A red dot before the name marks needs regenerating. Double-click a ready thumbnail for full screen.",
             "Options menu (also on right-click): Full screen (ready videos; lightbox with prompt and reference details), Include in Flick (reference video only, a checkmark toggle; turning it off moves the start to the first variation), and Delete (variations, with confirmation; disabled with a reason when only 2 are left). Dividers only appear between groups, never above a lone Delete.",
@@ -615,7 +620,8 @@ const SECTIONS: Section[] = [
             "Title and description (\u201cDrafts you\u2019re working on.\u201d), then search, a last-edited date filter (see Assets) and a size filter.",
             "Cards: a square (1:1) thumbnail (the starting variation), the name, last edited and size. 4 to a row on wide screens (3 on medium). Hovering a card shows its saved versions and how many times it was exported over the thumbnail.",
             "A project saves as you work: anything started from Create, a template, Assets or Remix shows up here, and reopens as it was left.",
-            "\u22ef and right-click: Duplicate, Delete (confirms; its Flicks stay).",
+            "\u22ef and right-click: Duplicate and Delete. Both happen at once with Undo in the toast (\u201c\u2018Name\u2019 deleted \u00b7 Its Flicks stay.\u201d). Flicks still confirm before deleting, as they may be live in ads.",
+            "Opening a project: its picture grows into the editor\u2019s frame.",
             "Empty: \u201cNo projects yet\u201d with Create; no match, with Clear filters.",
           ]}
         />
@@ -654,6 +660,7 @@ const SECTIONS: Section[] = [
             "Left: the Flick playing as viewers get it (its variations, the starting one first, and the thumbnail strip to tap) in a fixed-height stage like the template page (up to 520px, shorter on small screens); the frame keeps its exact ratio and fits the stage, wide, square or tall. Placements and embeds show their Flick the same way. Then Analytics.",
             "Analytics: total views, then each variation with its views, share and a bar; the starting variation marked \u201cStarts here\u201d. Full analytics opens this Flick in Analytics. Campaign pages have a Full analytics link above their numbers. Placement and embed pages have the same Analytics card as a Flick page, below the Flick: views of the Flick on now (or the last one) in that placement or embed, all time, split by variation with the starting one marked, and Full analytics opening that placement or embed. No views yet: \u201cShare the link, embed it or serve it in ads to start.\u201d",
             "Right, as cards: Link, Serve in ads, Embed. Stacks under the Flick on narrow screens.",
+            "Visit link opens the Flick as viewers get it, on any screen including phones: the video at its size, the variations to tap under it, the name, and \u201cMade with Flicks\u201d. An old or removed link says \u201cThis Flick isn\u2019t available\u201d.",
             "Link: flamapp.ai/f/<ending> with copy and visit; how it unfurls (image, title, description); Edit link.",
             "Edit link (dialog): link preview (1200\u00d7630 image with add / replace / remove, title, description); link ending with a live availability check; preview title and description. It changes the link only, never the Flick.",
             "Serve in ads: the placements this Flick is in (name, campaign, impressions; each opens its placement), or \u201cNot in any placement yet.\u201d Add to placement (top right) opens a dialog: placements in the Flick\u2019s size with Add or Replace (View when it\u2019s there), and New placement for this Flick.",
@@ -816,10 +823,27 @@ const SECTIONS: Section[] = [
         <P>New users learn in place: a short tour in the editor, one-time tips at tricky moments, a Help Center with a sample project, and a first-run explainer on Campaigns. All of it can be skipped; the tour and the sample come back from the Help Center.</P>
         <H>Sample project</H>
         <P>\u201cSample: Sport lens switch\u201d (1080\u00d71920): a reference video, three colourways named Gold, Sapphire and White with thumbnails, a heading, a price from the price feed, a Shop now button whose link comes from the shop-link feed, and the strip. Opened from the Help Center; it saves to Projects like any other.</P>
+        <H>Search and keys</H>
+        <UL
+          items={[
+            "\u2318K (Ctrl K), or Search at the top of the sidebar, opens one search box for everything: actions (New video, Switch to light or dark, How Flicks work, Help Center), every page, and projects and Flicks by name (the 4 latest of each until something is typed). Enter opens the highlighted one.",
+            "N starts a new video from anywhere outside a text box (Create, with the box focused).",
+          ]}
+        />
+        <H>Feel</H>
+        <UL
+          items={[
+            "Pages cross-fade and settle into place; new chat messages and prompts ease in; a project\u2019s card grows into the editor. All motion stops when the device asks for less motion.",
+            "The AI shows \u201cThinking\u2026\u201d (or what it\u2019s doing) with a soft shimmer; its replies fade in a paragraph at a time.",
+            "Buttons press in slightly when clicked. Pictures fade in as they load, over a muted frame.",
+            "Light, Dark or System is remembered in the browser, applied before the page shows, and switching it cross-fades the page.",
+            "Empty lists show a small drawing, one line and one action. Highlighted text and the text cursor use the primary colour.",
+          ]}
+        />
         <H>How Flicks work</H>
         <UL
           items={[
-            "A feature intro popup on Create, shown once to new users right after workspace setup (the welcome gift follows it), and any time from the outlined \u201c? How Flicks work\u201d button under the prompt box.",
+            "A feature intro popup on Create, shown once to new users right after workspace setup (the welcome gift follows it), and any time from \u201c? How Flicks work\u201d after the starter ideas under the prompt box, or from search (\u2318K).",
             "Four steps, each with a short scene built from the escalator Flick (real clips and stills) above the copy: Start with one video (a prompt types, three reference images drop in, Generate, and the video plays); Create variations (Streetwear, Office and Tennis slide out of the Original: same motion, new person and outfit); Export as one Flick (they fly into one Flick with its thumbnail rail; a tap switches who is in it, instantly); Run it anywhere (the Flick branches to Ads, Website and Link, playing inside each).",
             "Progress bars that also jump to a step, Skip (first step) or Back, Next, and Start creating at the end. Each step stays 8 to 10 seconds; it plays on its own until the viewer clicks. Esc or the close button dismisses it. Reduced motion: scenes show their end state.",
           ]}
@@ -863,7 +887,6 @@ const SECTIONS: Section[] = [
             "Search matches titles first, then summaries, tips and steps.",
           ]}
         />
-        <P>Dev tools: Reset onboarding (in the dev bar) starts all of it over.</P>
       </>
     ),
   },

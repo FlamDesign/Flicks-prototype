@@ -206,7 +206,7 @@ export const MentionTextarea = forwardRef<
               {items.map(({ o, i }) => (
                 <div key={o.key} role="option" aria-selected={i === hi} onMouseEnter={() => setHi(i)} onClick={() => choose(i)} className={cn("group/m flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm", i === hi && "bg-muted")}>
                   <span className="relative grid size-7 shrink-0 place-items-center overflow-hidden rounded-md bg-muted text-muted-foreground">
-                    {o.thumb ? <img src={o.thumb} alt="" className="size-full object-cover" /> : <HugeiconsIcon icon={o.group === "Brand" ? PaintBoardIcon : PlayIcon} className="size-3.5" />}
+                    {o.thumb ? <img loading="lazy" decoding="async" src={o.thumb} alt="" className="size-full object-cover" /> : <HugeiconsIcon icon={o.group === "Brand" ? PaintBoardIcon : PlayIcon} className="size-3.5" />}
                     {o.video && o.thumb && <HugeiconsIcon icon={PlayIcon} className="absolute size-3 text-white drop-shadow" />}
                   </span>
                   <span className="flex min-w-0 flex-1 flex-col">
@@ -302,7 +302,7 @@ export function ElementDialog({ open, edit, name: initial, onClose, onSaved }: {
             <div className="flex flex-wrap gap-2">
               {images.map((im, i) => (
                 <span key={im.url + i} className="group/e relative size-16 overflow-hidden rounded-lg ring-1 ring-foreground/10">
-                  <img src={im.url} alt={im.name} className="size-full object-cover" />
+                  <img loading="lazy" decoding="async" src={im.url} alt={im.name} className="size-full object-cover" />
                   <button type="button" aria-label={`Remove ${im.name}`} onClick={() => setImages((l) => l.filter((_, j) => j !== i))} className="absolute right-1 top-1 grid size-5 place-items-center rounded-full bg-black/50 text-white opacity-0 group-hover/e:opacity-100 focus-visible:opacity-100">
                     ×
                   </button>

@@ -1,3 +1,4 @@
+import { EmptyState } from "@/components/empty-state"
 import { useMemo, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -56,11 +57,11 @@ export function TemplateGallery({ onUse, saved = [] }: { onUse: (t: Template) =>
             </div>
           ) : (
             all.length === 0 ? (
-              <EmptyState title="No templates yet" body="Templates will show up here. Describe your video above to start from scratch." />
+              <EmptyState art="templates" title="No templates yet" text="Templates will show up here. Describe your video above to start from scratch." />
             ) : (
-            <EmptyState
+            <EmptyState art="search"
               title="No templates match these filters"
-              body="Try another industry or size."
+              text="Try another industry or size."
               action={<Button variant="outline" size="sm" onClick={() => { setIndustry("all"); setSize("all") }}>Clear filters</Button>}
             />
             )
@@ -73,12 +74,3 @@ export function TemplateGallery({ onUse, saved = [] }: { onUse: (t: Template) =>
   )
 }
 
-function EmptyState({ title, body, action }: { title: string; body: string; action?: React.ReactNode }) {
-  return (
-    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-16 text-center">
-      <p className="text-sm font-medium">{title}</p>
-      <p className="max-w-xs text-sm text-muted-foreground">{body}</p>
-      {action && <div className="pt-2">{action}</div>}
-    </div>
-  )
-}

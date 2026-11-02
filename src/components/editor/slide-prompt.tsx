@@ -3,6 +3,8 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Add01Icon, Loading03Icon, PlayIcon, SparklesIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Kbd } from "@/components/ui/kbd"
+import { MOD } from "@/lib/keys"
 import { FailedRefsNote, ReferenceThumb, ReferenceViewer, scrollSideways, useReferenceUploads, type Reference } from "@/components/prompt-composer"
 import { useMediaAdd } from "@/components/media-picker"
 import { MentionTextarea, useMentionOptions } from "@/components/mention-input"
@@ -88,7 +90,7 @@ export function SlidePrompt({
                   aria-label={`View ${fixedRef.name}`}
                   className="group/ref relative size-14 shrink-0 overflow-hidden rounded-xl outline-none ring-1 ring-foreground/10 focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
                 >
-                  <img src={fixedRef.url} alt="" className="size-full object-cover transition-transform duration-200 group-hover/ref:scale-105" />
+                  <img loading="lazy" decoding="async" src={fixedRef.url} alt="" className="size-full object-cover transition-transform duration-200 group-hover/ref:scale-105" />
                   <span className="absolute inset-0 grid place-items-center bg-black/0 transition-colors group-hover/ref:bg-black/30">
                     <span className="grid size-6 place-items-center rounded-full bg-black/50 text-white backdrop-blur-sm">
                       <HugeiconsIcon icon={PlayIcon} className="size-3" />
@@ -148,7 +150,7 @@ export function SlidePrompt({
               </Button>
             </span>
           </TooltipTrigger>
-          <TooltipContent>{disabled ?? (generating ? "Generating video" : failedRefs ? "Retry or remove the images that didn’t upload" : `Uses ${cost} credits`)}</TooltipContent>
+          <TooltipContent className="flex items-center gap-2">{disabled ?? (generating ? "Generating video" : failedRefs ? "Retry or remove the images that didn’t upload" : `Uses ${cost} credits`)}{canSend && <Kbd>{MOD} ↵</Kbd>}</TooltipContent>
         </Tooltip>
       </div>
       )}

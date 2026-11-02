@@ -124,8 +124,12 @@ export const library = {
       return { ...s, projects: old ? s.projects.map((x) => (x.id === p.id ? next : x)) : [next, ...s.projects] }
     })
   },
+  /** removes it; the returned function puts it back where it was (for Undo) */
   deleteProject(id: string) {
+    const i = state.projects.findIndex((p) => p.id === id)
+    const gone = state.projects[i]
     set((s) => ({ ...s, projects: s.projects.filter((p) => p.id !== id) }))
+    return () => gone && set((s) => (s.projects.some((p) => p.id === id) ? s : { ...s, projects: [...s.projects.slice(0, i), gone, ...s.projects.slice(i)] }))
   },
   duplicateProject(id: string) {
     const p = state.projects.find((x) => x.id === id)

@@ -51,7 +51,7 @@ export function PlaceAnalyticsCard({ kind, id }: { kind: "placement" | "embed"; 
         <ul className="flex flex-col gap-3">
           {stats.map((v) => (
             <li key={`${v.name}-${v.i}`} className="flex items-center gap-3">
-              <img src={v.poster} alt="" className="size-10 shrink-0 rounded-lg object-cover" />
+              <img loading="lazy" decoding="async" src={v.poster} alt="" className="size-10 shrink-0 rounded-lg object-cover" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2 text-sm">
                   <span className="flex min-w-0 items-center gap-1.5">

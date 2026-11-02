@@ -58,7 +58,7 @@ export function AgentItemView({ item, agent, ctx }: { item: Item; agent: Agent; 
           {item.images.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {item.images.map((u) => (
-                <img key={u} src={u} alt="" className="size-12 rounded-lg object-cover ring-1 ring-foreground/10" />
+                <img loading="lazy" decoding="async" key={u} src={u} alt="" className="size-12 rounded-lg object-cover ring-1 ring-foreground/10" />
               ))}
             </div>
           )}
@@ -68,15 +68,11 @@ export function AgentItemView({ item, agent, ctx }: { item: Item; agent: Agent; 
     case "assistant":
       return (
         <div className="flex flex-col gap-2">
-          {(item.text || !item.streaming) && <Said text={item.text} />}
+          {(item.text || !item.streaming) && <Said text={item.text} streaming={item.streaming} />}
           {item.streaming && (
-            <span aria-live="polite" className="flex h-6 items-center gap-2 px-1 text-xs text-muted-foreground">
-              <span className="flex gap-1">
-                {[0, 1, 2].map((i) => (
-                  <span key={i} className="size-1.5 animate-pulse rounded-full bg-foreground/40" style={{ animationDelay: `${i * 160}ms` }} />
-                ))}
-              </span>
-              {item.activity && <span className="animate-in fade-in-0">{item.activity}…</span>}
+            <span aria-live="polite" className="flex h-6 items-center px-1 text-sm">
+              {/* a calm shimmer over what it's doing, instead of bouncing dots */}
+              <span key={item.activity ?? "thinking"} className="text-shimmer animate-in fade-in-0">{item.activity ? `${item.activity}…` : "Thinking…"}</span>
             </span>
           )}
         </div>
@@ -251,7 +247,7 @@ function Answers({ items }: { items: Item[] }) {
           <div key={x.id} className="contents">
             <dt className="truncate text-muted-foreground">{x.message.split(/[.:]/)[0]}</dt>
             <dd className="flex min-w-0 flex-wrap gap-1">
-              {x.done === "added" && x.images?.length ? x.images.map((u) => <img key={u} src={u} alt="" className="size-6 rounded object-cover ring-1 ring-foreground/10" />) : <span className="text-muted-foreground">Skipped</span>}
+              {x.done === "added" && x.images?.length ? x.images.map((u) => <img loading="lazy" decoding="async" key={u} src={u} alt="" className="size-6 rounded object-cover ring-1 ring-foreground/10" />) : <span className="text-muted-foreground">Skipped</span>}
             </dd>
           </div>
         ) : null,
@@ -264,15 +260,13 @@ function Answers({ items }: { items: Item[] }) {
 function Said({ text, streaming }: { text: string; streaming?: boolean }) {
   if (!text && streaming)
     return (
-      <span aria-label="Thinking" className="flex h-6 items-center gap-1 px-1">
-        {[0, 1, 2].map((i) => (
-          <span key={i} className="size-1.5 animate-pulse rounded-full bg-foreground/40" style={{ animationDelay: `${i * 160}ms` }} />
-        ))}
+      <span className="flex h-6 items-center px-1 text-sm">
+        <span className="text-shimmer">Thinking…</span>
       </span>
     )
   const bold = (s: string) => s.split(/(\*\*[^*]+\*\*)/g).map((p, i) => (p.startsWith("**") && p.endsWith("**") ? <strong key={i} className="font-medium">{p.slice(2, -2)}</strong> : p))
   return (
-    <div className="mr-6 flex flex-col gap-2.5 px-1 text-sm leading-relaxed">
+    <div className={cn("mr-6 flex flex-col gap-2.5 px-1 text-sm leading-relaxed", streaming && "stream-fade")}>
       {text.split(/\n{2,}/).map((para, i) =>
         /^\s*[-•] /m.test(para) ? (
           <ul key={i} className="flex list-disc flex-col gap-1 pl-4">
@@ -491,7 +485,7 @@ function Assets({ item, agent, bare }: { item: Extract<Item, { kind: "assets" }>
         <p className="text-xs text-muted-foreground">{item.message}</p>
         {item.done === "added" ? (
           <div className="flex flex-wrap gap-1.5">
-            {item.images?.map((u) => <img key={u} src={u} alt="" className="size-10 rounded-lg object-cover ring-1 ring-foreground/10" />)}
+            {item.images?.map((u) => <img loading="lazy" decoding="async" key={u} src={u} alt="" className="size-10 rounded-lg object-cover ring-1 ring-foreground/10" />)}
           </div>
         ) : (
           <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -549,7 +543,7 @@ function Assets({ item, agent, bare }: { item: Extract<Item, { kind: "assets" }>
 function Preparing({ poster, name, className }: { poster?: string; name: string; className?: string }) {
   return (
     <span className={cn("relative block shrink-0 overflow-hidden rounded-lg ring-1 ring-foreground/10", className)} aria-label={`Preparing ${name}`} title="Preparing the clip…">
-      {poster && <img src={poster} alt="" className="size-full object-cover opacity-60" />}
+      {poster && <img loading="lazy" decoding="async" src={poster} alt="" className="size-full object-cover opacity-60" />}
       <span className="shimmer absolute inset-0" />
     </span>
   )
@@ -565,7 +559,7 @@ function FileThumb({ file, url, className }: { file: File; url: string; classNam
       </span>
     </span>
   ) : (
-    <img src={url} alt={file.name} className={cn("shrink-0 rounded-lg object-cover ring-1 ring-foreground/10", className)} />
+    <img loading="lazy" decoding="async" src={url} alt={file.name} className={cn("shrink-0 rounded-lg object-cover ring-1 ring-foreground/10", className)} />
   )
 }
 
@@ -679,7 +673,7 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
                 onClick={() => setActive(i)}
                 className={cn("flex shrink-0 items-center gap-1.5 rounded-md py-1 pl-1 pr-2 text-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring", i === shown ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground")}
               >
-                {posters[i] ? <img src={posters[i]} alt="" className="size-5 rounded object-cover" /> : <span className="size-5 rounded bg-muted" />}
+                {posters[i] ? <img loading="lazy" decoding="async" src={posters[i]} alt="" className="size-5 rounded object-cover" /> : <span className="size-5 rounded bg-muted" />}
                 {v.name}
               </button>
             ))}
@@ -691,7 +685,7 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
           {plan.variations.map((v, i) => (
             <li key={i} onFocusCapture={() => setActive(i)} onClick={() => setActive(i)} className={cn("group/v relative flex gap-2.5 rounded-xl bg-muted/50 p-2", i === shown && "ring-1 ring-foreground/15")}>
               {posters[i] ? (
-                <img src={posters[i]} alt="" className="size-6 shrink-0 rounded-md object-cover ring-1 ring-foreground/10" />
+                <img loading="lazy" decoding="async" src={posters[i]} alt="" className="size-6 shrink-0 rounded-md object-cover ring-1 ring-foreground/10" />
               ) : (
                 <span className="grid size-6 shrink-0 place-items-center rounded-md bg-background text-xs font-medium tabular-nums ring-1 ring-foreground/10">{i + 1}</span>
               )}
@@ -794,7 +788,7 @@ function SiteCard({ item }: { item: Extract<Item, { kind: "site" }> }) {
       {item.state === "done" && item.images.length > 0 && (
         <div className="grid grid-cols-4 gap-1.5">
           {item.images.map((u) => (
-            <img key={u} src={u} alt="" className="aspect-square w-full rounded-lg object-cover ring-1 ring-foreground/10 animate-in fade-in-0 duration-300" />
+            <img loading="lazy" decoding="async" key={u} src={u} alt="" className="aspect-square w-full rounded-lg object-cover ring-1 ring-foreground/10 animate-in fade-in-0 duration-300" />
           ))}
         </div>
       )}
@@ -853,7 +847,7 @@ function ImageCard({ item, ctx, agent }: { item: Extract<Item, { kind: "image" }
           </>
         ) : item.state === "done" ? (
           <a href={item.url} target="_blank" rel="noreferrer" aria-label="Open image">
-            <img src={item.url} alt={item.prompt} className="absolute inset-0 size-full object-cover" />
+            <img loading="lazy" decoding="async" src={item.url} alt={item.prompt} className="absolute inset-0 size-full object-cover" />
           </a>
         ) : (
           <HugeiconsIcon icon={Alert02Icon} className="size-4 text-destructive" />
@@ -1098,7 +1092,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
               >
                 <span className="relative w-full overflow-hidden rounded-xl bg-muted" style={{ aspectRatio: Math.max(ctx.ratio, 0.8) }}>
                   {o.image ? (
-                    <img src={o.image} alt="" className="absolute inset-0 size-full object-cover transition-transform duration-500 animate-in fade-in-0 group-hover/c:scale-[1.03]" />
+                    <img loading="lazy" decoding="async" src={o.image} alt="" className="absolute inset-0 size-full object-cover transition-transform duration-500 animate-in fade-in-0 group-hover/c:scale-[1.03]" />
                   ) : (
                     <span className="shimmer absolute inset-0 grid place-items-center">
                       <Spinner className="size-4 text-muted-foreground" />

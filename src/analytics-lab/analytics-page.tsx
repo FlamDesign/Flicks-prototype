@@ -108,7 +108,7 @@ export function AnalyticsPage({ data, loading }: { data: Dataset; loading: boole
       ) : (
         <>
           <div className="space-y-1">
-            <h1 className="text-2xl font-medium tracking-tight">Analytics</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">Analytics</h1>
             <p className="text-sm text-muted-foreground">How people watch, switch and click, across campaigns, embeds and links.</p>
           </div>
           <div role="tablist" aria-label="Analytics views" className="mt-5 flex gap-1 border-b">
@@ -155,9 +155,9 @@ export function AnalyticsPage({ data, loading }: { data: Dataset; loading: boole
 function Head({ image, title, sub }: { image?: string; title: string; sub: string }) {
   return (
     <div className="mt-2 flex items-center gap-3">
-      {image && <img src={image} alt="" className="size-12 rounded-xl object-cover ring-1 ring-foreground/10" />}
+      {image && <img loading="lazy" decoding="async" src={image} alt="" className="size-12 rounded-xl object-cover ring-1 ring-foreground/10" />}
       <div className="min-w-0">
-        <h1 className="truncate text-2xl font-medium tracking-tight">{title}</h1>
+        <h1 className="truncate text-2xl font-semibold tracking-tight">{title}</h1>
         <p className="text-sm text-muted-foreground">{sub}</p>
       </div>
     </div>
@@ -692,7 +692,7 @@ function Overview({ data, filter, go, onTab, flicksOnly }: { data: Dataset; filt
                   </td>
                   <td className="py-2 text-left">
                     <span className="flex items-center gap-3">
-                      <img src={meta.image} alt="" className="size-9 shrink-0 rounded-lg object-cover ring-1 ring-foreground/10" />
+                      <img loading="lazy" decoding="async" src={meta.image} alt="" className="size-9 shrink-0 rounded-lg object-cover ring-1 ring-foreground/10" />
                       <span className="min-w-0">
                         <span className="block truncate font-medium">{meta.name}</span>
                         <span className="block text-xs text-muted-foreground">{meta.size}</span>
@@ -786,7 +786,7 @@ function FlickView({ data, meta, filter }: { data: Dataset; meta: FlickMeta; fil
                     <td className="py-2 pl-2 text-left">
                       <span className="flex items-center gap-2.5">
                         <span className="relative">
-                          <img src={v.poster} alt="" className="h-10 w-8 rounded-md object-cover ring-1 ring-foreground/10" />
+                          <img loading="lazy" decoding="async" src={v.poster} alt="" className="h-10 w-8 rounded-md object-cover ring-1 ring-foreground/10" />
                           <span aria-hidden className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full ring-2 ring-card" style={{ background: SERIES[i % SERIES.length] }} />
                         </span>
                         <span className="font-medium">{v.name}</span>
@@ -985,7 +985,7 @@ function DataTable({ rows, cols, empty = "Nothing in this period.", nameLabel = 
               )}
               <td className={cn("py-2 text-left", !selection && "pl-2")}>
                 <span className="flex items-center gap-3">
-                  {r.image && <img src={r.image} alt="" className="size-9 shrink-0 rounded-lg object-cover ring-1 ring-foreground/10" />}
+                  {r.image && <img loading="lazy" decoding="async" src={r.image} alt="" className="size-9 shrink-0 rounded-lg object-cover ring-1 ring-foreground/10" />}
                   <span className="min-w-0">
                     <span className="flex items-center gap-1.5">
                       <span className="truncate font-medium">{r.name}</span>
@@ -1025,7 +1025,7 @@ function TopLists({ data, filter, go, onTab }: { data: Dataset; filter: Filter; 
         {[...items].sort((a, b) => b.t.played - a.t.played).slice(0, 4).map((x) => (
           <li key={x.id}>
             <button type="button" onClick={() => go({ kind, id: x.id })} className="-mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded-lg px-2 py-2 text-left text-sm outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring">
-              {x.image && <img src={x.image} alt="" className="size-8 shrink-0 rounded-md object-cover ring-1 ring-foreground/10" />}
+              {x.image && <img loading="lazy" decoding="async" src={x.image} alt="" className="size-8 shrink-0 rounded-md object-cover ring-1 ring-foreground/10" />}
               <span className="min-w-0 flex-1 truncate font-medium">{x.name}</span>
               <span className="shrink-0 text-right tabular-nums">
                 {value(x.t)}

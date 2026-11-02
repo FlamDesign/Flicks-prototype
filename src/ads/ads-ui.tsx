@@ -474,7 +474,7 @@ export function ReplaceFlickDialog({
                       )}
                     >
                       <span className="relative block aspect-square overflow-hidden rounded-lg bg-muted">
-                        <img src={f.image} alt="" className="size-full object-cover" />
+                        <img loading="lazy" decoding="async" src={f.image} alt="" className="size-full object-cover" />
                         {live && <span className="absolute left-1.5 top-1.5 rounded-md bg-black/70 px-1.5 py-0.5 text-xs font-medium text-white">Live</span>}
                       </span>
                       <span className="truncate px-0.5 text-xs font-medium">{f.name}</span>
@@ -567,7 +567,7 @@ export function ServeInAds({ flick, onOpenPlacement }: { flick: FlickRef; onOpen
               return (
                 <li key={p.id} className="flex items-center gap-3 px-3 py-2.5">
                   <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-muted">
-                    {p.flick && <img src={p.flick.image} alt="" className="size-full object-cover" />}
+                    {p.flick && <img loading="lazy" decoding="async" src={p.flick.image} alt="" className="size-full object-cover" />}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm">{p.name}</span>
@@ -660,7 +660,7 @@ export function LiveFlick({ flick, tall, fit, videos: given, start = 0 }: { flic
               onClick={() => (setActive(k), setAuto(false))}
               className={cn("aspect-square w-[16cqmin] min-w-7 overflow-hidden rounded-[3cqmin] outline-none transition-all focus-visible:ring-2 focus-visible:ring-white", k === active ? "scale-105 ring-2 ring-white" : "opacity-70 hover:opacity-100")}
             >
-              <img src={GENERATED_VIDEOS[v].poster} alt="" className="size-full object-cover" />
+              <img loading="lazy" decoding="async" src={GENERATED_VIDEOS[v].poster} alt="" className="size-full object-cover" />
             </button>
           ))}
         </div>

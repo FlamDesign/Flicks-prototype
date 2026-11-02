@@ -46,7 +46,7 @@ export function FlickPreview({
   return (
     <div className={cn("relative overflow-hidden rounded-xl bg-muted shadow-sm ring-1 ring-foreground/10", className)} style={{ ...style, aspectRatio: ratio, containerType: "size" }}>
       {posters[active] && (
-        <img
+        <img loading="lazy" decoding="async"
           key={posters[active]}
           src={posters[active]}
           alt=""

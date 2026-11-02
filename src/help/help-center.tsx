@@ -329,7 +329,7 @@ function Results({
               href={`#help/${g.id}`}
               className="flex items-center gap-4 rounded-2xl p-2 outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <img
+              <img loading="lazy" decoding="async"
                 src={g.frames[0]?.src}
                 alt=""
                 className="aspect-[16/10] w-32 shrink-0 rounded-lg object-cover object-left-top ring-1 ring-foreground/10"
@@ -613,7 +613,7 @@ function Player({
           }}
         >
           {frames.map((f, k) => (
-            <img
+            <img loading="lazy" decoding="async"
               key={f.src}
               src={f.src}
               alt={k === step ? f.caption : ""}

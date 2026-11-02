@@ -63,7 +63,7 @@ export function EmbedsPage({ openEmbed, onRemixFlick, onOpenFlick }: { openEmbed
           </nav>
         ) : (
           <div className="space-y-1">
-            <h1 className="text-2xl font-medium tracking-tight">Embeds</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">Embeds</h1>
             <p className="text-sm text-muted-foreground">Create an embed to show Flick on your website. You can replace the Flick in embed any time.</p>
           </div>
         )}
@@ -87,7 +87,7 @@ export function EmbedsPage({ openEmbed, onRemixFlick, onOpenFlick }: { openEmbed
               <li key={e.id}>
                 <button type="button" onClick={() => setView(e.id)} className="flex w-full flex-col gap-2.5 rounded-2xl p-2 text-left outline-none ring-1 ring-foreground/10 transition hover:ring-foreground/25 focus-visible:ring-2 focus-visible:ring-ring">
                   <span className="relative grid aspect-square place-items-center overflow-hidden rounded-xl bg-muted">
-                    {e.flick ? <img src={e.flick.image} alt="" className="absolute inset-0 size-full object-cover" /> : <span className="text-xs text-muted-foreground">No Flick yet</span>}
+                    {e.flick ? <img loading="lazy" decoding="async" src={e.flick.image} alt="" className="absolute inset-0 size-full object-cover" /> : <span className="text-xs text-muted-foreground">No Flick yet</span>}
                     <span className="absolute bottom-2 left-2 rounded-md bg-black/50 px-1.5 py-0.5 text-xs font-medium tabular-nums text-white backdrop-blur-sm">{e.size}</span>
                   </span>
                   <span className="flex flex-col gap-1 px-1 pb-1">
@@ -343,7 +343,7 @@ function EmbedView({ e, actionsEl, onDeleted, onRemixFlick, onOpenFlick }: { e: 
                   return (
                     <li key={`${h.flick.id}-${h.from}`} className="flex items-center gap-3 px-4 py-3 text-sm">
                       <button type="button" onClick={() => setPreview(h)} aria-label={`Preview ${h.flick.name}`} className="size-11 shrink-0 overflow-hidden rounded-lg outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring">
-                        <img src={h.flick.image} alt="" className="size-full object-cover" />
+                        <img loading="lazy" decoding="async" src={h.flick.image} alt="" className="size-full object-cover" />
                       </button>
                       <div className="min-w-0 flex-1">
                         <p className="truncate">{h.flick.name}</p>

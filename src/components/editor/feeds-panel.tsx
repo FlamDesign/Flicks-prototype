@@ -193,7 +193,7 @@ export function FeedsPanel({
                 >
                   <button type="button" onClick={() => onSelectVideo(v.id)} aria-label={`Show ${v.name}`} aria-pressed={active} className="flex min-w-0 items-center gap-2.5 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
                     <span className="relative size-8 shrink-0 overflow-hidden rounded-full bg-muted ring-1 ring-foreground/10">
-                      {v.poster && <img src={v.poster} alt="" className="absolute inset-0 size-full object-cover" />}
+                      {v.poster && <img loading="lazy" decoding="async" src={v.poster} alt="" className="absolute inset-0 size-full object-cover" />}
                     </span>
                     <span className="min-w-0 truncate text-sm font-medium">{v.name}</span>
                   </button>

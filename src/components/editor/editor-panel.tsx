@@ -237,7 +237,7 @@ function ButtonList({ disabled, onAdd }: { disabled: boolean; onAdd: (v: ButtonV
             className="h-auto w-full justify-center rounded-lg py-3 hover:bg-muted"
           >
             {b.variant === "icon" ? (
-              <img src={DEFAULT_ICON} alt="" className="size-11 rounded-full" />
+              <img loading="lazy" decoding="async" src={DEFAULT_ICON} alt="" className="size-11 rounded-full" />
             ) : (
               <span className={cn("inline-flex items-center px-6 py-2.5 text-sm font-medium", b.panelClassName ?? b.className)}>
                 {BUTTON_TEXT}
@@ -332,7 +332,7 @@ function ImageList({
                     aria-label={`Add ${u.name} to canvas`}
                     className="block aspect-square h-auto w-full overflow-hidden rounded-xl p-0 ring-1 ring-foreground/10"
                   >
-                    <img src={u.src} alt="" className="animate-in fade-in-0 h-full w-full object-cover duration-300" />
+                    <img loading="lazy" decoding="async" src={u.src} alt="" className="animate-in fade-in-0 h-full w-full object-cover duration-300" />
                   </Button>
                   <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition-opacity group-hover/img:opacity-100 group-focus-within/img:opacity-100">
                     <Tooltip>
@@ -372,7 +372,7 @@ function ImageList({
             <DialogTitle>Delete this image?</DialogTitle>
             <DialogDescription>“{confirmDel?.name}” is removed from your uploads. It is not removed from canvas.</DialogDescription>
           </DialogHeader>
-          {confirmDel && <img src={confirmDel.src} alt="" className="h-32 w-full rounded-xl object-cover" />}
+          {confirmDel && <img loading="lazy" decoding="async" src={confirmDel.src} alt="" className="h-32 w-full rounded-xl object-cover" />}
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmDel(null)}>
               Cancel
@@ -436,7 +436,7 @@ function FailedTile({ u, onRetry, onRemove }: { u: Upload; onRetry: () => void; 
             aria-label={`Retry uploading ${u.name}`}
             className="relative block aspect-square w-full overflow-hidden rounded-xl ring-2 ring-destructive/60 outline-none focus-visible:ring-ring"
           >
-            <img src={u.src} alt="" className="size-full object-cover opacity-50 grayscale" />
+            <img loading="lazy" decoding="async" src={u.src} alt="" className="size-full object-cover opacity-50 grayscale" />
             <span className="absolute inset-0 grid place-items-center bg-destructive/20 text-white">
               <span className="grid size-8 place-items-center rounded-full bg-destructive shadow-sm">
                 <HugeiconsIcon icon={RefreshIcon} className="size-4" strokeWidth={2.25} />
@@ -485,7 +485,7 @@ function PickerList({ picker, uploads, setUploads }: { picker: Picker; uploads: 
                     aria-pressed={on}
                     className={cn("block aspect-square h-auto w-full overflow-hidden rounded-xl p-0 ring-1 ring-foreground/10", on && "ring-2 ring-primary")}
                   >
-                    <img src={u.src} alt="" className="animate-in fade-in-0 h-full w-full object-cover duration-300" />
+                    <img loading="lazy" decoding="async" src={u.src} alt="" className="animate-in fade-in-0 h-full w-full object-cover duration-300" />
                   </Button>
                 )}
                 {on && (

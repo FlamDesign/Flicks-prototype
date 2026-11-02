@@ -34,8 +34,11 @@ export function MediaTile({
   className?: string
 }) {
   const [hover, setHover] = useState(false)
+  // the muted frame shows until the picture has loaded, then it fades in
+  const [loaded, setLoaded] = useState<string | undefined>()
   return (
     <div
+      data-slot="media-tile"
       onMouseEnter={() => video && setHover(true)}
       onMouseLeave={() => setHover(false)}
       className={cn(
@@ -45,7 +48,22 @@ export function MediaTile({
         className,
       )}
     >
-      {src && <img src={src} alt={alt} loading="lazy" draggable={false} className={cn("absolute inset-0 size-full object-cover transition-transform duration-500 ease-out group-hover/tile:scale-[1.03]", dim && "opacity-60 blur-[1px]")} />}
+      {src && (
+        <img
+          src={src}
+          alt={alt}
+          loading="lazy"
+          decoding="async"
+          draggable={false}
+          ref={(el) => void (el?.complete && el.naturalWidth && loaded !== src && setLoaded(src))}
+          onLoad={() => setLoaded(src)}
+          className={cn(
+            "absolute inset-0 size-full object-cover transition-[opacity,transform] duration-500 ease-out group-hover/tile:scale-[1.03]",
+            loaded === src ? "opacity-100" : "opacity-0",
+            dim && "opacity-60 blur-[1px]",
+          )}
+        />
+      )}
       {video && hover && (
         <video autoPlay muted loop playsInline poster={src} className="absolute inset-0 size-full object-cover animate-in fade-in-0 duration-200">
           {video.webm && <source src={video.webm} type="video/webm" />}

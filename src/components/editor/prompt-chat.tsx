@@ -1,8 +1,11 @@
+import { Arrive } from "@/components/arrive"
 import { useEffect, useRef, useState } from "react"
 import { Spinner } from "@/components/ui/spinner"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Alert02Icon, PanelRightCloseIcon, SparklesIcon } from "@hugeicons/core-free-icons"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Kbd } from "@/components/ui/kbd"
+import { MOD } from "@/lib/keys"
 import { Button } from "@/components/ui/button"
 import { RefStill, type Reference } from "@/components/prompt-composer"
 import { cn } from "@/lib/utils"
@@ -168,7 +171,7 @@ export function PromptChat({
                       <Spinner className="relative size-4 text-primary" />
                     </>
                   ) : (
-                    <img src={posterOf(h.video)} alt="" className={cn("absolute inset-0 size-full object-cover", !current && "opacity-50 grayscale")} />
+                    <img loading="lazy" decoding="async" src={posterOf(h.video)} alt="" className={cn("absolute inset-0 size-full object-cover", !current && "opacity-50 grayscale")} />
                   )}
                 </span>
                 <span className="flex min-w-0 flex-col">
@@ -219,7 +222,7 @@ export function PromptChat({
                 <HugeiconsIcon icon={PanelRightCloseIcon} className="size-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom" align="end">Hide prompts</TooltipContent>
+            <TooltipContent side="bottom" align="end" className="flex items-center gap-2">Hide prompts<Kbd>{MOD} \</Kbd></TooltipContent>
           </Tooltip>
         )}
       </div>
@@ -230,7 +233,7 @@ export function PromptChat({
           ...extra.map((x) => ({ ...x, h: undefined })),
         ]
           .sort((a, b) => a.at - b.at)
-          .map((row) => (row.h ? historyRow(row.h) : <div key={row.key} className="flex flex-col">{row.node}</div>))}
+          .map((row) => (row.h ? <Arrive key={row.key}>{historyRow(row.h)}</Arrive> : <Arrive key={row.key} className="flex flex-col">{row.node}</Arrive>))}
       </div>
 
       {/* composer: says which video it's writing for */}
@@ -258,7 +261,7 @@ export function PromptChat({
 export function TargetChip({ name, poster, removed, onClick }: { name: string; poster?: string; removed?: boolean; onClick?: () => void }) {
   const body = (
     <>
-      {poster ? <img src={poster} alt="" className="size-4 rounded object-cover" /> : <HugeiconsIcon icon={removed ? Alert02Icon : SparklesIcon} className="size-3" />}
+      {poster ? <img loading="lazy" decoding="async" src={poster} alt="" className="size-4 rounded object-cover" /> : <HugeiconsIcon icon={removed ? Alert02Icon : SparklesIcon} className="size-3" />}
       <span className="truncate">{name}</span>
     </>
   )

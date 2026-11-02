@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Kbd } from "@/components/ui/kbd"
+import { MOD } from "@/lib/keys"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -135,7 +137,7 @@ export function PromptComposer({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-[760px] flex-col items-center gap-4">
+    <div data-create-prompt className="mx-auto flex w-full max-w-[760px] flex-col items-center gap-4">
       <div
         onDragOver={(e) => {
           if (e.dataTransfer.types.includes("Files")) {
@@ -150,7 +152,7 @@ export function PromptComposer({
           addFiles(e.dataTransfer.files)
         }}
         className={cn(
-          "relative w-full rounded-3xl border bg-background p-2 shadow-lg transition-shadow duration-300 focus-within:shadow-xl",
+          "relative w-full rounded-3xl border bg-background p-3 shadow-lg transition-[box-shadow,border-color] duration-300 focus-within:border-foreground/20 focus-within:shadow-xl",
           flash && "ring-2 ring-ring ring-offset-2 ring-offset-transparent",
           dragging && "border-primary ring-2 ring-primary/30",
         )}
@@ -165,7 +167,7 @@ export function PromptComposer({
             ))}
             {template && (
               <Badge variant="secondary" className="h-7 gap-1.5 pl-1 pr-1 font-medium">
-                {template.image && <img src={template.image} alt="" className="size-5 rounded-lg object-cover" />}
+                {template.image && <img loading="lazy" decoding="async" src={template.image} alt="" className="size-5 rounded-lg object-cover" />}
                 {template.title}
                 <Button variant="ghost" size="icon-xs" className="size-5" onClick={onClearTemplate} aria-label="Remove template">
                   <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
@@ -192,12 +194,12 @@ export function PromptComposer({
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) send()
           }}
           placeholder="Describe your video. Type @ to mention a photo or element"
-          rows={2}
-          className="field-sizing-content min-h-[72px] max-h-[200px] overflow-y-auto resize-none rounded-none border-0 bg-transparent px-2 text-base shadow-none focus-visible:ring-0 md:text-base dark:bg-transparent"
+          rows={3}
+          className="field-sizing-content min-h-24 max-h-[240px] overflow-y-auto resize-none rounded-none border-0 bg-transparent px-2 text-base shadow-none focus-visible:ring-0 md:text-base dark:bg-transparent"
         />
 
         {/* Toolbar */}
-        <div className="flex items-center gap-1.5 px-1 pb-0.5">
+        <div className="flex items-center gap-1.5 pt-1">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button variant="outline" size="icon" aria-label="Add photos or videos" onClick={media.openPicker}>
@@ -288,7 +290,7 @@ export function PromptComposer({
                 </Button>
               </span>
             </TooltipTrigger>
-            <TooltipContent>{uploading ? "Uploading images" : failedRefs ? "Retry or remove the images that didn’t upload" : planFirst ? "Plan it in the chat first. Credits are used when you generate." : "Generate video"}</TooltipContent>
+            <TooltipContent className="flex items-center gap-2">{uploading ? "Uploading images" : failedRefs ? "Retry or remove the images that didn’t upload" : planFirst ? "Plan it in the chat first. Credits are used when you generate." : "Generate video"}{canSend && <Kbd>{MOD} ↵</Kbd>}</TooltipContent>
           </Tooltip>
         </div>
 
@@ -363,7 +365,7 @@ export function FailedRefsNote({ refs, onRetry }: { refs: Reference[]; onRetry: 
 /** A reference's picture: the photo, a video's poster, or (with no poster) the video's first frame. */
 export function RefStill({ r, className }: { r: Pick<Reference, "url" | "name" | "media" | "poster">; className?: string }) {
   if (r.media === "video" && !r.poster) return <video src={`${r.url}#t=0.1`} muted playsInline preload="metadata" crossOrigin="anonymous" aria-label={r.name} className={className} />
-  return <img src={r.poster ?? r.url} alt={r.name} className={className} />
+  return <img loading="lazy" decoding="async" src={r.poster ?? r.url} alt={r.name} className={className} />
 }
 
 /** 56px reference thumbnail. Shimmer while uploading, a retry state if it failed, remove button on hover. */

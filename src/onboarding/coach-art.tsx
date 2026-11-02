@@ -84,7 +84,7 @@ const SHOTS = [softPink, street, office, court]
 function Frame({ x, y, w, h, tone = 0, style, children, className = "" }: { x: number; y: number; w: number; h: number; tone?: number; style?: CSSProperties; children?: ReactNode; className?: string }) {
   return (
     <div className={`absolute overflow-hidden rounded-md bg-muted shadow-sm ring-1 ring-black/10 ${className}`} style={{ left: x, top: y, width: w, height: h, ...style }}>
-      <img src={SHOTS[tone % SHOTS.length]} alt="" className="absolute inset-0 size-full object-cover" draggable={false} />
+      <img loading="lazy" decoding="async" src={SHOTS[tone % SHOTS.length]} alt="" className="absolute inset-0 size-full object-cover" draggable={false} />
       {children}
     </div>
   )
@@ -175,7 +175,7 @@ function Design() {
       {[0, 1, 2].map((t, i) => (
         <Frame key={t} x={30 + i * 82} y={16} w={56} h={100} tone={t}>
           <div className="absolute inset-x-0 top-2.5 text-center text-[9px] font-semibold leading-none text-white drop-shadow" style={loop("ca-drop2")}>New in</div>
-          <img src={refBag} alt="" className="absolute right-1.5 top-[30px] size-5 rounded-[4px] object-cover shadow ring-1 ring-white/90" style={loop("ca-drop3")} />
+          <img loading="lazy" decoding="async" src={refBag} alt="" className="absolute right-1.5 top-[30px] size-5 rounded-[4px] object-cover shadow ring-1 ring-white/90" style={loop("ca-drop3")} />
           <div className="absolute bottom-2.5 left-1/2 flex h-4 -translate-x-1/2 items-center whitespace-nowrap rounded-full bg-white px-2 text-[8px] font-semibold text-neutral-900 shadow" style={loop("ca-drop")}>Shop now</div>
         </Frame>
       ))}
@@ -208,12 +208,12 @@ function Export() {
       {/* the Flick: viewers tap the thumbnails */}
       <div className="absolute left-[92px] top-[38px] h-[86px] w-[50px] overflow-hidden rounded-md shadow-sm ring-1 ring-black/10">
         {[0, 1, 2].map((t) => (
-          <img key={t} src={SHOTS[t]} alt="" className="absolute inset-0 size-full object-cover" style={l(`ca-x-shot${t + 1}`)} />
+          <img loading="lazy" decoding="async" key={t} src={SHOTS[t]} alt="" className="absolute inset-0 size-full object-cover" style={l(`ca-x-shot${t + 1}`)} />
         ))}
         <div className="absolute inset-x-0 bottom-1 flex justify-center gap-0.5">
           {[0, 1, 2].map((t) => (
             <span key={t} className="relative size-2.5 overflow-hidden rounded-[2px] ring-1 ring-white/70">
-              <img src={SHOTS[t]} alt="" className="size-full object-cover" />
+              <img loading="lazy" decoding="async" src={SHOTS[t]} alt="" className="size-full object-cover" />
             </span>
           ))}
         </div>
@@ -245,8 +245,8 @@ function Strip() {
       <div className="flex h-6 items-center gap-1 whitespace-nowrap rounded-lg bg-background pl-0.5 pr-1.5 shadow-sm ring-1 ring-foreground/10" style={t("ca-s-bar")}>
         <span className="relative grid size-5 place-items-center overflow-hidden rounded-[5px] bg-muted text-muted-foreground ring-1 ring-foreground/10">
           <HugeiconsIcon icon={ImageAdd01Icon} className="size-3" />
-          <img src={SHOTS[0]} alt="" className="absolute inset-0 size-full object-cover object-[50%_25%]" style={t("ca-s-tb0")} />
-          <img src={SHOTS[1]} alt="" className="absolute inset-0 size-full object-cover object-[50%_25%]" style={t("ca-s-tb1")} />
+          <img loading="lazy" decoding="async" src={SHOTS[0]} alt="" className="absolute inset-0 size-full object-cover object-[50%_25%]" style={t("ca-s-tb0")} />
+          <img loading="lazy" decoding="async" src={SHOTS[1]} alt="" className="absolute inset-0 size-full object-cover object-[50%_25%]" style={t("ca-s-tb1")} />
         </span>
         <span className="relative h-3 w-[88px] text-[10px] leading-3">
           <span className="absolute inset-0" style={t("ca-s-add")}>Add thumbnail</span>
@@ -260,14 +260,14 @@ function Strip() {
       <div className="absolute left-[116px] top-[34px] h-[94px] w-[64px] overflow-hidden rounded-md bg-muted shadow-sm ring-1 ring-black/10">
         {/* picking a thumbnail shows its variation */}
         {[0, 1].map((i) => (
-          <img key={i} src={SHOTS[i]} alt="" className="absolute inset-0 size-full object-cover" style={t(`ca-s-v${i}`)} draggable={false} />
+          <img loading="lazy" decoding="async" key={i} src={SHOTS[i]} alt="" className="absolute inset-0 size-full object-cover" style={t(`ca-s-v${i}`)} draggable={false} />
         ))}
         {/* the strip on the frame: empty to start */}
         <div className="absolute inset-x-0 bottom-[5px] flex justify-center gap-1">
           {[0, 1, 2].map((i) => (
             <span key={i} className="relative grid size-4 place-items-center rounded-[3px] border border-dashed border-white/90 bg-black/30 text-white">
               <HugeiconsIcon icon={ImageAdd01Icon} className="size-2.5" />
-              {i < 2 && <img src={SHOTS[i]} alt="" className="absolute -inset-px size-[calc(100%+2px)] max-w-none rounded-[3px] object-cover object-[50%_25%]" style={t(`ca-s-fill${i}`)} draggable={false} />}
+              {i < 2 && <img loading="lazy" decoding="async" src={SHOTS[i]} alt="" className="absolute -inset-px size-[calc(100%+2px)] max-w-none rounded-[3px] object-cover object-[50%_25%]" style={t(`ca-s-fill${i}`)} draggable={false} />}
               {i < 2 && <span className="absolute -inset-[3px] rounded-[5px] ring-[1.5px] ring-white" style={t(`ca-s-on${i}`)} />}
             </span>
           ))}
@@ -325,8 +325,8 @@ function Stale() {
     <>
       {/* the reference changes… */}
       <div className="absolute left-[40px] top-[16px] h-[96px] w-[54px] overflow-hidden rounded-md shadow-sm ring-1 ring-black/10">
-        <img src={SHOTS[0]} alt="" className="absolute inset-0 size-full object-cover" />
-        <img src={SHOTS[1]} alt="" className="absolute inset-0 size-full object-cover" style={loop("ca-swap1")} />
+        <img loading="lazy" decoding="async" src={SHOTS[0]} alt="" className="absolute inset-0 size-full object-cover" />
+        <img loading="lazy" decoding="async" src={SHOTS[1]} alt="" className="absolute inset-0 size-full object-cover" style={loop("ca-swap1")} />
       </div>
       <Pill x={34} y={4} dark>
         Reference
@@ -335,8 +335,8 @@ function Stale() {
       {/* …so its variation needs regenerating, then matches */}
       <div className="absolute left-[160px] top-[30px] flex flex-col items-center gap-1.5">
         <div className="relative h-[64px] w-[36px] overflow-hidden rounded-md shadow-sm ring-1 ring-black/10">
-          <img src={SHOTS[2]} alt="" className="absolute inset-0 size-full object-cover" style={loop("ca-dim")} />
-          <img src={SHOTS[3]} alt="" className="absolute inset-0 size-full object-cover" style={loop("ca-swap2")} />
+          <img loading="lazy" decoding="async" src={SHOTS[2]} alt="" className="absolute inset-0 size-full object-cover" style={loop("ca-dim")} />
+          <img loading="lazy" decoding="async" src={SHOTS[3]} alt="" className="absolute inset-0 size-full object-cover" style={loop("ca-swap2")} />
         </div>
         <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
           <span className="size-1.5 rounded-full bg-red-500" style={loop("ca-dot")} />

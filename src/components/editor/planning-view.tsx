@@ -3,6 +3,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Tick02Icon } from "@hugeicons/core-free-icons"
 import type { Item, Step, useAgent } from "@/ai/agent"
 import type { Design, Field } from "@/ai/design"
+import { Arrive } from "@/components/arrive"
 import { AgentComposer, isDocked, QuestionDeck, threadGroups, type AgentCtx } from "@/components/editor/agent-chat"
 import { cn } from "@/lib/utils"
 
@@ -58,9 +59,9 @@ export function PlanningView({ agent, ctx }: { agent: Agent; ctx: AgentCtx; desi
       <div ref={list} className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-[720px] flex-col gap-5 px-5 pb-6 pt-8">
           {threadGroups(agent.items.filter((it) => !asking(it)), agent, ctx).map((g) => (
-            <div key={g.key} className="flex flex-col">
+            <Arrive key={g.key} className="flex flex-col">
               {g.node}
-            </div>
+            </Arrive>
           ))}
         </div>
       </div>

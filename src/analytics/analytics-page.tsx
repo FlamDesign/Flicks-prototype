@@ -112,7 +112,7 @@ export function AnalyticsPage({ data, target }: { data: Dataset; target?: Analyt
           <>
             <div className="flex flex-wrap items-end justify-between gap-2">
               <div className="space-y-1">
-                <h1 className="text-2xl font-medium tracking-tight">Analytics</h1>
+                <h1 className="text-2xl font-semibold tracking-tight">Analytics</h1>
                 <p className="text-sm text-muted-foreground">Views, interactions and watch time across links, embeds and ads.</p>
               </div>
               <Updated at={data.updatedAt} />
@@ -224,9 +224,9 @@ function DetailHead({ data, open, tab, setOpen }: { data: Dataset; open: Open; t
       </nav>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          {image && <img src={image} alt="" className="size-12 rounded-xl object-cover ring-1 ring-foreground/10" />}
+          {image && <img loading="lazy" decoding="async" src={image} alt="" className="size-12 rounded-xl object-cover ring-1 ring-foreground/10" />}
           <div className="min-w-0">
-            <h1 className="truncate text-2xl font-medium tracking-tight">{title}</h1>
+            <h1 className="truncate text-2xl font-semibold tracking-tight">{title}</h1>
             <p className="text-sm text-muted-foreground">{sub}</p>
           </div>
         </div>
@@ -234,7 +234,7 @@ function DetailHead({ data, open, tab, setOpen }: { data: Dataset; open: Open; t
       </div>
       {only && (
         <div className="flex w-fit items-center gap-2 rounded-full bg-muted py-1 pl-1 pr-1.5 text-sm">
-          <img src={only.image} alt="" className="size-6 rounded-full object-cover" />
+          <img loading="lazy" decoding="async" src={only.image} alt="" className="size-6 rounded-full object-cover" />
           <span className="text-muted-foreground">Only</span>
           <span className="font-medium">{only.name}</span>
           <Tooltip>
@@ -605,7 +605,7 @@ function ComparePicker({ sel, items }: { sel: Selection; items: Pickable[] }) {
                     onClick={() => sel.toggle(i)}
                     className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm outline-none hover:bg-muted focus-visible:bg-muted disabled:opacity-40"
                   >
-                    {i.image ? <img src={i.image} alt="" className="size-7 shrink-0 rounded-md object-cover" /> : <span className="size-7 shrink-0 rounded-md bg-muted" />}
+                    {i.image ? <img loading="lazy" decoding="async" src={i.image} alt="" className="size-7 shrink-0 rounded-md object-cover" /> : <span className="size-7 shrink-0 rounded-md bg-muted" />}
                     <span className="min-w-0 flex-1">
                       <span className="block truncate">{i.name}</span>
                       <span className="block truncate text-xs text-muted-foreground">{fmtCompact(i.views)} views{i.sub ? ` · ${i.sub}` : ""}</span>
@@ -802,7 +802,7 @@ function ListTable({
                       )}
                       <td className={cn("sticky left-0 z-10 max-w-[200px] bg-card py-2 text-left sm:max-w-none group-hover:bg-muted", !expand && "pl-2")}>
                         <span className="flex items-center gap-3">
-                          {r.image ? <img src={r.image} alt="" className="size-9 shrink-0 rounded-lg object-cover ring-1 ring-foreground/10" /> : null}
+                          {r.image ? <img loading="lazy" decoding="async" src={r.image} alt="" className="size-9 shrink-0 rounded-lg object-cover ring-1 ring-foreground/10" /> : null}
                           <span className="min-w-0 flex-1">
                             <span className="flex items-center gap-1.5">
                               {on && <span className="size-2 shrink-0 rounded-full" style={{ background: on.color }} aria-label="On the chart" />}
@@ -989,7 +989,7 @@ function VariationsCard({ data, rows, country, flickIds, current }: { data: Data
                   <tr key={v.name} className="border-t border-foreground/5 text-right">
                     <td className="py-2 pl-2 text-left">
                       <span className="flex items-center gap-2.5">
-                        <img src={v.poster} alt="" className="h-10 w-8 rounded-md object-cover ring-1 ring-foreground/10" />
+                        <img loading="lazy" decoding="async" src={v.poster} alt="" className="h-10 w-8 rounded-md object-cover ring-1 ring-foreground/10" />
                         <span className="font-medium">{v.name}</span>
                         {v.i === meta.start && (
                           <Badge variant="secondary" className="h-5 px-1.5 text-xs font-normal">
@@ -1303,7 +1303,7 @@ function CampaignsTab({ data, filter, setCountry, go }: ViewProps) {
       <div className="flex flex-col">
         {ps.slice(0, 5).map((p) => (
           <button key={p.id} type="button" onClick={p.onClick} className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm outline-none hover:bg-background focus-visible:ring-2 focus-visible:ring-ring">
-            {p.image ? <img src={p.image} alt="" className="size-7 rounded-md object-cover" /> : <span className="size-7 rounded-md bg-muted" />}
+            {p.image ? <img loading="lazy" decoding="async" src={p.image} alt="" className="size-7 rounded-md object-cover" /> : <span className="size-7 rounded-md bg-muted" />}
             <span className="min-w-0 flex-1">
               <span className="block truncate">{p.name}</span>
               <span className="block truncate text-xs text-muted-foreground">{p.sub}</span>

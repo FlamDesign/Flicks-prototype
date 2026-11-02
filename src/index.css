@@ -129,6 +129,12 @@
   body { @apply bg-background text-foreground font-sans antialiased; }
   * { scrollbar-width: none; }
   *::-webkit-scrollbar { display: none; }
+  /* headings break into even lines; paragraphs avoid a lone last word */
+  h1, h2, h3 { text-wrap: balance; }
+  p, li, dd { text-wrap: pretty; }
+  /* approved addition: highlighted text and the text cursor in the preset's primary colour */
+  ::selection { background: color-mix(in oklch, var(--primary) 22%, transparent); }
+  input, textarea, [contenteditable] { caret-color: var(--primary); }
 }
 
 /* ---------- Page-specific (not part of the preset) ---------- */
@@ -145,9 +151,9 @@
    mesh never repeats visibly). Still when the user prefers less motion. */
 :root { --ease-out: cubic-bezier(.22, 1, .36, 1); --ease-in-out: cubic-bezier(.65, 0, .35, 1); --dur-fast: 150ms; --dur: 200ms; --dur-slow: 350ms; }
 .blob { position: absolute; border-radius: 9999px; filter: blur(clamp(48px, 7vw, 96px)); pointer-events: none; will-change: transform; animation: blob-drift 26s var(--ease-in-out) infinite alternate; }
-.blob-1 { background: color-mix(in oklch, var(--chart-2) 55%, transparent); width: clamp(260px, 46%, 720px); aspect-ratio: 1.3; left: -6%; top: -22%; }
-.blob-2 { background: color-mix(in oklch, var(--chart-3) 40%, transparent); width: clamp(240px, 40%, 640px); aspect-ratio: 1.25; right: -4%; top: -26%; animation-duration: 32s; animation-delay: -8s; }
-.blob-3 { background: color-mix(in oklch, var(--chart-1) 35%, transparent); width: clamp(220px, 38%, 600px); aspect-ratio: 1.3; left: 34%; top: 4%; animation-name: blob-drift-2; animation-duration: 29s; animation-delay: -14s; }
+.blob-1 { background: color-mix(in oklch, var(--chart-2) 40%, transparent); width: clamp(260px, 46%, 720px); aspect-ratio: 1.3; left: -6%; top: -22%; }
+.blob-2 { background: color-mix(in oklch, var(--chart-3) 28%, transparent); width: clamp(240px, 40%, 640px); aspect-ratio: 1.25; right: -4%; top: -26%; animation-duration: 32s; animation-delay: -8s; }
+.blob-3 { background: color-mix(in oklch, var(--chart-1) 24%, transparent); width: clamp(220px, 38%, 600px); aspect-ratio: 1.3; left: 34%; top: 4%; animation-name: blob-drift-2; animation-duration: 29s; animation-delay: -14s; }
 .blob-4 { background: color-mix(in oklch, var(--muted-foreground) 30%, transparent); width: clamp(300px, 55%, 860px); aspect-ratio: 1.8; left: 20%; bottom: -34%; animation-name: blob-drift-2; animation-duration: 36s; animation-delay: -4s; }
 @keyframes blob-drift { 0% { transform: translate3d(0, 0, 0) scale(1) } 50% { transform: translate3d(6%, 8%, 0) scale(1.08) } 100% { transform: translate3d(-4%, 3%, 0) scale(.96) } }
 @keyframes blob-drift-2 { 0% { transform: translate3d(0, 0, 0) scale(1) } 50% { transform: translate3d(-7%, -5%, 0) scale(1.06) } 100% { transform: translate3d(5%, -8%, 0) scale(1.1) } }
@@ -173,6 +179,23 @@
 }
 @keyframes shimmer { to { transform: translateX(100%); } }
 @media (prefers-reduced-motion: reduce) { .shimmer::after { animation: none; } }
+
+/* Text that shimmers while the AI works ("Thinking…") */
+.text-shimmer {
+  background: linear-gradient(90deg, var(--muted-foreground) 35%, var(--foreground) 50%, var(--muted-foreground) 65%) 0 0 / 250% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: text-shimmer 2s var(--ease-in-out) infinite;
+}
+@keyframes text-shimmer { from { background-position: 100% 0 } to { background-position: -150% 0 } }
+@media (prefers-reduced-motion: reduce) { .text-shimmer { animation: none; color: var(--muted-foreground); background: none; } }
+
+/* streamed text: each new piece fades in */
+.stream-fade > :last-child { animation: fade-up var(--dur) var(--ease-out) both; }
+
+/* A finished video's thumbnail: one soft glow in the primary colour */
+.ready-glow { animation: ready-glow 1.6s var(--ease-out) both; }
+@keyframes ready-glow { 0% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 55%, transparent) } 100% { box-shadow: 0 0 0 10px transparent } }
+@media (prefers-reduced-motion: reduce) { .ready-glow { animation: none; } }
 
 /* Pointer cursor on everything clickable (unlayered, so it wins over component utilities) */
 button, a[href], summary, label[for], select,
@@ -248,6 +271,15 @@ textarea::-webkit-scrollbar-thumb { background: color-mix(in oklch, var(--foregr
   .showcase-progress { animation: none; transform: scaleX(1); }
   [style*="gift-float"], [style*="help-press"] { animation: none !important; }
 }
+
+/* Page changes (view transitions): a short cross-fade with a slight settle; a card grows into the editor */
+::view-transition-old(root) { animation: vt-out var(--dur) var(--ease-out) both; }
+::view-transition-new(root) { animation: vt-in var(--dur-slow) var(--ease-out) both; }
+::view-transition-group(flick-hero) { animation-duration: var(--dur-slow); animation-timing-function: var(--ease-out); }
+::view-transition-image-pair(flick-hero) { border-radius: var(--radius-xl); overflow: hidden; }
+@keyframes vt-out { to { opacity: 0 } }
+@keyframes vt-in { from { opacity: 0; transform: translateY(4px) scale(.995) } }
+@media (prefers-reduced-motion: reduce) { ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; } }
 
 /* Create in dark mode: the welcome gift's background (soft warm glows on the plain page, no mesh or grain) */
 .dark .hero-mesh { background-image: none; background-color: var(--background); }

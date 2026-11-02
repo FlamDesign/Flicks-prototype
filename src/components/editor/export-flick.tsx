@@ -62,7 +62,7 @@ export function ExportControl({
           </DialogHeader>
 
           <div className="flex items-center gap-3 rounded-xl bg-muted/60 p-2.5">
-            <span className="size-12 shrink-0 overflow-hidden rounded-lg bg-muted">{poster && <img src={poster} alt="" className="size-full object-cover" />}</span>
+            <span className="size-12 shrink-0 overflow-hidden rounded-lg bg-muted">{poster && <img loading="lazy" decoding="async" src={poster} alt="" className="size-full object-cover" />}</span>
             <span className="text-sm">
               <span className="block font-medium">
                 {count} variation{count === 1 ? "" : "s"}
