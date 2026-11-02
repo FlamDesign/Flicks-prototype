@@ -192,6 +192,31 @@
 /* streamed text: each new piece fades in */
 .stream-fade > :last-child { animation: fade-up var(--dur) var(--ease-out) both; }
 
+/* Generating: very light tints of the preset chart colours, drifting slowly */
+.generating-gradient {
+  background:
+    radial-gradient(35% 35% at 30% 30%, color-mix(in oklch, var(--chart-1) 22%, transparent), transparent 70%),
+    radial-gradient(40% 40% at 70% 45%, color-mix(in oklch, var(--chart-2) 16%, transparent), transparent 70%),
+    radial-gradient(45% 45% at 45% 75%, color-mix(in oklch, var(--chart-3) 12%, transparent), transparent 70%);
+  filter: blur(30px);
+  animation: generating-drift 8s var(--ease-in-out) infinite alternate;
+}
+@keyframes generating-drift {
+  0% { transform: rotate(0deg) scale(1); }
+  100% { transform: rotate(180deg) scale(1.12); }
+}
+/* Soft light band passing across the frame to show work in progress */
+.generating-sweep {
+  background: linear-gradient(110deg, transparent 30%, color-mix(in oklch, var(--background) 55%, transparent) 50%, transparent 70%);
+  background-size: 250% 100%;
+  animation: generating-sweep 2.4s var(--ease-in-out) infinite;
+}
+@keyframes generating-sweep {
+  0% { background-position: 120% 0; }
+  100% { background-position: -20% 0; }
+}
+@media (prefers-reduced-motion: reduce) { .generating-gradient, .generating-sweep { animation: none; } }
+
 /* A finished video's thumbnail: one soft glow in the primary colour */
 .ready-glow { animation: ready-glow 1.6s var(--ease-out) both; }
 @keyframes ready-glow { 0% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 55%, transparent) } 100% { box-shadow: 0 0 0 10px transparent } }

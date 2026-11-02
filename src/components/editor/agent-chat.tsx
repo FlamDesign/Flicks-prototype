@@ -1,4 +1,4 @@
-import { GeneratingField } from "@/components/editor/generation-progress"
+import { GeneratingGradient } from "@/components/editor/generation-progress"
 import { createContext, useContext, useEffect, useRef, useState } from "react"
 import { Spinner } from "@/components/ui/spinner"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -842,7 +842,7 @@ function ImageCard({ item, ctx, agent }: { item: Extract<Item, { kind: "image" }
     <div className="mr-10 flex items-center gap-3 rounded-2xl p-1.5 pr-3">
       <span className="relative grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-muted ring-1 ring-foreground/10">
         {item.state === "working" ? (
-          <GeneratingField progress={0.5} spacing={6} />
+          <GeneratingGradient spinner />
         ) : item.state === "done" ? (
           <a href={item.url} target="_blank" rel="noreferrer" aria-label="Open image">
             <img loading="lazy" decoding="async" src={item.url} alt={item.prompt} className="absolute inset-0 size-full object-cover" />

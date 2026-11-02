@@ -397,10 +397,8 @@ const SECTIONS: Section[] = [
         <H>Generating</H>
         <UL
           items={[
-            "While a video generates, the frame becomes a dark stage (in light and dark mode, like the video it stands in for) with a field of dots rippling on a loop, and a glowing tide that rises from the bottom as the video renders: the higher the tide, the further along, with no number shown. Dots under the tide light up in the primary colour and sparkle along its bright, wavy edge. It holds just short of the top until the video arrives.",
-            "The design stays fully editable on top while it generates: select, move, restyle and add elements as usual. Nothing sits over or above the frame.",
-            "While it waits for Variation 1 (or in a queue), the tide stays low and calm.",
-            "Thumbnails in the strip and in the prompts panel show the same stage in small.",
+            "While a video generates, very light tints of the chart colours drift slowly across the frame, with a soft band of light passing over them. The design stays fully editable on top: select, move, restyle and add elements as usual. Nothing sits over or above the frame.",
+            "Thumbnails in the strip and in the prompts panel show the same gradient with a small spinner.",
             "The prompt box clears when a video is sent and stays open: a new prompt can be sent right away. Sending one for a video that\u2019s still generating starts it again with the new prompt (the earlier one shows as Replaced). Variations wait only until Variation 1 exists.",
             "When a video arrives, its thumbnail in the strip fades in with one soft glow.",
             "A variation that hasn't been generated shows the reference video faded underneath its elements.",

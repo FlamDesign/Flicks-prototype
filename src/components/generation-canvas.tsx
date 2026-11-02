@@ -35,7 +35,7 @@ import { useAgent, type EditorApi, type ElementSpec } from "@/ai/agent"
 import { boxOf, buildDesign, color as colorOf, contrast, describeDesign, elementFor, fontName, freeY, headlineLimit, feedOfField, FIELD_FEED, FIELDS, patchDesign, restack, type Brand, type Field } from "@/ai/design"
 import { generateVideo, isLive, posterOf, shareable, useAiConfig, videoAspectOf, type VideoInput } from "@/ai/client"
 import { isTyping } from "@/lib/keys"
-import { GeneratingBackground, GeneratingField } from "@/components/editor/generation-progress"
+import { GeneratingGradient } from "@/components/editor/generation-progress"
 import { AgentComposer, isDocked, QuestionDeck, threadGroups, type AgentCtx } from "@/components/editor/agent-chat"
 import { PlanningView, PlanSteps } from "@/components/editor/planning-view"
 import { addMadeVideo, isMadeVideo, BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, defaultFill, defaultInk, GENERATED_VIDEOS, SAMPLE_UPLOADS, inSet, clampStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload } from "@/components/editor/elements"
@@ -1650,7 +1650,7 @@ export function GenerationCanvas({
               {agentMode && !slides[0].startedAt ? (
                 // the chat is still planning: nothing generated yet
                 <div className="absolute inset-0 grid place-items-center overflow-hidden bg-muted">
-                  <GeneratingField progress={0} waiting className="opacity-60" />
+                  <GeneratingGradient className="bg-transparent opacity-30" />
                   <div className="relative flex max-w-[75%] flex-col items-center gap-2 text-center">
                     <HugeiconsIcon icon={SparklesIcon} className="size-5 text-primary" />
                     <p className="text-sm font-medium">Planning your Flick</p>
@@ -1708,16 +1708,9 @@ export function GenerationCanvas({
                 </>
               ) : (
                 <>
-                  {/* the generating background: rippling dots and a tide that rises as the video renders
-                      (the progress, without a number); the design stays editable on top */}
-                  <div className="absolute inset-0 overflow-hidden">
-                    <GeneratingBackground
-                      startedAt={activeSlide.startedAt}
-                      expectedMs={activeSlide.job ? 150_000 : ms}
-                      queued={activeSlide.job?.status === "queued"}
-                      waiting={activeSlide.job?.status === "waiting"}
-                    />
-                  </div>
+                  {/* the generating background: a drifting gradient with a soft band of light passing
+                      across; the design stays editable on top */}
+                  <GeneratingGradient sweep />
                   <span className="sr-only">
                     {activeSlide.job?.status === "waiting" ? (refReady ? "Waiting for your review of Variation 1" : "Waiting for Variation 1") : `Generating ${nameOf(activeSlide)}`}
                   </span>

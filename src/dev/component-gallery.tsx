@@ -3,7 +3,7 @@ import { SmallScreenNotice } from "@/components/small-screen"
 import { MediaTile, TileBadge } from "@/components/media-tile"
 import { Spinner } from "@/components/ui/spinner"
 import { EmptyState } from "@/components/empty-state"
-import { GeneratingField } from "@/components/editor/generation-progress"
+import { GeneratingGradient } from "@/components/editor/generation-progress"
 import { Kbd, KbdGroup } from "@/components/ui/kbd"
 import { MOD } from "@/lib/keys"
 import { MentionTextarea, useMentionOptions } from "@/components/mention-input"
@@ -582,8 +582,13 @@ const ENTRIES: Entry[] = [
   {
     name: "Generating background",
     kind: "Editor",
-    about: "Behind the design while a video generates: rippling dots and a glowing tide that rises as it renders (the progress, without a number). The design stays editable on top. Thumbnails use the same field.",
-    render: () => <GalleryField />,
+    about: "Behind the design while a video generates: light tints of the chart colours drifting slowly, with a soft band of light passing across. The design stays editable on top. Thumbnails add a small spinner.",
+    render: () => (
+      <div className="flex items-end gap-3">
+        <div className="relative aspect-video w-72 overflow-hidden rounded-xl ring-1 ring-foreground/10"><GeneratingGradient sweep /></div>
+        <div className="relative h-20 w-14 overflow-hidden rounded-lg ring-1 ring-foreground/10"><GeneratingGradient spinner /></div>
+      </div>
+    ),
   },
   {
     name: "Keyboard keys",
@@ -1058,21 +1063,3 @@ function MentionDemo() {
   )
 }
 
-/** the generating background at a few levels, rising on its own */
-function GalleryField() {
-  const [p, setP] = useState(0.1)
-  useEffect(() => {
-    const id = setInterval(() => setP((x) => (x >= 0.95 ? 0.05 : x + 0.05)), 600)
-    return () => clearInterval(id)
-  }, [])
-  return (
-    <div className="flex items-end gap-3">
-      <div className="relative aspect-video w-72 overflow-hidden rounded-xl ring-1 ring-foreground/10">
-        <GeneratingField progress={p} />
-      </div>
-      <div className="relative h-20 w-14 overflow-hidden rounded-lg ring-1 ring-foreground/10">
-        <GeneratingField progress={p} spacing={7} />
-      </div>
-    </div>
-  )
-}

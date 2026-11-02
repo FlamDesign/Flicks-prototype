@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type Modifier } from "@dnd-kit/core"
 import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { GeneratingBackground } from "@/components/editor/generation-progress"
+import { GeneratingGradient } from "@/components/editor/generation-progress"
 import { Input } from "@/components/ui/input"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowExpand01Icon, Delete02Icon, MoreHorizontalIcon, PlusSignIcon, SparklesIcon } from "@hugeicons/core-free-icons"
@@ -327,7 +327,7 @@ function Thumb({
         style={{ width, height }}
       >
         {status === "done" && video && <img loading="lazy" decoding="async" src={video.poster} alt="" className={cn("absolute inset-0 size-full object-cover", stale && "opacity-40", arrived && "animate-in fade-in-0 zoom-in-105 duration-700")} />}
-        {status === "generating" && <GeneratingBackground startedAt={slide.startedAt} expectedMs={slide.job ? 150_000 : expectedMs} queued={slide.job?.status === "queued"} waiting={slide.job?.status === "waiting"} spacing={7} />}
+        {status === "generating" && <GeneratingGradient spinner />}
         {status === "empty" && <HugeiconsIcon icon={SparklesIcon} className="size-4 text-muted-foreground" />}
       </Button>
       {/* name, with a red dot in front when it needs regenerating */}
