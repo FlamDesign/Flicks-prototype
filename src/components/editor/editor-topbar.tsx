@@ -83,7 +83,7 @@ export function FileTitle({
             if (e.key === "Escape") (setDraft(title), setEditing(false))
           }}
           aria-label="Project name"
-          className="h-8 w-72 min-w-0 rounded-lg bg-transparent px-2 text-sm font-medium ring-2 ring-ring/50 focus-visible:ring-2"
+          className="field-sizing-content h-8 w-auto min-w-24 max-w-72 flex-none rounded-lg bg-transparent px-2 text-sm font-medium ring-2 ring-ring/50 focus-visible:ring-2"
         />
       ) : (
         <Tooltip>
