@@ -66,6 +66,11 @@ for (const scheme of ["light", "dark"]) {
     } catch (e) {
       errors.push(`${scheme}/${name}: couldn't reach the screen (${e.message.split("\n")[0]})`)
     }
+    // wait for the pictures on screen to finish loading, so lazy images don't show up as changes
+    await p
+      .waitForFunction(() => [...document.images].filter((i) => i.getBoundingClientRect().top < innerHeight && i.getBoundingClientRect().bottom > 0).every((i) => i.complete), null, { timeout: 8000 })
+      .catch(() => {})
+    await wait(p, 300)
     await p.screenshot({ path: path.join(out, `${name}-${scheme}.png`), animations: "disabled" })
     await ctx.close()
   }
