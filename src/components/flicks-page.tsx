@@ -252,9 +252,6 @@ function Card({ it, when, whenTitle, onOpen, menu, warm }: { it: Item; when: str
           // menu items render in a portal; their clicks bubble here through React, so only open for clicks on the card itself
           onClick={(e) => {
             if (!e.currentTarget.contains(e.target as Node)) return
-            // this card's picture grows into the page it opens
-            const tile = e.currentTarget.querySelector<HTMLElement>("[data-slot=media-tile]")
-            if (tile) tile.style.viewTransitionName = "flick-hero"
             onOpen()
           }}
           onKeyDown={(e) => e.target === e.currentTarget && (e.key === "Enter" || e.key === " ") && (e.preventDefault(), onOpen())}

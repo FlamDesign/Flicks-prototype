@@ -503,8 +503,6 @@ export function CanvasStage({
     <div
       ref={stage}
       className="absolute inset-0 overflow-hidden"
-      // a project card grows into this frame when the editor opens
-      style={{ viewTransitionName: "flick-hero" }}
       onPointerOver={(e) => setHoverEl((e.target as HTMLElement).closest<HTMLElement>("[data-el]")?.dataset.el ?? null)}
       onPointerLeave={() => setHoverEl(null)}
       onPointerDown={() => !document.body.dataset.picking && (setSelected([]), setEditing(null))}>

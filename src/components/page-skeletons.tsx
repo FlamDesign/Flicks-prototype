@@ -10,23 +10,31 @@ import { cn } from "@/lib/utils"
  * content, the way it would while data loads. Each skeleton follows its page's layout so nothing jumps.
  */
 export function PageLoader({ ms, skeleton, children }: { ms: number; skeleton: React.ReactNode; children: React.ReactNode }) {
-  const [loading, setLoading] = useState(ms > 0)
-  // only fade in when a skeleton was showing; a page with no wait appears as is
-  const waited = useRef(ms > 0)
+  // loading: the skeleton; then the page fades in over it (the skeleton stays underneath until the
+  // fade is done, so the screen never goes blank in between); a page with no wait appears as is
+  const [phase, setPhase] = useState<"loading" | "fading" | "ready">(ms > 0 ? "loading" : "ready")
   useEffect(() => {
     if (ms <= 0) return
-    const t = setTimeout(() => setLoading(false), ms)
-    return () => clearTimeout(t)
+    const t = setTimeout(() => setPhase("fading"), ms)
+    const u = setTimeout(() => setPhase("ready"), ms + 250)
+    return () => (clearTimeout(t), clearTimeout(u))
   }, [ms])
-  return loading ? (
-    <div aria-busy="true" aria-label="Loading" className="h-full">
-      {skeleton}
-    </div>
-  ) : waited.current ? (
-    <div className="h-full animate-in fade-in-0 duration-200">{children}</div>
-  ) : (
-    <>{children}</>
-  )
+  if (phase === "loading")
+    return (
+      <div aria-busy="true" aria-label="Loading" className="h-full">
+        {skeleton}
+      </div>
+    )
+  if (phase === "fading")
+    return (
+      <div className="relative h-full">
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          {skeleton}
+        </div>
+        <div className="relative h-full animate-in fade-in-0 duration-200">{children}</div>
+      </div>
+    )
+  return <>{children}</>
 }
 
 const Frame = ({ children, className }: { children: React.ReactNode; className?: string }) => (

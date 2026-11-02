@@ -192,6 +192,22 @@
 /* streamed text: each new piece fades in */
 .stream-fade > :last-child { animation: fade-up var(--dur) var(--ease-out) both; }
 
+/* Generating: a field of dots with a soft band sweeping across, looping (the progress itself is a
+   separate ring or bar, so the motion never pretends to be the progress) */
+.gen-dots {
+  background-image: radial-gradient(circle, color-mix(in oklch, var(--foreground) 16%, transparent) 1.1px, transparent 1.6px);
+  background-size: 14px 14px; background-position: center;
+}
+.gen-dots-sweep {
+  background-image: radial-gradient(circle, color-mix(in oklch, var(--primary) 75%, transparent) 1.4px, transparent 1.9px);
+  -webkit-mask-image: linear-gradient(115deg, transparent 42%, #000 50%, transparent 58%);
+  mask-image: linear-gradient(115deg, transparent 42%, #000 50%, transparent 58%);
+  -webkit-mask-size: 300% 100%; mask-size: 300% 100%;
+  animation: gen-sweep 2.8s var(--ease-in-out) infinite;
+}
+@keyframes gen-sweep { from { -webkit-mask-position: 100% 0; mask-position: 100% 0 } to { -webkit-mask-position: 0% 0; mask-position: 0% 0 } }
+@media (prefers-reduced-motion: reduce) { .gen-dots-sweep { animation: none; opacity: .35; } }
+
 /* A finished video's thumbnail: one soft glow in the primary colour */
 .ready-glow { animation: ready-glow 1.6s var(--ease-out) both; }
 @keyframes ready-glow { 0% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 55%, transparent) } 100% { box-shadow: 0 0 0 10px transparent } }
@@ -214,33 +230,6 @@ textarea, input[type="text"] { cursor: text; }
 textarea { scrollbar-width: thin; scrollbar-color: color-mix(in oklch, var(--foreground) 20%, transparent) transparent; }
 textarea::-webkit-scrollbar { display: block; width: 6px; }
 textarea::-webkit-scrollbar-thumb { background: color-mix(in oklch, var(--foreground) 20%, transparent); border-radius: 9999px; }
-
-/* Generation canvas: animated gradient inside the generating frame */
-.generating-frame { background: var(--muted); }
-/* Very light tints of the preset chart colors, drifting slowly */
-.generating-gradient {
-  background:
-    radial-gradient(35% 35% at 30% 30%, color-mix(in oklch, var(--chart-1) 22%, transparent), transparent 70%),
-    radial-gradient(40% 40% at 70% 45%, color-mix(in oklch, var(--chart-2) 16%, transparent), transparent 70%),
-    radial-gradient(45% 45% at 45% 75%, color-mix(in oklch, var(--chart-3) 12%, transparent), transparent 70%);
-  filter: blur(30px);
-  animation: generating-drift 8s var(--ease-in-out) infinite alternate;
-}
-@keyframes generating-drift {
-  0% { transform: rotate(0deg) scale(1); }
-  100% { transform: rotate(180deg) scale(1.12); }
-}
-/* Soft light band passing across the frame to show work in progress */
-.generating-sweep {
-  background: linear-gradient(110deg, transparent 30%, color-mix(in oklch, var(--background) 55%, transparent) 50%, transparent 70%);
-  background-size: 250% 100%;
-  animation: generating-sweep 2.4s var(--ease-in-out) infinite;
-}
-@keyframes generating-sweep {
-  0% { background-position: 120% 0; }
-  100% { background-position: -20% 0; }
-}
-@media (prefers-reduced-motion: reduce) { .generating-gradient, .generating-sweep { animation: none; } }
 
 /* login showcase: time until the next product */
 @keyframes showcase-progress {
@@ -274,7 +263,7 @@ textarea::-webkit-scrollbar-thumb { background: color-mix(in oklch, var(--foregr
 
 /* Page changes (view transitions). Only the page area moves; the sidebar and everything else stay
    still. The old page stays fully visible underneath while the new one fades in over it, so the
-   screen never dips or flashes. A project card grows into the editor. */
+   screen never dips or flashes. */
 ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
 ::view-transition-group(page) { animation: none; }
 ::view-transition-image-pair(page) { isolation: auto; }
@@ -286,8 +275,6 @@ textarea::-webkit-scrollbar-thumb { background: color-mix(in oklch, var(--foregr
 html.vt-theme::view-transition-old(root) { animation: vt-out var(--dur-slow) var(--ease-out) both; }
 html.vt-theme::view-transition-new(root) { animation: vt-in var(--dur-slow) var(--ease-out) both; }
 html.vt-theme::view-transition-old(page), html.vt-theme::view-transition-new(page) { animation: none; }
-::view-transition-group(flick-hero) { animation-duration: var(--dur-slow); animation-timing-function: var(--ease-out); }
-::view-transition-image-pair(flick-hero) { border-radius: var(--radius-xl); overflow: hidden; }
 @keyframes vt-in { from { opacity: 0 } }
 @keyframes vt-out { to { opacity: 0 } }
 @media (prefers-reduced-motion: reduce) { ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; } }

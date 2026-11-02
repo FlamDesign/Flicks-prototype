@@ -397,8 +397,10 @@ const SECTIONS: Section[] = [
         <H>Generating</H>
         <UL
           items={[
-            "While a video generates, an animated gradient fills the frame and the elements stay visible (read-only). Just above the frame\u2019s top-right corner, a small card names the variation, shows a progress bar, the time left (\u201cAbout 2 min left\u201d, \u201cUnder a minute left\u201d, \u201cA few seconds left\u201d) and what\u2019s happening: Reading your prompt and references, Composing the shot, Rendering the video, Finishing up (or \u201cQueued, starting soon\u201d). The bar holds at 95% until the video arrives.",
-            "While it waits for Variation 1, the same corner shows \u201cWaiting for Variation 1\u201d (or \u201cWaiting for your review of Variation 1\u201d).",
+            "While a video generates, the frame shows a field of dots with a soft band sweeping across it, on a loop, and in the middle a progress ring with the percentage, what\u2019s happening (Reading your prompt and references, Composing the shot, Rendering the video, Finishing up, or \u201cQueued, starting soon\u201d) and the variation with the time left (\u201cAbout 2 min left\u201d, \u201cUnder a minute left\u201d, \u201cA few seconds left\u201d). The ring holds at 95% until the video arrives. The design\u2019s elements stay in place, faded, underneath. Nothing sits over or above the frame.",
+            "While it waits for Variation 1, the ring is empty and says \u201cWaiting for Variation 1\u201d (or \u201cWaiting for your review of Variation 1\u201d).",
+            "Thumbnails in the strip and in the prompts panel show the same dot field; strip thumbnails add a thin progress bar.",
+            "The prompt box clears when a video is sent and stays open: a new prompt can be sent right away. Sending one for a video that\u2019s still generating starts it again with the new prompt (the earlier one shows as Replaced). Variations wait only until Variation 1 exists.",
             "When a video arrives, its thumbnail in the strip fades in with one soft glow.",
             "A variation that hasn't been generated shows the reference video faded underneath its elements.",
           ]}
@@ -621,7 +623,6 @@ const SECTIONS: Section[] = [
             "Cards: a square (1:1) thumbnail (the starting variation), the name, last edited and size. 4 to a row on wide screens (3 on medium). Hovering a card shows its saved versions and how many times it was exported over the thumbnail.",
             "A project saves as you work: anything started from Create, a template, Assets or Remix shows up here, and reopens as it was left.",
             "\u22ef and right-click: Duplicate and Delete. Both happen at once with Undo in the toast (\u201c\u2018Name\u2019 deleted \u00b7 Its Flicks stay.\u201d). Flicks still confirm before deleting, as they may be live in ads.",
-            "Opening a project: its picture grows into the editor\u2019s frame.",
             "Empty: \u201cNo projects yet\u201d with Create; no match, with Clear filters.",
           ]}
         />
@@ -833,7 +834,7 @@ const SECTIONS: Section[] = [
         <H>Feel</H>
         <UL
           items={[
-            "Pages cross-fade and settle into place; new chat messages and prompts ease in; a project\u2019s card grows into the editor. All motion stops when the device asks for less motion.",
+            "Only the page area cross-fades between pages (the sidebar stays still); a page fades in over its loading skeleton; new chat messages and prompts ease in. All motion stops when the device asks for less motion.",
             "The AI shows \u201cThinking\u2026\u201d (or what it\u2019s doing) with a soft shimmer; its replies fade in a paragraph at a time.",
             "Buttons press in slightly when clicked. Pictures fade in as they load, over a muted frame.",
             "Light, Dark or System is remembered in the browser, applied before the page shows, and switching it cross-fades the page.",

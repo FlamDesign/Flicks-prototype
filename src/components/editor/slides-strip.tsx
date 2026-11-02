@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type Modifier } from "@dnd-kit/core"
 import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { Spinner } from "@/components/ui/spinner"
+import { GeneratingThumb } from "@/components/editor/generation-progress"
 import { Input } from "@/components/ui/input"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowExpand01Icon, Delete02Icon, MoreHorizontalIcon, PlusSignIcon, SparklesIcon } from "@hugeicons/core-free-icons"
@@ -80,6 +80,7 @@ export function SlidesStrip({
   onAdd,
   onRemove,
   onReorder,
+  expectedMs,
   start,
   onPreview,
   stale,
@@ -110,6 +111,8 @@ export function SlidesStrip({
   onSelect: (id: string) => void
   onAdd: () => void
   onRemove: (id: string) => void
+  /** how long a video usually takes (for the progress on generating thumbnails) */
+  expectedMs: number
   /** the variations (not Variation 1) in a new order, after a drag */
   onReorder?: (ids: string[]) => void
 }) {
@@ -133,7 +136,7 @@ export function SlidesStrip({
           menu={{
             setStart: onSetStart && (() => onSetStart(main.id)),
           }}
-          start={start === main.id} onPreview={() => onPreview(main.id)} width={w} height={h} status={status(main)} active={active === main.id} onSelect={() => onSelect(main.id)} />
+          start={start === main.id} onPreview={() => onPreview(main.id)} width={w} height={h} expectedMs={expectedMs} status={status(main)} active={active === main.id} onSelect={() => onSelect(main.id)} />
 
         <Separator orientation="vertical" className="mx-1 self-start" style={{ height: h }} />
 
@@ -158,6 +161,7 @@ export function SlidesStrip({
             onPreview={() => onPreview(s.id)}
             stale={stale(s)}
             width={w} height={h}
+            expectedMs={expectedMs}
             status={status(s)}
             active={active === s.id}
             disabled={locked}
@@ -241,6 +245,7 @@ function Label({ label, active, onRename, placeholder }: { label: string; active
 }
 
 function Thumb({
+  expectedMs,
   slide,
   label,
   width,
@@ -270,6 +275,8 @@ function Thumb({
   label: string
   width: number
   height: number
+  /** how long a video usually takes, for the progress bar on a generating thumbnail */
+  expectedMs: number
   status: SlideStatus
   active: boolean
   disabled?: boolean
@@ -320,12 +327,7 @@ function Thumb({
         style={{ width, height }}
       >
         {status === "done" && video && <img loading="lazy" decoding="async" src={video.poster} alt="" className={cn("absolute inset-0 size-full object-cover", stale && "opacity-40", arrived && "animate-in fade-in-0 zoom-in-105 duration-700")} />}
-        {status === "generating" && (
-          <>
-            <span aria-hidden className="generating-gradient absolute inset-[-50%]" />
-            <Spinner className="relative size-4 text-primary" />
-          </>
-        )}
+        {status === "generating" && <GeneratingThumb startedAt={slide.startedAt} expectedMs={slide.job ? 150_000 : expectedMs} />}
         {status === "empty" && <HugeiconsIcon icon={SparklesIcon} className="size-4 text-muted-foreground" />}
       </Button>
       {/* name, with a red dot in front when it needs regenerating */}

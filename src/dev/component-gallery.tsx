@@ -3,7 +3,7 @@ import { SmallScreenNotice } from "@/components/small-screen"
 import { MediaTile, TileBadge } from "@/components/media-tile"
 import { Spinner } from "@/components/ui/spinner"
 import { EmptyState } from "@/components/empty-state"
-import { GenerationProgress } from "@/components/editor/generation-progress"
+import { GeneratingLoader } from "@/components/editor/generation-progress"
 import { Kbd, KbdGroup } from "@/components/ui/kbd"
 import { MOD } from "@/lib/keys"
 import { MentionTextarea, useMentionOptions } from "@/components/mention-input"
@@ -580,12 +580,12 @@ const ENTRIES: Entry[] = [
     ),
   },
   {
-    name: "Generation progress",
+    name: "Generating loader",
     kind: "Editor",
-    about: "Above a generating frame's top-right corner: the variation, time left, a progress bar and the current stage, with a shimmer.",
+    about: "Fills the canvas while a video generates: a looping dot field with a sweep, and a progress ring with the percentage, the stage and the time left. Thumbnails get the dot field with a thin progress bar.",
     render: () => (
-      <div className="relative mt-24 h-10 w-80">
-        <GenerationProgress name="Variation 2" startedAt={Date.now() - 40_000} expectedMs={150_000} />
+      <div className="relative aspect-square w-64 overflow-hidden rounded-xl ring-1 ring-foreground/10" style={{ containerType: "size" }}>
+        <GeneratingLoader name="Variation 2" startedAt={Date.now() - 40_000} expectedMs={150_000} />
       </div>
     ),
   },
@@ -810,7 +810,7 @@ function SlidesDemo() {
   const [active, setActive] = useState("s1")
   return (
     <div className="overflow-hidden rounded-xl ring-1 ring-foreground/10">
-      <SlidesStrip
+      <SlidesStrip expectedMs={8000}
         slides={slides}
         active={active}
         ratio={9 / 16}

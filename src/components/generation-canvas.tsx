@@ -35,7 +35,7 @@ import { useAgent, type EditorApi, type ElementSpec } from "@/ai/agent"
 import { boxOf, buildDesign, color as colorOf, contrast, describeDesign, elementFor, fontName, freeY, headlineLimit, feedOfField, FIELD_FEED, FIELDS, patchDesign, restack, type Brand, type Field } from "@/ai/design"
 import { generateVideo, isLive, posterOf, shareable, useAiConfig, videoAspectOf, type VideoInput } from "@/ai/client"
 import { isTyping } from "@/lib/keys"
-import { GenerationProgress } from "@/components/editor/generation-progress"
+import { GeneratingDots, GeneratingLoader } from "@/components/editor/generation-progress"
 import { AgentComposer, isDocked, QuestionDeck, threadGroups, type AgentCtx } from "@/components/editor/agent-chat"
 import { PlanningView, PlanSteps } from "@/components/editor/planning-view"
 import { addMadeVideo, isMadeVideo, BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, defaultFill, defaultInk, GENERATED_VIDEOS, SAMPLE_UPLOADS, inSet, clampStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload } from "@/components/editor/elements"
@@ -543,30 +543,16 @@ export function GenerationCanvas({
   // a variation made before the reference video was last regenerated needs regenerating too
   const stale = (s: Slide) => s.id !== "main" && !!s.startedAt && !!slides[0].startedAt && s.startedAt < slides[0].startedAt && mainDone
   const [confirmRegen, setConfirmRegen] = useState(false)
-  // something is generating: the prompt box waits
-  // variations can generate side by side; the reference video waits until nothing is generating
-  // (they're all made from it), and each video waits for its own generation to finish
-  const anyGenerating = slides.some((s) => status(s) === "generating")
-  const busyReason =
-    activeSlide.id === "main"
-      ? anyGenerating
-        ? activeStatus === "generating"
-          ? "Wait for Variation 1 to finish"
-          : "Wait for the variations to finish"
-        : undefined
-      : activeStatus === "generating"
-        ? "Wait for this variation to finish"
-        : !mainDone
-          ? "Waiting for Variation 1"
-          : undefined
+  // the prompt box stays open while videos generate: a new prompt for a video that's still being
+  // made starts it again with that prompt. Only variations wait for Variation 1 to exist, since
+  // they're made from it.
+  const busyReason = activeSlide.id !== "main" && !mainDone ? "Waiting for Variation 1" : undefined
   const busy = !!busyReason
   // the very first reference video is still on its way: just the canvas and the prompts
   const hadMain = useRef(false)
   if (mainDone) hadMain.current = true
   const firstRun = !hadMain.current && !mainDone
   const requestGenerate = (id: string) => {
-    // the reference video never regenerates under variations that are still being made from it
-    if (id === "main" && slides.some((s) => status(s) === "generating")) return
     // regenerating the reference video affects every variation already made from it: ask first
     if (id === "main" && slides.some((s) => s.id !== "main" && s.startedAt)) return setConfirmRegen(true)
     generate(id)
@@ -1657,13 +1643,13 @@ export function GenerationCanvas({
               data-tour="frame"
               aria-live="polite"
               aria-label={done ? "Video ready" : "Generating video"}
-              className="generating-frame relative shadow-xl ring-1 ring-foreground/10"
+              className="relative bg-muted shadow-xl ring-1 ring-foreground/10"
               style={{ width: box.w * view.s, height: box.h * view.s, containerType: "size", transform: `translate(${view.x}px, ${view.y}px)`, flexShrink: 0 }}
             >
               {agentMode && !slides[0].startedAt ? (
                 // the chat is still planning: nothing generated yet
                 <div className="absolute inset-0 grid place-items-center overflow-hidden bg-muted">
-                  <div aria-hidden className="generating-gradient absolute inset-[-50%] opacity-30" />
+                  <GeneratingDots className="opacity-60" />
                   <div className="relative flex max-w-[75%] flex-col items-center gap-2 text-center">
                     <HugeiconsIcon icon={SparklesIcon} className="size-5 text-primary" />
                     <p className="text-sm font-medium">Planning your Flick</p>
@@ -1721,29 +1707,18 @@ export function GenerationCanvas({
                 </>
               ) : (
                 <>
-                  <div className="absolute inset-0 overflow-hidden">
-                    <div aria-hidden className="generating-gradient absolute inset-[-50%]" />
-                    <div aria-hidden className="generating-sweep absolute inset-0" />
-                  </div>
-                  {/* the elements stay visible (not editable) while the video generates */}
-                  <div className="pointer-events-none absolute inset-0">
+                  {/* the elements stay in place, faded and read-only, under the loader */}
+                  <div className="pointer-events-none absolute inset-0 opacity-30">
                     <CanvasStage elements={elements} setElements={setElements} selected={[]} setSelected={() => {}} editing={null} setEditing={() => {}} ratio={ratio} thumbs={thumbs} activeThumb={activeThumb} feedOf={feedOf} readOnly />
                   </div>
-                  {/* status just above the frame's top-right corner, off the design: named stages, progress and
-                      time left while it renders; a short note while it waits for Variation 1 */}
-                  {activeSlide.startedAt && activeSlide.job?.status !== "waiting" ? (
-                    <GenerationProgress
-                      name={nameOf(activeSlide) ?? "Video"}
-                      startedAt={activeSlide.startedAt}
-                      expectedMs={activeSlide.job ? 150_000 : ms}
-                      queued={activeSlide.job?.status === "queued"}
-                    />
-                  ) : (
-                    <div className="pointer-events-none absolute bottom-full right-0 z-30 mb-2 flex whitespace-nowrap items-center gap-1.5 rounded-full bg-background/85 py-1 pl-2 pr-2.5 text-xs font-medium shadow-sm ring-1 ring-foreground/10 backdrop-blur-md">
-                      <Spinner className="size-3.5 text-primary" />
-                      {activeSlide.job?.status === "waiting" ? (refReady ? "Waiting for your review of Variation 1" : "Waiting for Variation 1") : "Generating"}
-                    </div>
-                  )}
+                  {/* a looping dot field with a progress ring: percentage, stage, time left */}
+                  <GeneratingLoader
+                    name={nameOf(activeSlide) ?? "Video"}
+                    startedAt={activeSlide.startedAt}
+                    expectedMs={activeSlide.job ? 150_000 : ms}
+                    queued={activeSlide.job?.status === "queued"}
+                    waiting={activeSlide.job?.status === "waiting" ? (refReady ? "Waiting for your review of Variation 1" : "Waiting for Variation 1") : undefined}
+                  />
                 </>
               )}
             </div>
@@ -1752,6 +1727,7 @@ export function GenerationCanvas({
         {!previewing && !firstRun && (
         <SlidesStrip
           slides={slides}
+          expectedMs={ms}
           onReorder={(ids) => setSlides((l) => [l[0], ...ids.map((id) => l.find((x) => x.id === id)!).filter(Boolean)])}
           active={active}
           ratio={ratio}

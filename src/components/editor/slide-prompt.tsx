@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Add01Icon, Loading03Icon, PlayIcon, SparklesIcon } from "@hugeicons/core-free-icons"
+import { Add01Icon, PlayIcon, SparklesIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Kbd } from "@/components/ui/kbd"
@@ -55,7 +55,7 @@ export function SlidePrompt({
   const [dragging, setDragging] = useState(false)
   const generating = status === "generating"
   const failedRefs = refs.some((r) => r.failed)
-  const canSend = !!prompt.trim() && !generating && !disabled && refs.every((r) => !r.loading) && !failedRefs
+  const canSend = !!prompt.trim() && !disabled && refs.every((r) => !r.loading) && !failedRefs
   const refUploads = useReferenceUploads(setRefs)
   const [viewing, setViewing] = useState<number | null>(null)
   const media = useMediaAdd(refUploads.addPicked)
@@ -143,14 +143,14 @@ export function SlidePrompt({
         <Tooltip>
           <TooltipTrigger asChild>
             <span tabIndex={canSend ? -1 : 0}>
-              <Button size="sm" disabled={!canSend} onClick={onGenerate} className="gap-1.5 pl-2.5 pr-1" aria-label={`${status === "done" ? "Regenerate" : "Generate"}, uses ${cost} credits`}>
-                <HugeiconsIcon icon={generating ? Loading03Icon : SparklesIcon} className={cn("size-4", generating && "animate-spin")} />
-                {generating ? "Generating…" : status === "done" ? "Regenerate" : "Generate"}
+              <Button size="sm" disabled={!canSend} onClick={onGenerate} className="gap-1.5 pl-2.5 pr-1" aria-label={`${status === "empty" ? "Generate" : "Regenerate"}, uses ${cost} credits`}>
+                <HugeiconsIcon icon={SparklesIcon} className="size-4" />
+                {status === "empty" ? "Generate" : "Regenerate"}
                 <span className="rounded-full bg-primary-foreground/20 px-1.5 py-0.5 text-xs font-medium tabular-nums leading-none">{cost}</span>
               </Button>
             </span>
           </TooltipTrigger>
-          <TooltipContent className="flex items-center gap-2">{disabled ?? (generating ? "Generating video" : failedRefs ? "Retry or remove the images that didn’t upload" : `Uses ${cost} credits`)}{canSend && <Kbd>{MOD} ↵</Kbd>}</TooltipContent>
+          <TooltipContent className="flex items-center gap-2">{disabled ?? (generating && canSend ? `Start again with this prompt · ${cost} credits` : failedRefs ? "Retry or remove the images that didn’t upload" : `Uses ${cost} credits`)}{canSend && <Kbd>{MOD} ↵</Kbd>}</TooltipContent>
         </Tooltip>
       </div>
       )}
