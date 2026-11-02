@@ -5,6 +5,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Cancel01Icon, ArrowUpRight01Icon, Copy01Icon, Delete02Icon, ImageAdd01Icon, RefreshIcon, Tick02Icon, Upload01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { InputGroupInput } from "@/components/ui/input-group"
 import { InputGroup, InputGroupAddon, InputGroupText, InputGroupTextarea } from "@/components/ui/input-group"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import type { ToastInput } from "@/components/ui-extra/toaster"
@@ -187,7 +188,7 @@ export function ShareSection({
             )}
           >
             <span className="shrink-0 text-muted-foreground">{DOMAIN}</span>
-            <Input
+            <InputGroupInput
               value={slug}
               onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
               onKeyDown={(e) => {
@@ -195,7 +196,7 @@ export function ShareSection({
                 if (e.key === "Escape") setSlug(share.slug)
               }}
               aria-label="Link ending"
-              className="h-full min-w-0 flex-1 bg-transparent font-medium outline-none"
+              className="h-full min-w-0 flex-1 bg-transparent font-medium px-0"
             />
             {changed && valid && (
               <span className="flex shrink-0 items-center gap-1 pr-3 text-xs">

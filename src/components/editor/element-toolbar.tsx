@@ -31,6 +31,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import { Input } from "@/components/ui/input"
+import { InputGroupInput } from "@/components/ui/input-group"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ensureFont } from "@/lib/fonts"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -311,11 +312,11 @@ function FontControls({ el, onChange }: { el: TextLike; onChange: (p: Partial<Ca
       <FontPicker font={font} onPick={(v) => onChange({ font: v } as Partial<CanvasElement>)} />
 
       {/* Size */}
-      <div className="flex h-8 shrink-0 items-center rounded-lg ring-1 ring-foreground/10">
+      <div className="flex h-8 shrink-0 items-center rounded-lg ring-1 ring-foreground/10 focus-within:ring-2 focus-within:ring-ring/50">
         <Tool label="Decrease size" className="h-8 w-7" onClick={() => setPx(px - 2)}>
           <HugeiconsIcon icon={MinusSignIcon} className="size-3.5" />
         </Tool>
-        <Input
+        <InputGroupInput
           aria-label="Font size"
           inputMode="numeric"
           value={px}
@@ -323,7 +324,7 @@ function FontControls({ el, onChange }: { el: TextLike; onChange: (p: Partial<Ca
             const v = Number(e.target.value.replace(/\D/g, ""))
             if (v) setPx(v)
           }}
-          className="w-9 bg-transparent text-center text-sm tabular-nums outline-none"
+          className="h-8 w-9 flex-none bg-transparent px-0 text-center text-sm tabular-nums"
         />
         <Tool label="Increase size" className="h-8 w-7" onClick={() => setPx(px + 2)}>
           <HugeiconsIcon icon={PlusSignIcon} className="size-3.5" />
@@ -652,7 +653,7 @@ function NumberField({
     <div className="flex items-center gap-3">
       <Slider className="flex-1" value={[Math.min(value, max)]} min={min} max={max} step={1} onValueChange={([v]) => set(v)} aria-label={label} />
       <label className="flex h-8 w-[4.5rem] shrink-0 items-center gap-0.5 rounded-lg px-2 text-sm ring-1 ring-foreground/10 focus-within:ring-2 focus-within:ring-ring/50">
-        <Input
+        <InputGroupInput
           aria-label={`${label} in ${unit === "%" ? "percent" : "pixels"}`}
           inputMode="numeric"
           value={draft ?? Math.round(value)}
@@ -662,7 +663,7 @@ function NumberField({
             if (raw !== "") set(Number(raw))
           }}
           onBlur={() => setDraft(null)}
-          className="w-full min-w-0 bg-transparent text-right tabular-nums outline-none"
+          className="w-full min-w-0 bg-transparent text-right tabular-nums px-0"
         />
         <span className="text-muted-foreground">{unit}</span>
       </label>
@@ -721,7 +722,7 @@ function RadiusPopover({ id, value, onChange }: { id: string; value: number; onC
         <div className="flex items-center gap-3">
           <Slider className="flex-1" value={[value]} min={0} max={100} step={1} onValueChange={([v]) => onChange(v)} aria-label="Corner radius percent" />
           <label className="flex h-8 w-[4.5rem] shrink-0 items-center gap-0.5 rounded-lg px-2 text-sm ring-1 ring-foreground/10 focus-within:ring-2 focus-within:ring-ring/50">
-            <Input
+            <InputGroupInput
               aria-label="Corner radius in pixels"
               inputMode="numeric"
               value={draft ?? px}
@@ -731,7 +732,7 @@ function RadiusPopover({ id, value, onChange }: { id: string; value: number; onC
                 if (raw !== "" && maxPx > 0) onChange(Math.min(100, (Number(raw) / maxPx) * 100))
               }}
               onBlur={() => setDraft(null)}
-              className="w-full min-w-0 bg-transparent text-right tabular-nums outline-none"
+              className="w-full min-w-0 bg-transparent text-right tabular-nums px-0"
             />
             <span className="text-muted-foreground">px</span>
           </label>

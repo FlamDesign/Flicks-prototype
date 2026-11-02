@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { InputGroupInput } from "@/components/ui/input-group"
 import { ensureFont } from "@/lib/fonts"
 import { BUTTON_SIZE, BUTTON_STYLES, defaultBorder, DEFAULT_BOLD, FONTS, TEXT_STYLES, type CanvasElement, type Feed } from "@/components/editor/elements"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -1093,7 +1093,7 @@ function ButtonLinkFloat({
     >
       {feedTab && <div className="absolute bottom-full left-3">{feedTab}</div>}
       <HugeiconsIcon icon={Link04Icon} className="size-4 shrink-0 text-muted-foreground" />
-      <Input
+      <InputGroupInput
         ref={linkInput}
         value={link}
         onChange={(e) => setLink(e.target.value)}
@@ -1102,7 +1102,7 @@ function ButtonLinkFloat({
         inputMode="url"
         aria-label={linkFeed ? `Link for this variation (feed: ${linkFeed.name})` : "Button link"}
         title={linkFeed ? `This variation's link (feed: ${linkFeed.name})` : undefined}
-        className="h-full min-w-0 flex-1 bg-transparent px-1.5 text-sm outline-none placeholder:text-muted-foreground"
+        className="h-full min-w-0 flex-1 bg-transparent px-1.5 text-sm placeholder:text-muted-foreground"
       />
       <Button size="icon-sm" aria-label="Done" title="Done (Enter)" onClick={done} className="shrink-0">
         <HugeiconsIcon icon={Tick02Icon} className="size-4" />

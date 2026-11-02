@@ -6,6 +6,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowLeft01Icon, Joystick01Icon, Megaphone01Icon, Moon02Icon, Share08Icon, Sun03Icon, Tick02Icon, Video01Icon, WebDesign01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { InputGroupInput } from "@/components/ui/input-group"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -216,7 +217,7 @@ export function OnboardingPage({
                   <Field id="website" label="Company website" error={errors.website}>
                     <div className={cn("flex h-11 items-center overflow-hidden rounded-2xl bg-input/50 focus-within:ring-3 focus-within:ring-ring/30", errors.website && "ring-3 ring-destructive/20")}>
                       <span className="flex h-full items-center pl-3 text-sm text-muted-foreground">https://</span>
-                      <Input
+                      <InputGroupInput
                         id="ob-website"
                         maxLength={120}
                         onBlur={blur("website")}
@@ -226,7 +227,7 @@ export function OnboardingPage({
                         onChange={(e) => set("website", e.target.value.replace(/^https?:\/\//, ""))}
                         placeholder="company.com"
                         aria-invalid={!!errors.website || undefined}
-                        className="h-full min-w-0 flex-1 bg-transparent pr-3 text-sm outline-none placeholder:text-muted-foreground"
+                        className="h-full min-w-0 flex-1 bg-transparent pr-3 text-sm placeholder:text-muted-foreground px-0"
                       />
                     </div>
                   </Field>

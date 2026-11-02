@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { Input } from "@/components/ui/input"
+import { InputGroupInput } from "@/components/ui/input-group"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { PauseIcon, PlayIcon, SparklesIcon, ArrowDown01Icon, Clock01Icon, Copy01Icon, Delete02Icon, Home01Icon, LayoutTopIcon, PencilEdit01Icon, PencilEdit02Icon, ViewIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
@@ -73,7 +73,7 @@ export function FileTitle({
           <span className="animate-pulse">Naming…</span>
         </span>
       ) : editing ? (
-        <Input
+        <InputGroupInput
           ref={input}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -83,7 +83,7 @@ export function FileTitle({
             if (e.key === "Escape") (setDraft(title), setEditing(false))
           }}
           aria-label="Project name"
-          className="h-8 w-72 min-w-0 rounded-lg bg-transparent px-2 text-sm font-medium outline-none ring-2 ring-ring/50"
+          className="h-8 w-72 min-w-0 rounded-lg bg-transparent px-2 text-sm font-medium ring-2 ring-ring/50 focus-visible:ring-2"
         />
       ) : (
         <Tooltip>

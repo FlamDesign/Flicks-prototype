@@ -5,6 +5,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Add01Icon, Alert02Icon, ArrowLeft01Icon, ArrowRight01Icon, ArrowDown01Icon, BookOpen01Icon, CheckmarkBadge01Icon, Globe02Icon, ArrowUp02Icon, ImageAdd01Icon, Loading03Icon, PencilEdit01Icon, LeftToRightListNumberIcon, PaintBoardIcon, RefreshIcon, SparklesIcon, StopIcon, Tick02Icon, Cancel01Icon, PlayIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { InputGroupInput } from "@/components/ui/input-group"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import type { Choice, Item, useAgent } from "@/ai/agent"
 import type { Brand, Plan, PlanVariation } from "@/ai/design"
@@ -371,13 +372,13 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
               <span className="grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground ring-1 ring-foreground/10">
                 <HugeiconsIcon icon={PencilEdit01Icon} className="size-3.5" />
               </span>
-              <Input
+              <InputGroupInput
                 value={other}
                 onChange={(e) => setOther(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && other.trim() && send()}
                 placeholder="Something else…"
                 aria-label="Your own answer"
-                className="h-8 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                className="h-8 flex-1 bg-transparent text-sm placeholder:text-muted-foreground px-0"
               />
             </label>
           )}
@@ -1188,13 +1189,13 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
       </div>
       <footer className="flex items-center gap-2 border-t px-3 py-2">
         <HugeiconsIcon icon={PencilEdit01Icon} className="size-4 shrink-0 text-muted-foreground" />
-        <Input
+        <InputGroupInput
           value={typed}
           onChange={(e) => setOther((o) => ({ ...o, [q.id]: e.target.value }))}
           onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), cont())}
           placeholder="Something else…"
           aria-label="Your own answer"
-          className="h-8 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+          className="h-8 min-w-0 flex-1 bg-transparent text-sm placeholder:text-muted-foreground px-0"
         />
         <Button size="sm" variant="ghost" disabled={agent.busy} onClick={() => commit("Skipped")} className="gap-1.5 text-muted-foreground">
           Skip <kbd className="rounded bg-muted px-1 text-xs font-normal">Esc</kbd>

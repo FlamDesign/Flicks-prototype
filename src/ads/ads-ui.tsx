@@ -5,6 +5,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Alert02Icon, PlayIcon, Search01Icon, Wallet01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { InputGroupInput } from "@/components/ui/input-group"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -109,7 +110,7 @@ export function AddFundsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
           <Label htmlFor="ad-amount">Amount</Label>
           <div className={cn("flex h-11 items-center overflow-hidden rounded-2xl bg-input/50 focus-within:ring-3 focus-within:ring-ring/30", touched && error && "ring-3 ring-destructive/20")}>
             <span className="pl-3 text-muted-foreground">$</span>
-            <Input
+            <InputGroupInput
               id="ad-amount"
               inputMode="decimal"
               value={raw}
@@ -117,7 +118,7 @@ export function AddFundsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
               onBlur={() => setTouched(true)}
               onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), pay())}
               aria-invalid={(touched && !!error) || undefined}
-              className="h-full min-w-0 flex-1 bg-transparent px-1.5 text-base tabular-nums outline-none"
+              className="h-full min-w-0 flex-1 bg-transparent px-1.5 text-base tabular-nums"
             />
           </div>
           <div className="flex gap-2">

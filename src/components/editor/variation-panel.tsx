@@ -3,6 +3,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Add01Icon, Alert02Icon, CursorPointer02Icon, Delete02Icon, Link04Icon, TextIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { InputGroupInput } from "@/components/ui/input-group"
 import { Label } from "@/components/ui/label"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import type { Feed } from "@/components/editor/elements"
@@ -192,7 +193,7 @@ function FeedsSection({
                 // rename in place; same rules as a new feed name
                 <span className="absolute inset-y-0 left-1.5 z-10 my-auto flex h-6 w-[6.25rem] items-center gap-0.5 rounded-md bg-background pl-1 text-xs font-medium ring-2 ring-ring/50">
                   <span className="text-muted-foreground">@</span>
-                  <Input
+                  <InputGroupInput
                     autoFocus
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
@@ -203,7 +204,7 @@ function FeedsSection({
                       if (e.key === "Escape") setRenaming(null)
                     }}
                     aria-label={`Rename @${f.name}`}
-                    className="h-full min-w-0 flex-1 bg-transparent outline-none"
+                    className="h-full min-w-0 flex-1 bg-transparent px-0"
                   />
                 </span>
               ) : (

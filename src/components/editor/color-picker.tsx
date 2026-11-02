@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { Input } from "@/components/ui/input"
+import { InputGroupInput } from "@/components/ui/input-group"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ColorPickerIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
@@ -116,7 +116,7 @@ export function ColorPanel({ value, onChange, onPicking }: { value: string; onCh
         <label className="flex h-8 min-w-0 flex-1 items-center gap-1.5 rounded-lg px-2 text-sm ring-1 ring-foreground/10 focus-within:ring-2 focus-within:ring-ring/50">
           <span className="size-4 shrink-0 rounded-[4px] ring-1 ring-foreground/15" style={{ background: swatchBg(toHex(c)) }} />
           <span className="text-muted-foreground">#</span>
-          <Input
+          <InputGroupInput
             aria-label="Hex colour"
             value={hex}
             maxLength={6}
@@ -126,11 +126,11 @@ export function ColorPanel({ value, onChange, onPicking }: { value: string; onCh
               setHex(v)
               if (v.length === 6 || v.length === 3) set({ ...parse(`#${v}`), a: c.a })
             }}
-            className="w-full min-w-0 bg-transparent font-mono text-sm uppercase outline-none"
+            className="w-full min-w-0 bg-transparent font-mono text-sm uppercase px-0"
           />
         </label>
         <label className="flex h-8 w-[4.5rem] items-center gap-0.5 rounded-lg px-2 text-sm ring-1 ring-foreground/10 focus-within:ring-2 focus-within:ring-ring/50">
-          <Input
+          <InputGroupInput
             aria-label="Opacity percent"
             inputMode="numeric"
             value={Math.round(c.a * 100)}
@@ -138,7 +138,7 @@ export function ColorPanel({ value, onChange, onPicking }: { value: string; onCh
               const n = Number(e.target.value.replace(/\D/g, ""))
               if (!Number.isNaN(n)) set({ a: Math.min(100, n) / 100 })
             }}
-            className="w-full min-w-0 bg-transparent text-right tabular-nums outline-none"
+            className="w-full min-w-0 bg-transparent text-right tabular-nums px-0"
           />
           <span className="text-muted-foreground">%</span>
         </label>
