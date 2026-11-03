@@ -45,6 +45,8 @@ export interface Env {
   /** Higgsfield image models that take images: the main one and the fallback */
   HF_IMAGE_REF_PATH?: string
   HF_IMAGE_EDIT_PATH?: string
+  /** Marketing Studio Flare: suggested looks, sheets and photo edits */
+  HF_IMAGE_FLARE_PATH?: string
   /** Higgsfield video model paths (text-to-video and image-to-video) */
   HF_VIDEO_PATH?: string
   HF_VIDEO_IMAGE_PATH?: string
@@ -164,13 +166,21 @@ export default {
         if (!prompt) return json({ error: "no_prompt" }, 400, cors)
         if (!(await take(env, `img:${day}`, caps.images))) return json({ error: "daily_limit", what: "images" }, 429, cors)
         const aspect = ASPECTS.includes(String(body.aspect_ratio)) ? String(body.aspect_ratio) : "1:1"
-        const refs = (body.image_urls ?? []).filter((u) => typeof u === "string" && /^https:\/\//.test(u)).slice(0, 3)
+        const refs = (body.image_urls ?? []).filter((u) => typeof u === "string" && /^https:\/\//.test(u)).slice(0, 16)
+        // Marketing Studio Flare: product-true ad images, from photos (kept exactly) or from a prompt alone
+        const FLARE = ["1:1", "3:2", "2:3", "4:3", "3:4", "16:9", "9:16", "21:9"]
+        const nearOf = (list: string[]) => (list.includes(aspect) ? aspect : aspect === "4:5" || aspect === "2:3" ? "3:4" : aspect === "5:4" ? "4:3" : "1:1")
+        const flare = (withRefs: boolean): [string, Record<string, unknown>] => [
+          env.HF_IMAGE_FLARE_PATH || "/marketing-studio/image/flare",
+          { prompt, ...(withRefs ? { image_urls: refs } : {}), aspect_ratio: nearOf(FLARE), resolution: "1k", quality: body.quality === "draft" ? "medium" : "high" },
+        ]
         // with images: a model that keeps them (the product stays theirs; the prompt says what changes)
         if (refs.length) {
-          const near = (list: string[]) => (list.includes(aspect) ? aspect : aspect === "4:5" || aspect === "2:3" ? "3:4" : aspect === "5:4" ? "4:3" : "1:1")
+          const near = nearOf
           const tries: [string, Record<string, unknown>][] = [
-            [env.HF_IMAGE_REF_PATH || "/marketing-studio/image", { prompt, image_urls: refs, aspect_ratio: near(["1:1", "3:2", "2:3", "4:3", "3:4", "16:9", "9:16", "21:9"]), resolution: "1k" }],
-            [env.HF_IMAGE_EDIT_PATH || "/alibaba/qwen-image-3/edit", { prompt, image_urls: refs, aspect_ratio: near(["1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", "21:9"]), resolution: "1k" }],
+            flare(true),
+            [env.HF_IMAGE_EDIT_PATH || "/alibaba/qwen-image-3/edit", { prompt, image_urls: refs.slice(0, 3), aspect_ratio: near(["1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", "21:9"]), resolution: "1k" }],
+            [env.HF_IMAGE_REF_PATH || "/marketing-studio/image", { prompt, image_urls: refs.slice(0, 3), aspect_ratio: near(["1:1", "3:2", "2:3", "4:3", "3:4", "16:9", "9:16", "21:9"]), resolution: "1k" }],
           ]
           let lastRef = { status: 0, text: "" }
           for (const [path, payload] of tries) {
@@ -209,6 +219,21 @@ export default {
         }
         // previews and options: 720p; anything that ends up in the Flick: 1080p
         const resolution = body.quality === "draft" ? "720p" : "1080p"
+        // suggested looks and other images from a prompt alone: Flare first, Soul as the backup
+        {
+          const [path, payload] = flare(false)
+          const res = await hf(env, hfBase(env) + path, { method: "POST", headers: { "content-type": "application/json", "idempotency-key": crypto.randomUUID() }, body: JSON.stringify(payload) })
+          const text = await res.text()
+          let out: { request_id?: string } = {}
+          try {
+            out = JSON.parse(text)
+          } catch {
+            /* not JSON */
+          }
+          if (res.ok && out.request_id) return started("image", out.request_id, prompt, path, body.meta)
+          console.log("higgsfield flare failed", res.status, text.slice(0, 300))
+          if ([401, 402, 403, 429].includes(res.status)) return json({ error: "image_error", status: res.status, message: hfMessage(res.status, text) }, 502, cors)
+        }
         const paths = [...new Set([env.HF_IMAGE_PATH, "/higgsfield-ai/soul/v2/standard", "/higgsfield-ai/soul/standard"].filter((p): p is string => !!p))]
         let last = { status: 0, text: "" }
         for (const path of paths) {
@@ -269,18 +294,20 @@ export default {
         const https = (u?: string) => (u && /^https:\/\//.test(u) ? u : undefined)
         const image = https(body.image_url)
         const endImage = https(body.end_image_url)
-        const images = (body.image_urls ?? []).map(https).filter((u): u is string => !!u).slice(0, 4)
-        const video = https(body.video_url) ?? (body.video_urls ?? []).map(https).find((u) => !!u)
+        // references in order: the prompt calls them [Image 1], [Image 2]… and [Video 1]… by position
+        const images = (body.image_urls ?? []).map(https).filter((u): u is string => !!u).slice(0, 30)
+        const videos = (body.video_urls ?? []).map(https).filter((u): u is string => !!u).slice(0, 10)
+        const video = https(body.video_url) ?? videos[0]
         // the kind of generation (720p, no sound: Flicks play muted):
         // text: prompt only · image: opens on a first frame (may end on a last one) · reference: stays
         // true to images, and follows a video when given · edit: edits a video, keeping all but the change
-        const mode = body.mode === "edit" && video ? "edit" : body.mode === "reference" && (images.length || video) ? "reference" : (body.mode === "image" || (!body.mode && image)) && image ? "image" : video ? "reference" : "text"
+        const mode = body.mode === "edit" && video ? "edit" : body.mode === "reference" && (images.length || videos.length || video) ? "reference" : (body.mode === "image" || (!body.mode && image)) && image ? "image" : video ? "reference" : "text"
         const common = { prompt, resolution: "720p", generate_audio: false }
         const [path, payload]: [string, Record<string, unknown>] =
           mode === "edit"
-            ? [env.HF_VIDEO_EDIT_PATH || "/bytedance/seedance-2.5/video-edit", { ...common, video_url: video, ...(images.length ? { image_urls: images } : {}) }]
+            ? [env.HF_VIDEO_EDIT_PATH || "/bytedance/seedance-2.5/video-edit", { ...common, video_url: video, ...(images.length ? { image_urls: images } : {}), ...(videos.filter((v) => v !== video).length ? { video_urls: videos.filter((v) => v !== video).slice(0, 9) } : {}) }]
             : mode === "reference"
-              ? [env.HF_VIDEO_REF_PATH || "/bytedance/seedance-2.5/reference-to-video", { ...common, duration, aspect_ratio: aspect, ...(images.length ? { image_urls: images } : {}), ...(video ? { video_urls: [video] } : {}) }]
+              ? [env.HF_VIDEO_REF_PATH || "/bytedance/seedance-2.5/reference-to-video", { ...common, duration, aspect_ratio: aspect, ...(images.length ? { image_urls: images } : {}), ...(videos.length ? { video_urls: videos } : video ? { video_urls: [video] } : {}) }]
               : mode === "image"
                 ? [env.HF_VIDEO_IMAGE_PATH || "/bytedance/seedance-2.5/image-to-video", { ...common, duration, image_url: image, ...(endImage ? { end_image_url: endImage } : {}) }]
                 : [env.HF_VIDEO_PATH || "/bytedance/seedance-2.5/text-to-video", { ...common, duration, aspect_ratio: aspect }]
@@ -292,7 +319,7 @@ export default {
         } catch {
           /* not JSON */
         }
-        if (res.ok && out.request_id) return started("video", out.request_id, prompt, path, body.meta, [video, image, endImage, ...images].filter((u): u is string => !!u))
+        if (res.ok && out.request_id) return started("video", out.request_id, prompt, path, body.meta, [video, image, endImage, ...images, ...videos.filter((v) => v !== video)].filter((u): u is string => !!u))
         console.log("higgsfield video submit failed", path, res.status, text.slice(0, 300))
         return json({ error: "video_error", status: res.status, message: hfMessage(res.status, text) }, 502, cors)
       }

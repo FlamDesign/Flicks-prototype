@@ -5,7 +5,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react"
 import { AiError, aspectOf, keepable, generateImage, imageBlock, library, shareable, type LibraryItem, isLive, readWebsite, siteImage, streamChat, type Block, type Message, type SiteRead, type Tool } from "@/ai/client"
-import type { Brand, Design, Plan, PlanVariation } from "@/ai/design"
+import { shotPrompt, type Brand, type Design, type Plan, type PlanVariation, type Shot, type VideoMode } from "@/ai/design"
 import { mockReply } from "@/ai/mock"
 import { findSkill, SKILLS } from "@/ai/skills"
 import { loadSaved, saver } from "@/ai/sync"
@@ -139,9 +139,8 @@ const variationSchema = {
   type: "object",
   properties: {
     name: { type: "string", description: "Short name shown to viewers on its thumbnail, e.g. 'Gold' or 'Rain'" },
-    image_ids: { type: "array", items: { type: "string" }, description: "Project image ids showing exactly how this variation's changed thing looks (its product, colour, person or place); the video is made to match them" },
-    method: { type: "string", enum: ["edit", "regenerate"], description: "How it's made from the approved reference video: 'edit' (default) edits the reference, keeping everything but the change; 'regenerate' makes a new video that follows the reference, for bigger changes such as a different shape or a new setting" },
-    prompt: { type: "string", description: "What changes in this variation's video compared with the reference video (subject, colour, scene, motion). One or two sentences." },
+    image_ids: { type: "array", items: { type: "string" }, description: "Project image ids (or a product sheet) showing exactly how this variation's changed thing looks; in its prompt they are [Image 1], [Image 2]… in this order" },
+    prompt: { type: "string", description: "Only what changes from the reference video, naming its inputs: e.g. 'Replace the boot with the black boot from [Image 1].' Every variation is an edit of the approved reference video (same shot, camera, people and timing), so describe the change only. One or two sentences." },
     label: { type: "string", description: "Optional on-screen label for this variation, e.g. 'Gold lenses'" },
     price: { type: "string", description: "Optional price with currency, e.g. '$189'" },
     link: { type: "string", description: "Optional URL the button opens for this variation" },
@@ -297,15 +296,35 @@ export const TOOLS: Tool[] = [
       type: "object",
       properties: {
         title: { type: "string", description: "Project name, 2 to 5 words" },
-        reference_prompt: { type: "string", description: "The reference video: subject, setting, camera motion, light, style. 1 to 3 sentences." },
-        first_frame_id: { type: "string", description: "A project image id the reference video opens on, exactly (image to video): the user's shot, or a look frame they approved" },
-        last_frame_id: { type: "string", description: "Optional: a project image id the reference video ends on (a controlled reveal); needs first_frame_id" },
-        reference_image_ids: { type: "array", items: { type: "string" }, description: "Project image ids the reference video must stay true to (product, person, style) when there's no first frame (reference to video). Always set this or first_frame_id when the user has product or people images." },
+        reference_mode: {
+          type: "string",
+          enum: ["reference", "edit", "animate"],
+          description:
+            "How the reference video is made. 'reference' (default): a new video that stays true to reference_image_ids / reference_video_ids (the product, characters, style; uploaded, from a website, an approved suggested look or a sheet). 'edit': the user gave a video and asked to change it: source_video_id is changed, keeping the rest. 'animate': the user gave an image to be turned into video as it is (or a photo you edited first): first_frame_id opens the video exactly.",
+        },
+        shot: {
+          type: "object",
+          description: "The reference video's prompt in parts. Name inputs as [Image n] / [Video n] by their position in reference_image_ids / reference_video_ids (in edit, the user's video is 'the video').",
+          properties: {
+            subject: { type: "string", description: "What appears and from which input: e.g. 'The bottle from [Image 1] on the bar from [Image 2], styled like [Video 1]'" },
+            action: { type: "string", description: "What happens, in order" },
+            camera: { type: "string", description: "Shot, movement and speed, e.g. 'Slow push-in, eye level, shallow focus'" },
+            setting: { type: "string", description: "Place, time, light and mood" },
+            keep: { type: "string", description: "What must stay exact, e.g. 'the label and bottle shape exactly as in [Image 1]'" },
+          },
+          required: ["subject", "action", "camera"],
+        },
+        reference_prompt: { type: "string", description: "Only if you don't give shot: the reference video in 1 to 3 sentences, naming inputs as [Image n] / [Video n]." },
+        reference_image_ids: { type: "array", items: { type: "string" }, description: "In order, the project images the reference video must stay true to: the user's product or people photos, website images, an approved suggested look, product or character sheets. They are [Image 1], [Image 2]… in the prompt. Required for 'reference' unless reference_video_ids is given." },
+        reference_video_ids: { type: "array", items: { type: "string" }, description: "In order, the user's videos to follow for motion, camera or style ('reference' mode): [Video 1], [Video 2]…" },
+        source_video_id: { type: "string", description: "'edit' only: the user's video to change" },
+        first_frame_id: { type: "string", description: "'animate' only: the user's image (or your edit of it) that the video opens on exactly" },
+        last_frame_id: { type: "string", description: "'animate' only, optional: an image the video ends on" },
         ...variationsFrom,
         variations: { type: "array", items: variationSchema, minItems: 2, maxItems: 5, description: "Every variation in the Flick, in order. The first is the reference video itself (Variation 1): give its name, label, price and link; its prompt can repeat reference_prompt. The others say only what changes from it." },
         design: designSchema,
       },
-      required: ["title", "reference_prompt", "variations", "design"],
+      required: ["title", "variations", "design"],
     },
   },
   {
@@ -316,13 +335,28 @@ export const TOOLS: Tool[] = [
       type: "object",
       properties: {
         prompt: { type: "string", description: "A detailed visual description" },
-        purpose: { type: "string", enum: ["thumbnail", "canvas", "idea"] },
+        purpose: { type: "string", enum: ["thumbnail", "canvas", "idea", "look", "edit"], description: "'look': a suggested reference image for the video when the user gave nothing; 'edit': the user's photo changed (keep it in reference_image_ids) before animating it; 'idea': just to show" },
         variation: { type: "string", description: "Variation name, for thumbnails" },
         aspect_ratio: { type: "string", enum: ["1:1", "4:5", "3:4", "9:16", "16:9"] },
-        reference_image_ids: { type: "array", items: { type: "string" }, description: "Up to 3 project image ids to keep true to (product first, then a model or scene)" },
+        reference_image_ids: { type: "array", items: { type: "string" }, description: "Project image ids to keep true to (product first, then a model or scene), up to 16" },
         has_text: { type: "boolean", description: "True when the image must show readable words (a badge, an offer, a sign); a model that renders text well makes it" },
       },
       required: ["prompt", "purpose"],
+    },
+  },
+  {
+    name: "make_sheet",
+    description:
+      "Make a product sheet or character sheet from the user's images: the same product or person from several angles on a clean background, so they stay the same in every video. Waits until it's made (10 to 60 seconds) and returns its image id, shown in the chat. Use it in reference_image_ids and variations' image_ids.",
+    input_schema: {
+      type: "object",
+      properties: {
+        kind: { type: "string", enum: ["product", "character"] },
+        name: { type: "string", description: "What it is, e.g. 'Samba OG' or 'Runner'" },
+        image_ids: { type: "array", items: { type: "string" }, description: "The user's photos of it (project image ids), best first" },
+        notes: { type: "string", description: "Optional: details to get right, e.g. 'gold three stripes, gum sole'" },
+      },
+      required: ["kind", "name", "image_ids"],
     },
   },
   {
@@ -514,13 +548,14 @@ The order of work (always):
 
 How the app works (the mechanics, not what to ask):
 - Concepts: propose_concepts shows up to 3 concepts as cards with preview images; use it before every plan unless the user already gave a full concept or asked to skip ideas.
-- Videos the user adds (vid-1, vid-2...) arrive as three stills (start, middle, end) with their length (15 seconds at most; longer ones were trimmed). Say what happens in each. Plans can't use a user's video yet: ask what it's for (a reference to change, a style to follow, or frames to use), note the answer, and plan with images and prompts for now.
+- Videos the user adds (vid-1, vid-2...) arrive as three stills (start, middle, end) with their length (15 seconds at most; longer ones were trimmed). Say what happens in each. Decide from the context what each upload is for, and say it in a line: a video to change (plan reference_mode "edit", source_video_id), a video or image to follow for style, characters or the product (reference_video_ids / reference_image_ids), or an image to bring to life as it is (reference_mode "animate", first_frame_id). Ask only when it's truly unclear.
 - Mentions: the user can type @ to point at things. @Image 1 / @Video 1 are that message's own files in order; @<element name> is a saved element (a product, character, logo or style saved once with its images, listed in saved_elements); it arrives with its images, kept as project images, and a [Mentions: ...] line maps each @name to image ids: use exactly those ids (reference_image_ids, a variation's image_ids, generate_image reference_image_ids). @<variation name> means that variation, @Brand the brand kit. You can suggest saved elements by name ("use @Samba OG?").
 - Questions: ask_user shows tappable answers. display "chips" for words; "layouts", "palettes" or "thumbnails" for visual choices; step "idea", "look" or "plan" moves the progress bar. Several ask_user calls in one reply show together. request_assets asks for files.
 - Web: web_search finds pages; web_fetch reads a page or PDF (text) that appeared in the conversation or in search results; read_website reads a product page for its products, prices, colours and images (and keeps the images for the project). Use them on your own whenever a brand or product is hinted.
 - Brand: set_brand records the brand (name, colours, font, voice).
-- Images: generate_image (with reference_image_ids to keep the user's images, has_text for readable words), view_image to look at any project image, use_image to place one. The app picks the model from these (models skill).
-- Videos: the reference video is Variation 1 (the first video in state.videos, role "reference"): it is in the Flick like the others, with its own name, label, thumbnail and link, and the other variations are made from it. It is made first: from its prompt alone, or opening on a first frame (first_frame_id, optionally ending on last_frame_id), or kept true to images (reference_image_ids). When the user has product or people images, the reference video must use them (one of those two); a plan without them is refused. Give variations image_ids when you have images of their changed thing, and method "regenerate" only for big changes (default "edit"). See the models skill. The user always reviews it (reference_review in the project state); variations are made only after they approve, from the latest reference video plus each variation line, so they keep its motion, camera and timing. When the reference is ready, ask them to review it; if they want changes, regenerate the reference with set_variation (variation "reference", regenerate true) and they review the new one.
+- Images: generate_image (with reference_image_ids to keep the user's images, has_text for readable words), view_image to look at any project image, use_image to place one. The app picks the model from these (models skill). When the user gave nothing to work from, suggest looks first: concept previews (propose_concepts) and generate_image purpose "look" make reference images; the picked or approved one goes into the plan's reference_image_ids. To change a user's photo before animating it, generate_image purpose "edit" with that photo in reference_image_ids, then plan reference_mode "animate" with the result as first_frame_id.
+- Sheets: make_sheet makes a product sheet or character sheet (several views on a clean background) from the user's images, so a product or person stays the same in every video. Make one when a product or person must stay consistent across videos, or when there's only one photo of it; use it in reference_image_ids and variations' image_ids. Ask the user to approve it (ask_user) when getting it right matters (a hero product, a face).
+- Videos: the reference video is Variation 1 (the first video in state.videos, role "reference"): it is in the Flick like the others, with its own name, label, thumbnail and link, and the other variations are made from it. It is made first, one of three ways (reference_mode): "reference" (default) stays true to reference_image_ids and reference_video_ids (product, characters, style); "edit" changes the user's own video (source_video_id); "animate" brings the user's image to life as it is (first_frame_id). There is no prompt-only video: with nothing given, suggest looks first. Write the reference prompt as shot (subject, action, camera, setting, keep) and name inputs by position: [Image 1], [Image 2]… for reference_image_ids, [Video 1]… for reference_video_ids, "the video" for the one being edited. When the user has product or people images, the reference video must use them; a plan without them is refused. The user always reviews it (reference_review in the project state); variations are made only after they approve, each one an edit of the latest reference video: same shot, camera, people and timing, with only its change (its prompt says the change, naming its image_ids as [Image 1]…). See the models skill. When the reference is ready, ask them to review it; if they want changes, regenerate the reference with set_variation (variation "reference", regenerate true) and they review the new one.
 - Library: everything made before is kept. search_library finds earlier images and videos (with their prompts); use_library brings them in as references or starting points.
 - The plan: propose_plan is the approval before any video credits are spent. It carries the reference video prompt (that video is Variation 1, the first in the list, not an extra one), each variation (name, prompt, label, price, link, and headline, subheading or button text only when they differ) and the design. The user edits it and presses Generate all; the app then makes every video and places the design and thumbnail strip.
 - Feeds: on-screen text that differs per variation is a feed. The project state lists every feed, what uses it, each variation's value and any issues. Change them with vary_field, same_for_all, set_variation and rename_feed; update_design can't change text that differs per variation. Fix reported issues in the same turn.
@@ -774,39 +809,64 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
 
   /** variations whose thumbnail is still generating (the review doesn't count them as missing) */
   const pendingThumbs = useRef(new Set<string>())
-  const runImage = (input: Record<string, unknown>, reuse?: string) => {
+  const runImage = (input: Record<string, unknown>, reuse?: string): string | Promise<string> => {
     const purpose = String(input.purpose ?? "idea")
     const target = input.variation ? String(input.variation) : undefined
     const prompt = String(input.prompt ?? "")
-    const aspect = String(input.aspect_ratio ?? (purpose === "canvas" ? aspectOf(state().flick_size) : "1:1"))
+    const aspect = String(input.aspect_ratio ?? (purpose === "canvas" || purpose === "look" || purpose === "edit" ? aspectOf(state().flick_size) : "1:1"))
     const startedAt = Date.now()
     const itemId = reuse ?? add({ kind: "image", prompt, purpose, target, aspect, state: "working", status: "starting", startedAt })
     if (reuse) patch(reuse, { state: "working", status: "starting", startedAt, error: undefined } as Partial<Item>)
     const key = purpose === "thumbnail" && target ? target.trim().toLowerCase() : ""
     if (key) pendingThumbs.current.add(key)
+    const name = String(input.name ?? "").trim() || prompt.slice(0, 40)
     const done = (url: string) => {
       if (key) pendingThumbs.current.delete(key)
       let placed = false
       if (purpose === "thumbnail" && target) placed = !apiRef.current.setThumbnail(target, url).startsWith("Error")
       if (purpose === "canvas") placed = !apiRef.current.addImageToCanvas(url).startsWith("Error")
-      keep(url, prompt.slice(0, 40), "generated")
+      const kept = keep(url, name, "generated", purpose === "sheet" ? String(input.sheet_kind ?? "product") : undefined)
       patch(itemId, { state: "done", url, placed } as Partial<Item>)
+      return kept
     }
     const fail = (e: unknown) => (key && pendingThumbs.current.delete(key), patch(itemId, { state: "failed", error: e instanceof Error ? e.message : "The image failed." } as Partial<Item>))
-    const refIds = ((input.reference_image_ids as string[] | undefined) ?? []).slice(0, 3)
+    const refIds = ((input.reference_image_ids as string[] | undefined) ?? []).slice(0, 16)
     const refImages = refIds.map((r) => images.current.find((i) => i.id === r)).filter((i): i is ProjectImage => !!i)
     // the images to keep, at addresses Higgsfield can open (uploads go to the server first)
     const refs = () => Promise.all(refImages.map((i) => shareable(i.url).catch(() => null))).then((u) => u.filter((x): x is string => !!x))
-    if (live.current)
-      refs().then((urls) => generateImage(prompt, aspect, undefined, (status) => patch(itemId, { status } as Partial<Item>), urls, { project: apiRef.current.state().title, variation: target, purpose }, { text: !!input.has_text, quality: purpose === "idea" ? "draft" : "final" })).then((url) => {
-        try {
-          done(url)
-        } catch (e) {
-          fail(e)
-        }
-      }, fail)
-    else setTimeout(() => done(apiRef.current.sampleImage(purpose, target)), 1800 + Math.random() * 1200)
+    const made: Promise<ProjectImage> = live.current
+      ? refs()
+          .then((urls) => generateImage(prompt, aspect, undefined, (status) => patch(itemId, { status } as Partial<Item>), urls, { project: apiRef.current.state().title, variation: target, purpose }, { text: !!input.has_text, quality: purpose === "idea" ? "draft" : "final" }))
+          .then(done)
+      : new Promise((ok) => setTimeout(() => ok(done(apiRef.current.sampleImage(purpose === "sheet" || purpose === "look" || purpose === "edit" ? "idea" : purpose, target))), 1800 + Math.random() * 1200))
+    made.catch(fail)
+    // images the plan builds on come back with their id, so the next step can use them
+    if (purpose === "look" || purpose === "edit" || purpose === "sheet")
+      return made.then(
+        (img) => `Done: ${img.id} (${purpose === "sheet" ? `${input.sheet_kind ?? "product"} sheet` : purpose === "edit" ? "edited photo" : "suggested look"}), shown in the chat. ${purpose === "edit" ? "Animate it with reference_mode \"animate\" and first_frame_id." : "Use it in reference_image_ids (and variations' image_ids for a sheet)."}`,
+        (e) => `Error: ${e instanceof Error ? e.message : "The image failed."}`,
+      )
     return `Started. It shows in the chat when ready${purpose === "thumbnail" && target ? ` and becomes ${target}'s thumbnail` : purpose === "canvas" ? " and is added to the canvas" : ""}.`
+  }
+
+  /** a product or character sheet: the same item from several angles, from the user's images */
+  const runSheet = (input: Record<string, unknown>) => {
+    const kind = input.kind === "character" ? "character" : "product"
+    const name = String(input.name ?? (kind === "character" ? "Character" : "Product")).trim()
+    const ids = ((input.image_ids as string[] | undefined) ?? []).filter((x) => images.current.some((i) => i.id === x))
+    if (!ids.length) return "Error: give image_ids: the user's photos of this " + kind + "."
+    const views =
+      kind === "character"
+        ? "a character reference sheet of the person in the images: full body front, three-quarter and side views, plus a head-and-shoulders close-up, same face, hair, body and outfit in every view"
+        : "a product reference sheet of the product in the images: front, three-quarter, side and back views, plus a close-up of the label or key detail, identical shape, colours, materials and markings in every view"
+    return runImage({
+      purpose: "sheet",
+      sheet_kind: kind,
+      name: `${name} ${kind} sheet`,
+      aspect_ratio: "16:9",
+      reference_image_ids: ids,
+      prompt: `${views}. Evenly spaced on a plain light grey studio background, soft even light, no text, no labels, no props.${input.notes ? ` ${String(input.notes)}` : ""}`,
+    })
   }
 
   /**
@@ -924,11 +984,21 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     const r = input.reference
     const nested = (r && typeof r === "object" ? r : typeof r === "string" ? { prompt: r } : {}) as Partial<Plan["reference"]>
     const ids = (v: unknown) => (Array.isArray(v) ? v.map(String).filter(Boolean) : undefined)
+    const shot = ((input.shot && typeof input.shot === "object" ? input.shot : nested.shot) ?? undefined) as Shot | undefined
+    const first = (input.first_frame_id as string | undefined) ?? nested.first_frame_id
+    const source = (input.source_video_id as string | undefined) ?? nested.source_video_id
+    const asked = (input.reference_mode as VideoMode | undefined) ?? nested.mode
+    // the mode follows what was given when it isn't said (an older plan had no mode)
+    const mode: VideoMode = asked === "edit" && source ? "edit" : asked === "animate" && first ? "animate" : asked ? "reference" : source ? "edit" : first ? "animate" : "reference"
     return {
-      prompt: String(input.reference_prompt ?? nested.prompt ?? "").trim(),
-      first_frame_id: (input.first_frame_id as string | undefined) ?? nested.first_frame_id,
+      prompt: (shotPrompt(shot) || String(input.reference_prompt ?? nested.prompt ?? "")).trim(),
+      mode,
+      shot,
+      first_frame_id: first,
       last_frame_id: (input.last_frame_id as string | undefined) ?? nested.last_frame_id,
       image_ids: ids(input.reference_image_ids) ?? ids(nested.image_ids) ?? ids(input.image_ids),
+      video_ids: ids(input.reference_video_ids) ?? ids(nested.video_ids),
+      source_video_id: source,
     }
   }
 
@@ -1002,12 +1072,19 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           setItems((list) => list.map((x) => (x.kind === "plan" && x.state === "open" ? { ...x, state: "skipped" } : x)))
           if (live.current && !variationsSettled(fromOf(input), true)) return NOT_SETTLED
           const raw = { ...(input as unknown as Plan), reference: referenceOf(input) }
-          if (!raw.reference.prompt) return "Error: give the reference video's prompt (reference_prompt)."
+          if (!raw.reference.prompt) return "Error: give the reference video's prompt (shot)."
+          const ref = raw.reference
+          const known = (x?: string) => !!x && images.current.some((i) => i.id === x)
+          if (ref.mode === "edit" && !known(ref.source_video_id)) return "Error: 'edit' needs source_video_id: the user's video to change (a project video id)."
+          if (ref.mode === "animate" && !known(ref.first_frame_id)) return "Error: 'animate' needs first_frame_id: the user's image (or your edit of it) to open on."
+          // nothing to work from: suggest looks first, then make the video from the one the user approves
+          if (live.current && ref.mode === "reference" && !ref.image_ids?.length && !ref.video_ids?.length)
+            return "Not shown: the reference video has nothing to work from. Suggest looks first (propose_concepts makes a preview image per concept; or generate_image purpose 'look'), let the user pick or approve one, then propose the plan with it in reference_image_ids."
           if (!raw.variations?.length) return "Error: a plan needs at least two variations."
           // the user's own product or people images must shape the reference video
           const theirs = images.current.filter((x) => x.kind !== "video" && (x.from === "upload" || x.from === "website" || x.from === "library"))
-          if (live.current && theirs.length && !raw.reference.first_frame_id && !raw.reference.image_ids?.length)
-            return `Not shown: the reference video doesn't use the user's images, so it would be made from text alone and the product wouldn't match. Set reference_image_ids (the product or person to keep: ${theirs.slice(0, 8).map((x) => `${x.id} ${x.name}`).join(", ")}) or first_frame_id, then propose the plan again.`
+          if (live.current && theirs.length && ref.mode === "reference" && !ref.image_ids?.some((x) => theirs.some((t) => t.id === x)) && !ref.video_ids?.length)
+            return `Not shown: the reference video doesn't use the user's images, so the product wouldn't match. Put the product or person to keep in reference_image_ids (${theirs.slice(0, 8).map((x) => `${x.id} ${x.name}`).join(", ")}), or their sheet, then propose the plan again.`
           // the look the user picked carries into the plan's design
           const plan = { ...raw, design: { ...draft.current, ...(raw.design ?? {}), thumbnails: { ...draft.current.thumbnails, ...(raw.design?.thumbnails ?? {}) } } }
           const vars = plan.variations.slice(0, 5)
@@ -1025,6 +1102,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         }
         case "generate_image":
           return runImage(input)
+        case "make_sheet":
+          return runSheet(input)
         case "read_skill": {
           const names = ((input.names as string[]) ?? []).map(String)
           const found = names.map((n) => findSkill(n)).filter((x): x is NonNullable<ReturnType<typeof findSkill>> => !!x)
@@ -1299,8 +1378,12 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       if (choice?.design) mergeDraft(choice.design)
       if (choice?.colors?.length) mergeDraft({ button_color: choice.colors[0], ...(choice.colors[2] ? { text_color: choice.colors[2] } : {}) })
       const detail = choice && (choice.design || choice.colors) ? ` (${JSON.stringify({ ...(choice.design ? { design: choice.design } : {}), ...(choice.colors ? { colors: choice.colors } : {}) })})` : ""
+      // a picked concept's preview becomes a project image: the suggested look the video can be made from
+      const shown = it.display === "concepts" ? (choice?.image ?? it.options.find((o) => o.label === value)?.image) : undefined
+      const look = shown ? (images.current.find((x) => x.url === shown) ?? keep(shown, `Look: ${value}`.slice(0, 40), "generated")) : undefined
+      const lookLine = look ? ` (its preview image is ${look.id}: the suggested look; use it in reference_image_ids when the video should look like it)` : ""
       // questions and image requests asked together go back together, once all are answered (or skipped)
-      if (!hold(it.toolId, value + detail)) return
+      if (!hold(it.toolId, value + detail + lookLine)) return
       msgs.current.push({ role: "user", content: settle({ ...held.current }) })
       await turn()
     },
@@ -1339,15 +1422,28 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       }
       // image ids become addresses the video model can use
       const url = (id?: string) => (id ? images.current.find((i) => i.id === id)?.url : undefined)
-      const urls = (ids?: string[]) => (ids ?? []).map(url).filter((u): u is string => !!u).slice(0, 4)
+      const urls = (ids?: string[], max = 30) => (ids ?? []).map(url).filter((u): u is string => !!u).slice(0, max)
       // @mentioned elements in a prompt: their images go with that video, first; the @ is dropped from the text
       const elementIds = (text: string) =>
         elementsIn(text).flatMap((el) => el.images.slice(0, 3).map((im, i) => (images.current.find((x) => x.url === im.url) ?? keep(im.url, `${el.name} ${i + 1}`, "library", el.kind)).id))
       const withEls = (text: string, ids?: string[]) => [...new Set([...elementIds(text), ...(ids ?? [])])]
       const r = apiRef.current.approvePlan({
         ...plan,
-        reference: { ...plan.reference, prompt: plainMentions(plan.reference.prompt), media: { first_frame: url(plan.reference.first_frame_id), last_frame: url(plan.reference.last_frame_id), images: urls(withEls(plan.reference.prompt, plan.reference.image_ids)) } },
-        variations: plan.variations.map((v, i) => ({ ...v, prompt: plainMentions(v.prompt), media: { images: urls(i === 0 ? withEls(plan.reference.prompt) : withEls(v.prompt, v.image_ids)), method: v.method } })),
+        reference: {
+          ...plan.reference,
+          prompt: plainMentions(plan.reference.prompt),
+          media: {
+            mode: plan.reference.mode ?? "reference",
+            first_frame: url(plan.reference.first_frame_id),
+            last_frame: url(plan.reference.last_frame_id),
+            // the given images keep their order ([Image 1]…); @mentioned elements' images follow them
+            images: urls([...new Set([...(plan.reference.image_ids ?? []), ...withEls(plan.reference.prompt)])]),
+            videos: urls(plan.reference.video_ids, 10),
+            source: url(plan.reference.source_video_id),
+          },
+        },
+        // every other variation edits the approved reference video
+        variations: plan.variations.map((v, i) => ({ ...v, method: undefined, prompt: plainMentions(v.prompt), media: { images: urls(i === 0 ? [] : [...new Set([...(v.image_ids ?? []), ...withEls(v.prompt)])]) } })),
       })
       if (r.startsWith("Error")) {
         add({ kind: "error", text: r.replace(/^Error: /, "") })

@@ -293,11 +293,11 @@ export function videoAspectOf(size: string) {
  * `endImage`); reference: stays true to `images` (and follows `video` when given); edit: edits
  * `video`, matching `images` for the change.
  */
-export type VideoInput = { mode: "text" | "image" | "reference" | "edit"; prompt: string; image?: string; endImage?: string; images?: string[]; video?: string }
+export type VideoInput = { mode: "text" | "image" | "reference" | "edit"; prompt: string; image?: string; endImage?: string; images?: string[]; video?: string; videos?: string[] }
 export async function generateVideo(input: VideoInput & { aspect: string; seconds: number; meta?: GenMeta; resume?: string; onId?: (id: string) => void }, onStatus?: (status: string) => void, signal?: AbortSignal): Promise<{ url: string; poster?: string }> {
   // a video started before a reload carries on from its id
   const { id } = input.resume ? { id: input.resume } : ((await (
-    await steady("/video", { method: "POST", body: JSON.stringify({ mode: input.mode, prompt: input.prompt, aspect_ratio: input.aspect, duration: input.seconds, image_url: input.image, end_image_url: input.endImage, image_urls: input.images, video_url: input.video, meta: input.meta }), signal })
+    await steady("/video", { method: "POST", body: JSON.stringify({ mode: input.mode, prompt: input.prompt, aspect_ratio: input.aspect, duration: input.seconds, image_url: input.image, end_image_url: input.endImage, image_urls: input.images, video_url: input.video, video_urls: input.videos, meta: input.meta }), signal })
   ).json()) as { id: string })
   input.onId?.(id)
   onStatus?.("queued")

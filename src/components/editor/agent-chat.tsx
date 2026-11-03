@@ -837,7 +837,18 @@ function Elapsed({ since }: { since: number }) {
 }
 
 function ImageCard({ item, ctx, agent }: { item: Extract<Item, { kind: "image" }>; ctx: AgentCtx; agent: Agent }) {
-  const what = item.purpose === "thumbnail" && item.target ? `Thumbnail for ${item.target}` : item.purpose === "canvas" ? "For the canvas" : "Image idea"
+  const what =
+    item.purpose === "thumbnail" && item.target
+      ? `Thumbnail for ${item.target}`
+      : item.purpose === "canvas"
+        ? "For the canvas"
+        : item.purpose === "sheet"
+          ? "Reference sheet"
+          : item.purpose === "look"
+            ? "Suggested look"
+            : item.purpose === "edit"
+              ? "Edited photo"
+              : "Image idea"
   const [added, setAdded] = useState(false)
   return (
     <div className="mr-10 flex items-center gap-3 rounded-2xl p-1.5 pr-3">

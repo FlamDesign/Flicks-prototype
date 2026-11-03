@@ -1143,28 +1143,32 @@ export function GenerationCanvas({
       }
       jobs.current.add(key)
       const resume = sl.job?.id
-      // which kind of generation fits what we have (see the models skill):
-      // reference: first frame → image to video; images to keep → reference to video; else text to video
-      // variation: edit the approved reference (default), or regenerate following it for big changes
+      // which kind of generation fits what we have (see the models skill). Inputs are named by
+      // position: [Image 1]… for images, [Video 1]… for videos, as the chat wrote them.
+      // reference: edit the user's video · animate the user's image · else stay true to the references
+      // variation: always an edit of the approved reference video
       const media = sl.used.media ?? {}
       const pics = media.images ?? []
-      const picsLine = pics.length ? ` ${pics.length === 1 ? "Image 1 shows" : `Images 1 to ${pics.length} show`} exactly how it must look: match ${pics.length === 1 ? "it" : "them"}.` : ""
-      const keep = "Keep everything else exactly the same: camera, framing, motion, timing, setting and lighting."
+      const vids = media.videos ?? []
       const end = (t: string) => (/[.!?]$/.test(t.trim()) ? t.trim() : `${t.trim()}.`)
+      const named = (n: number, word: string) => (n === 1 ? `[${word} 1]` : `[${word} 1] to [${word} ${n}]`)
+      const picsLine = pics.length ? ` ${named(pics.length, "Image")} ${pics.length === 1 ? "shows" : "show"} exactly how the change must look: match ${pics.length === 1 ? "it" : "them"}.` : ""
+      const keep = "Keep everything else exactly the same: people, product, camera, framing, motion, timing, setting and lighting."
       const plan: VideoInput = fromRef
-        ? media.method === "regenerate"
-          ? { mode: "reference", prompt: `Follow Video 1 exactly for camera, framing, motion and timing, and keep its setting and lighting. Change only this: ${end(sl.used.prompt)}${picsLine}`, video: refVideo, images: pics }
-          : { mode: "edit", prompt: `Edit Video 1. ${keep} Change only this: ${end(sl.used.prompt)}${picsLine}`, video: refVideo, images: pics }
-        : media.first_frame
-          ? { mode: "image", prompt: sl.used.prompt, image: media.first_frame, endImage: media.last_frame }
-          : pics.length
-            ? { mode: "reference", prompt: `${end(sl.used.prompt)}${pics.length === 1 ? " Image 1 shows" : ` Images 1 to ${pics.length} show`} the product and look to keep exactly.`, images: pics }
-            : { mode: "text", prompt: sl.used.prompt }
+        ? { mode: "edit", prompt: `Edit the video. Change only this: ${end(sl.used.prompt)}${picsLine} ${keep}`, video: refVideo, images: pics }
+        : media.mode === "edit" && media.source
+          ? { mode: "edit", prompt: `Edit the video. ${end(sl.used.prompt)} Keep everything not mentioned exactly as it is.`, video: media.source, images: pics, videos: vids }
+          : media.first_frame && media.mode !== "reference"
+            ? { mode: "image", prompt: sl.used.prompt, image: media.first_frame, endImage: media.last_frame }
+            : pics.length || vids.length
+              ? { mode: "reference", prompt: end(sl.used.prompt), images: pics, videos: vids }
+              : // an older plan with nothing to work from
+                { mode: "text", prompt: sl.used.prompt }
       if (!resume) patchJob({ job: { status: "starting", since: Date.now() } })
       // images that only live in this page go to the server first, so the video model can open them
       const share = (u?: string) => (u ? shareable(u).catch(() => undefined) : Promise.resolve(undefined))
-      Promise.all([share(plan.image), share(plan.endImage), Promise.all((plan.images ?? []).map(share))]).then(([image, endImage, images]) =>
-      generateVideo({ ...plan, image, endImage, images: images.filter((x): x is string => !!x), aspect: videoAspectOf(generation.size), seconds: generation.duration ?? 8, resume, onId: (id) => commitSlides(slidesNow.current.map((x) => (mine(x) && x.job ? { ...x, job: { ...x.job, id } } : x))), meta: { project: title, variation: slideName(sl, slidesNow.current.indexOf(sl)), purpose: "video" } }, (status) =>
+      Promise.all([share(plan.image), share(plan.endImage), Promise.all((plan.images ?? []).map(share)), Promise.all((plan.videos ?? []).map(share)), share(plan.video)]).then(([image, endImage, images, videos, video]) =>
+      generateVideo({ ...plan, image, endImage, video, images: images.filter((x): x is string => !!x), videos: videos.filter((x): x is string => !!x), aspect: videoAspectOf(generation.size), seconds: generation.duration ?? 8, resume, onId: (id) => commitSlides(slidesNow.current.map((x) => (mine(x) && x.job ? { ...x, job: { ...x.job, id } } : x))), meta: { project: title, variation: slideName(sl, slidesNow.current.indexOf(sl)), purpose: "video" } }, (status) =>
         commitSlides(slidesNow.current.map((x) => (mine(x) && x.job ? { ...x, job: { ...x.job, status } } : x))),
       )).then(
         async ({ url, poster }) => {

@@ -18,11 +18,13 @@ HF_VIDEO_IMAGE_PATH = "/bytedance/seedance-2.5/image-to-video"
 HF_VIDEO_REF_PATH = "/bytedance/seedance-2.5/reference-to-video"
 # variations: edits of the approved reference video
 HF_VIDEO_EDIT_PATH = "/bytedance/seedance-2.5/video-edit"
-# images from a prompt alone
+# suggested looks, product and character sheets, and edits of the user's photos: Marketing Studio Flare
+HF_IMAGE_FLARE_PATH = "/marketing-studio/image/flare"
+# backup for images from a prompt alone
 HF_IMAGE_PATH = "/higgsfield-ai/soul/v2/standard"
-# images that keep the user's product (from their photos): the main model, then the fallback
-HF_IMAGE_REF_PATH = "/marketing-studio/image"
+# backups for images that keep the user's product (after Flare): Qwen edit, then the older Marketing Studio
 HF_IMAGE_EDIT_PATH = "/alibaba/qwen-image-3/edit"
+HF_IMAGE_REF_PATH = "/marketing-studio/image"
 # images with readable text (badges, offers)
 HF_IMAGE_TEXT_PATH = "/ideogram/v4.0"
 

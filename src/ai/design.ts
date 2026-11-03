@@ -16,9 +16,18 @@ export const FIELD_FEED: Record<Field, { name: string; type: "text" | "link" }> 
   cta: { name: "button", type: "text" },
   link: { name: "link", type: "link" },
 }
-/** what a video is made from besides its prompt (image addresses, resolved from project image ids) */
-export type VideoMedia = { first_frame?: string; last_frame?: string; images?: string[]; method?: "edit" | "regenerate" }
+/**
+ * What a video is made from besides its prompt (addresses resolved from project ids). The prompt
+ * calls `images` [Image 1], [Image 2]… and `videos` [Video 1]… in this order.
+ * mode: reference (default: stays true to images and videos), edit (changes `source`, the user's
+ * video), animate (opens exactly on `first_frame`, the user's image).
+ */
+export type VideoMode = "reference" | "edit" | "animate"
+export type VideoMedia = { mode?: VideoMode; first_frame?: string; last_frame?: string; images?: string[]; videos?: string[]; source?: string; method?: "edit" | "regenerate" }
+/** variations are always edits of the approved reference video; `method` is kept only so older plans load */
 export type PlanVariation = { name: string; prompt: string; image_ids?: string[]; method?: "edit" | "regenerate"; media?: VideoMedia } & Partial<Record<Field, string>>
+/** a video prompt in parts; the app joins them in this order */
+export type Shot = { subject?: string; action?: string; camera?: string; setting?: string; keep?: string }
 /** the thumbnail strip viewers tap to switch: where it sits and how it looks */
 export type Thumbs = {
   position?: "bottom" | "top" | "left" | "right"
@@ -43,10 +52,18 @@ export type Design = {
 }
 export type Plan = {
   title: string
-  reference: { prompt: string; first_frame_id?: string; last_frame_id?: string; image_ids?: string[]; media?: VideoMedia }
+  reference: { prompt: string; mode?: VideoMode; shot?: Shot; first_frame_id?: string; last_frame_id?: string; image_ids?: string[]; video_ids?: string[]; source_video_id?: string; media?: VideoMedia }
   variations: PlanVariation[]
   design: Design
 }
+/** "Subject: … Action: … Camera: … Setting and light: … Keep: …" */
+export const shotPrompt = (s?: Shot) =>
+  s
+    ? ([["Subject", s.subject], ["Action", s.action], ["Camera", s.camera], ["Setting and light", s.setting], ["Keep", s.keep]] as const)
+        .filter(([, v]) => v && v.trim())
+        .map(([k, v]) => `${k}: ${v!.trim().replace(/[.\s]+$/, "")}.`)
+        .join(" ")
+    : ""
 export type Brand = { name?: string; primary_color?: string; secondary_color?: string; text_color?: string; font?: string; tone?: string; notes?: string; sources?: string[] }
 
 /** roles the chat finds its elements by */
