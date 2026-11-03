@@ -1004,7 +1004,27 @@ function PopupDemo({ kind }: { kind: "intro" | "gift" }) {
 
 /* ---------- chat cards ---------- */
 
-const fakeAgent = { items: [], busy: false, waiting: false, send: async () => {}, answer: async () => {}, addAssets: async () => {}, decidePlan: async () => {}, stop: () => {}, retry: () => {} } as unknown as Parameters<typeof AgentItemView>[0]["agent"]
+// a stand-in agent for the demos: typed as the real one (no cast), so a function the chat cards
+// start using can't be missing here without the build failing
+const fakeAgent: Parameters<typeof AgentItemView>[0]["agent"] = {
+  imageUrl: () => undefined,
+  ownImages: () => [],
+  items: [],
+  busy: false,
+  send: async () => {},
+  answer: async () => {},
+  pendingIds: [],
+  addAssets: async () => {},
+  decidePlan: async () => {},
+  editPlan: async () => {},
+  retryImage: async () => {},
+  stop: () => {},
+  retry: () => {},
+  waiting: false,
+  draft: {},
+  plan: undefined,
+  step: "idea",
+}
 const chatCtx = { videoCost: 48, credits: 1000, addToCanvas: () => {}, focusComposer: () => {}, ratio: 9 / 16, posters: [1, 2, 3].map((i) => GENERATED_VIDEOS[i].poster), progress: () => [{ label: "Reference video", state: "done" as const }, { label: "3 variations", state: "working" as const }, { label: "Thumbnail images", state: "waiting" as const }] }
 const demoPlan: Plan = {
   title: "Sport lens drop",
