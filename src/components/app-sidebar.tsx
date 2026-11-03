@@ -105,7 +105,7 @@ export function AppSidebar({
         </button>
       </div>
       {onSearch && (
-        <Button variant="outline" onClick={onSearch} className="h-9 justify-start gap-2 bg-transparent px-3 font-normal text-muted-foreground shadow-none active:not-aria-[haspopup]:translate-y-0 active:not-aria-[haspopup]:scale-100">
+        <Button variant="outline" onClick={onSearch} className="h-9 justify-start gap-2 bg-transparent px-3 font-normal text-muted-foreground shadow-none hover:bg-sidebar-accent/60 dark:hover:bg-sidebar-accent/60 active:not-aria-[haspopup]:translate-y-0 active:not-aria-[haspopup]:scale-100">
           <HugeiconsIcon icon={Search01Icon} className="size-4" />
           Search
           <KbdGroup className="ml-auto">
@@ -137,7 +137,7 @@ export function AppSidebar({
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="h-9 w-full justify-start gap-2 px-2 text-left data-[state=open]:bg-sidebar-accent">
+          <Button variant="ghost" className="h-9 w-full justify-start gap-2 px-2 text-left hover:bg-sidebar-accent/60 dark:hover:bg-sidebar-accent/60 data-[state=open]:bg-sidebar-accent">
             <Avatar className="size-8 rounded-lg after:rounded-lg">
               {photo && <AvatarImage src={photo} alt="" className="rounded-lg object-cover" />}
               <AvatarFallback className="rounded-lg bg-brand text-xs font-semibold text-brand-foreground">{name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}</AvatarFallback>
@@ -185,7 +185,7 @@ function NavButton({ label, icon, active, onClick }: { label: string; icon: type
       onClick={onClick}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "h-9 justify-start gap-3 px-3 font-normal text-muted-foreground active:not-aria-[haspopup]:translate-y-0 active:not-aria-[haspopup]:scale-100",
+        "h-9 justify-start gap-3 px-3 font-normal text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground dark:hover:bg-sidebar-accent/60 active:not-aria-[haspopup]:translate-y-0 active:not-aria-[haspopup]:scale-100",
         active && "bg-sidebar-accent font-medium text-sidebar-accent-foreground hover:bg-sidebar-accent",
       )}
     >
