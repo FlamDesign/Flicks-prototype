@@ -173,7 +173,7 @@ const SECTIONS: Section[] = [
         <UL
           items={[
             <>
-              <B>Sidebar:</B> the Flicks logo (goes to Create, the home page), Create, Projects, Flicks, Assets; Manage: Campaigns, Analytics; and the credits balance with Get credits.
+              <B>Sidebar:</B> the Flicks logo (goes to Create, the home page), Create, Projects, Flicks, Assets; Manage: Campaigns, Analytics; and a credits card: a small “Credits” label, the balance as a large number, then “About N videos” (or “Not enough for a video”) with a Get more link. When the balance is low the number and the card’s outline turn amber.
             </>,
             <>
               <B>Projects:</B> clicking a project opens it in the editor as it was left (sample projects open with the reference video and two variations

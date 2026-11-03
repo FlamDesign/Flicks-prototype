@@ -9,7 +9,6 @@ import {
   ArrowRight01Icon,
   Tick02Icon,
 } from "@hugeicons/core-free-icons"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Slider } from "@/components/ui/slider"
@@ -83,28 +82,29 @@ export function CreditsCard({
   const autoTopUp: AutoTopUp = { enabled: dev.autoReload, threshold: dev.autoReloadAt, target: dev.autoReloadTo }
   const setAutoTopUp = (v: AutoTopUp) => setDev({ autoReload: v.enabled, autoReloadAt: v.threshold, autoReloadTo: v.target })
   const low = credits < LOW_BALANCE
-  const hint = credits < VIDEO_COST ? "Not enough for a video" : `About ${plural(videos(credits), "video generation")}`
+  const shortHint = credits < VIDEO_COST ? "Not enough for a video" : `About ${plural(videos(credits), "video")}`
 
   return (
     <>
       <div
         role="group"
         aria-label="Credits"
-        className={cn("flex items-center justify-between gap-2 rounded-full border bg-background p-1 pl-3", low && "border-brand/40")}
+        className={cn("flex flex-col gap-1 rounded-xl bg-background p-3 shadow-xs ring-1 ring-foreground/5", low && "ring-brand/40")}
       >
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span tabIndex={0} className={cn("flex items-center gap-1.5 text-sm font-semibold tabular-nums outline-none", low && "text-brand")}>
-              <HugeiconsIcon icon={SparklesIcon} className="size-3.5 text-brand" />
-              {credits.toLocaleString("en-US")}
-              <span className="sr-only">credits</span>
-            </span>
-          </TooltipTrigger>
-          <TooltipContent side="top">{hint}</TooltipContent>
-        </Tooltip>
-        <Button size="sm" variant={low ? "default" : "secondary"} className="px-3" onClick={() => setBuy(true)}>
-          Get more
-        </Button>
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <HugeiconsIcon icon={SparklesIcon} className="size-3.5 text-brand" />
+          Credits
+        </span>
+        <span className={cn("text-2xl font-semibold tracking-tight tabular-nums", low && "text-brand")}>
+          {credits.toLocaleString("en-US")}
+          <span className="sr-only"> credits</span>
+        </span>
+        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+          <span className="truncate">{shortHint}</span>
+          <Button variant="link" size="sm" className="h-auto shrink-0 p-0 text-xs font-medium text-foreground" onClick={() => setBuy(true)}>
+            Get more
+          </Button>
+        </div>
       </div>
 
       <BuyCreditsDialog
