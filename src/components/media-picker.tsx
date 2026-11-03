@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useToast } from "@/components/ui-extra/toaster"
-import { GENERATED_VIDEOS, SAMPLE_UPLOADS, SAMPLE_VIDEO_COUNT } from "@/components/editor/elements"
+import { SAMPLE_UPLOADS, SAMPLE_VIDEO_COUNT, videoAt } from "@/components/editor/elements"
 import { SAMPLE_ASSETS } from "@/components/assets-page"
 import { MediaViewer, type ViewerItem } from "@/components/media-viewer"
 import { isLive, library, shareAs, shareable, type LibraryItem } from "@/ai/client"
@@ -80,7 +80,7 @@ const SAMPLES: MediaItem[] = [
   ...SAMPLE_UPLOADS.map((u, i) => ({ id: `s-${u.id}`, kind: "image" as const, name: u.name, url: u.src, source: "upload" as const, project: "Samples", created: Date.now() - (i + 2) * 3_600_000 })),
   ...Array.from({ length: SAMPLE_VIDEO_COUNT }, (_, v) => {
     const a = SAMPLE_ASSETS.find((x) => x.video === v)
-    const g = GENERATED_VIDEOS[v]
+    const g = videoAt(v)
     return { id: `s-v${v}`, kind: "video" as const, name: `${g.name}.mp4`, url: g.mp4, poster: g.poster, source: "generated" as const, project: "Samples", prompt: a?.prompt, refs: a?.refs.map((r) => r.poster ?? r.src), created: a?.createdAt ?? Date.now() - v * 60_000, duration: a?.duration }
   }),
 ]

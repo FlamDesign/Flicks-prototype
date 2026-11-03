@@ -10,7 +10,7 @@ import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMe
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { GENERATED_VIDEOS } from "@/components/editor/elements"
+import { videoAt } from "@/components/editor/elements"
 import { cn } from "@/lib/utils"
 import type { Reference } from "@/components/prompt-composer"
 
@@ -283,7 +283,7 @@ function Thumb({
   onSelect: () => void
   onRemove?: () => void
 }) {
-  const video = slide.video !== undefined ? GENERATED_VIDEOS[slide.video] : undefined
+  const video = slide.video !== undefined ? videoAt(slide.video) : undefined
   const [menuOpen, setMenuOpen] = useState(false)
   // the options button sits inside the top-right corner, shown on hover (or while the menu is open)
   const corner = { top: 4, right: `calc(50% - ${width / 2}px + 4px)` }

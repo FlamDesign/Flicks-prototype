@@ -61,23 +61,39 @@ export const GENERATED_VIDEOS: SampleVideo[] = [
  * Real videos made with the AI server join the list (set "made", so samples never pick them) and are
  * remembered on this device, so a project that uses one still finds it after a reload.
  */
+/** A plain grey frame for a video this device no longer has (see videoAt). */
+const MISSING_POSTER = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="16" height="16" fill="#d6d3d1"/></svg>')
 const MADE_KEY = "flam.videos"
 try {
   const saved = JSON.parse(localStorage.getItem(MADE_KEY) ?? "[]") as SampleVideo[]
-  saved.forEach((v) => GENERATED_VIDEOS.push({ ...v, set: "made" }))
+  saved.forEach((v) => GENERATED_VIDEOS.push({ ...v, set: "made", poster: v.poster || MISSING_POSTER }))
 } catch {
   /* storage unavailable */
 }
 export function addMadeVideo(v: { name: string; size: string; mp4: string; poster: string }) {
   GENERATED_VIDEOS.push({ ...v, set: "made" })
+  const made = GENERATED_VIDEOS.filter((x) => x.set === "made")
   try {
-    localStorage.setItem(MADE_KEY, JSON.stringify(GENERATED_VIDEOS.filter((x) => x.set === "made")))
+    localStorage.setItem(MADE_KEY, JSON.stringify(made))
   } catch {
-    /* storage full: kept for this visit */
+    // storage full (stills are large): keep every video's link, and stills for the newest 10 only,
+    // so a project still finds its videos after a reload (older ones show a grey frame)
+    try {
+      localStorage.setItem(MADE_KEY, JSON.stringify(made.map((x, i) => (i < made.length - 10 ? { ...x, poster: "" } : x))))
+    } catch {
+      /* still full: kept for this visit */
+    }
   }
   return GENERATED_VIDEOS.length - 1
 }
 export const isMadeVideo = (i?: number) => i !== undefined && GENERATED_VIDEOS[i]?.set === "made"
+
+/**
+ * The video at `i`, or a grey stand-in when it's gone: a made video can be missing after a reload
+ * if this device couldn't keep it (storage full or cleared), and a project must still open.
+ */
+export const videoAt = (i?: number): SampleVideo =>
+  (i !== undefined && GENERATED_VIDEOS[i]) || { name: "missing", set: "made", size: "1080×1080", mp4: "", poster: MISSING_POSTER }
 
 /** How many of GENERATED_VIDEOS are the generic samples (the rest belong to brand templates). */
 export const SAMPLE_VIDEO_COUNT = 10

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { PlayIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
-import { GENERATED_VIDEOS } from "@/components/editor/elements"
+import { GENERATED_VIDEOS, videoAt } from "@/components/editor/elements"
 
 /** Turns an inlined data: URI into a blob: URL; some embedded viewers refuse data: media but allow blob:. */
 function useBlobUrl(dataUri: string) {
@@ -37,7 +37,7 @@ export function GeneratedVideo({
   /** false pauses it (the editor's play/pause toggle) */
   playing?: boolean
 }) {
-  const v = GENERATED_VIDEOS[index % GENERATED_VIDEOS.length]
+  const v = videoAt(index % GENERATED_VIDEOS.length)
   const ref = useRef<HTMLVideoElement>(null)
   const canWebm = typeof document !== "undefined" && document.createElement("video").canPlayType("video/webm; codecs=vp9") !== ""
   const src = useBlobUrl(canWebm && v.webm ? v.webm : v.mp4)

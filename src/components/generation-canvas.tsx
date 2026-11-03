@@ -38,7 +38,7 @@ import { isTyping } from "@/lib/keys"
 import { GeneratingGradient } from "@/components/editor/generation-progress"
 import { AgentComposer, isDocked, QuestionDeck, threadGroups, type AgentCtx } from "@/components/editor/agent-chat"
 import { PlanningView, PlanSteps } from "@/components/editor/planning-view"
-import { addMadeVideo, isMadeVideo, BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, defaultFill, defaultInk, GENERATED_VIDEOS, SAMPLE_UPLOADS, inSet, clampStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload } from "@/components/editor/elements"
+import { addMadeVideo, isMadeVideo, BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, defaultFill, defaultInk, GENERATED_VIDEOS, SAMPLE_UPLOADS, inSet, clampStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload, videoAt } from "@/components/editor/elements"
 
 export type Generation = {
   id: string
@@ -757,7 +757,7 @@ export function GenerationCanvas({
       })),
       issues: feedIssues(),
       design: describeDesign(elementsNow.current, (id) => feedsNow.current.find((f) => f.id === id)?.name),
-      sample_set: GENERATED_VIDEOS[generation.video]?.set ?? "sunglasses",
+      sample_set: videoAt(generation.video)?.set ?? "sunglasses",
     }),
     approvePlan(plan) {
       const vars = plan.variations.filter((v) => v.name?.trim()).slice(0, 5)
@@ -1067,7 +1067,7 @@ export function GenerationCanvas({
     },
     sampleSite(url) {
       // the demo "reads" a product page with the sample set's product photos
-      const set = GENERATED_VIDEOS[generation.video]?.set ?? "sunglasses"
+      const set = videoAt(generation.video)?.set ?? "sunglasses"
       const pick = { sunglasses: ["u1", "u2", "u3", "u4", "u5", "u6"], boots: ["u8", "u9", "u10"], dress: ["u11", "u12"] }[set as "sunglasses"] ?? ["u1", "u2", "u3"]
       const imgs = SAMPLE_UPLOADS.filter((u) => pick.includes(u.id))
       const names = imgs.map((u) => u.name.replace(/\.[a-z]+$/, "").replace(/-/g, " "))
@@ -1092,11 +1092,11 @@ export function GenerationCanvas({
     },
     sampleImage(purpose, target) {
       // the plan's stills in the demo: the sample set's variations, in order
-      if (purpose === "variation") return GENERATED_VIDEOS[inSet(generation.video ?? 0, Number(target) + 1)].poster
+      if (purpose === "variation") return videoAt(inSet(generation.video ?? 0, Number(target) + 1)).poster
       const sl = target ? findSlide(target) : undefined
-      if (sl?.video !== undefined) return GENERATED_VIDEOS[sl.video % GENERATED_VIDEOS.length].poster
+      if (sl?.video !== undefined) return videoAt(sl.video % GENERATED_VIDEOS.length).poster
       void purpose
-      return GENERATED_VIDEOS[generation.video ?? 0].poster
+      return videoAt(generation.video ?? 0).poster
     },
   }
   const agent = useAgent(agentApi, { projectId: generation.id, prompt: agentMode ? generation.prompt : undefined, imageUrls: agentMode ? (generation.refs ?? []).filter((r) => !r.failed).map((r) => ({ url: r.url, name: r.name })) : [], autoStart: agentMode })
@@ -1136,7 +1136,7 @@ export function GenerationCanvas({
       const fromRef = sl.id !== "main" && sl.used.fromReference
       const main = slides[0]
       // ...and for the user to approve it: always the latest version of the reference
-      const refVideo = isMadeVideo(main.video) && !main.job && main.approvedRef === main.startedAt ? GENERATED_VIDEOS[main.video!].mp4 : undefined
+      const refVideo = isMadeVideo(main.video) && !main.job && main.approvedRef === main.startedAt ? videoAt(main.video!).mp4 : undefined
       if (fromRef && !refVideo && !sl.job?.id) {
         if (!sl.job) patchJob({ job: { status: "waiting", since: Date.now() } })
         continue
@@ -1168,7 +1168,7 @@ export function GenerationCanvas({
         commitSlides(slidesNow.current.map((x) => (mine(x) && x.job ? { ...x, job: { ...x.job, status } } : x))),
       )).then(
         async ({ url, poster }) => {
-          const still = poster ?? (await posterOf(url)) ?? GENERATED_VIDEOS[sl.video ?? generation.video ?? 0].poster
+          const still = poster ?? (await posterOf(url)) ?? videoAt(sl.video ?? generation.video ?? 0).poster
           const video = addMadeVideo({ name: `${slideName(sl, slidesNow.current.indexOf(sl))}-${sl.startedAt}`, size: generation.size, mp4: url, poster: still })
           patchJob({ video, job: undefined })
         },
@@ -1195,7 +1195,7 @@ export function GenerationCanvas({
   const chatting = agentMode && (composeMode === "chat" || !slides[0].startedAt)
   // planning: nothing generated yet, so no editor tools; just the chat and a live preview
   const planning = agentMode && !slides[0].startedAt
-  const samplePosters = [1, 2, 3, 4, 5].map((i) => GENERATED_VIDEOS[inSet(generation.video ?? 0, i)].poster)
+  const samplePosters = [1, 2, 3, 4, 5].map((i) => videoAt(inSet(generation.video ?? 0, i)).poster)
   const agentCtx: AgentCtx = {
     videoCost: VIDEO_COST,
     credits: dev.credits,
@@ -1272,7 +1272,7 @@ export function GenerationCanvas({
   // the project saves as you work, so it's in Projects with everything as you left it
   const { copy: _copy, resume: _resume, sample: _sample, back: _back, remixOf: _remixOf, ...base } = generation
   const startSlide = slides.find((x) => x.id === start) ?? slides[1] ?? slides[0]
-  const poster = startSlide.thumb ?? GENERATED_VIDEOS[startSlide.video ?? generation.video]?.poster ?? GENERATED_VIDEOS[generation.video].poster
+  const poster = startSlide.thumb ?? videoAt(startSlide.video ?? generation.video)?.poster ?? videoAt(generation.video).poster
   const saveProject = (extra?: { versions?: Checkpoint<Snap>[] }) =>
     library.saveProject({ id: generation.id, name: title, size: generation.size, image: poster, video: generation.video, base, snap: snapNow(), versions: extra?.versions ?? versions, sample: generation.sample })
   const deleted = useRef(false)
@@ -1291,7 +1291,7 @@ export function GenerationCanvas({
   // Export: a new Flick from the canvas as it is now, made in the background; marked in Version history
   const exportFlick = (name: string) => {
     const snap = snapNow()
-    const variants = included.map((x) => ({ name: nameOf(x), video: x.video ?? generation.video, poster: x.thumb ?? GENERATED_VIDEOS[x.video ?? generation.video].poster }))
+    const variants = included.map((x) => ({ name: nameOf(x), video: x.video ?? generation.video, poster: x.thumb ?? videoAt(x.video ?? generation.video).poster }))
     saveProject()
     const flick = library.exportFlick({ projectId: generation.id, name, size: generation.size, image: poster, video: generation.video, variants, start: Math.max(0, included.findIndex((x) => x.id === start)), snap, base, ms: dev.publishSeconds * 1000 })
     // the latest checkpoint is this exact canvas: mark it; otherwise save a new one
@@ -1403,7 +1403,7 @@ export function GenerationCanvas({
           </DialogHeader>
           <TemplateSection
             title={title}
-            thumbs={slides.filter((x) => x.video !== undefined && x.startedAt).map((x) => x.thumb ?? GENERATED_VIDEOS[x.video!].poster)}
+            thumbs={slides.filter((x) => x.video !== undefined && x.startedAt).map((x) => x.thumb ?? videoAt(x.video!).poster)}
             onSave={(d) => {
               setPanel(null)
               const variants = included.map((x, i) => ({ label: nameOf(x), color: ["#f59e0b", "#71717a", "#0ea5e9", "#22c55e", "#ef4444", "#a855f7"][i % 6] }))
@@ -1492,7 +1492,7 @@ export function GenerationCanvas({
               videos={included.map((v) => ({
                 id: v.id,
                 name: nameOf(v),
-                poster: v.video !== undefined && status(v) === "done" ? GENERATED_VIDEOS[v.video].poster : undefined,
+                poster: v.video !== undefined && status(v) === "done" ? videoAt(v.video).poster : undefined,
                 values: v.feeds ?? {},
               }))}
               activeId={activeSlide.id}
@@ -1704,7 +1704,7 @@ export function GenerationCanvas({
                   </button>
                   {/* not generated yet: the reference video, faded, under this variation's elements */}
                   <div className="absolute inset-0 overflow-hidden bg-muted">
-                    <img loading="lazy" decoding="async" src={GENERATED_VIDEOS[slides[0].video!].poster} alt="" className="absolute inset-0 size-full object-cover opacity-25 blur-[2px]" />
+                    <img loading="lazy" decoding="async" src={videoAt(slides[0].video!).poster} alt="" className="absolute inset-0 size-full object-cover opacity-25 blur-[2px]" />
                   </div>
                   <CanvasStage elements={elements} setElements={setElements} selected={selected} setSelected={setSelected} editing={editing} setEditing={setEditing} ratio={ratio} thumbs={thumbs} activeThumb={activeThumb} feedOf={feedOf} onEditFeed={editFeed} onFeedValue={setFeedValue} feeds={feeds} onAddFeed={addFeed} onSeedFeed={seedFeed} onRenameFeed={renameFeed} onDeleteFeed={deleteFeed} hovered={hovered} selectedThumb={thumbSel} onSelectThumb={pickThumb} readOnly={previewing} onThumb={(n) => included[n] && select(included[n].id)} />
                 </>
@@ -1763,7 +1763,7 @@ export function GenerationCanvas({
           nameOf={nameOf}
           size={generation.size}
           ratio={ratio}
-          referencePoster={GENERATED_VIDEOS[slides[0].video!].poster}
+          referencePoster={videoAt(slides[0].video!).poster}
         />
 
         {/* regenerating the reference video: variations will need regenerating too */}
@@ -1825,14 +1825,14 @@ export function GenerationCanvas({
               const s = slides.find((x) => x.id === id)
               return s && nameOf(s)
             }}
-            posterOf={(v) => GENERATED_VIDEOS[v % GENERATED_VIDEOS.length].poster}
+            posterOf={(v) => videoAt(v % GENERATED_VIDEOS.length).poster}
             isGenerating={(h) => {
               const s = slides.find((x) => x.id === h.slideId)
               return !!s && s.startedAt === h.startedAt && status(s) === "generating"
             }}
             isCurrent={(h) => slides.find((x) => x.id === h.slideId)?.startedAt === h.startedAt}
             onSelect={select}
-            target={{ id: activeSlide.id, name: nameOf(activeSlide), poster: activeStatus === "done" ? GENERATED_VIDEOS[activeSlide.video!].poster : undefined, isReference: activeIndex === 0 }}
+            target={{ id: activeSlide.id, name: nameOf(activeSlide), poster: activeStatus === "done" ? videoAt(activeSlide.video!).poster : undefined, isReference: activeIndex === 0 }}
             busy={chatting ? false : busy}
             collapsed={chatHidden}
             onCollapse={() => setChatHidden(true)}
@@ -1864,7 +1864,7 @@ export function GenerationCanvas({
                       </button>
                     ))}
                   </div>
-                  {composeMode === "prompt" && <TargetChip name={nameOf(activeSlide)} poster={activeStatus === "done" ? GENERATED_VIDEOS[activeSlide.video!].poster : undefined} />}
+                  {composeMode === "prompt" && <TargetChip name={nameOf(activeSlide)} poster={activeStatus === "done" ? videoAt(activeSlide.video!).poster : undefined} />}
                 </div>
               ) : (
                 <div />
@@ -1877,7 +1877,7 @@ export function GenerationCanvas({
                   {needsReview && (
                     <section aria-label="Review Variation 1" className="flex flex-col gap-3 rounded-2xl bg-card p-3 shadow-lg ring-1 ring-foreground/10 animate-in fade-in-0 slide-in-from-bottom-2">
                       <div className="flex items-center gap-3">
-                        <img loading="lazy" decoding="async" src={GENERATED_VIDEOS[mainNow.video!].poster} alt="" className="size-12 shrink-0 rounded-lg object-cover ring-1 ring-foreground/10" />
+                        <img loading="lazy" decoding="async" src={videoAt(mainNow.video!).poster} alt="" className="size-12 shrink-0 rounded-lg object-cover ring-1 ring-foreground/10" />
                         <div className="min-w-0">
                           <p className="text-base font-medium leading-snug">Happy with Variation 1?</p>
                           <p className="text-xs text-muted-foreground">The other variations are made from it. Play it on the canvas, then decide.</p>
@@ -1897,7 +1897,7 @@ export function GenerationCanvas({
                   <AgentComposer
                     agent={agent}
                     placeholder={agent.waiting ? "Or reply directly…" : slides[0].startedAt ? "Ask for a change: a headline, a colour, another variation. Type @ to mention" : undefined}
-                    variations={slides[0].startedAt ? slides.map((x) => ({ name: nameOf(x), poster: x.video !== undefined ? GENERATED_VIDEOS[x.video % GENERATED_VIDEOS.length]?.poster : undefined })) : undefined}
+                    variations={slides[0].startedAt ? slides.map((x) => ({ name: nameOf(x), poster: x.video !== undefined ? videoAt(x.video % GENERATED_VIDEOS.length)?.poster : undefined })) : undefined}
                     brand={!!brand}
                   />
                 </div>
@@ -1913,12 +1913,12 @@ export function GenerationCanvas({
               refs={activeSlide.refs ?? []}
               setPrompt={(prompt) => patchSlide(activeSlide.id, { prompt })}
               setRefs={(fn) => setSlides((list) => list.map((s) => (s.id === activeSlide.id ? { ...s, refs: fn(s.refs ?? []) } : s)))}
-              fixedRef={activeIndex === 0 ? undefined : { url: GENERATED_VIDEOS[slides[0].video!].poster, name: nameOf(slides[0]) }}
+              fixedRef={activeIndex === 0 ? undefined : { url: videoAt(slides[0].video!).poster, name: nameOf(slides[0]) }}
               disabled={busyReason}
               onGenerate={() => requestGenerate(activeSlide.id)}
               onOpenFixed={status(slides[0]) === "done" ? () => setPreview("main") : undefined}
               cost={VIDEO_COST}
-              mentionVariations={slides.map((x) => ({ name: nameOf(x), poster: x.video !== undefined ? GENERATED_VIDEOS[x.video % GENERATED_VIDEOS.length]?.poster : undefined }))}
+              mentionVariations={slides.map((x) => ({ name: nameOf(x), poster: x.video !== undefined ? videoAt(x.video % GENERATED_VIDEOS.length)?.poster : undefined }))}
               brand={!!brand}
             />
               )

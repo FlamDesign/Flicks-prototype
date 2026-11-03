@@ -2,7 +2,7 @@ import * as fmt from "@/lib/format"
 import type { FlickRecord } from "@/library"
 import type { Placement } from "@/ads/ads"
 import type { Embed } from "@/embeds/embeds"
-import { GENERATED_VIDEOS } from "@/components/editor/elements"
+import { videoAt } from "@/components/editor/elements"
 
 /**
  * Analytics experiment: sample numbers for every Flick, consistent with what the prototype already
@@ -139,7 +139,7 @@ export function buildDataset(flicks: FlickRecord[], placements: Placement[], emb
     const clickRate = f.variants.map((_, i) => (i === star ? (close ? between(r, 1.0, 1.06) : between(r, 1.5, 1.9)) : close ? between(r, 0.97, 1.0) : between(r, 0.75, 1.1)))
     const click = norm(view.map((v, i) => v * clickRate[i]))
     const end = norm(f.variants.map((_, i) => (i === star ? 1.5 : i === f.start ? 0.9 : 0.6 + r() * 0.4)))
-    const variants = f.variants.map((v, i) => ({ name: v.name, poster: v.poster, src: GENERATED_VIDEOS[v.video]?.mp4, view: view[i], click: click[i], end: end[i], time: between(r, 2.2, 5.5) * (i === star ? 1.25 : 1) }))
+    const variants = f.variants.map((v, i) => ({ name: v.name, poster: v.poster, src: videoAt(v.video)?.mp4, view: view[i], click: click[i], end: end[i], time: between(r, 2.2, 5.5) * (i === star ? 1.25 : 1) }))
     const matrix = f.variants.map((_, a) => norm(f.variants.map((_, b) => (a === b ? 0 : (b === star ? 1.7 : 1) * between(r, 0.6, 1.2)))))
     const timeline = norm(Array.from({ length: VIDEO_SECONDS * 2 }, (_, i) => {
       const t = i / 2

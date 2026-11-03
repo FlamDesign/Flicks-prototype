@@ -1,6 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { FLICKS, PROJECTS, type Flick } from "@/data"
-import { GENERATED_VIDEOS, inSet } from "@/components/editor/elements"
+import { inSet, videoAt } from "@/components/editor/elements"
 
 /**
  * Projects and Flicks. A project is an editable draft; exporting it makes a Flick, which is fixed:
@@ -54,7 +54,7 @@ export const slugify = (s: string) =>
 
 /** A variation's name from its sample video ("sunglasses-3-sapphire" → "Sapphire"). */
 export const variantName = (video: number, i: number) => {
-  const part = GENERATED_VIDEOS[video]?.name.split("-")[2]
+  const part = videoAt(video)?.name.split("-")[2]
   return part ? part.charAt(0).toUpperCase() + part.slice(1) : `Variation ${i + 1}`
 }
 
@@ -69,7 +69,7 @@ const sampleFlick = (f: Flick, i: number): FlickRecord => {
     ...f,
     variants: [0, 1, 2].map((k) => {
       const video = inSet(base, k)
-      return { name: variantName(video, k), video, poster: GENERATED_VIDEOS[video].poster, views: Math.round(total * shares[k]) }
+      return { name: variantName(video, k), video, poster: videoAt(video).poster, views: Math.round(total * shares[k]) }
     }),
     start: 0,
     link: { slug: `${slugify(f.name)}-${(i * 2654435761).toString(36).slice(-4)}`, title: "", description: "" },

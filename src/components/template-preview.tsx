@@ -6,10 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { TEMPLATES, SIZES, type Template } from "@/data";
 import { TemplateCard } from "@/components/template-card";
 import {
-  GENERATED_VIDEOS,
   inSet,
   type CanvasElement,
   type Feed,
+  videoAt,
 } from "@/components/editor/elements";
 import { CanvasStage } from "@/components/editor/canvas-stage";
 import type { Slide } from "@/components/editor/slides-strip";
@@ -148,7 +148,7 @@ function TryFlick({ t }: { t: Template }) {
           }}
         >
           {videos.map((v, i) => {
-            const m = GENERATED_VIDEOS[v];
+            const m = videoAt(v);
             return (
               <video
                 key={v}
@@ -229,7 +229,7 @@ function TryFlick({ t }: { t: Template }) {
                       )}
                     >
                       <img loading="lazy" decoding="async"
-                        src={GENERATED_VIDEOS[v].poster}
+                        src={videoAt(v).poster}
                         alt=""
                         className="size-full object-cover"
                       />

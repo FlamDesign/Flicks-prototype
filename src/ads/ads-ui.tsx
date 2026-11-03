@@ -15,7 +15,7 @@ import { ALL_DATES, DateFilter, inDateFilter, type DateFilterValue } from "@/com
 import { RatioGlyph } from "@/components/ratio-glyph"
 import { FLICKS, SIZES, SIZE_GROUPS } from "@/data"
 import { useLibrary } from "@/library"
-import { GENERATED_VIDEOS, REFERENCE_VIDEOS, inSet } from "@/components/editor/elements"
+import { REFERENCE_VIDEOS, inSet, videoAt } from "@/components/editor/elements"
 import { useDevState } from "@/dev/state"
 import { cn } from "@/lib/utils"
 import {
@@ -642,7 +642,7 @@ export function LiveFlick({ flick, tall, fit, videos: given, start = 0 }: { flic
         style={{ aspectRatio: `${w} / ${h}`, maxWidth: "100%", maxHeight: "100%", containerType: "size", ...(fit ? { width: `min(100cqw, calc(100cqh * ${w / h}))` } : {}) }}
       >
         {videos.map((v, k) => {
-          const m = GENERATED_VIDEOS[v]
+          const m = videoAt(v)
           return (
             <video key={v} autoPlay muted loop playsInline poster={m.poster} aria-hidden className={cn("absolute inset-0 size-full object-cover transition-opacity duration-700", k === active ? "opacity-100" : "opacity-0")}>
               {m.webm && <source src={m.webm} type="video/webm" />}
@@ -661,7 +661,7 @@ export function LiveFlick({ flick, tall, fit, videos: given, start = 0 }: { flic
               onClick={() => (setActive(k), setAuto(false))}
               className={cn("aspect-square w-[16cqmin] min-w-7 overflow-hidden rounded-[3cqmin] outline-none transition-all focus-visible:ring-2 focus-visible:ring-white", k === active ? "scale-105 ring-2 ring-white" : "opacity-70 hover:opacity-100")}
             >
-              <img loading="lazy" decoding="async" src={GENERATED_VIDEOS[v].poster} alt="" className="size-full object-cover" />
+              <img loading="lazy" decoding="async" src={videoAt(v).poster} alt="" className="size-full object-cover" />
             </button>
           ))}
         </div>

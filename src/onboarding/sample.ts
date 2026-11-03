@@ -1,4 +1,4 @@
-import { GENERATED_VIDEOS, newStrip, type CanvasElement, type Feed } from "@/components/editor/elements"
+import { newStrip, type CanvasElement, type Feed, videoAt } from "@/components/editor/elements"
 import type { Slide } from "@/components/editor/slides-strip"
 import { ratioOf } from "@/components/ratio-glyph"
 
@@ -30,7 +30,7 @@ export function sampleProject() {
       refs: [],
       video: c.video,
       startedAt: 1,
-      thumb: GENERATED_VIDEOS[c.video].poster,
+      thumb: videoAt(c.video).poster,
       feeds: { [price.id]: c.price, [shop.id]: c.link },
       used: { prompt: `Same scene, ${c.name.toLowerCase()} lenses`, refs: [], fromReference: true },
     })),

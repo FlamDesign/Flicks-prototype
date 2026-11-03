@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/components/ui-extra/toaster"
 import { ALL_DATES, DateFilter, inDateFilter, type DateFilterValue } from "@/components/ui-extra/date-filter"
 import { download, MediaViewer, type ViewerItem } from "@/components/media-viewer"
-import { GENERATED_VIDEOS, SAMPLE_UPLOADS, SAMPLE_VIDEO_COUNT } from "@/components/editor/elements"
+import { SAMPLE_UPLOADS, SAMPLE_VIDEO_COUNT, videoAt } from "@/components/editor/elements"
 import { useDevState } from "@/dev/state"
 
 /** What a video was made from: an uploaded image, or the reference video (for variations). */
@@ -36,7 +36,7 @@ const at = (daysAgo: number, h: number, m: number) => {
   return d.getTime()
 }
 const up = (i: number): AssetRef => ({ kind: "image", name: SAMPLE_UPLOADS[i].name, src: SAMPLE_UPLOADS[i].src })
-const refVideo = (i: number): AssetRef => ({ kind: "video", name: `${GENERATED_VIDEOS[i].name}.mp4`, src: GENERATED_VIDEOS[i].mp4, poster: GENERATED_VIDEOS[i].poster })
+const refVideo = (i: number): AssetRef => ({ kind: "video", name: `${videoAt(i).name}.mp4`, src: videoAt(i).mp4, poster: videoAt(i).poster })
 
 /**
  * What each sample video was made from, so prompt, references and video match.
@@ -82,7 +82,7 @@ export const SAMPLE_ASSETS: Asset[] = [
       video,
       prompt: from.prompts[Math.floor(k / SAMPLE_VIDEO_COUNT) % from.prompts.length],
       refs: from.refs,
-      size: GENERATED_VIDEOS[video].size,
+      size: videoAt(video).size,
       duration: [8, 6, 10, 12, 15, 8, 10][k % 7],
       // today: spread back from now; earlier days: through the afternoon
       createdAt: day === 0 ? Date.now() - (i + 1) * 9 * 60_000 : at(day, 18 - Math.floor(i / 2), (i * 17) % 60),
@@ -142,7 +142,7 @@ export function AssetsPage({ onCreate, onUse }: { onCreate: () => void; onUse: (
   const viewerItems: ViewerItem[] = useMemo(
     () =>
       ordered.map((a) => {
-        const v = GENERATED_VIDEOS[a.video]
+        const v = videoAt(a.video)
         return {
           id: a.id,
           kind: "video",
@@ -269,7 +269,7 @@ export function AssetsPage({ onCreate, onUse }: { onCreate: () => void; onUse: (
 
 /** A video in the grid: the shared tile; plays on hover, its prompt slides up, length and size bottom-left, download top-right. */
 function AssetCard({ a, onOpen }: { a: Asset; onOpen: () => void }) {
-  const v = GENERATED_VIDEOS[a.video]
+  const v = videoAt(a.video)
   const corner = "size-7 rounded-lg bg-background/90 opacity-0 shadow-sm backdrop-blur-sm transition-opacity hover:bg-background group-hover/tile:opacity-100 focus-visible:opacity-100"
   return (
     <div className="flex flex-col gap-1.5">

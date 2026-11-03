@@ -13,7 +13,7 @@ import { saveFile } from "@/components/page-kit"
 import { useEmbeds } from "@/embeds/embeds"
 import { AddToEmbed } from "@/embeds/embeds-ui"
 import { DeleteFlickDialog } from "@/components/flicks-page"
-import { GENERATED_VIDEOS } from "@/components/editor/elements"
+import { videoAt } from "@/components/editor/elements"
 import { FlickStage, ServeInAds } from "@/ads/ads-ui"
 import { compact, flickRef, useAds } from "@/ads/ads"
 import { flickLink, library, totalViews, useExportProgress, useLibrary, type FlickRecord } from "@/library"
@@ -275,7 +275,7 @@ function downloadIfl(f: FlickRecord) {
     name: f.name,
     size: f.size,
     start: f.start,
-    variations: f.variants.map((v) => ({ name: v.name, video: GENERATED_VIDEOS[v.video]?.name, poster: GENERATED_VIDEOS[v.video]?.name })),
+    variations: f.variants.map((v) => ({ name: v.name, video: videoAt(v.video)?.name, poster: videoAt(v.video)?.name })),
     link: flickLink(f),
     created: new Date(f.editedAt).toISOString(),
   }
