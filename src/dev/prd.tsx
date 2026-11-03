@@ -681,7 +681,7 @@ const SECTIONS: Section[] = [
         <UL
           items={[
             "Shares one frame with Account and Ad Balance: title, description and the main action (Get credits) top right, four stat cards (Balance, Auto-reload, Used, Added), then Usage history (spent, added, refunded, granted; filter by type and the shared date filter, default Last 30 days; 10 at a time) beside Invoices (each downloadable).",
-            "Get credits: a calm dialog (“Credits pay for AI video generation.”): the amount large, its credits and about how many videos under it (with an amber “+N bonus” tag from $1,000), a slider ($100 to $10,000), quick amounts ($200, $500, $1,000 +10%, $2,500 +10%), a soft amber strip with a gift (“10% extra credits on $1,000 or more” and Try $1,000, or “10% bonus applied”), then Auto-reload (On/Off) and Continue to payment, with Contact sales beside it. Amber marks only the bonus. A typical video (1080×1920, 8 seconds) is 48 credits.",
+            "Get credits: the description shows the current balance (“You have 1,000”). One panel shows the exchange side by side: You pay ($500) and You get (5,000 credits, about 104 videos). Under it: four equal quick amounts ($200, $500, $1,000, $2,500), a slider ($100 to $10,000; “Over $10,000? Contact sales” at its end), and one amber bonus strip with a gift: below $1,000 it says how much more unlocks it (“Add $500 for 10% bonus credits”, Make it $1,000); from $1,000 it reads “+1,000 bonus credits included”. Then Auto-reload (On/Off), and the footer shows the new balance beside Pay $500. Amber marks only the bonus. A typical video (1080×1920, 8 seconds) is 48 credits.",
             "Auto-reload: top up when credits drop below a chosen amount.",
           ]}
         />

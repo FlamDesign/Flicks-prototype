@@ -124,7 +124,7 @@ type Step = "amount" | "done"
 
 /**
  * Purchase flow:
- * 1. amount: slider + suggestions + bonus offer, then "Continue to payment" hands off to Stripe Checkout
+ * 1. amount: slider + suggestions + bonus offer, then "Pay $N" hands off to Stripe Checkout
  * 2. done: shown when Stripe returns after a successful payment
  */
 function BuyCreditsDialog({
@@ -177,21 +177,46 @@ function BuyCreditsDialog({
           <>
             <DialogHeader>
               <DialogTitle>Get credits</DialogTitle>
-              <DialogDescription>Credits pay for AI video generation.</DialogDescription>
+              <DialogDescription>
+                Credits pay for AI video generation. You have <span className="font-medium text-foreground tabular-nums">{balance.toLocaleString("en-US")}</span>.
+              </DialogDescription>
             </DialogHeader>
 
+            {/* the exchange, side by side: what you pay, what you get */}
+            <div className="grid grid-cols-2 overflow-hidden rounded-xl bg-muted">
+              <div className="flex flex-col gap-1 p-4">
+                <span className="text-xs text-muted-foreground">You pay</span>
+                <span className="text-3xl font-semibold tracking-tight tabular-nums">{usd(amount)}</span>
+              </div>
+              <div className="flex flex-col gap-1 border-l border-background p-4">
+                <span className="text-xs text-muted-foreground">You get</span>
+                <span className="text-3xl font-semibold tracking-tight tabular-nums">{total.toLocaleString("en-US")}</span>
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  credits, about {plural(videos(total), "video")}
+                </span>
+              </div>
+            </div>
+
             <div className="space-y-4">
-              <div>
-                <p className="text-3xl font-semibold tabular-nums tracking-tight">{usd(amount)}</p>
-                <p className="pt-1 text-sm text-muted-foreground tabular-nums">
-                  {total.toLocaleString("en-US")} credits
-                  {" "}· about {plural(videos(total), "video")}
-                  {bonus > 0 && (
-                    <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-brand/10 px-2 py-0.5 align-middle text-xs font-medium text-brand">
-                      <HugeiconsIcon icon={GiftIcon} className="size-3" />+{bonus.toLocaleString("en-US")} bonus
-                    </span>
-                  )}
-                </p>
+              <div className="grid grid-cols-4 gap-1.5">
+                {SUGGESTED.map((v) => {
+                  const on = amount === v
+                  return (
+                    <Button
+                      key={v}
+                      size="sm"
+                      variant="outline"
+                      aria-pressed={on}
+                      className={cn(
+                        "tabular-nums",
+                        on && "border-foreground bg-foreground/5 hover:bg-foreground/5 dark:border-foreground dark:bg-foreground/10",
+                      )}
+                      onClick={() => setI(STOPS.indexOf(v))}
+                    >
+                      {usd(v)}
+                    </Button>
+                  )
+                })}
               </div>
 
               <div className="space-y-2">
@@ -206,40 +231,30 @@ function BuyCreditsDialog({
                 />
                 <div className="flex justify-between text-xs text-muted-foreground tabular-nums">
                   <span>{usd(STOPS[0])}</span>
-                  <span>{usd(MAX_USD)}</span>
+                  <span>
+                    Over {usd(MAX_USD)}?{" "}
+                    <a href={SALES_URL} className="font-medium text-foreground underline-offset-4 hover:underline">
+                      Contact sales
+                    </a>
+                  </span>
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-1.5">
-                {SUGGESTED.map((v) => {
-                  const on = amount === v
-                  return (
-                    <Button
-                      key={v}
-                      size="sm"
-                      variant="outline"
-                      aria-pressed={on}
-                      className={cn(
-                        "gap-1 rounded-full px-3 tabular-nums",
-                        on && "border-foreground bg-foreground/5 hover:bg-foreground/5 dark:border-foreground dark:bg-foreground/10",
-                      )}
-                      onClick={() => setI(STOPS.indexOf(v))}
-                    >
-                      {usd(v)}
-                      {v >= BONUS_FROM_USD && <span className="text-xs font-medium text-brand">+{BONUS_RATE * 100}%</span>}
-                    </Button>
-                  )
-                })}
-              </div>
-              <div className="flex h-9 items-center gap-2.5 rounded-lg bg-brand/5 px-3 text-xs">
+              {/* the bonus, in one place: how far away it is, or that it's in */}
+              <div className={cn("flex h-10 items-center gap-2.5 rounded-lg px-3 text-sm transition-colors", bonus > 0 ? "bg-brand/10" : "bg-brand/5")}>
                 <HugeiconsIcon icon={GiftIcon} className="size-4 shrink-0 text-brand" />
                 {bonus > 0 ? (
-                  <span className="font-medium text-brand">{BONUS_RATE * 100}% bonus applied</span>
+                  <span className="flex-1">
+                    <span className="font-medium text-brand tabular-nums">+{bonus.toLocaleString("en-US")} bonus credits</span>
+                    <span className="text-muted-foreground"> included</span>
+                  </span>
                 ) : (
                   <>
-                    <span className="flex-1 text-muted-foreground">{BONUS_RATE * 100}% extra credits on {usd(BONUS_FROM_USD)} or more</span>
-                    <Button variant="link" size="sm" className="h-auto p-0 text-xs font-medium text-brand" onClick={() => setI(STOPS.indexOf(BONUS_FROM_USD))}>
-                      Try {usd(BONUS_FROM_USD)}
+                    <span className="flex-1 text-muted-foreground">
+                      Add <span className="tabular-nums">{usd(BONUS_FROM_USD - amount)}</span> for {BONUS_RATE * 100}% bonus credits
+                    </span>
+                    <Button variant="link" size="sm" className="h-auto p-0 font-medium text-brand" onClick={() => setI(STOPS.indexOf(BONUS_FROM_USD))}>
+                      Make it {usd(BONUS_FROM_USD)}
                     </Button>
                   </>
                 )}
@@ -261,11 +276,8 @@ function BuyCreditsDialog({
             </Button>
 
             <DialogFooter className="items-center sm:justify-between">
-              <p className="text-sm text-muted-foreground">
-                Need more?{" "}
-                <a href={SALES_URL} className="font-medium text-foreground underline-offset-4 hover:underline">
-                  Contact sales
-                </a>
+              <p className="text-sm text-muted-foreground tabular-nums">
+                New balance <span className="font-medium text-foreground">{(balance + total).toLocaleString("en-US")}</span>
               </p>
               <Button onClick={pay} disabled={paying}>
                 {paying ? (
@@ -274,7 +286,7 @@ function BuyCreditsDialog({
                     Redirecting
                   </>
                 ) : (
-                  "Continue to payment"
+                  <>Pay {usd(amount)}</>
                 )}
               </Button>
             </DialogFooter>
