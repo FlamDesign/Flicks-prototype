@@ -326,3 +326,31 @@ html.vt-theme::view-transition-new(root) { animation: vt-in var(--dur-slow) var(
   --seq-lo: color-mix(in oklch, var(--brand) 10%, var(--card));
 }
 
+
+/* Create's prompt box: an amber light travels round its edge and a soft amber glow breathes
+   under it, so the one place to start reads as alive. Stronger while typing; still (a quiet
+   static ring) when the device asks for less motion. */
+@property --glow-angle { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+.prompt-glow { animation: glow-breathe 4.8s var(--ease-in-out) infinite; }
+.prompt-glow::before {
+  content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1.5px; pointer-events: none;
+  background: conic-gradient(from var(--glow-angle),
+    transparent 0deg,
+    color-mix(in oklch, var(--brand) 90%, transparent) 50deg,
+    color-mix(in oklch, var(--chart-1) 85%, transparent) 95deg,
+    transparent 150deg, transparent 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity: .75; transition: opacity var(--dur-slow) var(--ease-out);
+  animation: glow-spin 7s linear infinite;
+}
+.prompt-glow:focus-within::before { opacity: 1; animation-duration: 4s; }
+@keyframes glow-spin { to { --glow-angle: 360deg; } }
+@keyframes glow-breathe {
+  0%, 100% { box-shadow: 0 10px 30px -12px color-mix(in oklch, var(--brand) 22%, transparent), 0 0 0 0 transparent; }
+  50% { box-shadow: 0 14px 44px -10px color-mix(in oklch, var(--brand) 38%, transparent), 0 0 24px -6px color-mix(in oklch, var(--chart-1) 30%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .prompt-glow { animation: none; box-shadow: 0 12px 36px -12px color-mix(in oklch, var(--brand) 28%, transparent); }
+  .prompt-glow::before { animation: none; background: color-mix(in oklch, var(--brand) 45%, transparent); opacity: .6; }
+}

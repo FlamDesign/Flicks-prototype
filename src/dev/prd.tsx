@@ -209,6 +209,7 @@ const SECTIONS: Section[] = [
         <UL
           items={[
             "A calm warm page with a large greeting by first name and one line under it; the prompt box is the one focal point (no background effects).",
+            "The prompt box glows: an amber light slowly travels round its edge and a soft amber glow breathes under it; both quicken a little while typing. With reduced motion it\u2019s a still amber ring and glow.",
             "A large text box (16px text, three lines tall to start): “Describe your video. Type @ to mention a photo or element”. \u2318\u21b5 (Ctrl \u21b5) generates; the Generate tooltip shows the shortcut.",
             "Under the box: starter ideas as soft stone chips (Product launch, Colourway variations, Holiday promo, Social teaser) that fill the box with an example to edit, then How Flicks work. The ideas fade out once something is typed.",
             "Image references: add images and tag each as Packshot or product photo, Character (model or mascot), or Background or setting. Uploads show progress. No limit: the row scrolls sideways when full (no scrollbar; trackpad, mouse wheel or shift-scroll).",

@@ -152,7 +152,7 @@ export function PromptComposer({
           addFiles(e.dataTransfer.files)
         }}
         className={cn(
-          "relative w-full rounded-3xl border bg-background p-3 shadow-lg transition-[box-shadow,border-color] duration-300 focus-within:border-foreground/20 focus-within:shadow-xl",
+          "prompt-glow relative w-full rounded-3xl border bg-background p-3 transition-[border-color] duration-300 focus-within:border-foreground/20",
           flash && "ring-2 ring-ring ring-offset-2 ring-offset-transparent",
           dragging && "border-brand ring-2 ring-brand/30",
         )}
