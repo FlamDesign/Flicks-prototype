@@ -105,7 +105,7 @@ export function AppSidebar({
         </button>
       </div>
       {onSearch && (
-        <Button variant="outline" onClick={onSearch} className="h-9 justify-start gap-2 bg-transparent px-3 font-normal text-muted-foreground shadow-none">
+        <Button variant="outline" onClick={onSearch} className="h-9 justify-start gap-2 bg-transparent px-3 font-normal text-muted-foreground shadow-none active:not-aria-[haspopup]:translate-y-0 active:not-aria-[haspopup]:scale-100">
           <HugeiconsIcon icon={Search01Icon} className="size-4" />
           Search
           <KbdGroup className="ml-auto">
@@ -185,7 +185,7 @@ function NavButton({ label, icon, active, onClick }: { label: string; icon: type
       onClick={onClick}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "h-9 justify-start gap-3 px-3 font-normal text-muted-foreground",
+        "h-9 justify-start gap-3 px-3 font-normal text-muted-foreground active:not-aria-[haspopup]:translate-y-0 active:not-aria-[haspopup]:scale-100",
         active && "bg-sidebar-accent font-medium text-sidebar-accent-foreground hover:bg-sidebar-accent",
       )}
     >

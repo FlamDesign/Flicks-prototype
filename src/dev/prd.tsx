@@ -836,7 +836,7 @@ const SECTIONS: Section[] = [
           items={[
             "Pages switch instantly (after their short loading skeleton); new chat messages and prompts ease in. All motion stops when the device asks for less motion.",
             "The AI shows \u201cThinking\u2026\u201d (or what it\u2019s doing) with a soft shimmer; its replies fade in a paragraph at a time.",
-            "Buttons press in slightly when clicked. Pictures fade in as they load, over a muted frame.",
+            "Buttons press in slightly when clicked (not the sidebar navigation or search). Pictures fade in as they load, over a muted frame.",
             "Light, Dark or System is remembered in the browser, applied before the page shows, and switching it cross-fades the page.",
             "Empty lists show a small drawing, one line and one action. Highlighted text and the text cursor use the brand orange.",
             "Colour: surfaces are warm stone: a warm-white page on a stone shell, with white cards and popovers that lift off the page; dark mode uses the same warm hue. Buttons are neutral (near-black in light mode, near-white in dark). The brand orange marks only what\u2019s selected, in progress, AI or the brand itself. One filled button per screen; everything else is outline or ghost.",
