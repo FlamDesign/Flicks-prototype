@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { Spinner } from "@/components/ui/spinner"
 import { MediaTile } from "@/components/media-tile"
 import { EmptyState } from "@/components/empty-state"
+import { PAGE, PageHeader } from "@/components/page-kit"
 import { CardsSkeleton, Loading, PendingButton } from "@/components/page-skeletons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Search01Icon, MoreHorizontalIcon, Copy01Icon, Delete02Icon, GitForkIcon, Link01Icon } from "@hugeicons/core-free-icons"
@@ -19,7 +20,7 @@ import { useAds } from "@/ads/ads"
 import { cn } from "@/lib/utils"
 
 type Item = { id: string; name: string; size: string; at: number; image: string; exporting?: { from: number; until: number }; details?: string[] }
-const plural = (n: number, word: string) => `${n.toLocaleString()} ${word}${n === 1 ? "" : "s"}`
+const plural = (n: number, word: string) => `${n.toLocaleString("en-US")} ${word}${n === 1 ? "" : "s"}`
 type MenuItem = { label: string; icon: typeof Copy01Icon; onSelect: () => void; destructive?: boolean }
 
 /** Projects: editable drafts. Opening one opens the editor. */
@@ -177,33 +178,32 @@ function LibraryList({
   const now = useNow()
 
   return (
-    <div className="mx-auto w-full max-w-[1280px] px-4 py-8 md:px-8 md:py-10">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-          <p className="text-sm text-muted-foreground">{description}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative">
-            <HugeiconsIcon icon={Search01Icon} className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={searchLabel} aria-label={searchLabel} className="w-[220px] pl-9" />
-          </div>
-          <DateFilter value={dates} onChange={setDates} label={dateLabel} className="w-[150px]" />
-          <Select value={size} onValueChange={setSize}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All sizes</SelectItem>
-              {SIZES.map((s) => (
-                <SelectItem key={s.value} value={s.value}>
-                  {s.value}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+    <div className={PAGE}>
+      <PageHeader
+        title={title}
+        toolbar={
+          <>
+            <div className="relative">
+              <HugeiconsIcon icon={Search01Icon} className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={searchLabel} aria-label={searchLabel} className="w-[240px] pl-9" />
+            </div>
+            <DateFilter value={dates} onChange={setDates} label={dateLabel} className="w-[150px]" />
+            <Select value={size} onValueChange={setSize}>
+              <SelectTrigger className="w-[140px]" aria-label="Size">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All sizes</SelectItem>
+                {SIZES.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>
+                    {s.value}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </>
+        }
+      />
 
       <div className="mt-6">
         {/* searching or filtering fetches again */}
@@ -281,7 +281,7 @@ function Card({ it, when, whenTitle, onOpen, menu, warm }: { it: Item; when: str
                   size="icon-sm"
                   aria-label={`More actions for ${it.name}`}
                   onClick={(e) => e.stopPropagation()}
-                  className={cn("-mr-1 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100", menuOpen && "opacity-100")}
+                  className={cn("-mr-1 text-muted-foreground hover:text-foreground", menuOpen && "text-foreground")}
                 >
                   <HugeiconsIcon icon={MoreHorizontalIcon} className="size-4" />
                 </Button>
@@ -326,7 +326,7 @@ function ExportingOverlay({ exporting }: { exporting: { from: number; until: num
         Preparing… {Math.round(p * 100)}%
       </span>
       <span className="h-1 overflow-hidden rounded-full bg-foreground/10">
-        <span className="block h-full rounded-full bg-primary transition-[width] duration-200" style={{ width: `${p * 100}%` }} />
+        <span className="block h-full rounded-full bg-brand transition-[width] duration-200" style={{ width: `${p * 100}%` }} />
       </span>
     </div>
   )

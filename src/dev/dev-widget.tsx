@@ -154,7 +154,7 @@ export function DevWidget({ onStateManager, onComponents, onPrd, onEmails }: { o
           size="sm"
           onClick={a.run}
           aria-label={a.label}
-          className={cn("h-7 gap-1.5 rounded-lg bg-primary text-xs transition-none font-medium text-primary-foreground hover:bg-primary/90", open ? "px-2" : "w-7 px-0")}
+          className={cn("h-7 gap-1.5 rounded-lg bg-brand text-xs transition-none font-medium text-brand-foreground hover:bg-brand/90", open ? "px-2" : "w-7 px-0")}
         >
           <HugeiconsIcon icon={FlashIcon} className="size-3.5" />
           {open && <span className="animate-in fade-in-0 duration-150">{a.label}</span>}
@@ -178,7 +178,7 @@ export function DevWidget({ onStateManager, onComponents, onPrd, onEmails }: { o
           >
             <HugeiconsIcon icon={AiChat02Icon} className="size-3.5" />
             {open && <span className="animate-in fade-in-0 duration-150">AI chat {dev.aiChat ? "on" : "off"}</span>}
-            <span aria-hidden className={cn("size-1.5 rounded-full", dev.aiChat ? "bg-primary" : "bg-white/30", !open && "absolute right-1 top-1")} />
+            <span aria-hidden className={cn("size-1.5 rounded-full", dev.aiChat ? "bg-brand" : "bg-white/30", !open && "absolute right-1 top-1")} />
           </Button>
         </TooltipTrigger>
         <TooltipContent>{dev.aiChat ? "On: a new prompt opens the chat, which plans the Flick first. Click to turn off." : "Off: Generate makes the video straight away. Click to turn on the chat."}</TooltipContent>

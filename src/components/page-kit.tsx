@@ -11,17 +11,75 @@ import { cn } from "@/lib/utils"
  * one width, one header, one stat card, one list card, one invoice list and one pager.
  */
 
-/** Page frame: title, one-line description and the page's main action, top right. */
-export function PageShell({ title, description, action, children }: { title: string; description: string; action?: React.ReactNode; children: React.ReactNode }) {
+/** Every main page's frame: one width and one padding. */
+export const PAGE = "mx-auto w-full max-w-[1280px] px-4 py-8 md:px-8 md:py-10"
+
+export type Crumb = { label: string; onClick?: () => void }
+
+/** The trail back, small and muted, above a page's title (Flicks › Rain-ready boots). */
+export function Crumbs({ items }: { items: Crumb[] }) {
   return (
-    <div className="mx-auto w-full max-w-[1100px] px-4 py-8 md:px-8 md:py-10">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-          <p className="text-sm text-muted-foreground">{description}</p>
+    <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 text-sm text-muted-foreground">
+      {items.map((c, i) => (
+        <span key={i} className="flex min-w-0 items-center gap-1">
+          {i > 0 && <HugeiconsIcon icon={ArrowRight01Icon} className="size-3.5 shrink-0 opacity-60" />}
+          {c.onClick ? (
+            <button type="button" onClick={c.onClick} className="-mx-1 truncate rounded-md px-1 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+              {c.label}
+            </button>
+          ) : (
+            <span className="truncate">{c.label}</span>
+          )}
+        </span>
+      ))}
+    </nav>
+  )
+}
+
+/**
+ * The one page header: an optional trail back, the title (with a count or a tag beside it), the
+ * page's actions on the right, then one row for search and filters. Same spacing on every page.
+ */
+export function PageHeader({
+  crumbs,
+  title,
+  count,
+  titleExtra,
+  actions,
+  toolbar,
+  className,
+}: {
+  crumbs?: Crumb[]
+  title: React.ReactNode
+  count?: React.ReactNode
+  titleExtra?: React.ReactNode
+  actions?: React.ReactNode
+  toolbar?: React.ReactNode
+  className?: string
+}) {
+  return (
+    <div className={cn("flex flex-col gap-5", className)}>
+      <div className="flex flex-col gap-1.5">
+        {crumbs && <Crumbs items={crumbs} />}
+        <div className="flex min-h-9 flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <h1 className="truncate text-2xl font-semibold tracking-tight">{title}</h1>
+            {count !== undefined && <span className="shrink-0 text-sm tabular-nums text-muted-foreground">{count}</span>}
+            {titleExtra}
+          </div>
+          {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
         </div>
-        {action}
       </div>
+      {toolbar && <div className="flex flex-wrap items-center gap-2">{toolbar}</div>}
+    </div>
+  )
+}
+
+/** Settings-style pages (Account, Credits, Ad Balance): the shared header, then their sections. */
+export function PageShell({ title, action, children }: { title: string; description?: string; action?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className={PAGE}>
+      <PageHeader title={title} actions={action} />
       <div className="mt-6 flex flex-col gap-6">{children}</div>
     </div>
   )
@@ -63,7 +121,7 @@ export function StatCard({
 /** The small link-style action in a stat card's corner (Set up, Edit, All rates). */
 export function StatAction({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
   return (
-    <Button size="xs" variant="ghost" className="-my-1 -mr-2 h-7 px-2 text-sm text-primary hover:text-primary" onClick={onClick}>
+    <Button size="xs" variant="ghost" className="-my-1 -mr-2 h-7 px-2 text-sm" onClick={onClick}>
       {children}
     </Button>
   )
@@ -83,7 +141,7 @@ export function ListCard({ title, tools, children, className }: { title: string;
 }
 
 export const fmtDate = (ts: number) => new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-export const money = (n: number) => `${n < 0 ? "−" : ""}$${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+export const money = (n: number) => `${n < 0 ? "−" : ""}$${Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 export type InvoiceRow = { id: string; title: string; number?: string; at: number; amount: number }
 
@@ -149,7 +207,7 @@ export function Pager({ page, pages, total, size, onPage }: { page: number; page
   return (
     <div className="mt-2 flex items-center justify-between gap-2 border-t pt-3">
       <span className="text-xs tabular-nums text-muted-foreground">
-        {from.toLocaleString()}–{to.toLocaleString()} of {total.toLocaleString()}
+        {from.toLocaleString("en-US")}–{to.toLocaleString("en-US")} of {total.toLocaleString("en-US")}
       </span>
       <div className="flex gap-2">
         <Button variant="outline" size="icon-sm" aria-label="Previous page" disabled={page === 0} onClick={() => onPage(page - 1)}>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { PAGE, PageHeader } from "@/components/page-kit"
 import { Spinner } from "@/components/ui/spinner"
 import { onboarding } from "@/onboarding/onboarding"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -82,23 +83,19 @@ export function FlickPage({
   const copyLink = () => (navigator.clipboard?.writeText(link), toast("Link copied"))
 
   return (
-    <div className="mx-auto w-full max-w-[1280px] px-4 py-8 md:px-8 md:py-10">
-      {/* header: breadcrumb, then Remix and the menu */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 text-xl font-medium tracking-tight sm:text-2xl">
-          <Button variant="ghost" onClick={onBack} className="-ml-1 h-auto px-1 text-xl font-medium tracking-tight text-muted-foreground hover:bg-transparent hover:text-foreground sm:text-2xl">
-            Flicks
-          </Button>
-          <HugeiconsIcon icon={ArrowRight01Icon} className="size-5 shrink-0 text-muted-foreground" />
-          <span className="truncate px-1" aria-current="page">
-            {f.name}
-          </span>
-          <Badge variant="secondary" className="ml-1 shrink-0 font-normal tabular-nums">
+    <div className={PAGE}>
+      {/* header: the trail back, the name and size, then Remix and the menu */}
+      <PageHeader
+        crumbs={[{ label: "Flicks", onClick: onBack }]}
+        title={f.name}
+        titleExtra={
+          <Badge variant="secondary" className="shrink-0 font-normal tabular-nums">
             {f.size}
           </Badge>
-        </nav>
-        {!f.exporting && (
-        <div className="flex items-center gap-2">
+        }
+        actions={
+          !f.exporting && (
+            <>
           <Button data-tour="remix" className="gap-1.5" onClick={() => onRemix(f)}>
             <HugeiconsIcon icon={GitForkIcon} className="size-4" />
             Remix
@@ -121,9 +118,10 @@ export function FlickPage({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
-        )}
-      </div>
+        </>
+          )
+        }
+      />
       <p className="mt-1 text-sm text-muted-foreground">
         {f.exporting ? `Preparing… ${Math.round(progress * 100)}%` : `Created ${fullDate(f.editedAt)}`}
         {project && (
@@ -263,7 +261,7 @@ function UsedIn({ rows, empty }: { rows: { id: string; name: string; sub: string
     <ul className="-mx-2 flex flex-col">
       {rows.map((x) => (
         <li key={x.id}>
-          <button type="button" onClick={x.onOpen} className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left outline-none hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring">
+          <button type="button" onClick={x.onOpen} className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring">
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm">{x.name}</span>
               <span className="block truncate text-xs text-muted-foreground">{x.sub}</span>
@@ -315,13 +313,13 @@ function Analytics({ f, onAnalytics }: { f: FlickRecord; onAnalytics: () => void
           <h2 className="text-sm font-medium">Analytics</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">Views on each variation</p>
         </div>
-        <Button variant="ghost" size="sm" className="-mr-2 gap-1 text-primary hover:text-primary" onClick={onAnalytics}>
+        <Button variant="ghost" size="sm" className="-mr-2 gap-1" onClick={onAnalytics}>
           Full analytics
           <HugeiconsIcon icon={ArrowRight01Icon} className="size-4" />
         </Button>
       </div>
       <div>
-        <p className="text-2xl font-semibold tabular-nums tracking-tight">{total.toLocaleString()}</p>
+        <p className="text-2xl font-semibold tabular-nums tracking-tight">{total.toLocaleString("en-US")}</p>
         <p className="text-xs text-muted-foreground">Views</p>
       </div>
       {total ? (
@@ -336,11 +334,11 @@ function Analytics({ f, onAnalytics }: { f: FlickRecord; onAnalytics: () => void
                     {i === f.start && <Badge variant="secondary" className="h-5 shrink-0 px-1.5 text-xs font-normal">Starts here</Badge>}
                   </span>
                   <span className="shrink-0 tabular-nums">
-                    {v.views.toLocaleString()} <span className="text-xs text-muted-foreground">· {Math.round((v.views / total) * 100)}%</span>
+                    {v.views.toLocaleString("en-US")} <span className="text-xs text-muted-foreground">· {Math.round((v.views / total) * 100)}%</span>
                   </span>
                 </div>
                 <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div className={cn("h-full rounded-full", i === f.start ? "bg-primary" : "bg-primary/45")} style={{ width: `${(v.views / max) * 100}%` }} />
+                  <div className={cn("h-full rounded-full", i === f.start ? "bg-brand" : "bg-brand/45")} style={{ width: `${(v.views / max) * 100}%` }} />
                 </div>
               </div>
             </li>

@@ -15,7 +15,7 @@ type Corner = "nw" | "ne" | "sw" | "se" | "n" | "s" | "e" | "w"
 const SIDES: Corner[] = ["n", "s", "e", "w"]
 const sidePos = (c: Corner) =>
   cn(
-    "absolute z-10 rounded-full border border-primary bg-white shadow-md transition-[opacity,background-color] hover:bg-primary",
+    "absolute z-10 rounded-full border border-brand bg-white shadow-md transition-[opacity,background-color] hover:bg-brand",
     c === "n" || c === "s" ? "left-1/2 h-1.5 w-4 -translate-x-1/2 cursor-ns-resize" : "top-1/2 h-4 w-1.5 -translate-y-1/2 cursor-ew-resize",
     c === "n" && "-top-[4px]",
     c === "s" && "-bottom-[4px]",
@@ -24,7 +24,7 @@ const sidePos = (c: Corner) =>
   )
 const CORNERS: Corner[] = ["nw", "ne", "sw", "se"]
 
-const HANDLE = "absolute z-10 size-2.5 rounded-full border border-primary bg-white shadow-md transition-colors hover:bg-primary"
+const HANDLE = "absolute z-10 size-2.5 rounded-full border border-brand bg-white shadow-md transition-colors hover:bg-brand"
 const handlePos = (c: Corner) => // corners only
   cn(
     c.includes("n") ? "-top-[5px]" : "-bottom-[5px]",
@@ -555,7 +555,7 @@ export function CanvasStage({
         <span key={`h${y}`} className="absolute inset-x-0 h-px -translate-y-1/2 bg-rose-500" style={{ top: y }} />
       ))}
       {boxes.map((x) => (
-        <div key={x.id} className="absolute outline-1 outline-solid outline-primary" style={{ left: x.l, top: x.t, width: x.w, height: x.h }}>
+        <div key={x.id} className="absolute outline-1 outline-solid outline-brand" style={{ left: x.l, top: x.t, width: x.w, height: x.h }}>
           {single && single.id === x.id && editing !== x.id &&
             CORNERS.map((c) => (
               <span
@@ -579,7 +579,7 @@ export function CanvasStage({
       ))}
       {groupBox && (
         <div
-          className="absolute outline-1 outline-solid outline-primary"
+          className="absolute outline-1 outline-solid outline-brand"
           style={{ left: groupBox.l, top: groupBox.t, width: groupBox.r - groupBox.l, height: groupBox.b - groupBox.t }}
         >
           {CORNERS.map((c) => (
@@ -662,8 +662,8 @@ function ElementBox({
         readOnly ? (el.kind === "strip" || el.kind === "button" ? "cursor-pointer" : "cursor-default") : editing ? "cursor-text" : "cursor-move",
         // no padding: the outline hugs the element
         // the selected outline is drawn in the unclipped layer
-        selected || readOnly ? "outline-none" : "outline-none hover:outline-2 hover:outline-solid hover:outline-primary/70",
-        hovered && !selected && !readOnly && "outline-2 outline-solid outline-primary/70",
+        selected || readOnly ? "outline-none" : "outline-none hover:outline-2 hover:outline-solid hover:outline-brand/70",
+        hovered && !selected && !readOnly && "outline-2 outline-solid outline-brand/70",
       )}
       style={{
         left: `${el.x}%`,
@@ -782,7 +782,7 @@ function StripView({ el, ratio, thumbs, active, editable, picked }: { el: StripE
               aria-hidden
               className={cn(
                 "pointer-events-none absolute inset-0 ring-2 ring-inset transition-opacity",
-                picked === i ? "opacity-100 ring-primary" : "opacity-0 ring-primary/70 group-hover/thumb:opacity-100",
+                picked === i ? "opacity-100 ring-brand" : "opacity-0 ring-brand/70 group-hover/thumb:opacity-100",
               )}
               style={{ borderRadius: `${radius}cqw` }}
             />
@@ -1062,7 +1062,7 @@ function ButtonLinkFloat({
       >
         {feedTab && <div className="absolute bottom-full left-3">{feedTab}</div>}
         {link.trim() ? (
-          <a href={/^https?:/.test(link) ? link : `https://${link}`} target="_blank" rel="noreferrer" className="min-w-0 truncate text-sm font-medium text-primary underline-offset-2 hover:underline" title={link}>
+          <a href={/^https?:/.test(link) ? link : `https://${link}`} target="_blank" rel="noreferrer" className="min-w-0 truncate text-sm font-medium text-foreground underline underline-offset-2 hover:text-muted-foreground" title={link}>
             {host}
           </a>
         ) : (

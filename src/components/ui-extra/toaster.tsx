@@ -166,7 +166,7 @@ function ToastCard({
         size="icon-xs"
         aria-label="Dismiss"
         onClick={onDismiss}
-        className={cn("size-5 shrink-0 rounded-full text-muted-foreground transition-opacity", !expanded && index > 0 && "opacity-0")}
+        className={cn("size-6 shrink-0 text-muted-foreground transition-opacity", !expanded && index > 0 && "opacity-0")}
       >
         <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
       </Button>

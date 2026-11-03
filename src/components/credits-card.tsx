@@ -58,10 +58,10 @@ const SUGGESTED = [200, 500, 1000, 2500]
 const AUTO_MIN = 100
 const AUTO_MAX = 1000
 
-const usd = (n: number) => `$${n.toLocaleString()}`
+const usd = (n: number) => `$${n.toLocaleString("en-US")}` // whole-dollar credit packs
 
 const videos = (credits: number) => Math.floor(credits / VIDEO_COST)
-const plural = (n: number, word: string) => `${n.toLocaleString()} ${word}${n === 1 ? "" : "s"}`
+const plural = (n: number, word: string) => `${n.toLocaleString("en-US")} ${word}${n === 1 ? "" : "s"}`
 
 /** Sidebar credit balance and Get credits in one group. One-time purchases only. */
 export function CreditsCard({
@@ -90,19 +90,19 @@ export function CreditsCard({
       <div
         role="group"
         aria-label="Credits"
-        className={cn("flex items-center justify-between gap-2 rounded-full border bg-background p-1 pl-3", low && "border-primary/40")}
+        className={cn("flex items-center justify-between gap-2 rounded-full border bg-background p-1 pl-3", low && "border-brand/40")}
       >
         <Tooltip>
           <TooltipTrigger asChild>
-            <span tabIndex={0} className={cn("flex items-center gap-1.5 text-sm font-semibold tabular-nums outline-none", low && "text-primary")}>
-              <HugeiconsIcon icon={SparklesIcon} className="size-3.5 text-primary" />
-              {credits.toLocaleString()}
+            <span tabIndex={0} className={cn("flex items-center gap-1.5 text-sm font-semibold tabular-nums outline-none", low && "text-brand")}>
+              <HugeiconsIcon icon={SparklesIcon} className="size-3.5 text-brand" />
+              {credits.toLocaleString("en-US")}
               <span className="sr-only">credits</span>
             </span>
           </TooltipTrigger>
           <TooltipContent side="top">{hint}</TooltipContent>
         </Tooltip>
-        <Button size="sm" variant={low ? "default" : "secondary"} className="rounded-full px-3" onClick={() => setBuy(true)}>
+        <Button size="sm" variant={low ? "default" : "secondary"} className="px-3" onClick={() => setBuy(true)}>
           Get more
         </Button>
       </div>
@@ -183,21 +183,21 @@ function BuyCreditsDialog({
 
             {/* Offer first: nudge below the threshold, confirmation once it applies (same height, no layout shift) */}
             {bonus > 0 ? (
-              <div className="flex h-11 items-center gap-3 rounded-xl border border-transparent bg-primary/10 px-3 text-sm">
-                <HugeiconsIcon icon={GiftIcon} className="size-4 shrink-0 text-primary" />
+              <div className="flex h-11 items-center gap-3 rounded-xl border border-transparent bg-brand/10 px-3 text-sm">
+                <HugeiconsIcon icon={GiftIcon} className="size-4 shrink-0 text-brand" />
                 <span className="flex-1 font-medium">{BONUS_RATE * 100}% bonus applied</span>
-                <span className="font-semibold tabular-nums text-primary">+{bonus.toLocaleString()} credits</span>
+                <span className="font-semibold tabular-nums text-brand">+{bonus.toLocaleString("en-US")} credits</span>
               </div>
             ) : (
-              <div className="flex h-11 items-center gap-3 rounded-xl border border-dashed border-primary/40 px-3 text-sm">
-                <HugeiconsIcon icon={GiftIcon} className="size-4 shrink-0 text-primary" />
+              <div className="flex h-11 items-center gap-3 rounded-xl border border-dashed border-brand/40 px-3 text-sm">
+                <HugeiconsIcon icon={GiftIcon} className="size-4 shrink-0 text-brand" />
                 <span className="flex-1">
                   Get <span className="font-medium">{BONUS_RATE * 100}% extra credits</span> on {usd(BONUS_FROM_USD)}+
                 </span>
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="-mr-1 h-7 rounded-full px-2.5 text-primary hover:text-primary"
+                  className="-mr-1 h-7 px-2.5 text-brand hover:text-brand"
                   onClick={() => setI(STOPS.indexOf(firstBonusStop))}
                 >
                   Try {usd(firstBonusStop)}
@@ -209,7 +209,7 @@ function BuyCreditsDialog({
               <div>
                 <p className="text-3xl font-semibold tabular-nums tracking-tight">{usd(amount)}</p>
                 <p className="pt-1 text-sm text-muted-foreground tabular-nums">
-                  {total.toLocaleString()} credits · about {plural(videos(total), "video generation")}
+                  {total.toLocaleString("en-US")} credits · about {plural(videos(total), "video generation")}
                 </p>
               </div>
 
@@ -245,7 +245,7 @@ function BuyCreditsDialog({
                       onClick={() => setI(STOPS.indexOf(v))}
                     >
                       {usd(v)}
-                      {v >= BONUS_FROM_USD && <span className="text-xs font-semibold text-primary">+{BONUS_RATE * 100}%</span>}
+                      {v >= BONUS_FROM_USD && <span className="text-xs font-semibold text-brand">+{BONUS_RATE * 100}%</span>}
                     </Button>
                   )
                 })}
@@ -257,13 +257,13 @@ function BuyCreditsDialog({
             <Button
               variant="ghost"
               onClick={onAutoTopUp}
-              className="-my-2 -mx-2 h-auto justify-start gap-3 rounded-xl px-2 py-2 text-left font-normal"
+              className="-my-2 -mx-2 h-auto justify-start gap-3 px-2 py-2 text-left font-normal"
             >
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
                 <HugeiconsIcon icon={WalletAdd02Icon} className="size-4" />
               </span>
               <span className="flex-1">Auto-reload</span>
-              <span className={cn("text-sm font-medium", autoTopUp.enabled ? "text-primary" : "text-muted-foreground")}>
+              <span className={cn("text-sm font-medium", autoTopUp.enabled ? "text-brand" : "text-muted-foreground")}>
                 {autoTopUp.enabled ? "On" : "Off"}
               </span>
               <HugeiconsIcon icon={ArrowRight01Icon} className="size-4 text-muted-foreground" />
@@ -294,22 +294,22 @@ function BuyCreditsDialog({
 
         {step === "done" && (
           <div className="flex flex-col items-center gap-4 py-2 text-center">
-            <span className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <span className="flex size-12 items-center justify-center rounded-full bg-brand/10 text-brand">
               <HugeiconsIcon icon={Tick02Icon} className="size-6" />
             </span>
             <DialogHeader className="items-center text-center">
-              <DialogTitle className="text-lg">{total.toLocaleString()} credits added</DialogTitle>
+              <DialogTitle className="text-lg">{total.toLocaleString("en-US")} credits added</DialogTitle>
               <DialogDescription>
-                New balance {balance.toLocaleString()} credits · about {plural(videos(balance), "video generation")}
+                New balance {balance.toLocaleString("en-US")} credits · about {plural(videos(balance), "video generation")}
               </DialogDescription>
             </DialogHeader>
             {!autoTopUp.enabled && (
               <Button
                 variant="outline"
                 onClick={onAutoTopUp}
-                className="h-auto w-full justify-start gap-3 rounded-xl px-3 py-2.5 text-left font-normal"
+                className="h-auto w-full justify-start gap-3 px-3 py-2.5 text-left font-normal"
               >
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
                 <HugeiconsIcon icon={WalletAdd02Icon} className="size-4" />
               </span>
                 <span className="flex-1">

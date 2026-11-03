@@ -77,8 +77,8 @@ export function LayersPanel({
             className={cn(
               "group/layer relative",
               // where the row will land
-              dragging && over === i && "before:absolute before:inset-x-1 before:-top-px before:h-0.5 before:rounded-full before:bg-primary",
-              dragging && over === i + 1 && i === rows.length - 1 && "after:absolute after:inset-x-1 after:-bottom-px after:h-0.5 after:rounded-full after:bg-primary",
+              dragging && over === i && "before:absolute before:inset-x-1 before:-top-px before:h-0.5 before:rounded-full before:bg-brand",
+              dragging && over === i + 1 && i === rows.length - 1 && "after:absolute after:inset-x-1 after:-bottom-px after:h-0.5 after:rounded-full after:bg-brand",
             )}
           >
             <div

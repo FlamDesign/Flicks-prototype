@@ -71,7 +71,7 @@ export function GeneratedVideo({
           <Button
             size="icon-lg"
             variant="secondary"
-            className="size-14 rounded-full bg-background/85 shadow-lg backdrop-blur"
+            className="size-14 bg-background/85 shadow-lg backdrop-blur"
             aria-label="Play video"
             onClick={() => ref.current?.play().then(() => setPaused(false)).catch(() => {})}
           >

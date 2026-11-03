@@ -132,7 +132,7 @@ export function CoachLayer() {
         <div
           key={i}
           aria-hidden
-          className={cn("absolute rounded-xl", ease, dim ? "ring-2 ring-white/90" : "ring-2 ring-primary animate-pulse")}
+          className={cn("absolute rounded-xl", ease, dim ? "ring-2 ring-white/90" : "ring-2 ring-brand animate-pulse")}
           style={{ left: b.left - PAD, top: b.top - PAD, width: b.width + PAD * 2, height: b.height + PAD * 2 }}
         />
       ))}

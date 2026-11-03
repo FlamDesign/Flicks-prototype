@@ -483,13 +483,13 @@ function PickerList({ picker, uploads, setUploads }: { picker: Picker; uploads: 
                     onClick={() => picker.onPick(u.src)}
                     aria-label={`Use ${u.name}`}
                     aria-pressed={on}
-                    className={cn("block aspect-square h-auto w-full overflow-hidden rounded-xl p-0 ring-1 ring-foreground/10", on && "ring-2 ring-primary")}
+                    className={cn("block aspect-square h-auto w-full overflow-hidden rounded-xl p-0 ring-1 ring-foreground/10", on && "ring-2 ring-brand")}
                   >
                     <img loading="lazy" decoding="async" src={u.src} alt="" className="animate-in fade-in-0 h-full w-full object-cover duration-300" />
                   </Button>
                 )}
                 {on && (
-                  <span aria-hidden className="pointer-events-none absolute right-1.5 top-1.5 grid size-5 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm">
+                  <span aria-hidden className="pointer-events-none absolute right-1.5 top-1.5 grid size-5 place-items-center rounded-full bg-brand text-brand-foreground shadow-sm">
                     <HugeiconsIcon icon={Tick02Icon} className="size-3" strokeWidth={2.5} />
                   </span>
                 )}

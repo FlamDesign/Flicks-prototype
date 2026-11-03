@@ -57,7 +57,7 @@ export function StateManager({ open, onOpenChange }: { open: boolean; onOpenChan
                 )}
               >
                 {t}
-                {tabChanged(t) && <span aria-label="changed" className="size-1.5 rounded-full bg-primary" />}
+                {tabChanged(t) && <span aria-label="changed" className="size-1.5 rounded-full bg-brand" />}
               </Button>
             ))}
           </nav>
@@ -111,7 +111,7 @@ function FieldControl({ f }: { f: Field }) {
   const label = (
     <Label htmlFor={id} className="gap-1.5 font-normal">
       {f.label}
-      {changed(state, f) && <span title="Changed from default" className="size-1.5 rounded-full bg-primary" />}
+      {changed(state, f) && <span title="Changed from default" className="size-1.5 rounded-full bg-brand" />}
     </Label>
   )
 
@@ -154,7 +154,7 @@ function FieldControl({ f }: { f: Field }) {
               className={cn("rounded-full", v === p.value && "border-foreground bg-foreground/5")}
             >
               {p.label}
-              <span className="text-muted-foreground tabular-nums">{p.value.toLocaleString()}</span>
+              <span className="text-muted-foreground tabular-nums">{p.value.toLocaleString("en-US")}</span>
             </Button>
           ))}
         </div>

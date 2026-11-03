@@ -205,14 +205,14 @@ export function Funnel({ steps }: { steps: { label: string; value: number }[] })
             <span className="text-muted-foreground">{s.label}</span>
             <div className="h-7 rounded-md bg-muted">
               <div
-                className="flex h-full items-center rounded-md px-2 text-xs font-medium text-primary-foreground transition-[width] duration-500"
-                style={{ width: `${Math.max(2, share * 100)}%`, background: `color-mix(in oklch, var(--primary) ${100 - i * 14}%, var(--card))` }}
+                className="flex h-full items-center rounded-md px-2 text-xs font-medium text-brand-foreground transition-[width] duration-500"
+                style={{ width: `${Math.max(2, share * 100)}%`, background: `color-mix(in oklch, var(--brand) ${100 - i * 14}%, var(--card))` }}
               >
                 {share >= 0.12 && `${(share * 100).toFixed(share < 0.1 ? 1 : 0)}%`}
               </div>
             </div>
             <span className="text-right tabular-nums">
-              <span className="font-medium">{Math.round(s.value).toLocaleString()}</span>
+              <span className="font-medium">{Math.round(s.value).toLocaleString("en-US")}</span>
               {i > 0 && <span className="block text-xs text-muted-foreground">↓ {(100 - (s.value / (prev || 1)) * 100).toFixed(0)}% drop</span>}
             </span>
           </li>
@@ -258,10 +258,10 @@ export function SwitchGrid({ names, matrix, total }: { names: string[]; matrix: 
                   <td
                     key={b}
                     tabIndex={same ? undefined : 0}
-                    onPointerMove={same ? undefined : (e) => setTip({ x: e.clientX, y: e.clientY, title: `${names[a]} → ${names[b]}`, rows: [{ label: "switches", value: Math.round(v * total).toLocaleString() }, { label: "of all switches", value: `${(v * 100).toFixed(1)}%` }] })}
+                    onPointerMove={same ? undefined : (e) => setTip({ x: e.clientX, y: e.clientY, title: `${names[a]} → ${names[b]}`, rows: [{ label: "switches", value: Math.round(v * total).toLocaleString("en-US") }, { label: "of all switches", value: `${(v * 100).toFixed(1)}%` }] })}
                     onPointerLeave={() => setTip(null)}
                     className={cn("h-10 min-w-16 rounded-md text-center tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring", same ? "bg-muted/40 text-muted-foreground/50" : "hover:ring-2 hover:ring-foreground/20")}
-                    style={same ? undefined : { background: `color-mix(in oklch, var(--seq-hi) ${Math.round(12 + k * 78)}%, var(--seq-lo))`, color: k > 0.55 ? "var(--primary-foreground)" : "var(--foreground)" }}
+                    style={same ? undefined : { background: `color-mix(in oklch, var(--seq-hi) ${Math.round(12 + k * 78)}%, var(--seq-lo))`, color: k > 0.55 ? "var(--brand-foreground)" : "var(--foreground)" }}
                   >
                     {same ? "—" : `${(v * 100).toFixed(0)}%`}
                   </td>
@@ -313,7 +313,7 @@ export function MomentChart({ bins, seconds, total, active, onActive }: { bins: 
                 width={bw}
                 height={ih}
                 fill="transparent"
-                onPointerMove={(e) => (setHover(i), setTip({ x: e.clientX, y: e.clientY, title: `${(i / 2).toFixed(1)}–${((i + 1) / 2).toFixed(1)}s`, rows: [{ label: "switches", value: Math.round(b * total).toLocaleString() }, { label: "of switches", value: `${(b * 100).toFixed(1)}%` }] }))}
+                onPointerMove={(e) => (setHover(i), setTip({ x: e.clientX, y: e.clientY, title: `${(i / 2).toFixed(1)}–${((i + 1) / 2).toFixed(1)}s`, rows: [{ label: "switches", value: Math.round(b * total).toLocaleString("en-US") }, { label: "of switches", value: `${(b * 100).toFixed(1)}%` }] }))}
                 onPointerLeave={() => (setHover(null), setTip(null))}
               />
             </g>

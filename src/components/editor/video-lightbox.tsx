@@ -4,7 +4,7 @@ import { MediaViewer, type ViewerItem } from "@/components/media-viewer"
 
 // sample and template videos have no real start time
 const when = (t?: number) =>
-  t && t > 1e11 ? `${new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}, ${new Date(t).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}` : "—"
+  t && t > 1e11 ? `${new Date(t).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}, ${new Date(t).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}` : "—"
 
 /** Full-screen view of the strip's generated videos, in the shared viewer: prompt, references, details. */
 export function VideoLightbox({

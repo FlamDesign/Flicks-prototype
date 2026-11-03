@@ -69,7 +69,7 @@ export function FileTitle({
 
       {naming && !editing ? (
         <span className="flex h-8 items-center gap-1.5 px-2 text-sm text-muted-foreground" aria-live="polite">
-          <HugeiconsIcon icon={SparklesIcon} className="size-3.5 animate-pulse text-primary" />
+          <HugeiconsIcon icon={SparklesIcon} className="size-3.5 animate-pulse text-brand" />
           <span className="animate-pulse">Naming…</span>
         </span>
       ) : editing ? (
@@ -201,7 +201,7 @@ export function VideoToggle({ playing, disabled, onToggle }: { playing: boolean;
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label={label} disabled={disabled} onClick={onToggle} className="size-9 rounded-xl bg-muted hover:bg-muted/70">
+        <Button variant="ghost" size="icon" aria-label={label} disabled={disabled} onClick={onToggle} className="size-9 bg-muted hover:bg-muted/50">
           <HugeiconsIcon icon={playing ? PauseIcon : PlayIcon} className="size-4" />
         </Button>
       </TooltipTrigger>

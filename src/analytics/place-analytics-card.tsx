@@ -37,14 +37,14 @@ export function PlaceAnalyticsCard({ kind, id }: { kind: "placement" | "embed"; 
           <p className="mt-0.5 truncate text-xs text-muted-foreground">{meta ? `${meta.name} ${place?.current === fid ? "here" : "when it ran here"}, all time` : "Views on each variation"}</p>
         </div>
         {open && (
-          <Button variant="ghost" size="sm" className="-mr-2 gap-1 text-primary hover:text-primary" onClick={() => open({ kind, id })}>
+          <Button variant="ghost" size="sm" className="-mr-2 gap-1" onClick={() => open({ kind, id })}>
             Full analytics
             <HugeiconsIcon icon={ArrowRight01Icon} className="size-4" />
           </Button>
         )}
       </div>
       <div>
-        <p className="text-2xl font-semibold tabular-nums tracking-tight">{views.toLocaleString()}</p>
+        <p className="text-2xl font-semibold tabular-nums tracking-tight">{views.toLocaleString("en-US")}</p>
         <p className="text-xs text-muted-foreground">Views</p>
       </div>
       {meta && views > 0 ? (
@@ -59,11 +59,11 @@ export function PlaceAnalyticsCard({ kind, id }: { kind: "placement" | "embed"; 
                     {v.i === meta.start && <Badge variant="secondary" className="h-5 shrink-0 px-1.5 text-xs font-normal">Starts here</Badge>}
                   </span>
                   <span className="shrink-0 tabular-nums">
-                    {Math.round((v.shown / shownTotal) * views).toLocaleString()} <span className="text-xs text-muted-foreground">· {Math.round((v.shown / shownTotal) * 100)}%</span>
+                    {Math.round((v.shown / shownTotal) * views).toLocaleString("en-US")} <span className="text-xs text-muted-foreground">· {Math.round((v.shown / shownTotal) * 100)}%</span>
                   </span>
                 </div>
                 <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div className={cn("h-full rounded-full", v.i === meta.start ? "bg-primary" : "bg-primary/45")} style={{ width: `${(v.shown / max) * 100}%` }} />
+                  <div className={cn("h-full rounded-full", v.i === meta.start ? "bg-brand" : "bg-brand/45")} style={{ width: `${(v.shown / max) * 100}%` }} />
                 </div>
               </div>
             </li>

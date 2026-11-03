@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react"
+import { PAGE, PageHeader } from "@/components/page-kit"
 import { PendingButton } from "@/components/page-skeletons"
 import { createPortal } from "react-dom"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Add01Icon, Alert02Icon, ArrowRight01Icon, ArrowUpRight01Icon, Copy01Icon, Delete02Icon, InformationCircleIcon, LockIcon, GitForkIcon, MoreHorizontalIcon, PencilEdit01Icon, Tick02Icon } from "@hugeicons/core-free-icons"
+import { Add01Icon, Alert02Icon, ArrowUpRight01Icon, Copy01Icon, Delete02Icon, InformationCircleIcon, LockIcon, GitForkIcon, MoreHorizontalIcon, PencilEdit01Icon, Tick02Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -34,7 +35,7 @@ import {
 } from "@/ads/ads"
 import { AddFundsDialog, AdBalanceChip, FlickStage, LiveFlick, NewPlacementDialog, PlatformField, ReplaceFlickDialog, useFunded } from "@/ads/ads-ui"
 
-const dateLabel = (t: number) => new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric" })
+const dateLabel = (t: number) => new Date(t).toLocaleDateString("en-US", { month: "short", day: "numeric" })
 
 type View = { kind: "list" } | { kind: "campaign"; id: string } | { kind: "placement"; id: string }
 
@@ -83,24 +84,27 @@ export function CampaignsPage({ onAdBalance, openPlacement, onRemixFlick, onOpen
   ) : null
 
   const header = (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <Crumbs view={view} setView={setView} />
-      <div className="flex items-center gap-2">
-        {view.kind === "list" && <AdBalanceChip onOpen={onAdBalance} />}
-        {/* a campaign puts New placement and its menu here */}
-        <div ref={setActionsEl} className="contents" />
-        {view.kind === "list" && (
-          <Button className="gap-1.5" onClick={() => setNewCampaign(true)}>
-            <HugeiconsIcon icon={Add01Icon} className="size-4" />
-            New campaign
-          </Button>
-        )}
-      </div>
-    </div>
+    <Crumbs
+      view={view}
+      setView={setView}
+      actions={
+        <>
+          {view.kind === "list" && <AdBalanceChip onOpen={onAdBalance} />}
+          {/* a campaign puts New placement and its menu here */}
+          <div ref={setActionsEl} className="contents" />
+          {view.kind === "list" && (
+            <Button className="gap-1.5" onClick={() => setNewCampaign(true)}>
+              <HugeiconsIcon icon={Add01Icon} className="size-4" />
+              New campaign
+            </Button>
+          )}
+        </>
+      }
+    />
   )
 
   return (
-    <div className="mx-auto w-full max-w-[1280px] px-4 py-8 md:px-8 md:py-10">
+    <div className={PAGE}>
       {header}
       {banner && <div className="mt-5">{banner}</div>}
       <div className="mt-6">
@@ -130,42 +134,32 @@ function Banner({ tone, action, children }: { tone: "info" | "warn"; action?: Re
   )
 }
 
-/** Campaigns › campaign › placement */
-function Crumbs({ view, setView }: { view: View; setView: (v: View) => void }) {
+/** The page header: Campaigns, or the trail Campaigns › campaign › placement above the name */
+function Crumbs({ view, setView, actions }: { view: View; setView: (v: View) => void; actions: React.ReactNode }) {
   const { campaigns, placements } = useAds()
   const placement = view.kind === "placement" ? placements.find((p) => p.id === view.id) : undefined
   const campaignId = view.kind === "campaign" ? view.id : placement?.campaignId
   const campaign = campaigns.find((c) => c.id === campaignId)
-  const step = "rounded-md px-1 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-  if (view.kind === "list") return <h1 className="text-2xl font-semibold tracking-tight">Campaigns</h1>
+  if (view.kind === "list") return <PageHeader title="Campaigns" actions={actions} />
   return (
-    <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 text-xl font-medium tracking-tight sm:text-2xl">
-      {/* on small screens the trail starts at the campaign */}
-      <button type="button" className={cn(step, "-ml-1", placement && "hidden sm:inline")} onClick={() => setView({ kind: "list" })}>
-        Campaigns
-      </button>
-      <HugeiconsIcon icon={ArrowRight01Icon} className={cn("size-5 shrink-0 text-muted-foreground", placement && "hidden sm:block")} />
-      {placement ? (
-        <>
-          <button type="button" className={cn(step, "truncate")} onClick={() => campaign && setView({ kind: "campaign", id: campaign.id })}>
-            {campaign?.name}
-          </button>
-          <HugeiconsIcon icon={ArrowRight01Icon} className="size-5 shrink-0 text-muted-foreground" />
-          <span className="truncate px-1" aria-current="page">{placement.name}</span>
+    <PageHeader
+      crumbs={[{ label: "Campaigns", onClick: () => setView({ kind: "list" }) }, ...(placement && campaign ? [{ label: campaign.name, onClick: () => setView({ kind: "campaign", id: campaign.id }) }] : [])]}
+      title={placement ? placement.name : campaign?.name}
+      titleExtra={
+        placement && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Badge variant="secondary" tabIndex={0} className="ml-1 shrink-0 gap-1 font-normal tabular-nums">
+              <Badge variant="secondary" tabIndex={0} className="shrink-0 gap-1 font-normal tabular-nums">
                 <HugeiconsIcon icon={LockIcon} className="size-3" />
                 {placement.size}
               </Badge>
             </TooltipTrigger>
             <TooltipContent>Fixed when the placement was made</TooltipContent>
           </Tooltip>
-        </>
-      ) : (
-        <span className="truncate px-1" aria-current="page">{campaign?.name}</span>
-      )}
-    </nav>
+        )
+      }
+      actions={actions}
+    />
   )
 }
 
@@ -215,7 +209,7 @@ function CampaignList({ onOpen, onNew }: { onOpen: (id: string) => void; onNew: 
                 tabIndex={0}
                 onClick={() => onOpen(c.id)}
                 onKeyDown={(e) => e.key === "Enter" && onOpen(c.id)}
-                className="cursor-pointer border-t border-foreground/5 outline-none hover:bg-muted/40 focus-visible:bg-muted/60"
+                className="cursor-pointer border-t border-foreground/5 outline-none hover:bg-muted/50 focus-visible:bg-muted/50"
               >
                 <td className="px-4 py-3 font-medium">{c.name}</td>
                 <td className="px-4 py-3 text-right tabular-nums">{ps.length}</td>
@@ -382,13 +376,13 @@ function CampaignView({ id, actionsEl, onOpen, onDeleted }: { id: string; action
 function status(p: Placement, funded: boolean) {
   if (!p.flick) return { label: "No Flick", dot: "bg-muted-foreground/40" }
   if (!funded) return { label: "Waiting for funds", dot: "bg-muted-foreground" }
-  return { label: "Serving", dot: "bg-primary" }
+  return { label: "Serving", dot: "bg-brand" }
 }
 
 function PlacementCard({ p, funded, onOpen }: { p: Placement; funded: boolean; onOpen: () => void }) {
   const st = status(p, funded)
   return (
-    <button type="button" onClick={onOpen} className="group flex w-full flex-col gap-2.5 rounded-2xl p-2 text-left outline-none ring-1 ring-foreground/10 transition hover:ring-foreground/25 focus-visible:ring-2 focus-visible:ring-ring">
+    <button type="button" onClick={onOpen} className="group flex w-full flex-col gap-2.5 rounded-2xl p-2 text-left outline-none ring-1 ring-foreground/10 transition hover:ring-foreground/20 focus-visible:ring-2 focus-visible:ring-ring">
       <span className="relative grid aspect-square place-items-center overflow-hidden rounded-xl bg-muted">
         {p.flick ? (
           <img loading="lazy" decoding="async" src={p.flick.image} alt="" className="absolute inset-0 size-full object-cover" />
@@ -766,7 +760,7 @@ function PlacementView({
                   key={l}
                   href="#"
                   onClick={(e) => e.preventDefault()}
-                  className="-mx-2 flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm text-primary outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+                  className="-mx-2 flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm text-brand outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {l}
                   <HugeiconsIcon icon={ArrowUpRight01Icon} className="size-4 shrink-0" />

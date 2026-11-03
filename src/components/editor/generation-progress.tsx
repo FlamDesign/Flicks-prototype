@@ -12,7 +12,7 @@ export function GeneratingGradient({ sweep, spinner, className }: { sweep?: bool
     <div aria-hidden className={cn("absolute inset-0 grid place-items-center overflow-hidden bg-muted", className)}>
       <div className="generating-gradient absolute inset-[-50%]" />
       {sweep && <div className="generating-sweep absolute inset-0" />}
-      {spinner && <Spinner className="relative size-4 text-primary" />}
+      {spinner && <Spinner className="relative size-4 text-brand" />}
     </div>
   )
 }

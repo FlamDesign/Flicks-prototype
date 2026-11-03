@@ -7,7 +7,11 @@
   shadcn preset b3mPrj55k
   style: rhea · baseColor: zinc · theme: amber · font: DM Sans
   iconLibrary: hugeicons · radius: medium (0.625rem) · menuAccent: subtle · menuColor: default · chart: orange
-  Values copied from shadcn registry themes.ts (zinc + amber).
+  Values from shadcn registry themes.ts (zinc + amber), with these approved changes:
+  - primary is neutral (zinc 900 / zinc 100): buttons, links and toggles are near-black (near-white in dark)
+  - brand (new token) carries the amber: selection, progress, AI and the brand mark only
+  - dark mode surfaces are lifted and ordered: shell darkest, page, then cards and popovers lighter
+  - light mode shell (sidebar) is a touch warmer-grey so the white page reads as one panel
 */
 
 @custom-variant dark (&:is(.dark *));
@@ -22,6 +26,8 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -62,8 +68,12 @@
   --card-foreground: oklch(0.141 0.005 285.823);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.141 0.005 285.823);
-  --primary: oklch(0.555 0.163 48.998);
-  --primary-foreground: oklch(0.987 0.022 95.277);
+  /* changed: neutral primary (zinc 900) */
+  --primary: oklch(0.21 0.006 285.885);
+  --primary-foreground: oklch(0.985 0 0);
+  /* new: the amber, for selection, progress, AI and the brand mark */
+  --brand: oklch(0.555 0.163 48.998); /* the preset's amber primary, unchanged */
+  --brand-foreground: oklch(0.987 0.022 95.277);
   --secondary: oklch(0.967 0.001 286.375);
   --secondary-foreground: oklch(0.21 0.006 285.885);
   --muted: oklch(0.967 0.001 286.375);
@@ -79,47 +89,53 @@
   --chart-3: oklch(0.646 0.222 41.116);
   --chart-4: oklch(0.553 0.195 38.402);
   --chart-5: oklch(0.47 0.157 37.304);
-  --sidebar: oklch(0.985 0 0);
+  /* changed: the shell a touch deeper so the white page reads as one panel */
+  --sidebar: oklch(0.975 0.001 286.375);
   --sidebar-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-primary: oklch(0.666 0.179 58.318);
-  --sidebar-primary-foreground: oklch(0.987 0.022 95.277);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
+  --sidebar-primary: oklch(0.21 0.006 285.885);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.935 0.003 286.32);
   --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
   --sidebar-border: oklch(0.92 0.004 286.32);
   --sidebar-ring: oklch(0.705 0.015 286.067);
 }
 
 .dark {
-  --background: oklch(0.141 0.005 285.823);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.21 0.006 285.885);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.21 0.006 285.885);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.473 0.137 46.201);
-  --primary-foreground: oklch(0.987 0.022 95.277);
-  --secondary: oklch(0.274 0.006 286.033);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.274 0.006 286.033);
-  --accent-foreground: oklch(0.985 0 0);
+  /* changed: lifted, ordered surfaces (shell 0.2, page 0.235, cards 0.265, popovers 0.275, muted 0.3) */
+  --background: oklch(0.235 0.005 285.885);
+  --foreground: oklch(0.97 0 0);
+  --card: oklch(0.265 0.006 285.885);
+  --card-foreground: oklch(0.97 0 0);
+  --popover: oklch(0.275 0.006 285.885);
+  --popover-foreground: oklch(0.97 0 0);
+  /* changed: neutral primary (zinc 100) */
+  --primary: oklch(0.94 0.003 286.32);
+  --primary-foreground: oklch(0.21 0.006 285.885);
+  /* new: the preset's dark amber, a step brighter to sit on the lifted surfaces */
+  --brand: oklch(0.62 0.165 47.5);
+  --brand-foreground: oklch(0.987 0.022 95.277);
+  --secondary: oklch(0.31 0.006 286.033);
+  --secondary-foreground: oklch(0.97 0 0);
+  --muted: oklch(0.3 0.006 286.033);
+  --muted-foreground: oklch(0.72 0.015 286.067);
+  --accent: oklch(0.32 0.006 286.033);
+  --accent-foreground: oklch(0.97 0 0);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
+  --input: oklch(1 0 0 / 14%);
   --ring: oklch(0.552 0.016 285.938);
   --chart-1: oklch(0.837 0.128 66.29);
   --chart-2: oklch(0.705 0.213 47.604);
   --chart-3: oklch(0.646 0.222 41.116);
   --chart-4: oklch(0.553 0.195 38.402);
   --chart-5: oklch(0.47 0.157 37.304);
-  --sidebar: oklch(0.21 0.006 285.885);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.769 0.188 70.08);
-  --sidebar-primary-foreground: oklch(0.279 0.077 45.635);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar: oklch(0.2 0.005 285.885);
+  --sidebar-foreground: oklch(0.97 0 0);
+  --sidebar-primary: oklch(0.94 0.003 286.32);
+  --sidebar-primary-foreground: oklch(0.21 0.006 285.885);
+  --sidebar-accent: oklch(0.27 0.006 286.033);
+  --sidebar-accent-foreground: oklch(0.97 0 0);
+  --sidebar-border: oklch(1 0 0 / 8%);
   --sidebar-ring: oklch(0.552 0.016 285.938);
 }
 
@@ -133,8 +149,8 @@
   h1, h2, h3 { text-wrap: balance; }
   p, li, dd { text-wrap: pretty; }
   /* approved addition: highlighted text and the text cursor in the preset's primary colour */
-  ::selection { background: color-mix(in oklch, var(--primary) 22%, transparent); }
-  input, textarea, [contenteditable] { caret-color: var(--primary); }
+  ::selection { background: color-mix(in oklch, var(--brand) 22%, transparent); }
+  input, textarea, [contenteditable] { caret-color: var(--brand); }
 }
 
 /* ---------- Page-specific (not part of the preset) ---------- */
@@ -219,7 +235,7 @@
 
 /* A finished video's thumbnail: one soft glow in the primary colour */
 .ready-glow { animation: ready-glow 1.6s var(--ease-out) both; }
-@keyframes ready-glow { 0% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 55%, transparent) } 100% { box-shadow: 0 0 0 10px transparent } }
+@keyframes ready-glow { 0% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--brand) 55%, transparent) } 100% { box-shadow: 0 0 0 10px transparent } }
 @media (prefers-reduced-motion: reduce) { .ready-glow { animation: none; } }
 
 /* Pointer cursor on everything clickable (unlayered, so it wins over component utilities) */
@@ -294,8 +310,8 @@ html.vt-theme::view-transition-new(root) { animation: vt-in var(--dur-slow) var(
   --viz-grid: color-mix(in oklch, var(--foreground) 8%, transparent);
   --viz-axis: color-mix(in oklch, var(--foreground) 18%, transparent);
   /* sequential: one hue (the brand orange), light to dark */
-  --seq-lo: color-mix(in oklch, var(--primary) 8%, var(--card));
-  --seq-hi: var(--primary);
+  --seq-lo: color-mix(in oklch, var(--brand) 8%, var(--card));
+  --seq-hi: var(--brand);
 }
 .dark {
   --series-1: #3987e5;
@@ -303,6 +319,6 @@ html.vt-theme::view-transition-new(root) { animation: vt-in var(--dur-slow) var(
   --series-3: #199e70;
   --series-4: #c98500;
   --series-5: #d55181;
-  --seq-lo: color-mix(in oklch, var(--primary) 10%, var(--card));
+  --seq-lo: color-mix(in oklch, var(--brand) 10%, var(--card));
 }
 

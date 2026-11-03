@@ -1,4 +1,5 @@
 import { createContext, Fragment, useContext, useEffect, useMemo, useRef, useState } from "react"
+import { PAGE as PAGE_FRAME, PageHeader } from "@/components/page-kit"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Add01Icon,
@@ -105,18 +106,12 @@ export function AnalyticsPage({ data, target }: { data: Dataset; target?: Analyt
 
   return (
     <ExportCtx.Provider value={exportRef}>
-      <div className="mx-auto w-full max-w-[1180px] px-4 py-8 md:px-8 md:py-10">
+      <div className={PAGE_FRAME}>
         {open ? (
           <DetailHead data={data} open={open} tab={tab} setOpen={setOpen} />
         ) : (
           <>
-            <div className="flex flex-wrap items-end justify-between gap-2">
-              <div className="space-y-1">
-                <h1 className="text-2xl font-semibold tracking-tight">Analytics</h1>
-                <p className="text-sm text-muted-foreground">Views, interactions and watch time across links, embeds and ads.</p>
-              </div>
-              <Updated at={data.updatedAt} />
-            </div>
+            <PageHeader title="Analytics" actions={<Updated at={data.updatedAt} />} />
             <div role="tablist" aria-label="Analytics views" className="mt-5 flex gap-1 border-b">
               {TABS.map((t) => (
                 <button
@@ -124,7 +119,7 @@ export function AnalyticsPage({ data, target }: { data: Dataset; target?: Analyt
                   role="tab"
                   aria-selected={tab === t.id}
                   onClick={() => setTab(t.id)}
-                  className={cn("-mb-px border-b-2 px-3 pb-2.5 pt-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring", tab === t.id ? "border-primary font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}
+                  className={cn("-mb-px border-b-2 px-3 pb-2.5 pt-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring", tab === t.id ? "border-brand font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}
                 >
                   {t.label}
                 </button>
@@ -256,7 +251,7 @@ function Updated({ at }: { at: number }) {
     <Tooltip>
       <TooltipTrigger asChild>
         <span tabIndex={0} className="flex items-center gap-1.5 rounded-md text-xs text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
-          <span aria-hidden className="size-1.5 rounded-full bg-primary" />
+          <span aria-hidden className="size-1.5 rounded-full bg-brand" />
           Updated {ago(at)}
         </span>
       </TooltipTrigger>
@@ -564,7 +559,7 @@ function ComparePicker({ sel, items }: { sel: Selection; items: Pickable[] }) {
   const groups = KIND_ORDER.map((k) => ({ k, list: found.filter((i) => i.kind === k).sort((a, b) => b.views - a.views) })).filter((g) => g.list.length)
   const LIMIT = 8
   const trigger = (
-    <Button variant="outline" size="sm" className="h-7 gap-1 rounded-full px-2.5 text-xs" disabled={sel.full}>
+    <Button variant="outline" size="sm" className="h-7 gap-1 px-2.5 text-xs" disabled={sel.full}>
       <HugeiconsIcon icon={Add01Icon} className="size-3.5" />
       {sel.sel.length ? "Add" : "Compare"}
     </Button>
@@ -784,7 +779,7 @@ function ListTable({
                       tabIndex={r.onClick ? 0 : undefined}
                       onClick={r.onClick}
                       onKeyDown={(e) => e.key === "Enter" && r.onClick?.()}
-                      className={cn("group border-t border-foreground/5 text-right outline-none", r.onClick && "cursor-pointer hover:bg-muted/60 focus-visible:bg-muted/60")}
+                      className={cn("group border-t border-foreground/5 text-right outline-none", r.onClick && "cursor-pointer hover:bg-muted/50 focus-visible:bg-muted/50")}
                     >
                       {expand && (
                         <td className="pl-1">
@@ -849,7 +844,7 @@ function ListTable({
         </div>
       )}
       {!all && sorted.length > (preview ?? 0) ? (
-        <Button variant="ghost" size="sm" className="w-fit gap-1 self-center text-primary hover:text-primary" onClick={() => setAll(true)}>
+        <Button variant="ghost" size="sm" className="w-fit gap-1 self-center" onClick={() => setAll(true)}>
           See all {sorted.length} {noun}
           <HugeiconsIcon icon={ArrowDown01Icon} className="size-4" />
         </Button>
@@ -924,7 +919,7 @@ const sizeFilter = (sizes: string[]): ListFilter => ({ id: "size", label: "Size"
 
 function LeaderChip({ confidence }: { confidence: number }) {
   const sure = confidence >= 0.95
-  return <span className={cn("rounded-full px-1.5 py-0.5 text-xs", sure ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>{sure ? "Clear lead" : confidence >= 0.8 ? "Likely" : "Too early"}</span>
+  return <span className={cn("rounded-full px-1.5 py-0.5 text-xs", sure ? "bg-brand/10 text-brand" : "bg-muted text-muted-foreground")}>{sure ? "Clear lead" : confidence >= 0.8 ? "Likely" : "Too early"}</span>
 }
 
 function HeadTip({ label, tip, className }: { label: string; tip: string; className?: string }) {
@@ -1043,7 +1038,7 @@ function CountriesCard({ data, rows, country, setCountry }: { data: Dataset; row
   const list = all ? items.filter((x) => !needle || x.c.name.toLowerCase().includes(needle)) : [...items.slice(0, TOP_COUNTRIES), ...(picked && picked.rank > TOP_COUNTRIES ? [picked] : [])]
   const description = picked ? `${picked.c.name}: ${fmtPct(picked.t.views / total, 0)} of views, #${picked.rank} of ${items.length} countries` : country !== "all" ? `No views from ${data.countries.find((c) => c.code === country)?.name ?? "this country"} in this period` : "Share of views."
   const tools = items.length > TOP_COUNTRIES && (
-    <Button variant="ghost" size="sm" className="-mr-2 h-7 text-primary hover:text-primary" onClick={() => (setAll((v) => !v), setQ(""))}>
+    <Button variant="ghost" size="sm" className="-mr-2 h-7" onClick={() => (setAll((v) => !v), setQ(""))}>
       {all ? "Show top 5" : `Show all ${items.length}`}
     </Button>
   )
@@ -1072,7 +1067,7 @@ function CountriesCard({ data, rows, country, setCountry }: { data: Dataset; row
                     onClick={() => setCountry(on ? "all" : x.c.code)}
                     onPointerMove={(e) => setTip({ x: e.clientX, y: e.clientY, i: items.indexOf(x) })}
                     onPointerLeave={() => setTip(null)}
-                    className={cn("flex w-full flex-col gap-1 rounded-lg px-2 py-1.5 text-left outline-none transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring", on && "bg-primary/5 ring-1 ring-primary/20")}
+                    className={cn("flex w-full flex-col gap-1 rounded-lg px-2 py-1.5 text-left outline-none transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring", on && "bg-brand/5 ring-1 ring-brand/20")}
                   >
                     <span className="flex items-baseline justify-between gap-3 text-sm">
                       <span className={cn("truncate", on && "font-medium")}>
@@ -1314,7 +1309,7 @@ function CampaignsTab({ data, filter, setCountry, go }: ViewProps) {
           </button>
         ))}
         {ps.length > 5 && (
-          <Button variant="ghost" size="sm" className="mt-1 w-fit text-primary hover:text-primary" onClick={r.onClick}>
+          <Button variant="ghost" size="sm" className="mt-1 w-fit" onClick={r.onClick}>
             Open campaign to see all {ps.length} placements
           </Button>
         )}
@@ -1386,7 +1381,7 @@ function PlaceView({ data, open, filter, setCountry, go }: ViewProps & { open: A
       const s = spans.get(r.flickId)
       spans.set(r.flickId, s ? [Math.min(s[0], r.day), Math.max(s[1], r.day)] : [r.day, r.day])
     }
-    const fmtDay = (d: number) => dateOf(d).toLocaleDateString(undefined, { month: "short", day: "numeric" })
+    const fmtDay = (d: number) => dateOf(d).toLocaleDateString("en-US", { month: "short", day: "numeric" })
     return [...spans]
       .sort((a, b) => b[1][0] - a[1][0])
       .map(([fid, [from, to]]): TRow => {

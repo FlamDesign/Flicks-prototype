@@ -119,7 +119,7 @@ export function ElementToolbar({
         // icon buttons: just the image and where it goes
         <>
           <IconTip label="Replace icon image">
-            <Button variant="ghost" size="sm" onClick={onPickImage} className="h-8 shrink-0 gap-1.5 rounded-lg px-2.5 font-normal">
+            <Button variant="ghost" size="sm" onClick={onPickImage} className="h-8 shrink-0 gap-1.5 px-2.5 font-normal">
               <HugeiconsIcon icon={Exchange01Icon} className="size-4" />
               Replace
             </Button>
@@ -134,7 +134,7 @@ export function ElementToolbar({
             // one thumbnail picked: its image
             <>
               <IconTip label={thumb.src ? `Change ${thumb.name} thumbnail` : `Add ${thumb.name} thumbnail`}>
-                <Button variant="ghost" size="sm" onClick={thumb.onChoose} className="h-8 gap-2 rounded-lg pl-1 pr-2.5 font-normal">
+                <Button variant="ghost" size="sm" onClick={thumb.onChoose} className="h-8 gap-2 pl-1 pr-2.5 font-normal">
                   <span className="grid size-6 place-items-center overflow-hidden rounded-md bg-muted ring-1 ring-foreground/10">
                     {thumb.src ? <img loading="lazy" decoding="async" src={thumb.src} alt="" className="size-full object-cover" /> : <HugeiconsIcon icon={ImageAdd01Icon} className="size-3.5 text-muted-foreground" />}
                   </span>
@@ -252,7 +252,7 @@ export function FontPicker({ font, onPick }: { font: string; onPick: (name: stri
     <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setQ("") }}>
       <IconTip label={`Font: ${font}`}>
         <PopoverTrigger asChild>
-          <Button variant="ghost" size="sm" aria-label={`Font: ${font}`} className="h-8 w-[136px] shrink-0 justify-between gap-1 rounded-lg px-2.5 font-normal ring-1 ring-foreground/10">
+          <Button variant="ghost" size="sm" aria-label={`Font: ${font}`} className="h-8 w-[136px] shrink-0 justify-between gap-1 px-2.5 font-normal ring-1 ring-foreground/10">
             <span className="truncate" style={{ fontFamily: FONTS.find((f) => f.name === font)?.stack }}>
               {font}
             </span>
@@ -312,7 +312,7 @@ function FontControls({ el, onChange }: { el: TextLike; onChange: (p: Partial<Ca
       <FontPicker font={font} onPick={(v) => onChange({ font: v } as Partial<CanvasElement>)} />
 
       {/* Size */}
-      <div className="flex h-8 shrink-0 items-center rounded-lg ring-1 ring-foreground/10 focus-within:ring-2 focus-within:ring-ring/50">
+      <div className="flex h-8 shrink-0 items-center rounded-2xl ring-1 ring-foreground/10 focus-within:ring-2 focus-within:ring-ring/50">
         <Tool label="Decrease size" className="h-8 w-7" onClick={() => setPx(px - 2)}>
           <HugeiconsIcon icon={MinusSignIcon} className="size-3.5" />
         </Tool>
@@ -379,7 +379,7 @@ function ButtonControls({
         <Popover>
           <IconTip label="Background image">
             <PopoverTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label="Background image" className="size-8 rounded-lg p-1">
+              <Button variant="ghost" size="icon-sm" aria-label="Background image" className="size-8 p-1">
                 <img loading="lazy" decoding="async" src={el.bgImage} alt="" className="size-full rounded-[5px] object-cover ring-1 ring-foreground/20" />
               </Button>
             </PopoverTrigger>
@@ -503,7 +503,7 @@ function ImageControls({ el, onChange, onReplace }: { el: ImageEl; onChange: (p:
   return (
     <>
       <IconTip label="Replace image">
-        <Button variant="ghost" size="sm" onClick={onReplace} className="h-8 shrink-0 gap-1.5 rounded-lg px-2.5 font-normal">
+        <Button variant="ghost" size="sm" onClick={onReplace} className="h-8 shrink-0 gap-1.5 px-2.5 font-normal">
           <HugeiconsIcon icon={Exchange01Icon} className="size-4" />
           Replace
         </Button>
@@ -544,7 +544,7 @@ function ColorPicker({
       <Tooltip>
         <TooltipTrigger asChild>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon-sm" aria-label={label} className="size-8 rounded-lg">
+            <Button variant="ghost" size="icon-sm" aria-label={label} className="size-8">
               {children}
             </Button>
           </PopoverTrigger>
@@ -581,7 +581,7 @@ function Swatches({ value, onChange, allowTransparent }: { value: string; onChan
           aria-label={c}
           aria-pressed={v === c}
           onClick={() => onChange(c)}
-          className={cn("size-6 rounded-md p-0 ring-1 ring-foreground/15 hover:opacity-90", v === c && "ring-2 ring-primary ring-offset-1 ring-offset-popover")}
+          className={cn("size-6 rounded-md p-0 ring-1 ring-foreground/15 hover:opacity-90", v === c && "ring-2 ring-brand ring-offset-1 ring-offset-popover")}
           style={{ background: c }}
         />
       ))}
@@ -610,7 +610,7 @@ function StrokePopover({ label, width, color, onChange }: { label: string; width
       <Tooltip>
         <TooltipTrigger asChild>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon-sm" aria-label={label} className="size-8 rounded-lg">
+            <Button variant="ghost" size="icon-sm" aria-label={label} className="size-8">
               <span className="relative size-4 rounded-[5px]" style={{ background: CHECKER }}>
                 <span className="absolute inset-0 rounded-[5px] ring-1 ring-foreground/20" style={{ boxShadow: `inset 0 0 0 ${width ? 3 : 0}px ${color}` }} />
               </span>
@@ -652,7 +652,7 @@ function NumberField({
   return (
     <div className="flex items-center gap-3">
       <Slider className="flex-1" value={[Math.min(value, max)]} min={min} max={max} step={1} onValueChange={([v]) => set(v)} aria-label={label} />
-      <label className="flex h-8 w-[4.5rem] shrink-0 items-center gap-0.5 rounded-lg px-2 text-sm ring-1 ring-foreground/10 focus-within:ring-2 focus-within:ring-ring/50">
+      <label className="flex h-8 w-[4.5rem] shrink-0 items-center gap-0.5 rounded-2xl px-2.5 text-sm ring-1 ring-foreground/10 focus-within:ring-2 focus-within:ring-ring/50">
         <InputGroupInput
           aria-label={`${label} in ${unit === "%" ? "percent" : "pixels"}`}
           inputMode="numeric"
@@ -677,7 +677,7 @@ function NumberPopover({ label, icon, ...field }: { label: string; icon: typeof 
     <Popover>
       <IconTip label={label}>
         <PopoverTrigger asChild>
-          <Button variant="ghost" size="icon-sm" aria-label={label} className="size-8 rounded-lg">
+          <Button variant="ghost" size="icon-sm" aria-label={label} className="size-8">
             <HugeiconsIcon icon={icon} className="size-4" />
           </Button>
         </PopoverTrigger>
@@ -710,7 +710,7 @@ function RadiusPopover({ id, value, onChange }: { id: string; value: number; onC
       <Tooltip>
         <TooltipTrigger asChild>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon-sm" aria-label="Corner radius" className="size-8 rounded-lg">
+            <Button variant="ghost" size="icon-sm" aria-label="Corner radius" className="size-8">
               <HugeiconsIcon icon={SquareRoundCornerIcon} className="size-4" />
             </Button>
           </PopoverTrigger>
@@ -721,7 +721,7 @@ function RadiusPopover({ id, value, onChange }: { id: string; value: number; onC
         <p className="text-xs font-medium text-muted-foreground">Corner radius</p>
         <div className="flex items-center gap-3">
           <Slider className="flex-1" value={[value]} min={0} max={100} step={1} onValueChange={([v]) => onChange(v)} aria-label="Corner radius percent" />
-          <label className="flex h-8 w-[4.5rem] shrink-0 items-center gap-0.5 rounded-lg px-2 text-sm ring-1 ring-foreground/10 focus-within:ring-2 focus-within:ring-ring/50">
+          <label className="flex h-8 w-[4.5rem] shrink-0 items-center gap-0.5 rounded-2xl px-2.5 text-sm ring-1 ring-foreground/10 focus-within:ring-2 focus-within:ring-ring/50">
             <InputGroupInput
               aria-label="Corner radius in pixels"
               inputMode="numeric"
@@ -757,7 +757,7 @@ function Tool({
           size="icon-sm"
           aria-label={label}
           aria-pressed={pressed}
-          className={cn("size-8 shrink-0 rounded-lg", pressed && "bg-muted text-foreground", className)}
+          className={cn("size-8 shrink-0", pressed && "bg-muted text-foreground", className)}
           {...props}
         >
           {children}

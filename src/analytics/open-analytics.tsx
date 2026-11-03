@@ -17,7 +17,7 @@ export function AnalyticsHeading({ target, note }: { target: AnalyticsTarget; no
         <p className="mt-0.5 text-xs text-muted-foreground">{note}</p>
       </div>
       {open && (
-        <Button variant="ghost" size="sm" className="-mr-2 gap-1 text-primary hover:text-primary" onClick={() => open(target)}>
+        <Button variant="ghost" size="sm" className="-mr-2 gap-1" onClick={() => open(target)}>
           Full analytics
           <HugeiconsIcon icon={ArrowRight01Icon} className="size-4" />
         </Button>

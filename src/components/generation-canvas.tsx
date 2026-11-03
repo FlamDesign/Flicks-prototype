@@ -766,7 +766,7 @@ export function GenerationCanvas({
       const cost = VIDEO_COST * vars.length
       if (dev.credits < cost) {
         onGetCredits()
-        return `Error: This needs ${cost.toLocaleString()} credits and you have ${dev.credits.toLocaleString()}. Get credits, then press Generate all again.`
+        return `Error: This needs ${cost.toLocaleString("en-US")} credits and you have ${dev.credits.toLocaleString("en-US")}. Get credits, then press Generate all again.`
       }
       setDev((d) => ({ credits: d.credits - cost }))
       const now = Date.now()
@@ -818,7 +818,7 @@ export function GenerationCanvas({
       setSelected([])
       if (plan.title?.trim()) setTitle(plan.title.trim())
       const per = made.map((f) => f.name)
-      return withIssues(`Generating ${vars.length} videos (${cost.toLocaleString()} credits): ${main.name ?? "Variation 1"} (the reference video) first, then the other ${vs.length}; ${liveRef.current ? "Variation 1 comes first (a few minutes); the user reviews it, and the others are made from it once they approve (or after you regenerate it with their changes)" : `they take about ${dev.generationSeconds * 2} seconds`}. The design is on the canvas${per.length ? `, with ${per.join(", ")} set per variation (feeds)` : ""}. Thumbnails are empty until set.`)
+      return withIssues(`Generating ${vars.length} videos (${cost.toLocaleString("en-US")} credits): ${main.name ?? "Variation 1"} (the reference video) first, then the other ${vs.length}; ${liveRef.current ? "Variation 1 comes first (a few minutes); the user reviews it, and the others are made from it once they approve (or after you regenerate it with their changes)" : `they take about ${dev.generationSeconds * 2} seconds`}. The design is on the canvas${per.length ? `, with ${per.join(", ")} set per variation (feeds)` : ""}. Thumbnails are empty until set.`)
     },
     updateDesign(d) {
       if (!slidesNow.current[0].startedAt) return "Error: Approve the plan first."
@@ -1513,7 +1513,7 @@ export function GenerationCanvas({
 
         <div className="flex min-w-0 flex-1 flex-col">
         {/* Canvas */}
-        <div ref={viewport} className="relative min-h-0 flex-1 touch-none overflow-hidden bg-muted/40 px-6 pb-6 pt-16 md:px-10 md:pb-10 md:pt-[72px]">
+        <div ref={viewport} className="relative min-h-0 flex-1 touch-none overflow-hidden bg-sidebar px-6 pb-6 pt-16 md:px-10 md:pb-10 md:pt-[72px]">
           {canEdit && !previewing && group.length > 1 && (
             <div className="pointer-events-none absolute inset-x-0 top-3 z-20 flex justify-center px-3" style={{ transform: `translate(${tbOff.x}px, ${tbOff.y}px)` }}>
               <div
@@ -1531,7 +1531,7 @@ export function GenerationCanvas({
                       variant="ghost"
                       size="icon-sm"
                       aria-label="Duplicate"
-                      className="size-8 rounded-lg"
+                      className="size-8"
                       onClick={() => {
                         const copies = group.filter((e) => e.kind !== "strip").map((e) => ({ ...e, id: crypto.randomUUID(), x: Math.min(100, e.x + 3), y: Math.min(100, e.y + 3) }) as CanvasElement)
                         setElements((els) => [...els, ...copies])
@@ -1549,7 +1549,7 @@ export function GenerationCanvas({
                       variant="ghost"
                       size="icon-sm"
                       aria-label="Delete"
-                      className="size-8 rounded-lg"
+                      className="size-8"
                       onClick={() => (setElements((els) => els.filter((x) => !selected.includes(x.id) || x.kind === "strip")), setSelected([]))}
                     >
                       <HugeiconsIcon icon={Delete02Icon} className="size-4" />
@@ -1606,7 +1606,7 @@ export function GenerationCanvas({
             >
               <HugeiconsIcon icon={BubbleChatIcon} className="size-4" />
               Prompts
-              {slides.some((s) => status(s) === "generating") && <Spinner className="size-3.5 text-primary" />}
+              {slides.some((s) => status(s) === "generating") && <Spinner className="size-3.5 text-brand" />}
             </Button>
           )}
           {/* zoom: collapsed to the percentage; opens on hover and while zooming */}
@@ -1621,7 +1621,7 @@ export function GenerationCanvas({
             </Reveal>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" aria-label="Fit to screen" onClick={fitView} className="h-7 min-w-12 rounded-lg px-1.5 text-xs tabular-nums">
+                <Button variant="ghost" size="sm" aria-label="Fit to screen" onClick={fitView} className="h-7 min-w-12 px-1.5 text-xs tabular-nums">
                   {zoomPct}%
                 </Button>
               </TooltipTrigger>
@@ -1652,7 +1652,7 @@ export function GenerationCanvas({
                 <div className="absolute inset-0 grid place-items-center overflow-hidden bg-muted">
                   <GeneratingGradient className="bg-transparent opacity-30" />
                   <div className="relative flex max-w-[75%] flex-col items-center gap-2 text-center">
-                    <HugeiconsIcon icon={SparklesIcon} className="size-5 text-primary" />
+                    <HugeiconsIcon icon={SparklesIcon} className="size-5 text-brand" />
                     <p className="text-sm font-medium">Planning your Flick</p>
                     <p className="text-xs leading-relaxed text-muted-foreground">Answer a few questions in the chat. Your videos and design show up here once you approve the plan.</p>
                   </div>
@@ -1697,7 +1697,7 @@ export function GenerationCanvas({
                     }}
                     className="absolute bottom-full right-0 z-30 mb-2 flex items-center gap-1 whitespace-nowrap rounded-full bg-background/85 py-0.5 pl-1.5 pr-2 text-xs font-medium shadow-sm ring-1 ring-foreground/10 backdrop-blur-md outline-none transition-colors hover:bg-background focus-visible:ring-2 focus-visible:ring-ring/50"
                   >
-                    <HugeiconsIcon icon={SparklesIcon} className="size-3 text-primary" />
+                    <HugeiconsIcon icon={SparklesIcon} className="size-3 text-brand" />
                     Generate this variation
                   </button>
                   {/* not generated yet: the reference video, faded, under this variation's elements */}
@@ -1839,7 +1839,7 @@ export function GenerationCanvas({
               badge: (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className={cn("rounded-full px-1.5 py-0.5 text-xs font-medium", live ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>{live ? "Claude" : "Demo"}</span>
+                    <span className={cn("rounded-full px-1.5 py-0.5 text-xs font-medium", live ? "bg-brand/10 text-brand" : "bg-muted text-muted-foreground")}>{live ? "Claude" : "Demo"}</span>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">{live ? "Live: Claude plans and designs, Higgsfield makes images" : "Scripted demo. Connect AI in dev tools for live Claude and Higgsfield."}</TooltipContent>
                 </Tooltip>
@@ -1873,7 +1873,7 @@ export function GenerationCanvas({
                 <div className="flex flex-col gap-2">
                   {/* the reference video is ready: the user reviews it here before any variation is made */}
                   {needsReview && (
-                    <section aria-label="Review Variation 1" className="flex flex-col gap-3 rounded-2xl bg-background p-3 shadow-lg ring-1 ring-foreground/10 animate-in fade-in-0 slide-in-from-bottom-2">
+                    <section aria-label="Review Variation 1" className="flex flex-col gap-3 rounded-2xl bg-card p-3 shadow-lg ring-1 ring-foreground/10 animate-in fade-in-0 slide-in-from-bottom-2">
                       <div className="flex items-center gap-3">
                         <img loading="lazy" decoding="async" src={GENERATED_VIDEOS[mainNow.video!].poster} alt="" className="size-12 shrink-0 rounded-lg object-cover ring-1 ring-foreground/10" />
                         <div className="min-w-0">
@@ -1901,7 +1901,7 @@ export function GenerationCanvas({
                 </div>
               ) : // a template's reference video is fixed, so it has no prompt
               fixedRef && activeIndex === 0 ? (
-                <p className="rounded-2xl bg-background p-3 text-sm text-muted-foreground ring-1 ring-foreground/5">Variation 1 comes with this template. Pick a variation to write its prompt.</p>
+                <p className="rounded-2xl bg-card p-3 text-sm text-muted-foreground ring-1 ring-foreground/5">Variation 1 comes with this template. Pick a variation to write its prompt.</p>
               ) : (
                 <SlidePrompt
               key={activeSlide.id}
@@ -1947,7 +1947,7 @@ function ZoomTool({ label, onClick, disabled, children }: { label: string; onCli
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button variant="ghost" size="icon-sm" aria-label={label} disabled={disabled} onClick={onClick} className="size-7 shrink-0 rounded-lg">
+        <Button variant="ghost" size="icon-sm" aria-label={label} disabled={disabled} onClick={onClick} className="size-7 shrink-0">
           {children}
         </Button>
       </TooltipTrigger>

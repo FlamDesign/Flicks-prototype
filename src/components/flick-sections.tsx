@@ -1,3 +1,4 @@
+import { date as fmtDate } from "@/lib/format"
 import { Spinner } from "@/components/ui/spinner"
 /** Pieces shared by the editor (Save as template) and the Flick page (link, embed). */
 import { useEffect, useRef, useState } from "react"
@@ -66,7 +67,7 @@ export function TemplateSection({ title, thumbs, onSave }: { title: string; thum
               role="radio"
               aria-checked={thumb === src}
               onClick={() => setThumb(src)}
-              className={cn("size-20 overflow-hidden rounded-xl p-0 ring-1 ring-foreground/10", thumb === src && "ring-2 ring-primary")}
+              className={cn("size-20 overflow-hidden rounded-xl p-0 ring-1 ring-foreground/10", thumb === src && "ring-2 ring-brand")}
             >
               <img loading="lazy" decoding="async" src={src} alt="" className="size-full object-cover" />
             </Button>
@@ -318,7 +319,7 @@ export function SquareIcon({ label, icon, variant, disabled, onClick }: { label:
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button variant={variant} size="icon" aria-label={label} disabled={disabled} onClick={onClick} className="size-10 shrink-0 rounded-xl">
+        <Button variant={variant} size="icon" aria-label={label} disabled={disabled} onClick={onClick} className="size-10 shrink-0">
           <HugeiconsIcon key={label} icon={icon} className="size-4 animate-in zoom-in-50 fade-in-0 duration-200" />
         </Button>
       </TooltipTrigger>
@@ -352,7 +353,7 @@ export function Issues({ issues }: { issues: Issue[] }) {
   return (
     <ul className="flex flex-col gap-1">
       {issues.map((x) => (
-        <li key={x.text} className={cn("text-xs", x.blocking ? "text-muted-foreground" : "text-primary")}>
+        <li key={x.text} className={cn("text-xs", x.blocking ? "text-muted-foreground" : "text-brand")}>
           {x.text}
         </li>
       ))}
@@ -362,11 +363,11 @@ export function Issues({ issues }: { issues: Issue[] }) {
 
 /* ---------- copy helpers ---------- */
 
-export const when = (t: number) => `${new Date(t).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} · ${ago(t)}`
+export const when = (t: number) => `${new Date(t).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} · ${ago(t)}`
 export function ago(t: number) {
   const s = (Date.now() - t) / 1000
   if (s < 45) return "just now"
-  if (s < 3600) return `${Math.round(s / 60)} min ago`
-  if (s < 86400) return `${Math.round(s / 3600)} hr ago`
-  return new Date(t).toLocaleDateString()
+  if (s < 3600) return `${Math.round(s / 60)}m ago`
+  if (s < 86400) return `${Math.round(s / 3600)}h ago`
+  return fmtDate(t)
 }

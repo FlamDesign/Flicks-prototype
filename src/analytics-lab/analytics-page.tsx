@@ -118,7 +118,7 @@ export function AnalyticsPage({ data, loading }: { data: Dataset; loading: boole
                 role="tab"
                 aria-selected={tab === t.id}
                 onClick={() => setTab(t.id)}
-                className={cn("-mb-px border-b-2 px-3 pb-2.5 pt-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring", tab === t.id ? "border-primary font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}
+                className={cn("-mb-px border-b-2 px-3 pb-2.5 pt-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring", tab === t.id ? "border-brand font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}
               >
                 {t.label}
               </button>
@@ -334,9 +334,9 @@ function MetricStrip({ rows, prevRows, filter, metrics, sel }: { rows: Row[]; pr
               role="tab"
               aria-selected={on}
               onClick={() => setMid(x.id)}
-              className={cn("relative flex flex-col gap-1.5 bg-card p-4 text-left outline-none last:odd:col-span-2 lg:last:odd:col-span-1 transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring", on ? "bg-primary/5" : "hover:bg-muted/50")}
+              className={cn("relative flex flex-col gap-1.5 bg-card p-4 text-left outline-none last:odd:col-span-2 lg:last:odd:col-span-1 transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring", on ? "bg-brand/5" : "hover:bg-muted/50")}
             >
-              {on && <span aria-hidden className="absolute inset-x-0 top-0 h-0.5 bg-primary" />}
+              {on && <span aria-hidden className="absolute inset-x-0 top-0 h-0.5 bg-brand" />}
               <span className={cn("text-sm", on ? "font-medium text-foreground" : "text-muted-foreground")}>{x.label}</span>
               <span className="flex items-end justify-between gap-2">
                 <span className="text-2xl font-semibold tabular-nums tracking-tight">{x.tile(x.v(t), t)}</span>
@@ -448,9 +448,9 @@ function Summary({ items }: { items: string[] }) {
   const [vote, setVote] = useState<"up" | "down" | null>(null)
   if (!items.length) return null
   return (
-    <section aria-label="Summary" className="rounded-2xl bg-primary/5 p-5 ring-1 ring-primary/15">
+    <section aria-label="Summary" className="rounded-2xl bg-brand/5 p-5 ring-1 ring-brand/15">
       <div className="flex items-center gap-2">
-        <HugeiconsIcon icon={SparklesIcon} className="size-4 text-primary" />
+        <HugeiconsIcon icon={SparklesIcon} className="size-4 text-brand" />
         <h2 className="text-sm font-medium">Summary</h2>
         <span className="text-xs text-muted-foreground">From this period’s numbers</span>
         <div className="ml-auto flex items-center gap-0.5">
@@ -471,7 +471,7 @@ function Summary({ items }: { items: string[] }) {
       <ul className="mt-3 flex flex-col gap-2">
         {items.map((t) => (
           <li key={t} className="flex gap-2.5 text-sm text-pretty">
-            <span aria-hidden className="mt-2 size-1.5 shrink-0 rounded-full bg-primary" />
+            <span aria-hidden className="mt-2 size-1.5 shrink-0 rounded-full bg-brand" />
             {t}
           </li>
         ))}
@@ -518,7 +518,7 @@ function VariationTest({ meta, rows, filter, t }: { meta: FlickMeta; rows: Row[]
             that {best.name} gets more clicks per view than {lead.runnerUp.name}
           </p>
         </div>
-        <span className={cn("w-fit rounded-full px-2 py-0.5 text-xs", sure ? "bg-primary/10 text-primary" : "bg-background text-muted-foreground ring-1 ring-foreground/10")}>{sure ? "Significant" : "Not significant yet · needs 95%"}</span>
+        <span className={cn("w-fit rounded-full px-2 py-0.5 text-xs", sure ? "bg-brand/10 text-brand" : "bg-background text-muted-foreground ring-1 ring-foreground/10")}>{sure ? "Significant" : "Not significant yet · needs 95%"}</span>
         <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
           <dt className="text-muted-foreground">Leading</dt>
           <dd className="flex items-center gap-1.5 font-medium">
@@ -686,7 +686,7 @@ function Overview({ data, filter, go, onTab, flicksOnly }: { data: Dataset; filt
             </thead>
             <tbody>
               {sorted.map(({ meta, t: ft, spark, lead }) => (
-                <tr key={meta.id} tabIndex={0} onClick={() => onOpen(meta.id)} onKeyDown={(e) => e.key === "Enter" && onOpen(meta.id)} className="cursor-pointer border-t border-foreground/5 text-right outline-none hover:bg-muted/60 focus-visible:bg-muted/60">
+                <tr key={meta.id} tabIndex={0} onClick={() => onOpen(meta.id)} onKeyDown={(e) => e.key === "Enter" && onOpen(meta.id)} className="cursor-pointer border-t border-foreground/5 text-right outline-none hover:bg-muted/50 focus-visible:bg-muted/50">
                   <td className="py-2 pl-2">
                     <SelBox selection={selection} id={meta.id} name={meta.name} pred={(r) => r.flickId === meta.id} />
                   </td>
@@ -725,7 +725,7 @@ function LeaderChip({ name, confidence }: { name: string; confidence: number }) 
   return (
     <span className="flex items-center gap-1.5">
       <span className="font-medium">{name}</span>
-      <span className={cn("rounded-full px-1.5 py-0.5 text-xs", sure ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>{sure ? "Clear lead" : likely ? "Likely" : "Too early"}</span>
+      <span className={cn("rounded-full px-1.5 py-0.5 text-xs", sure ? "bg-brand/10 text-brand" : "bg-muted text-muted-foreground")}>{sure ? "Clear lead" : likely ? "Likely" : "Too early"}</span>
     </span>
   )
 }
@@ -976,7 +976,7 @@ function DataTable({ rows, cols, empty = "Nothing in this period.", nameLabel = 
               tabIndex={r.onClick ? 0 : undefined}
               onClick={r.onClick}
               onKeyDown={(e) => e.key === "Enter" && r.onClick?.()}
-              className={cn("border-t border-foreground/5 text-right outline-none", r.onClick && "cursor-pointer hover:bg-muted/60 focus-visible:bg-muted/60")}
+              className={cn("border-t border-foreground/5 text-right outline-none", r.onClick && "cursor-pointer hover:bg-muted/50 focus-visible:bg-muted/50")}
             >
               {selection && (
                 <td className="py-2 pl-2">
@@ -1020,11 +1020,11 @@ function TopLists({ data, filter, go, onTab }: { data: Dataset; filter: Filter; 
   const embeds = placesOf(data, "embed").map((e) => ({ id: e.id, name: e.name, t: byWhere(rows, e.id) }))
   const flicks = data.flicks.map((f) => ({ id: f.id, name: f.name, image: f.image, t: byFlick(rows, f.id) }))
   const list = (title: string, items: { id: string; name: string; image?: string; t: Totals }[], kind: Open["kind"], tab: Tab, value: (t: Totals) => string, label: string) => (
-    <Section title={title} tools={<Button variant="ghost" size="sm" className="-my-1 h-7 px-2 text-primary hover:text-primary" onClick={() => onTab(tab)}>See all</Button>}>
+    <Section title={title} tools={<Button variant="ghost" size="sm" className="-my-1 h-7 px-2" onClick={() => onTab(tab)}>See all</Button>}>
       <ul className="flex flex-col">
         {[...items].sort((a, b) => b.t.played - a.t.played).slice(0, 4).map((x) => (
           <li key={x.id}>
-            <button type="button" onClick={() => go({ kind, id: x.id })} className="-mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded-lg px-2 py-2 text-left text-sm outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring">
+            <button type="button" onClick={() => go({ kind, id: x.id })} className="-mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded-lg px-2 py-2 text-left text-sm outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring">
               {x.image && <img loading="lazy" decoding="async" src={x.image} alt="" className="size-8 shrink-0 rounded-md object-cover ring-1 ring-foreground/10" />}
               <span className="min-w-0 flex-1 truncate font-medium">{x.name}</span>
               <span className="shrink-0 text-right tabular-nums">

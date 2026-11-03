@@ -21,7 +21,7 @@ export function TutorialVideo() {
     <Dialog open={open} onOpenChange={setOpen}>
       {/* Entry point: quiet text link with a small play glyph */}
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="group gap-2 rounded-full font-normal text-muted-foreground hover:bg-transparent hover:text-foreground">
+        <Button variant="ghost" size="sm" className="group gap-2 font-normal text-muted-foreground hover:bg-transparent hover:text-foreground">
           <span className="flex size-5 items-center justify-center rounded-full ring-1 ring-foreground/20 transition-all group-hover:bg-foreground group-hover:text-background group-hover:ring-foreground">
             <HugeiconsIcon icon={PlayIcon} className="ml-px size-2.5 fill-current" />
           </span>

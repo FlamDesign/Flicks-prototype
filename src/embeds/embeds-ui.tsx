@@ -47,14 +47,14 @@ export function NewEmbedDialog({ open, onOpenChange, flick, onCreated }: { open:
           <div className="flex flex-col gap-2">
             <Label htmlFor="em-size">Size</Label>
             {flick ? (
-              <p className="flex h-11 items-center gap-2 rounded-2xl bg-muted/60 px-3 text-sm tabular-nums">
+              <p className="flex h-9 items-center gap-2 rounded-2xl bg-muted/60 px-3 text-sm tabular-nums">
                 <RatioGlyph size={flick.size} className="text-muted-foreground" />
                 {flick.size}
                 <span className="text-muted-foreground">· this Flick’s size</span>
               </p>
             ) : (
               <Select value={size} onValueChange={setSize}>
-                <SelectTrigger id="em-size" className="h-11! w-full">
+                <SelectTrigger id="em-size" className="h-9! w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

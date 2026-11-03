@@ -455,7 +455,7 @@ export default function App() {
                 {/* starter ideas: fill the box with an example to edit (hidden once something is typed) */}
                 <div className={cn("flex flex-wrap justify-center gap-2 transition-opacity duration-200", prompt.trim() && "pointer-events-none opacity-0")} aria-hidden={!!prompt.trim()}>
                   {STARTERS.map((s) => (
-                    <Button key={s.label} variant="outline" size="sm" className="rounded-full border-foreground/15 bg-background/60 font-normal shadow-none backdrop-blur-sm hover:bg-background" onClick={() => setPrompt(s.prompt)}>
+                    <Button key={s.label} variant="outline" size="sm" className="border-foreground/15 bg-background/60 font-normal shadow-none backdrop-blur-sm hover:bg-background" onClick={() => setPrompt(s.prompt)}>
                       {s.label}
                     </Button>
                   ))}

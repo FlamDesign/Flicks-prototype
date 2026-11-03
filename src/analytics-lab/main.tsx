@@ -79,7 +79,7 @@ function Lab() {
             type="button"
             aria-pressed={mode === m.id}
             onClick={() => setMode(m.id)}
-            className={cn("rounded-xl px-2.5 py-1.5 text-xs outline-none focus-visible:ring-2 focus-visible:ring-white/70", mode === m.id ? "bg-primary text-primary-foreground" : "text-neutral-300 hover:bg-white/10")}
+            className={cn("rounded-xl px-2.5 py-1.5 text-xs outline-none focus-visible:ring-2 focus-visible:ring-white/70", mode === m.id ? "bg-brand text-brand-foreground" : "text-neutral-300 hover:bg-white/10")}
           >
             {m.label}
           </button>

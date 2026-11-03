@@ -27,7 +27,7 @@ const loop = (name: string, delay = 0, dur = L): CSSProperties => ({ animation: 
 
 const CSS = `
 .ca * { box-sizing: border-box; }
-@keyframes ca-pulse { 0%,100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 40%, transparent) } 50% { box-shadow: 0 0 0 6px color-mix(in oklch, var(--primary) 0%, transparent) } }
+@keyframes ca-pulse { 0%,100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--brand) 40%, transparent) } 50% { box-shadow: 0 0 0 6px color-mix(in oklch, var(--brand) 0%, transparent) } }
 @keyframes ca-ghost { 0%,15% { opacity: 0; transform: translateX(-10px) } 30%,85% { opacity: 1; transform: none } 100% { opacity: 0 } }
 @keyframes ca-draw { 0%,10% { transform: scaleX(0) } 28%,85% { transform: scaleX(1) } 100% { transform: scaleX(1); opacity: 0 } }
 @keyframes ca-press { 0%,8% { transform: scale(1) } 12% { transform: scale(.86) } 16%,100% { transform: scale(1) } }
@@ -307,7 +307,7 @@ function Feed() {
           <div key={t} className="flex items-center gap-2">
             <div className="relative size-6 overflow-hidden rounded-[5px]">
               <Frame x={0} y={0} w={24} h={24} tone={t} />
-              <div className="absolute inset-0 rounded-[5px] ring-2 ring-inset ring-primary" style={cyc(t)} />
+              <div className="absolute inset-0 rounded-[5px] ring-2 ring-inset ring-brand" style={cyc(t)} />
             </div>
             <div className="relative flex h-6 w-[120px] items-center rounded-md bg-background px-2 text-[10px] text-foreground ring-1 ring-foreground/10">
               {PRICES[t]}

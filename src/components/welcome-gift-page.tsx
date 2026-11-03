@@ -64,7 +64,7 @@ export function WelcomeGiftDialog({ open, name, onClaim, onDone }: { open: boole
           <Sparkles />
           <FlicksLogo className="absolute left-6 top-5 h-5 text-white" />
           <span className="relative flex flex-col items-center" style={{ animation: "wg-float 5s ease-in-out 1.8s infinite" }}>
-            <FocusNumber value={WELCOME_CREDITS.toLocaleString()} className="text-[clamp(72px,22vw,128px)] font-semibold tracking-[-0.04em] drop-shadow-xl" />
+            <FocusNumber value={WELCOME_CREDITS.toLocaleString("en-US")} className="text-[clamp(72px,22vw,128px)] font-semibold tracking-[-0.04em] drop-shadow-xl" />
             <span className="mt-2 text-sm font-medium tracking-wide text-white/90" style={{ animation: "wg-label .5s ease-out .75s both" }}>
               credits
             </span>

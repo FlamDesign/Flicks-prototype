@@ -153,7 +153,7 @@ export const MentionTextarea = forwardRef<
     <div className="relative min-w-0">
       {/* the highlight layer: same text, mentions tinted, behind the transparent-backed textarea */}
       <div ref={mirror} aria-hidden className={cn("w-full border border-transparent px-2.5 py-2 text-base md:text-sm", className, "pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words bg-transparent text-transparent shadow-none ring-0 dark:bg-transparent")}>
-        {parts.map((p, i) => (p.on ? <mark key={i} className="rounded-[4px] bg-primary/15 text-transparent ring-1 ring-primary/25">{p.text}</mark> : <span key={i}>{p.text}</span>))}
+        {parts.map((p, i) => (p.on ? <mark key={i} className="rounded-[4px] bg-brand/15 text-transparent ring-1 ring-brand/25">{p.text}</mark> : <span key={i}>{p.text}</span>))}
         {"​"}
       </div>
       <Textarea

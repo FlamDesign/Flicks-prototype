@@ -49,7 +49,7 @@ export function FlickViewer({ slug }: { slug: string }) {
               aria-selected={k === i}
               aria-label={x.name}
               onClick={() => setI(k)}
-              className={cn("size-14 overflow-hidden rounded-xl ring-1 ring-foreground/10 outline-none transition focus-visible:ring-2 focus-visible:ring-ring", k === i ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "opacity-70 hover:opacity-100")}
+              className={cn("size-14 overflow-hidden rounded-xl ring-1 ring-foreground/10 outline-none transition focus-visible:ring-2 focus-visible:ring-ring", k === i ? "ring-2 ring-brand ring-offset-2 ring-offset-background" : "opacity-70 hover:opacity-100")}
             >
               <img src={x.poster} alt="" className="size-full object-cover" />
             </button>

@@ -1,3 +1,4 @@
+import * as fmt from "@/lib/format"
 import { useSyncExternalStore } from "react"
 import { FLICKS, type Flick } from "@/data"
 import { getLibrary } from "@/library"
@@ -274,7 +275,7 @@ const sampleLedger = (): AdTxn[] => {
           at: NOW - d * DAY - ((i * 37) % 10) * HOUR - HOUR,
           kind: "spend",
           amount: -(share * cpmFor(c)),
-          label: `${(share * 1000).toLocaleString()} impressions`,
+          label: `${(share * 1000).toLocaleString("en-US")} impressions`,
           country: c,
           placementId: p.id,
           impressions: share * 1000,
@@ -394,6 +395,7 @@ export const ads = {
 
 export const MIN_FUNDS = 100
 export const MAX_FUNDS = 10_000
+/** the shared formats (lib/format): $4,212.00 (whole dollars only where cents can't occur), 9,500 · 656K */
 export const usd = (n: number, cents = true) =>
-  `${n < 0 ? "−" : ""}$${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: cents ? 2 : 0, maximumFractionDigits: cents ? 2 : 0 })}`
-export const compact = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M` : n >= 1000 ? `${(n / 1000).toFixed(n >= 100_000 ? 0 : 1).replace(/\.0$/, "")}K` : String(n))
+  cents ? fmt.usd(n) : `${n < 0 ? "−" : ""}$${Math.abs(Math.round(n)).toLocaleString("en-US")}`
+export const compact = fmt.compact

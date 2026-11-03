@@ -15,7 +15,7 @@ const dayKey = (t: number) => new Date(t).toDateString()
 const dayLabel = (t: number) => {
   if (dayKey(t) === new Date().toDateString()) return "Today"
   if (dayKey(t) === new Date(Date.now() - 86_400_000).toDateString()) return "Yesterday"
-  return new Date(t).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })
+  return new Date(t).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
 }
 const isoDay = (t: number) => {
   const d = new Date(t)

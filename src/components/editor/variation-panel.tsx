@@ -67,8 +67,8 @@ export function VariationPanel({
       )}
 
       {stale && (
-        <div role="status" className="flex flex-col gap-2 rounded-xl bg-primary/10 p-3 text-sm ring-1 ring-primary/25">
-          <p className="flex items-center gap-1.5 font-medium text-primary">
+        <div role="status" className="flex flex-col gap-2 rounded-xl bg-brand/10 p-3 text-sm ring-1 ring-brand/25">
+          <p className="flex items-center gap-1.5 font-medium text-brand">
             <HugeiconsIcon icon={Alert02Icon} className="size-4" />
             Needs regenerating
           </p>
@@ -233,7 +233,7 @@ function FeedsSection({
                 inputMode={f.type === "link" ? "url" : undefined}
                 aria-label={`@${f.name} value`}
                 // fixed label column so values line up
-                className={cn("pl-[6.75rem] pr-8 transition-shadow", flash === f.id && "bg-primary/5 ring-2 ring-primary")}
+                className={cn("pl-[6.75rem] pr-8 transition-shadow", flash === f.id && "bg-brand/5 ring-2 ring-brand")}
               />
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -366,7 +366,7 @@ export function NewFeed({
       {taken ? (
         <p id={`${inputId}-hint`} className="px-1 text-xs text-destructive">@{clean} already exists</p>
       ) : looksLikeValue ? (
-        <p id={`${inputId}-hint`} className="px-1 text-xs text-primary">
+        <p id={`${inputId}-hint`} className="px-1 text-xs text-brand">
           Looks like a {type === "link" ? "link" : "value"}. Name what it is, like @{FEED_SUGGESTIONS[type][type === "link" ? 0 : 1].name}.
         </p>
       ) : name ? (
@@ -384,7 +384,7 @@ export function NewFeed({
                 key={x.name}
                 type="button"
                 onClick={() => setName(x.name)}
-                className="h-6 rounded-md bg-muted px-1.5 text-xs text-muted-foreground outline-none hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                className="h-6 rounded-md bg-muted px-1.5 text-xs text-muted-foreground outline-none hover:bg-muted/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
               >
                 @{x.name}
               </button>

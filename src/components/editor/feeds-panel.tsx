@@ -188,7 +188,7 @@ export function FeedsPanel({
                   key={v.id}
                   className={cn(
                     "flex flex-col gap-2.5 rounded-2xl bg-card p-3 shadow-xs ring-1 transition-shadow",
-                    active ? "ring-primary/50" : "ring-foreground/10 hover:ring-foreground/20",
+                    active ? "ring-brand/50" : "ring-foreground/10 hover:ring-foreground/20",
                   )}
                 >
                   <button type="button" onClick={() => onSelectVideo(v.id)} aria-label={`Show ${v.name}`} aria-pressed={active} className="flex min-w-0 items-center gap-2.5 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
@@ -206,7 +206,7 @@ export function FeedsPanel({
                     onFocus={() => !active && onSelectVideo(v.id)}
                     placeholder="Value"
                     aria-label={`${open.name} for ${v.name}`}
-                    className={cn("h-9 text-sm transition-shadow", flash === k && "ring-2 ring-primary")}
+                    className={cn("h-9 text-sm transition-shadow", flash === k && "ring-2 ring-brand")}
                   />
                 </li>
               )

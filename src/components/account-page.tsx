@@ -85,7 +85,7 @@ export function AccountPage({
         <div className="flex items-center gap-4">
           <Avatar className="size-16 rounded-2xl after:rounded-2xl">
             {photo && <AvatarImage src={photo} alt="" className="rounded-2xl object-cover" />}
-            <AvatarFallback className="rounded-2xl bg-primary text-lg font-semibold text-primary-foreground">{initials}</AvatarFallback>
+            <AvatarFallback className="rounded-2xl bg-brand text-lg font-semibold text-brand-foreground">{initials}</AvatarFallback>
           </Avatar>
           <div className="flex flex-col gap-1.5">
             <div className="flex gap-2">
@@ -110,7 +110,7 @@ export function AccountPage({
         <Field id="email" label="Email">
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="flex h-11 items-center gap-2 rounded-2xl bg-muted/60 px-3 text-sm text-muted-foreground" aria-readonly>
+              <div className="flex h-9 items-center gap-2 rounded-2xl bg-muted/60 px-3 text-sm text-muted-foreground" aria-readonly>
                 <span id="ob-email" className="min-w-0 flex-1 truncate">
                   {email}
                 </span>
@@ -130,7 +130,7 @@ export function AccountPage({
             <Input id="ob-company" maxLength={80} value={p.company} onChange={(e) => set("company", e.target.value)} onBlur={blur("company")} autoComplete="organization" aria-invalid={!!errors.company || undefined} className="h-11" />
           </Field>
           <Field id="website" label="Website" error={errors.website}>
-            <div className={cn("flex h-11 items-center overflow-hidden rounded-2xl bg-input/50 focus-within:ring-3 focus-within:ring-ring/30", errors.website && "ring-3 ring-destructive/20")}>
+            <div className={cn("flex h-9 items-center overflow-hidden rounded-2xl bg-input/50 focus-within:ring-3 focus-within:ring-ring/30", errors.website && "ring-3 ring-destructive/20")}>
               <span className="flex h-full items-center pl-3 text-sm text-muted-foreground">https://</span>
               <InputGroupInput
                 id="ob-website"

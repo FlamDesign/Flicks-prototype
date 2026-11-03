@@ -284,7 +284,7 @@ function Said({ text, streaming }: { text: string; streaming?: boolean }) {
 
 function Card({ children, className }: { children: React.ReactNode; className?: string }) {
   const stage = useContext(StageContext)
-  return <div className={cn("mr-2 flex flex-col gap-3 rounded-2xl bg-background p-3 shadow-xs ring-1 ring-foreground/10", className, stage && "mr-0 gap-4 p-5")}>{children}</div>
+  return <div className={cn("mr-2 flex flex-col gap-3 rounded-2xl bg-card p-3 shadow-xs ring-1 ring-foreground/10", className, stage && "mr-0 gap-4 p-5")}>{children}</div>
 }
 
 function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question" }>; agent: Agent; ctx: AgentCtx }) {
@@ -348,14 +348,14 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
                   "group/row relative flex items-center gap-3 px-3 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60",
                   stage ? "py-3 text-sm" : "py-2.5 text-sm",
                   // a hairline between rows, hidden around the hovered or picked one
-                  "after:absolute after:inset-x-3 after:bottom-0 after:h-px after:bg-foreground/8 hover:rounded-lg hover:bg-muted/70 hover:after:opacity-0",
-                  on && "rounded-lg bg-primary/10 text-primary after:opacity-0 hover:bg-primary/12",
+                  "after:absolute after:inset-x-3 after:bottom-0 after:h-px after:bg-foreground/8 hover:rounded-lg hover:bg-muted/50 hover:after:opacity-0",
+                  on && "rounded-lg bg-brand/10 text-brand after:opacity-0 hover:bg-brand/12",
                 )}
               >
                 <span
                   className={cn(
                     "grid size-7 shrink-0 place-items-center rounded-md text-xs font-medium tabular-nums text-muted-foreground ring-1 ring-foreground/10",
-                    on && "bg-primary text-primary-foreground ring-primary",
+                    on && "bg-brand text-brand-foreground ring-brand",
                   )}
                 >
                   {on && item.multi ? <HugeiconsIcon icon={Tick02Icon} className="size-3.5" strokeWidth={2.5} /> : i + 1}
@@ -414,7 +414,7 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
               aria-checked={false}
               onClick={() => pick(o)}
               disabled={agent.busy}
-              className="group/opt flex flex-col gap-1.5 rounded-xl p-1.5 text-left outline-none ring-1 ring-foreground/10 transition-[box-shadow,background-color] hover:bg-muted/60 hover:ring-foreground/30 focus-visible:ring-2 focus-visible:ring-ring"
+              className="group/opt flex flex-col gap-1.5 rounded-xl p-1.5 text-left outline-none ring-1 ring-foreground/10 transition-[box-shadow,background-color] hover:bg-muted/50 hover:ring-foreground/30 focus-visible:ring-2 focus-visible:ring-ring"
             >
               {visual && (
                 <FlickPreview
@@ -509,7 +509,7 @@ function Assets({ item, agent, bare }: { item: Extract<Item, { kind: "assets" }>
         onDrop={(e) => (e.preventDefault(), setOver(false), addFiles(e.dataTransfer.files))}
         className={cn(
           "flex min-h-24 flex-wrap items-center justify-center gap-2 rounded-xl border border-dashed border-foreground/20 p-3 text-sm text-muted-foreground outline-none transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring",
-          over && "border-primary bg-primary/5",
+          over && "border-brand bg-brand/5",
         )}
       >
         {files.length || preparing.length ? (
@@ -635,7 +635,7 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
         )}
       </div>
     )
-  const quiet = "rounded-md border-0 bg-transparent px-1.5 shadow-none outline-none transition-colors hover:bg-muted/70 focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-ring/40 dark:bg-transparent"
+  const quiet = "rounded-md border-0 bg-transparent px-1.5 shadow-none outline-none transition-colors hover:bg-muted/50 focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-ring/40 dark:bg-transparent"
   // the Flick as planned, with pictures for videos: each variation's own image, else the reference's,
   // else the concept picked, else the user's photo
   const picked = [...agent.items].reverse().find((x): x is Q => x.kind === "question" && x.display === "concepts" && x.answer !== undefined)
@@ -730,7 +730,7 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
           <button
             type="button"
             onClick={() => set({ variations: [...plan.variations, { name: `Variation ${plan.variations.length + 1}`, prompt: "Same scene, " }] })}
-            className="flex h-8 items-center justify-center gap-1.5 rounded-xl border border-dashed border-foreground/15 text-xs text-muted-foreground outline-none transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex h-8 items-center justify-center gap-1.5 rounded-xl border border-dashed border-foreground/15 text-xs text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
           >
             <HugeiconsIcon icon={Add01Icon} className="size-3.5" />
             Add variation
@@ -747,8 +747,8 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
       {/* like Gamma: the count and the one action, always at the bottom */}
       <div className="flex items-center gap-3 border-t bg-muted/40 px-3 py-2.5">
         <span className="text-xs text-muted-foreground">
-          {videos} videos · {total.toLocaleString()} credits
-          {short && <span className="text-destructive"> · you have {ctx.credits.toLocaleString()}</span>}
+          {videos} videos · {total.toLocaleString("en-US")} credits
+          {short && <span className="text-destructive"> · you have {ctx.credits.toLocaleString("en-US")}</span>}
         </span>
         <Button size="sm" className="ml-auto gap-1.5" disabled={agent.busy} onClick={() => agent.decidePlan(item.id, plan)}>
           <HugeiconsIcon icon={SparklesIcon} className="size-4" />
@@ -814,7 +814,7 @@ function BuildCard({ ctx }: { ctx: AgentCtx }) {
         {steps.map((x) => (
           <li key={x.label} className="flex items-center gap-2 text-sm">
             <span className={cn("grid size-4 shrink-0 place-items-center rounded-full", x.state === "done" ? "bg-foreground text-background" : "ring-1 ring-foreground/20")}>
-              {x.state === "done" ? <HugeiconsIcon icon={Tick02Icon} className="size-2.5" strokeWidth={3} /> : x.state === "working" ? <Spinner className="size-3 text-primary" /> : null}
+              {x.state === "done" ? <HugeiconsIcon icon={Tick02Icon} className="size-2.5" strokeWidth={3} /> : x.state === "working" ? <Spinner className="size-3 text-brand" /> : null}
             </span>
             <span className={cn(x.state === "waiting" && "text-muted-foreground")}>{x.label}</span>
           </li>
@@ -903,7 +903,7 @@ export function AgentComposer({ agent, placeholder, variations, brand }: { agent
   }
   return (
     <div
-      className="rounded-2xl border bg-background p-2 shadow-sm"
+      className="rounded-2xl border bg-card p-2 shadow-sm"
       onDragOver={(e) => e.dataTransfer.types.includes("Files") && e.preventDefault()}
       onDrop={(e) => (e.preventDefault(), media.addFiles(e.dataTransfer.files))}
     >
@@ -1049,7 +1049,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
         </Button>
       </div>
     ) : null
-  const shell = "flex flex-col overflow-hidden rounded-2xl bg-background shadow-lg ring-1 ring-foreground/10 animate-in fade-in-0 slide-in-from-bottom-2 duration-300"
+  const shell = "flex flex-col overflow-hidden rounded-2xl bg-card shadow-lg ring-1 ring-foreground/10 animate-in fade-in-0 slide-in-from-bottom-2 duration-300"
   if (q.kind === "assets")
     return (
       <section aria-label="Questions" className={cn(shell, className)}>
@@ -1086,7 +1086,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
                 onClick={() => pick(o)}
                 className={cn(
                   "group/c flex flex-col gap-2 rounded-2xl p-1.5 text-left outline-none ring-1 ring-foreground/10 transition-[box-shadow,background-color] hover:bg-muted/50 hover:ring-foreground/25 focus-visible:ring-2 focus-visible:ring-ring",
-                  chosen(o) && "bg-primary/10 ring-2 ring-primary",
+                  chosen(o) && "bg-brand/10 ring-2 ring-brand",
                 )}
               >
                 <span className="relative w-full overflow-hidden rounded-xl bg-muted" style={{ aspectRatio: Math.max(ctx.ratio, 0.8) }}>
@@ -1128,16 +1128,16 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
                   disabled={agent.busy}
                   onClick={() => pick(o)}
                   className={cn(
-                    "group/row relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm outline-none transition-colors hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60",
+                    "group/row relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm outline-none transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60",
                     "after:absolute after:inset-x-3 after:bottom-0 after:h-px after:bg-foreground/8 last:after:hidden hover:after:opacity-0",
-                    on && "bg-primary/10 after:opacity-0 hover:bg-primary/12",
+                    on && "bg-brand/10 after:opacity-0 hover:bg-brand/12",
                   )}
                 >
-                  <span className={cn("grid size-7 shrink-0 place-items-center rounded-md text-xs font-medium tabular-nums text-muted-foreground ring-1 ring-foreground/10", on && "bg-primary text-primary-foreground ring-primary")}>
+                  <span className={cn("grid size-7 shrink-0 place-items-center rounded-md text-xs font-medium tabular-nums text-muted-foreground ring-1 ring-foreground/10", on && "bg-brand text-brand-foreground ring-brand")}>
                     {on && q.multi ? <HugeiconsIcon icon={Tick02Icon} className="size-3.5" strokeWidth={2.5} /> : n + 1}
                   </span>
                   <span className="flex min-w-0 flex-1 flex-col">
-                    <span className={cn(on && "text-primary")}>{o.label}</span>
+                    <span className={cn(on && "text-brand")}>{o.label}</span>
                     {o.description && <span className="text-xs text-muted-foreground">{o.description}</span>}
                   </span>
                   {!q.multi && <HugeiconsIcon icon={ArrowRight01Icon} className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover/row:opacity-100" />}
@@ -1156,8 +1156,8 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
                 onClick={() => pick(o)}
                 disabled={agent.busy}
                 className={cn(
-                  "flex flex-col gap-1.5 rounded-xl p-1.5 text-left outline-none ring-1 ring-foreground/10 transition-[box-shadow,background-color] hover:bg-muted/60 hover:ring-foreground/30 focus-visible:ring-2 focus-visible:ring-ring",
-                  chosen(o) && "bg-primary/10 ring-2 ring-primary",
+                  "flex flex-col gap-1.5 rounded-xl p-1.5 text-left outline-none ring-1 ring-foreground/10 transition-[box-shadow,background-color] hover:bg-muted/50 hover:ring-foreground/30 focus-visible:ring-2 focus-visible:ring-ring",
+                  chosen(o) && "bg-brand/10 ring-2 ring-brand",
                 )}
               >
                 {visual && (

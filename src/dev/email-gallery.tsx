@@ -205,7 +205,7 @@ function EmailView({ e }: { e: EmailDef }) {
           <div className={cn("mx-auto flex flex-col gap-3", mobile ? "w-[375px]" : "w-full max-w-[760px]")}>
             {/* how it looks in the inbox list */}
             <div className="flex items-start gap-3 rounded-xl bg-background p-3 ring-1 ring-foreground/10">
-              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">F</span>
+              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-brand text-sm font-semibold text-brand-foreground">F</span>
               <div className="min-w-0 text-sm">
                 <p className="font-semibold">Flicks</p>
                 <p className="truncate font-medium">{filledSubject}</p>

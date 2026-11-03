@@ -171,11 +171,11 @@ export function OnboardingPage({
                 {[0, 1, 2].map((i) => (
                   <div key={i} className="flex flex-col gap-2">
                     <Skeleton className="h-3 w-28 rounded-full" />
-                    <Skeleton className="h-11 w-full rounded-2xl" />
+                    <Skeleton className="h-9 w-full rounded-2xl" />
                   </div>
                 ))}
               </div>
-              <Skeleton className="mt-8 h-11 w-full rounded-2xl" />
+              <Skeleton className="mt-8 h-9 w-full rounded-2xl" />
             </div>
           ) : (
           <>
@@ -183,7 +183,7 @@ export function OnboardingPage({
           <div className="flex items-center gap-3">
             <div className="flex flex-1 gap-1.5" role="progressbar" aria-valuemin={1} aria-valuemax={STEPS} aria-valuenow={step + 1} aria-label="Setup progress">
               {Array.from({ length: STEPS }, (_, i) => (
-                <span key={i} className={cn("h-1 flex-1 rounded-full transition-colors duration-300", i <= step ? "bg-primary" : "bg-muted")} />
+                <span key={i} className={cn("h-1 flex-1 rounded-full transition-colors duration-300", i <= step ? "bg-brand" : "bg-muted")} />
               ))}
             </div>
             <span className="text-xs tabular-nums text-muted-foreground">
@@ -215,7 +215,7 @@ export function OnboardingPage({
                     <Input id="ob-company" maxLength={80} onBlur={blur("company")} value={p.company} onChange={(e) => set("company", e.target.value)} placeholder="Acme" autoComplete="organization" aria-invalid={!!errors.company || undefined} className="h-11" />
                   </Field>
                   <Field id="website" label="Company website" error={errors.website}>
-                    <div className={cn("flex h-11 items-center overflow-hidden rounded-2xl bg-input/50 focus-within:ring-3 focus-within:ring-ring/30", errors.website && "ring-3 ring-destructive/20")}>
+                    <div className={cn("flex h-9 items-center overflow-hidden rounded-2xl bg-input/50 focus-within:ring-3 focus-within:ring-ring/30", errors.website && "ring-3 ring-destructive/20")}>
                       <span className="flex h-full items-center pl-3 text-sm text-muted-foreground">https://</span>
                       <InputGroupInput
                         id="ob-website"
@@ -248,17 +248,17 @@ export function OnboardingPage({
                           onClick={() => toggleGoal(g.id)}
                           className={cn(
                             "flex items-center gap-3 rounded-2xl p-3 text-left outline-none ring-1 transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
-                            on ? "bg-primary/5 ring-primary/50" : errors.goals ? "ring-destructive/40 hover:bg-muted/60" : "ring-foreground/10 hover:bg-muted/60",
+                            on ? "bg-brand/5 ring-brand/50" : errors.goals ? "ring-destructive/40 hover:bg-muted/50" : "ring-foreground/10 hover:bg-muted/50",
                           )}
                         >
-                          <span className={cn("grid size-10 shrink-0 place-items-center rounded-xl", on ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
+                          <span className={cn("grid size-10 shrink-0 place-items-center rounded-xl", on ? "bg-brand/10 text-brand" : "bg-muted text-muted-foreground")}>
                             <HugeiconsIcon icon={g.icon} className="size-5" />
                           </span>
                           <span className="flex min-w-0 flex-1 flex-col">
                             <span className="text-sm font-medium">{g.title}</span>
                             <span className="text-xs text-muted-foreground">{g.hint}</span>
                           </span>
-                          <span className={cn("grid size-5 shrink-0 place-items-center rounded-md ring-1 transition-colors", on ? "bg-primary text-primary-foreground ring-primary" : "ring-foreground/20")}>
+                          <span className={cn("grid size-5 shrink-0 place-items-center rounded-md ring-1 transition-colors", on ? "bg-brand text-brand-foreground ring-brand" : "ring-foreground/20")}>
                             {on && <HugeiconsIcon icon={Tick02Icon} className="size-3.5" strokeWidth={2.5} />}
                           </span>
                         </button>
@@ -279,7 +279,7 @@ export function OnboardingPage({
                   </Field>
                   <Field id="industry" label="Industry" error={errors.industry}>
                     <Select value={p.industry} onValueChange={(v) => set("industry", v)}>
-                      <SelectTrigger id="ob-industry" aria-invalid={!!errors.industry || undefined} className="h-11! w-full">
+                      <SelectTrigger id="ob-industry" aria-invalid={!!errors.industry || undefined} className="h-9! w-full">
                         <SelectValue placeholder="Choose one" />
                       </SelectTrigger>
                       <SelectContent>
@@ -296,7 +296,7 @@ export function OnboardingPage({
 
               <div className="mt-2 flex items-center gap-2">
                 {step > 0 && (
-                  <Button type="button" variant="ghost" size="lg" onClick={back} disabled={saving} className="h-11 gap-1.5 px-3 text-muted-foreground">
+                  <Button type="button" variant="ghost" size="lg" onClick={back} disabled={saving} className="h-9 gap-1.5 px-3 text-muted-foreground">
                     <HugeiconsIcon icon={ArrowLeft01Icon} className="size-4" />
                     Back
                   </Button>
@@ -355,7 +355,7 @@ export function Chips({ id, options, value, onChange, invalid, suffix }: { id: s
           onClick={() => onChange(o)}
           className={cn(
             "h-9 rounded-full px-3.5 text-sm outline-none ring-1 transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
-            value === o ? "bg-primary/10 font-medium text-primary ring-primary/40" : invalid ? "ring-destructive/40 hover:bg-muted" : "ring-foreground/10 hover:bg-muted",
+            value === o ? "bg-brand/10 font-medium text-brand ring-brand/40" : invalid ? "ring-destructive/40 hover:bg-muted" : "ring-foreground/10 hover:bg-muted",
           )}
         >
           {o}

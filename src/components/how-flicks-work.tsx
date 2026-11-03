@@ -171,7 +171,7 @@ function SceneVideo() {
           ))}
         </div>
         <div
-          className="absolute flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow"
+          className="absolute flex items-center justify-center rounded-full bg-brand text-brand-foreground shadow"
           style={{ ...box(270 - 14 - 32, 168 - 14 - 32, 32, 32), animation: anim("hfw-press", 0.35, goAt) }}
           aria-label="Generate"
         >
@@ -193,7 +193,7 @@ function SceneVideo() {
         <Clip look={LOOKS[0]} video round={14} className="size-full shadow-xl" />
       </div>
       <Chip cx={326 + 86} y={222} style={a("hfw-up", 0.4, vidAt + 0.4)}>
-        <span className="size-[0.55em] rounded-full bg-primary" />
+        <span className="size-[0.55em] rounded-full bg-brand" />
         Your video
       </Chip>
     </>
@@ -468,7 +468,7 @@ export function HowFlicksWork({ open, onOpenChange, onStart }: { open: boolean; 
         {/* stage */}
         <div
           className="relative aspect-[520/280] w-full overflow-hidden border-b border-foreground/[0.06]"
-          style={{ background: "radial-gradient(70% 80% at 50% 30%, color-mix(in oklch, var(--primary) 7%, var(--background)) 0%, color-mix(in oklch, var(--primary) 3%, var(--muted)) 100%)" }}
+          style={{ background: "radial-gradient(70% 80% at 50% 30%, color-mix(in oklch, var(--brand) 7%, var(--background)) 0%, color-mix(in oklch, var(--brand) 3%, var(--muted)) 100%)" }}
         >
           <div className="absolute inset-x-[3%] inset-y-[4%]">
             <Stage step={step} />
@@ -502,7 +502,7 @@ export function HowFlicksWork({ open, onOpenChange, onStart }: { open: boolean; 
                   {i === step && (
                     <span
                       key={`${step}-${auto}`}
-                      className="absolute inset-y-0 left-0 bg-primary"
+                      className="absolute inset-y-0 left-0 bg-brand"
                       style={auto && !last ? { animation: `hfw-bar ${s.ms}ms linear both` } : { width: "100%" }}
                     />
                   )}

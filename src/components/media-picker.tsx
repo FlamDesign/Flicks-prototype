@@ -253,7 +253,7 @@ export function MediaPicker({
           </div>
         </DialogHeader>
 
-        <div className={cn("relative min-h-0 flex-1 overflow-y-auto p-4", over && "bg-primary/5")}>
+        <div className={cn("relative min-h-0 flex-1 overflow-y-auto p-4", over && "bg-brand/5")}>
           <input ref={file} type="file" accept={[...IMAGE_TYPES, ...VIDEO_TYPES].join(",")} multiple hidden onChange={(e) => (e.target.files && upload(e.target.files), (e.target.value = ""))} />
           {failed && <p className="mb-3 text-xs text-destructive">Couldn’t load your library. Uploads from this session still show.</p>}
           <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3">
@@ -280,7 +280,7 @@ export function MediaPicker({
               className="mt-3 border-0 py-8"
             />
           )}
-          {over && <div className="pointer-events-none absolute inset-2 grid place-items-center rounded-xl border-2 border-dashed border-primary text-sm font-medium text-primary">Drop to upload</div>}
+          {over && <div className="pointer-events-none absolute inset-2 grid place-items-center rounded-xl border-2 border-dashed border-brand text-sm font-medium text-brand">Drop to upload</div>}
         </div>
 
         <DialogFooter className="items-center border-t px-5 py-3 sm:justify-between">
@@ -331,7 +331,7 @@ const toViewer = (x: MediaItem): ViewerItem => ({
     ["Source", x.source === "upload" ? "Uploaded" : "Generated"],
     ["Type", x.kind === "video" ? `Video${x.duration ? ` · ${length(x.duration)}` : ""}` : "Image"],
     ...(x.project ? [["Project", x.project] as [string, string]] : []),
-    ["Added", new Date(x.created).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })],
+    ["Added", new Date(x.created).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })],
   ],
 })
 
@@ -356,13 +356,13 @@ function Tile({ x, on, onToggle, onOpen, onDuration }: { x: MediaItem; on: boole
           {/* full screen, left of the select mark */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="secondary" size="icon-xs" onClick={onOpen} aria-label={`View ${x.name} full screen`} className="size-5 rounded-full bg-black/50 text-white opacity-0 shadow-sm backdrop-blur-sm hover:bg-black/70 focus-visible:opacity-100 group-hover/tile:opacity-100">
+              <Button variant="secondary" size="icon-xs" onClick={onOpen} aria-label={`View ${x.name} full screen`} className="size-6 bg-black/50 text-white opacity-0 shadow-sm backdrop-blur-sm hover:bg-black/70 focus-visible:opacity-100 group-hover/tile:opacity-100">
                 <HugeiconsIcon icon={ArrowExpand01Icon} className="size-3" strokeWidth={2.25} />
               </Button>
             </TooltipTrigger>
             <TooltipContent>Full screen</TooltipContent>
           </Tooltip>
-          <span aria-hidden className={cn("pointer-events-none grid size-5 place-items-center rounded-full border-2 border-white/90 shadow-sm transition-opacity", on ? "bg-primary text-primary-foreground opacity-100" : "bg-black/20 opacity-0 group-hover/tile:opacity-100")}>
+          <span aria-hidden className={cn("pointer-events-none grid size-5 place-items-center rounded-full border-2 border-white/90 shadow-sm transition-opacity", on ? "bg-brand text-brand-foreground opacity-100" : "bg-black/20 opacity-0 group-hover/tile:opacity-100")}>
             {on && <HugeiconsIcon icon={Tick02Icon} className="size-3" strokeWidth={3} />}
           </span>
         </>
@@ -485,7 +485,7 @@ export function VideoTrimmer({ item, onDone }: { item: MediaItem | null; onDone:
           <div className="grid gap-4">
             <div className="relative overflow-hidden rounded-xl bg-black">
               <video ref={video} src={item.url} poster={item.poster} muted playsInline crossOrigin="anonymous" className="mx-auto max-h-80 w-full object-contain" onEnded={() => setPlaying(false)} onTimeUpdate={(e) => setAt(e.currentTarget.currentTime)} />
-              <Button variant="secondary" size="icon" onClick={toggle} aria-label={playing ? "Pause" : "Play the selection"} className="absolute bottom-3 left-3 rounded-full bg-background/90 shadow-md backdrop-blur-sm">
+              <Button variant="secondary" size="icon" onClick={toggle} aria-label={playing ? "Pause" : "Play the selection"} className="absolute bottom-3 left-3 bg-background/90 shadow-md backdrop-blur-sm">
                 <HugeiconsIcon icon={playing ? PauseIcon : PlayIcon} className="size-4" />
               </Button>
             </div>
@@ -493,8 +493,8 @@ export function VideoTrimmer({ item, onDone }: { item: MediaItem | null; onDone:
               <div className="flex h-full">{strip.length ? strip.map((s, i) => <img loading="lazy" decoding="async" key={i} src={s} alt="" className="h-full min-w-0 flex-1 object-cover" />) : <Skeleton className="size-full rounded-none" />}</div>
               <div className="absolute inset-y-0 left-0 bg-background/70" style={{ width: `${pct(range[0])}%` }} />
               <div className="absolute inset-y-0 right-0 bg-background/70" style={{ width: `${100 - pct(range[1])}%` }} />
-              <div className="absolute inset-y-0 cursor-grab rounded-md border-2 border-primary transition-[left,width] duration-75 active:cursor-grabbing" style={{ left: `${pct(range[0])}%`, width: `${pct(len)}%` }} onPointerDown={grab("move")} aria-hidden>
-                <span className="absolute -top-px left-1/2 -translate-x-1/2 rounded-b-md bg-primary px-1.5 text-xs font-medium text-primary-foreground tabular-nums">{len.toFixed(1)}s</span>
+              <div className="absolute inset-y-0 cursor-grab rounded-md border-2 border-brand transition-[left,width] duration-75 active:cursor-grabbing" style={{ left: `${pct(range[0])}%`, width: `${pct(len)}%` }} onPointerDown={grab("move")} aria-hidden>
+                <span className="absolute -top-px left-1/2 -translate-x-1/2 rounded-b-md bg-brand px-1.5 text-xs font-medium text-brand-foreground tabular-nums">{len.toFixed(1)}s</span>
               </div>
               {/* where the preview is, while it plays */}
               {playing && <span aria-hidden className="pointer-events-none absolute inset-y-1 z-10 w-0.5 -translate-x-1/2 rounded-full bg-white shadow-sm" style={{ left: `${pct(Math.min(Math.max(at, range[0]), range[1]))}%` }} />}
@@ -510,10 +510,10 @@ export function VideoTrimmer({ item, onDone }: { item: MediaItem | null; onDone:
                   aria-valuetext={clock(range[i])}
                   onPointerDown={grab(w)}
                   onKeyDown={nudge(i as 0 | 1)}
-                  className="absolute inset-y-0 z-10 w-3 -translate-x-1/2 cursor-ew-resize rounded-sm bg-primary outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="absolute inset-y-0 z-10 w-3 -translate-x-1/2 cursor-ew-resize rounded-sm bg-brand outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   style={{ left: `${pct(range[i])}%` }}
                 >
-                  <span className="absolute left-1/2 top-1/2 h-5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded bg-primary-foreground/80" />
+                  <span className="absolute left-1/2 top-1/2 h-5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded bg-brand-foreground/80" />
                 </div>
               ))}
             </div>

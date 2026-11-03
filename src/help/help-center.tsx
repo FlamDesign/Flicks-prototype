@@ -241,7 +241,7 @@ function QuickStart({
       onClick={onClick}
       className="group flex items-start gap-3 rounded-2xl bg-muted/60 p-4 text-left outline-none ring-1 ring-foreground/5 transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
+      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand text-brand-foreground">
         <HugeiconsIcon icon={icon} className="size-5" />
       </span>
       <span className="flex min-w-0 flex-col gap-0.5">
@@ -406,7 +406,7 @@ function GuidePage({ guide }: { guide: Guide }) {
           <HugeiconsIcon icon={ArrowLeft01Icon} className="size-4" />
           All guides
         </a>
-        <p className="text-sm text-primary">{guide.group}</p>
+        <p className="text-sm text-brand">{guide.group}</p>
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
           {guide.title}
         </h1>
@@ -437,9 +437,9 @@ function GuidePage({ guide }: { guide: Guide }) {
                   className={cn(
                     "grid size-6 shrink-0 place-items-center rounded-full text-xs font-medium tabular-nums transition-colors",
                     k === step
-                      ? "bg-primary text-primary-foreground"
+                      ? "bg-brand text-brand-foreground"
                       : k < step
-                        ? "bg-primary/15 text-primary"
+                        ? "bg-brand/15 text-brand"
                         : "bg-muted-foreground/15",
                   )}
                 >
@@ -465,7 +465,7 @@ function GuidePage({ guide }: { guide: Guide }) {
               <li key={t} className="flex gap-2.5 text-sm">
                 <span
                   aria-hidden
-                  className="mt-2 size-1.5 shrink-0 rounded-full bg-primary"
+                  className="mt-2 size-1.5 shrink-0 rounded-full bg-brand"
                 />
                 {t}
               </li>
@@ -630,13 +630,13 @@ function Player({
             <div
               key={`ring-${step}-${run}`}
               aria-hidden
-              className="pointer-events-none absolute z-[5] rounded-lg border-2 border-primary animate-in fade-in-0 zoom-in-95 duration-300 fill-mode-both delay-300"
+              className="pointer-events-none absolute z-[5] rounded-lg border-2 border-brand animate-in fade-in-0 zoom-in-95 duration-300 fill-mode-both delay-300"
               style={{
                 left: `calc(${target.x - target.w / 2}% - 4px)`,
                 top: `calc(${target.y! - target.h! / 2}% - 4px)`,
                 width: `calc(${target.w}% + 8px)`,
                 height: `calc(${target.h}% + 8px)`,
-                boxShadow: "0 0 0 9999px rgb(0 0 0 / 0.18), 0 0 0 4px color-mix(in oklch, var(--primary) 20%, transparent)",
+                boxShadow: "0 0 0 9999px rgb(0 0 0 / 0.18), 0 0 0 4px color-mix(in oklch, var(--brand) 20%, transparent)",
               }}
             />
           )}
@@ -652,7 +652,7 @@ function Player({
             {target?.x !== undefined && (
               <span
                 key={`${step}-${run}`}
-                className="absolute size-10 rounded-full bg-primary/40 ring-2 ring-primary"
+                className="absolute size-10 rounded-full bg-brand/40 ring-2 ring-brand"
                 style={{ animation: "help-click 700ms ease-out 1000ms both" }}
               />
             )}
@@ -699,7 +699,7 @@ function Player({
             <Button
               variant="outline"
               size="icon"
-              className="size-8 rounded-full"
+              className="size-8"
               onClick={toggle}
               aria-label={ended ? "Watch again" : playing ? "Pause" : "Play"}
             >
@@ -726,7 +726,7 @@ function Player({
                 <span
                   key={k === step ? `${step}-${run}-${playing}` : k}
                   className={cn(
-                    "absolute inset-0 origin-left rounded-full bg-primary",
+                    "absolute inset-0 origin-left rounded-full bg-brand",
                     k > step && "scale-x-0",
                     k === step && !playing && "scale-x-100",
                   )}
@@ -747,7 +747,7 @@ function Player({
           <Button
             variant="ghost"
             size="icon"
-            className="size-8 rounded-full"
+            className="size-8"
             disabled={step === 0}
             onClick={() => go(step - 1)}
             aria-label="Previous step"
@@ -757,7 +757,7 @@ function Player({
           <Button
             variant="ghost"
             size="icon"
-            className="size-8 rounded-full"
+            className="size-8"
             disabled={last}
             onClick={() => go(step + 1)}
             aria-label="Next step"

@@ -173,7 +173,7 @@ export function LoginPage({
             <div key="email" className="animate-in fade-in-0 slide-in-from-bottom-1 flex flex-col duration-300">
               <h1 className="text-balance text-3xl font-semibold tracking-tight">Welcome to Flicks</h1>
               <p className="mt-2.5 text-pretty text-sm text-muted-foreground">
-                Sign up and get {WELCOME_CREDITS.toLocaleString()} free credits.
+                Sign up and get {WELCOME_CREDITS.toLocaleString("en-US")} free credits.
               </p>
 
               {/* not a <form>: sandboxed previews block form submits, so Enter and the button call send directly */}
@@ -241,7 +241,7 @@ export function LoginPage({
                 <span className="h-px flex-1 bg-border" />
               </div>
 
-              <Button variant="outline" size="lg" disabled={sending || google} onClick={withGoogle} data-no-validate className="h-11 gap-2">
+              <Button variant="outline" size="lg" disabled={sending || google} onClick={withGoogle} data-no-validate className="h-9 gap-2">
                 {google ? <Spinner className="size-4" /> : <GoogleLogo className="size-4" />}
                 {google ? "Connecting to Google…" : "Continue with Google"}
               </Button>
@@ -251,7 +251,7 @@ export function LoginPage({
 
           {step === "sent" && (
             <div key="sent" className="animate-in fade-in-0 slide-in-from-bottom-1 flex flex-col duration-300">
-              <span className="grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary">
+              <span className="grid size-12 place-items-center rounded-2xl bg-brand/10 text-brand">
                 <HugeiconsIcon icon={MailOpen01Icon} className="size-6" />
               </span>
               <h1 className="mt-6 text-3xl font-semibold tracking-tight">Check your inbox</h1>
@@ -283,14 +283,14 @@ export function LoginPage({
 
           {step === "expired" && (
             <div key="expired" className="animate-in fade-in-0 slide-in-from-bottom-1 flex flex-col duration-300">
-              <span className="grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary">
+              <span className="grid size-12 place-items-center rounded-2xl bg-brand/10 text-brand">
                 <HugeiconsIcon icon={TimeQuarterPassIcon} className="size-6" />
               </span>
               <h1 className="mt-6 text-3xl font-semibold tracking-tight">This link has expired</h1>
               <p className="mt-2.5 text-pretty text-sm text-muted-foreground">
                 Sign-in links work once, for 15 minutes. We’ll send a fresh one to <span className="font-medium text-foreground">{email.trim()}</span>.
               </p>
-              <Button size="lg" className="mt-8 h-11 gap-2" disabled={sending} onClick={resend}>
+              <Button size="lg" className="mt-8 h-9 gap-2" disabled={sending} onClick={resend}>
                 {sending && <Spinner className="size-4" />}
                 {sending ? "Sending link…" : "Email me a new link"}
               </Button>
@@ -305,11 +305,11 @@ export function LoginPage({
 
         <footer className="pb-1 text-xs text-muted-foreground">
           By continuing, you agree to Flam’s{" "}
-          <a href="https://flamapp.ai/legal/terms" target="_blank" rel="noopener noreferrer" className="text-foreground underline underline-offset-4 hover:text-primary">
+          <a href="https://flamapp.ai/legal/terms" target="_blank" rel="noopener noreferrer" className="text-foreground underline underline-offset-4 hover:text-brand">
             Terms of Use
           </a>{" "}
           and{" "}
-          <a href="https://flamapp.ai/legal/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-foreground underline underline-offset-4 hover:text-primary">
+          <a href="https://flamapp.ai/legal/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-foreground underline underline-offset-4 hover:text-brand">
             Privacy Policy
           </a>
           .
@@ -447,7 +447,7 @@ export function FlickShowcase() {
           >
             <img loading="lazy" decoding="async" src={l.thumb} alt="" className="size-full object-cover" />
             {/* time until it moves on */}
-            {i === active && auto && <span key={active} className="showcase-progress absolute inset-x-0 bottom-0 h-0.5 origin-left bg-primary" style={{ animationDuration: `${CYCLE}ms` }} />}
+            {i === active && auto && <span key={active} className="showcase-progress absolute inset-x-0 bottom-0 h-0.5 origin-left bg-brand" style={{ animationDuration: `${CYCLE}ms` }} />}
           </button>
         ))}
       </div>

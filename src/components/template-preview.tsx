@@ -236,7 +236,7 @@ function TryFlick({ t }: { t: Template }) {
                       {i === active && auto && (
                         <span
                           key={active}
-                          className="showcase-progress absolute inset-x-0 bottom-0 h-0.5 origin-left bg-primary"
+                          className="showcase-progress absolute inset-x-0 bottom-0 h-0.5 origin-left bg-brand"
                           style={{ animationDuration: `${CYCLE}ms` }}
                         />
                       )}

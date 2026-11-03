@@ -95,16 +95,16 @@ export function CreditsPage({ onGetCredits, onAutoReload, email }: { onGetCredit
       }
     >
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Balance" value={credits.toLocaleString()} note={`About ${Math.floor(credits / VIDEO_COST).toLocaleString()} video generations`} />
+        <StatCard label="Balance" value={credits.toLocaleString("en-US")} note={`About ${Math.floor(credits / VIDEO_COST).toLocaleString("en-US")} video generations`} />
         <StatCard
           label="Auto-reload"
           value={dev.autoReload ? "On" : "Off"}
-          valueClassName={dev.autoReload ? "text-primary" : undefined}
+          valueClassName={dev.autoReload ? "text-brand" : undefined}
           note={dev.autoReload ? `Below $${dev.autoReloadAt}, add $${dev.autoReloadTo}` : "Top up when low"}
           action={<StatAction onClick={onAutoReload}>{dev.autoReload ? "Edit" : "Set up"}</StatAction>}
         />
-        <StatCard label="Used" tag="Last 30 days" value={used.toLocaleString()} note={`${spent30.length.toLocaleString()} video generations`} />
-        <StatCard label="Added" tag="This month" value={addedThisMonth.toLocaleString()} note="Including bonus credits" />
+        <StatCard label="Used" tag="Last 30 days" value={used.toLocaleString("en-US")} note={`${spent30.length.toLocaleString("en-US")} video generations`} />
+        <StatCard label="Added" tag="This month" value={addedThisMonth.toLocaleString("en-US")} note="Including bonus credits" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,360px)]">
@@ -168,9 +168,9 @@ function UsageHistory({ activity }: { activity: Activity[] }) {
                   </p>
                   <p className="text-xs text-muted-foreground">{fmtDateTime(a.at)}</p>
                 </div>
-                <p className={cn("text-sm font-medium tabular-nums", a.kind !== "spent" && "text-primary")}>
+                <p className={cn("text-sm font-medium tabular-nums", a.kind !== "spent" && "text-brand")}>
                   {a.kind === "spent" ? "−" : "+"}
-                  {a.credits.toLocaleString()}
+                  {a.credits.toLocaleString("en-US")}
                 </p>
               </li>
             ))}

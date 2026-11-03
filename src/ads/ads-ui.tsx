@@ -108,7 +108,7 @@ export function AddFundsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="ad-amount">Amount</Label>
-          <div className={cn("flex h-11 items-center overflow-hidden rounded-2xl bg-input/50 focus-within:ring-3 focus-within:ring-ring/30", touched && error && "ring-3 ring-destructive/20")}>
+          <div className={cn("flex h-9 items-center overflow-hidden rounded-2xl bg-input/50 focus-within:ring-3 focus-within:ring-ring/30", touched && error && "ring-3 ring-destructive/20")}>
             <span className="pl-3 text-muted-foreground">$</span>
             <InputGroupInput
               id="ad-amount"
@@ -188,7 +188,7 @@ export function RatesDialog({ open, onOpenChange }: { open: boolean; onOpenChang
             </thead>
             <tbody>
               {CPM_RATES.map((r) => (
-                <tr key={r.code} className={cn("border-t border-foreground/5", r.code === mine && "bg-primary/5 font-medium")}>
+                <tr key={r.code} className={cn("border-t border-foreground/5", r.code === mine && "bg-brand/5 font-medium")}>
                   <td className="px-3 py-2">
                     {r.country}
                     {r.code === mine && <span className="ml-2 text-xs font-normal text-muted-foreground">You’re here</span>}
@@ -196,7 +196,7 @@ export function RatesDialog({ open, onOpenChange }: { open: boolean; onOpenChang
                   <td className="px-3 py-2 text-right tabular-nums">{usd(r.cpm)}</td>
                 </tr>
               ))}
-              <tr className={cn("border-t border-foreground/5", mine === "OTHER" && "bg-primary/5 font-medium")}>
+              <tr className={cn("border-t border-foreground/5", mine === "OTHER" && "bg-brand/5 font-medium")}>
                 <td className="px-3 py-2">All other countries</td>
                 <td className="px-3 py-2 text-right tabular-nums">{usd(OTHER_CPM)}</td>
               </tr>
@@ -227,7 +227,7 @@ export function PlatformField({
     <div className="flex flex-col gap-2">
       <Label htmlFor="pl-platform">Ad platform</Label>
       <Select value={platform} onValueChange={onPlatform}>
-        <SelectTrigger id="pl-platform" className="h-11! w-full">
+        <SelectTrigger id="pl-platform" className="h-9! w-full">
           <SelectValue placeholder="Choose where you’ll run it" />
         </SelectTrigger>
         <SelectContent>
@@ -308,7 +308,7 @@ export function NewPlacementDialog({
             <div className="flex flex-col gap-2">
               <Label htmlFor="pl-campaign">Campaign</Label>
               <Select value={campaign} onValueChange={setCampaign}>
-                <SelectTrigger id="pl-campaign" className="h-11! w-full">
+                <SelectTrigger id="pl-campaign" className="h-9! w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -339,14 +339,14 @@ export function NewPlacementDialog({
           <div className="flex flex-col gap-2">
             <Label htmlFor="pl-size">Size</Label>
             {flick ? (
-              <p className="flex h-11 items-center gap-2 rounded-2xl bg-muted/60 px-3 text-sm tabular-nums">
+              <p className="flex h-9 items-center gap-2 rounded-2xl bg-muted/60 px-3 text-sm tabular-nums">
                 <RatioGlyph size={flick.size} className="text-muted-foreground" />
                 {flick.size}
                 <span className="text-muted-foreground">· this Flick’s size</span>
               </p>
             ) : (
               <Select value={size} onValueChange={setSize}>
-                <SelectTrigger id="pl-size" className="h-11! w-full">
+                <SelectTrigger id="pl-size" className="h-9! w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -382,7 +382,7 @@ export function NewPlacementDialog({
   )
 }
 
-const edited = (t?: number) => (t ? new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "")
+const edited = (t?: number) => (t ? new Date(t).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "")
 
 /**
  * Pick a Flick of the placement's size. Large, with search by name and a date filter,
@@ -471,7 +471,7 @@ export function ReplaceFlickDialog({
                       aria-pressed={pick === f.id}
                       className={cn(
                         "flex w-full flex-col gap-1.5 rounded-xl p-1.5 text-left outline-none ring-1 ring-foreground/10 transition hover:ring-foreground/25 focus-visible:ring-2 focus-visible:ring-ring",
-                        pick === f.id && "ring-2 ring-primary hover:ring-primary",
+                        pick === f.id && "ring-2 ring-brand hover:ring-brand",
                       )}
                     >
                       <span className="relative block aspect-square overflow-hidden rounded-lg bg-muted">

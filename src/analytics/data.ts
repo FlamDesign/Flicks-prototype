@@ -1,3 +1,4 @@
+import * as fmt from "@/lib/format"
 import type { FlickRecord } from "@/library"
 import { cpmFor, countryName, CPM_RATES, type Campaign, type Placement } from "@/ads/ads"
 import type { Embed } from "@/embeds/embeds"
@@ -216,7 +217,7 @@ export function spanOf(v: DateFilterValue): Span {
 /** One day is charted by hour; anything longer by day. */
 export const hourly = (s: Span) => s.from === s.to
 
-const fmtDate = (day: number, opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" }) => dateOf(day).toLocaleDateString(undefined, opts)
+const fmtDate = (day: number, opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" }) => dateOf(day).toLocaleDateString("en-US", opts)
 export function spanName(s: Span, v?: DateFilterValue) {
   if (v?.preset === "today") return "Today"
   if (v?.preset === "7") return "Last 7 days"
@@ -232,7 +233,7 @@ export function spanLabel(s: Span) {
 
 /** Chart buckets: hours for one day, days otherwise. */
 export function buckets(s: Span) {
-  if (hourly(s)) return Array.from({ length: 24 }, (_, h) => new Date(2026, 0, 1, h).toLocaleTimeString(undefined, { hour: "numeric" }))
+  if (hourly(s)) return Array.from({ length: 24 }, (_, h) => new Date(2026, 0, 1, h).toLocaleTimeString("en-US", { hour: "numeric" }))
   return Array.from({ length: s.to - s.from + 1 }, (_, i) => fmtDate(s.from + i))
 }
 
@@ -328,18 +329,18 @@ function normCdf(z: number) {
 }
 
 // ---------- formatting ----------
-export const fmtInt = (n: number) => Math.round(n).toLocaleString()
-export const fmtCompact = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M` : n >= 10_000 ? `${Math.round(n / 1000)}K` : n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, "")}K` : String(Math.round(n)))
-export const fmtPct = (n: number, d = 1) => `${(n * 100).toFixed(d)}%`
-export const fmtUsd = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+export const fmtInt = fmt.int
+export const fmtCompact = fmt.compact
+export const fmtPct = fmt.pct
+export const fmtUsd = fmt.usd
 /** money that can get large: $4,021.33, then $188K, $1.2M */
-export const fmtUsdShort = (n: number) => (Math.abs(n) >= 1_000_000 ? `$${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M` : Math.abs(n) >= 10_000 ? `$${Math.round(n / 1000)}K` : fmtUsd(n))
+export const fmtUsdShort = fmt.usdShort
 export const fmtSec = (n: number) => `${n.toFixed(1)}s`
 /** total watch time, in the largest unit that reads well */
 export const fmtDuration = (s: number) => (s >= 36_000 ? `${fmtInt(s / 3600)} h` : s >= 3600 ? `${(s / 3600).toFixed(1)} h` : s >= 60 ? `${Math.round(s / 60)} min` : `${Math.round(s)}s`)
 export const ago = (t: number) => {
   const m = Math.max(0, Math.round((Date.now() - t) / 60_000))
-  return m < 1 ? "just now" : `${m} min ago`
+  return m < 1 ? "just now" : m < 60 ? `${m}m ago` : `${Math.round(m / 60)}h ago`
 }
 
 // ---------- a large account, to see every list at scale ----------

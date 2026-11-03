@@ -188,7 +188,7 @@ export function PromptChat({
       aria-label="Prompts"
       style={{ width }}
       // the preset's side-panel surface, so it reads as its own space
-      className="relative flex shrink-0 flex-col border-l bg-sidebar text-sidebar-foreground"
+      className="relative flex shrink-0 flex-col border-l bg-background"
     >
       {/* drag to resize; double-click resets */}
       <div
@@ -207,7 +207,7 @@ export function PromptChat({
         }}
         className="group/resize absolute inset-y-0 -left-[5px] z-20 w-2 cursor-col-resize outline-none"
       >
-        <span className="absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 bg-primary opacity-0 transition-opacity group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100 group-active/resize:opacity-100" />
+        <span className="absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 bg-brand opacity-0 transition-opacity group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100 group-active/resize:opacity-100" />
       </div>
       <div className="flex h-11 shrink-0 items-center gap-2 border-b pl-4 pr-2">
         <h2 className="text-sm font-medium">{title}</h2>
@@ -241,7 +241,7 @@ export function PromptChat({
             <TargetChip name={target.name} poster={target.poster} />
           </div>
         )}
-        <div data-composer className={cn("rounded-2xl transition-[opacity,box-shadow] duration-300 data-[flash]:ring-2 data-[flash]:ring-primary data-[flash]:ring-offset-2 data-[flash]:ring-offset-background", busy && "pointer-events-none opacity-60")} aria-disabled={busy}>
+        <div data-composer className={cn("rounded-2xl transition-[opacity,box-shadow] duration-300 data-[flash]:ring-2 data-[flash]:ring-brand data-[flash]:ring-offset-2 data-[flash]:ring-offset-background", busy && "pointer-events-none opacity-60")} aria-disabled={busy}>
           {composer}
         </div>
       </div>
@@ -264,7 +264,7 @@ export function TargetChip({ name, poster, removed, onClick }: { name: string; p
   )
   const cls = "inline-flex h-6 max-w-40 items-center gap-1.5 self-start rounded-md bg-muted px-1.5 text-xs font-medium text-foreground"
   return onClick ? (
-    <Button variant="ghost" size="xs" onClick={onClick} className={cn(cls, "hover:bg-muted/70")}>
+    <Button variant="ghost" size="xs" onClick={onClick} className={cn(cls, "hover:bg-muted/50")}>
       {body}
     </Button>
   ) : (
@@ -325,7 +325,7 @@ export function PromptSpotlight() {
       {/* everything else dims a little */}
       <div className="absolute rounded-[20px]" style={{ left: r.left - pad, top: r.top - pad, width: r.width + pad * 2, height: r.height + pad * 2, boxShadow: "0 0 0 9999px rgb(0 0 0 / 0.2)" }} />
       <span
-        className="absolute flex items-center gap-1.5 whitespace-nowrap rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground shadow-md animate-in slide-in-from-bottom-1 duration-200"
+        className="absolute flex items-center gap-1.5 whitespace-nowrap rounded-full bg-brand px-3 py-1 text-xs font-medium text-brand-foreground shadow-md animate-in slide-in-from-bottom-1 duration-200"
         style={{ left: r.left + r.width / 2, top: r.top - pad - 12, transform: "translate(-50%, -100%)" }}
       >
         {spot.label}

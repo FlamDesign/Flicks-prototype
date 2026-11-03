@@ -30,20 +30,25 @@ const Frame = ({ children, className }: { children: React.ReactNode; className?:
 )
 const Line = ({ className }: { className?: string }) => <Skeleton className={cn("h-3 rounded-full", className)} />
 
-/** Title, description and the filters on the right. */
-function ListHeader({ filters = 3, action }: { filters?: number; action?: boolean }) {
+/** Matches PageHeader: an optional trail, the title with its actions on the right, then the filter row. */
+function ListHeader({ filters = 3, action, crumbs, title = "w-36" }: { filters?: number; action?: boolean; crumbs?: boolean; title?: string }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-4">
-      <div className="space-y-2.5">
-        <Skeleton className="h-7 w-36 rounded-lg" />
-        <Line className="w-72 max-w-[70vw]" />
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-1.5">
+        {crumbs && <Line className="w-24" />}
+        <div className="flex min-h-9 items-center justify-between gap-4">
+          <Skeleton className={cn("h-7 rounded-lg", title)} />
+          {action && <Skeleton className="h-8 w-32 rounded-2xl" />}
+        </div>
       </div>
-      <div className="flex gap-2">
-        {Array.from({ length: filters }, (_, i) => (
-          <Skeleton key={i} className={cn("h-9 rounded-2xl", i === 0 ? "w-[220px] max-sm:hidden" : "w-[140px]")} />
-        ))}
-        {action && <Skeleton className="h-9 w-32 rounded-2xl" />}
-      </div>
+      {filters > 0 && (
+        <div className="flex gap-2">
+          {/* three: search, date, size (Projects, Flicks); two: date, size (Assets) */}
+          {(filters >= 3 ? ["w-[240px] max-sm:hidden", "w-[150px]", "w-[140px]"] : ["w-[150px]", "w-[140px]"]).slice(0, filters).map((w, i) => (
+            <Skeleton key={i} className={cn("h-8 rounded-2xl", w)} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -91,16 +96,8 @@ export function TableSkeleton({ rows = 5 }: { rows?: number }) {
 export function FlickPageSkeleton() {
   return (
     <Frame>
-      <div className="flex items-center justify-between gap-3">
-        <div className="space-y-2.5">
-          <Skeleton className="h-7 w-72 max-w-[60vw] rounded-lg" />
-          <Line className="w-56" />
-        </div>
-        <div className="flex gap-2">
-          <Skeleton className="h-9 w-24 rounded-2xl" />
-          <Skeleton className="size-9 rounded-2xl" />
-        </div>
-      </div>
+      <ListHeader crumbs filters={0} action title="w-72 max-w-[60vw]" />
+      <Line className="mt-2 w-56" />
       <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
         <div className="flex flex-col gap-6">
           <Skeleton className="h-[clamp(280px,56vh,520px)] w-full rounded-xl" />
@@ -120,10 +117,7 @@ export function FlickPageSkeleton() {
 export function DetailSkeleton({ stats = 3 }: { stats?: number }) {
   return (
     <Frame>
-      <div className="flex items-center justify-between gap-3">
-        <Skeleton className="h-7 w-80 max-w-[60vw] rounded-lg" />
-        <Skeleton className="size-9 rounded-2xl" />
-      </div>
+      <ListHeader crumbs filters={0} action title="w-80 max-w-[60vw]" />
       <div className={cn("mt-6 grid gap-3", stats === 4 ? "grid-cols-2 lg:grid-cols-4" : "grid-cols-3")}>
         {Array.from({ length: stats }, (_, i) => (
           <Skeleton key={i} className="h-[76px] rounded-2xl" />
@@ -152,11 +146,8 @@ export function DetailSkeleton({ stats = 3 }: { stats?: number }) {
 /** Title, stat cards, then two list cards: Credits, Ad Balance. */
 export function AccountSkeleton({ stats = 4 }: { stats?: number }) {
   return (
-    <div className="mx-auto w-full max-w-[1100px] px-4 py-8 md:px-8 md:py-10">
-      <div className="space-y-2.5">
-        <Skeleton className="h-7 w-40 rounded-lg" />
-        <Line className="w-64" />
-      </div>
+    <div className="mx-auto w-full max-w-[1280px] px-4 py-8 md:px-8 md:py-10">
+      <ListHeader filters={0} title="w-40" />
       <div className={cn("mt-6 grid gap-4", stats === 2 ? "sm:grid-cols-2" : "grid-cols-2 lg:grid-cols-4")}>
         {Array.from({ length: stats }, (_, i) => (
           <Skeleton key={i} className="h-[104px] rounded-2xl" />

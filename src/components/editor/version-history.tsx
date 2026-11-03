@@ -103,7 +103,7 @@ function Row<S>({ v, current, onRestore, onRename, onOpenFlick }: { v: Checkpoin
           <p className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
             <span className="truncate">As “{v.exported.name}”</span>
             <span aria-hidden>·</span>
-            <button type="button" onClick={() => onOpenFlick(v.exported!.flickId)} className="inline-flex shrink-0 items-center gap-0.5 rounded text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring">
+            <button type="button" onClick={() => onOpenFlick(v.exported!.flickId)} className="inline-flex shrink-0 items-center gap-0.5 rounded font-medium text-foreground underline underline-offset-2 outline-none hover:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring">
               View Flick
               <HugeiconsIcon icon={ArrowUpRight01Icon} className="size-3" />
             </button>

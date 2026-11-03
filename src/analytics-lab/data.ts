@@ -1,3 +1,4 @@
+import * as fmt from "@/lib/format"
 import type { FlickRecord } from "@/library"
 import type { Placement } from "@/ads/ads"
 import type { Embed } from "@/embeds/embeds"
@@ -261,10 +262,10 @@ function normCdf(z: number) {
 }
 
 // ---------- formatting ----------
-export const fmtInt = (n: number) => Math.round(n).toLocaleString()
-export const fmtCompact = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M` : n >= 10_000 ? `${Math.round(n / 1000)}K` : n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, "")}K` : String(Math.round(n)))
-export const fmtPct = (n: number, d = 1) => `${(n * 100).toFixed(d)}%`
-export const fmtUsd = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+export const fmtInt = fmt.int
+export const fmtCompact = fmt.compact
+export const fmtPct = fmt.pct
+export const fmtUsd = fmt.usd
 export const fmtSec = (n: number) => `${n.toFixed(1)}s`
 export const change = (cur: number, prev: number) => (prev > 0 ? (cur - prev) / prev : null)
 /** the period's first and last day, and the period before it */
@@ -272,4 +273,4 @@ export function periodLabel(range: number, offset = 0) {
   const to = DAYS - 1 - offset * range
   return `${dayLabel(to - range + 1)} – ${dayLabel(to)}`
 }
-export const dayLabel = (day: number) => new Date(Date.now() - (DAYS - 1 - day) * DAY_MS).toLocaleDateString(undefined, { month: "short", day: "numeric" })
+export const dayLabel = (day: number) => new Date(Date.now() - (DAYS - 1 - day) * DAY_MS).toLocaleDateString("en-US", { month: "short", day: "numeric" })

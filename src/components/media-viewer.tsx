@@ -114,7 +114,7 @@ export function MediaViewer({
           <aside aria-label="Details" className="flex w-[360px] shrink-0 flex-col gap-3 overflow-hidden rounded-2xl bg-card p-3 ring-1 ring-foreground/10">
             <div className="flex items-center justify-between pl-2">
               <p className="truncate text-sm font-medium">{ref ? ref.name : item.kind === "video" ? "Video" : "Image"}</p>
-              <Button variant="ghost" size="icon-sm" aria-label="Close" onClick={onClose} className="rounded-full">
+              <Button variant="ghost" size="icon-sm" aria-label="Close" onClick={onClose} className="">
                 <HugeiconsIcon icon={Cancel01Icon} className="size-4" />
               </Button>
             </div>
@@ -275,7 +275,7 @@ function Actions({ m, link, onDelete, onUse, useLabel = "Use" }: { m: ViewerMedi
     <div className="flex items-center gap-2">
       {onUse ? (
         <>
-          <Button className="h-10 flex-1 gap-2" onClick={onUse}>
+          <Button className="h-9 flex-1 gap-2" onClick={onUse}>
             <HugeiconsIcon icon={SparklesIcon} className="size-4" />
             {useLabel}
           </Button>
@@ -289,7 +289,7 @@ function Actions({ m, link, onDelete, onUse, useLabel = "Use" }: { m: ViewerMedi
           </Tooltip>
         </>
       ) : (
-        <Button className="h-10 flex-1 gap-2" onClick={save}>
+        <Button className="h-9 flex-1 gap-2" onClick={save}>
           <HugeiconsIcon icon={Download01Icon} className="size-4" />
           Download
         </Button>
@@ -326,7 +326,7 @@ function Step({ side, onClick }: { side: "left" | "right"; onClick: () => void }
       size="icon"
       aria-label={side === "left" ? "Previous" : "Next"}
       onClick={onClick}
-      className={cn("absolute inset-y-0 my-auto rounded-full border-white/20 bg-background/60 backdrop-blur-md", side === "left" ? "left-3" : "right-3")}
+      className={cn("absolute inset-y-0 my-auto border-white/20 bg-background/60 backdrop-blur-md", side === "left" ? "left-3" : "right-3")}
     >
       <HugeiconsIcon icon={side === "left" ? ArrowLeft01Icon : ArrowRight01Icon} className="size-4" />
     </Button>

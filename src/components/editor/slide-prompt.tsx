@@ -73,7 +73,7 @@ export function SlidePrompt({
         setDragging(false)
         addFiles(e.dataTransfer.files)
       }}
-      className={cn("rounded-2xl border bg-background p-2 shadow-sm", dragging && "border-primary ring-2 ring-primary/30")}
+      className={cn("rounded-2xl border bg-card p-2 shadow-sm", dragging && "border-brand ring-2 ring-brand/30")}
     >
       {media.ui}
 

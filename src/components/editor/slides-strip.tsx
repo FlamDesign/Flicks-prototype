@@ -185,7 +185,7 @@ export function SlidesStrip({
                   aria-label="Add variation"
                   disabled={locked}
                   onClick={onAdd}
-                  className="rounded-lg border border-dashed border-foreground/20 p-0 text-muted-foreground hover:border-foreground/40"
+                  className="border border-dashed border-foreground/20 p-0 text-muted-foreground hover:border-foreground/40"
                   style={{ width: w, height: h }}
                 >
                   <HugeiconsIcon icon={PlusSignIcon} className="size-4" />
@@ -319,9 +319,9 @@ function Thumb({
         onClick={onSelect}
         onDoubleClick={() => status === "done" && onPreview()}
         className={cn(
-          "relative overflow-hidden rounded-lg p-0 ring-1 ring-foreground/10 hover:ring-foreground/25",
+          "relative overflow-hidden rounded-lg p-0 ring-1 ring-foreground/10 hover:ring-foreground/20",
           status === "empty" && "border border-dashed border-foreground/20 bg-muted/50 ring-0",
-          active && "ring-2 ring-primary ring-offset-2 ring-offset-background hover:ring-primary",
+          active && "ring-2 ring-brand ring-offset-2 ring-offset-background hover:ring-brand",
           arrived && "ready-glow",
         )}
         style={{ width, height }}
@@ -364,7 +364,7 @@ function Thumb({
                   className={cn(
                     "size-5 rounded-md shadow-sm ring-1 ring-foreground/10",
                     // a soft highlight, not a primary button
-                    start ? "cursor-default bg-primary/10 text-primary ring-primary/30 hover:bg-primary/10" : "bg-background/90 backdrop-blur-sm hover:bg-background",
+                    start ? "cursor-default bg-brand/10 text-brand ring-brand/30 hover:bg-brand/10" : "bg-background/90 backdrop-blur-sm hover:bg-background",
                   )}
                 >
                   <SolidPlay className="size-2.5" />

@@ -105,7 +105,7 @@ export function AppSidebar({
         </button>
       </div>
       {onSearch && (
-        <Button variant="outline" onClick={onSearch} className="h-9 justify-start gap-2 rounded-xl bg-transparent px-3 font-normal text-muted-foreground shadow-none">
+        <Button variant="outline" onClick={onSearch} className="h-9 justify-start gap-2 bg-transparent px-3 font-normal text-muted-foreground shadow-none">
           <HugeiconsIcon icon={Search01Icon} className="size-4" />
           Search
           <KbdGroup className="ml-auto">
@@ -137,10 +137,10 @@ export function AppSidebar({
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="h-12 w-full justify-start gap-2 rounded-lg px-2 text-left data-[state=open]:bg-sidebar-accent">
+          <Button variant="ghost" className="h-9 w-full justify-start gap-2 px-2 text-left data-[state=open]:bg-sidebar-accent">
             <Avatar className="size-8 rounded-lg after:rounded-lg">
               {photo && <AvatarImage src={photo} alt="" className="rounded-lg object-cover" />}
-              <AvatarFallback className="rounded-lg bg-primary text-xs font-semibold text-primary-foreground">{name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}</AvatarFallback>
+              <AvatarFallback className="rounded-lg bg-brand text-xs font-semibold text-brand-foreground">{name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}</AvatarFallback>
             </Avatar>
             <span className="grid min-w-0 flex-1 text-left text-sm leading-tight">
               <span className="truncate font-medium">{name}</span>

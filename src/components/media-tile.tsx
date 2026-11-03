@@ -44,7 +44,7 @@ export function MediaTile({
       className={cn(
         "group/tile relative w-full overflow-hidden rounded-xl bg-muted ring-1 ring-foreground/10 transition-shadow duration-200 group-hover:ring-foreground/20 hover:ring-foreground/20",
         aspect,
-        selected && "ring-2 ring-primary hover:ring-primary",
+        selected && "ring-2 ring-brand hover:ring-brand",
         className,
       )}
     >

@@ -837,7 +837,11 @@ const SECTIONS: Section[] = [
             "The AI shows \u201cThinking\u2026\u201d (or what it\u2019s doing) with a soft shimmer; its replies fade in a paragraph at a time.",
             "Buttons press in slightly when clicked. Pictures fade in as they load, over a muted frame.",
             "Light, Dark or System is remembered in the browser, applied before the page shows, and switching it cross-fades the page.",
-            "Empty lists show a small drawing, one line and one action. Highlighted text and the text cursor use the primary colour.",
+            "Empty lists show a small drawing, one line and one action. Highlighted text and the text cursor use the brand orange.",
+            "Colour: surfaces and buttons are neutral (near-black buttons in light mode, near-white in dark). The brand orange marks only what\u2019s selected, in progress, AI or the brand itself. One filled button per screen; everything else is outline or ghost.",
+            "Dark mode is a soft charcoal in steps: the sidebar darkest, then the page, then cards and menus. In the editor the panels sit on the page colour and the workspace behind the canvas is a step deeper.",
+            "Every page has the same header: a small trail back when it\u2019s a detail page, the title (with a count or size beside it), its actions on the right, then one row of search and filters. Lists show \u22ef on every card; rows and cards share one hover.",
+            "Numbers and dates read the same everywhere: 9,500 · 656K · 1.2M, $4,212.00, 2.4%, Oct 21 (the year only when it isn\u2019t this year), and 5m / 3h ago.",
           ]}
         />
         <H>How Flicks work</H>

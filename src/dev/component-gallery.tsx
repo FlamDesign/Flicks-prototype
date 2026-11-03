@@ -2,6 +2,7 @@ import { useMediaAdd } from "@/components/media-picker"
 import { SmallScreenNotice } from "@/components/small-screen"
 import { MediaTile, TileBadge } from "@/components/media-tile"
 import { Spinner } from "@/components/ui/spinner"
+import { PageHeader } from "@/components/page-kit"
 import { EmptyState } from "@/components/empty-state"
 import { GeneratingGradient } from "@/components/editor/generation-progress"
 import { Kbd, KbdGroup } from "@/components/ui/kbd"
@@ -603,10 +604,26 @@ const ENTRIES: Entry[] = [
     ),
   },
   {
+    name: "Page header",
+    kind: "UI",
+    about: "The one header on every page: an optional trail back, the title with a count or tag, actions on the right, then the search and filter row.",
+    render: () => (
+      <div className="w-full max-w-2xl rounded-xl p-4 ring-1 ring-foreground/10">
+        <PageHeader
+          crumbs={[{ label: "Campaigns", onClick: () => {} }]}
+          title="Holiday 2026"
+          count="3 placements"
+          actions={<Button>New placement</Button>}
+          toolbar={<><Input placeholder="Search" className="w-48" /><Button variant="outline">All sizes</Button></>}
+        />
+      </div>
+    ),
+  },
+  {
     name: "Spinner",
     kind: "Feedback",
     about: "Shows work in progress inside buttons and rows.",
-    render: () => <div className="flex items-center gap-4"><Spinner /><Spinner className="size-6 text-primary" /><Button disabled size="sm"><Spinner />Saving</Button></div>,
+    render: () => <div className="flex items-center gap-4"><Spinner /><Spinner className="size-6 text-brand" /><Button disabled size="sm"><Spinner />Saving</Button></div>,
   },
   {
     name: "Small screen note",

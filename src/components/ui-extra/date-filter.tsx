@@ -21,7 +21,7 @@ const PRESETS: { value: DatePreset; label: string }[] = [
   { value: "30", label: "Last 30 days" },
 ]
 const DAY = 86_400_000
-const short = (d: Date) => d.toLocaleDateString(undefined, { month: "short", day: "numeric" })
+const short = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
 
 /** The trigger's text: the preset, or the range like "Oct 3 – Oct 9". */
 export const dateFilterLabel = (v: DateFilterValue) => {

@@ -1,4 +1,5 @@
 import { EmptyState } from "@/components/empty-state"
+import { PAGE, PageHeader } from "@/components/page-kit"
 import { useEffect, useMemo, useState } from "react"
 import { MediaTile, TileBadge } from "@/components/media-tile"
 import { CardsSkeleton, Loading, PendingButton } from "@/components/page-skeletons"
@@ -96,10 +97,10 @@ const dayLabel = (t: number) => {
   const today = new Date()
   if (dayKey(t) === today.toDateString()) return "Today"
   if (dayKey(t) === new Date(Date.now() - DAY).toDateString()) return "Yesterday"
-  return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", ...(d.getFullYear() !== today.getFullYear() && { year: "numeric" }) })
+  return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", ...(d.getFullYear() !== today.getFullYear() && { year: "numeric" }) })
 }
-const timeLabel = (t: number) => new Date(t).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
-const fullLabel = (t: number) => `${new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}, ${timeLabel(t)}`
+const timeLabel = (t: number) => new Date(t).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+const fullLabel = (t: number) => `${new Date(t).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}, ${timeLabel(t)}`
 
 const fileName = (a: Asset) => `flicks-video-${a.id}.mp4`
 
@@ -175,25 +176,25 @@ export function AssetsPage({ onCreate, onUse }: { onCreate: () => void; onUse: (
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1280px] px-4 py-8 md:px-8 md:py-10">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-baseline gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight">Assets</h1>
-          {assets.length > 0 && <span className="text-sm text-muted-foreground">{shown.length === 1 ? "1 video" : `${shown.length} videos`}</span>}
-        </div>
-        {assets.length > 0 && (
-          <div className="flex gap-2">
-            <DateFilter value={dates} onChange={setDates} />
-            <Select value={sizeFilter} onValueChange={setSizeFilter}>
-              <SelectTrigger className="w-[150px]" aria-label="Size"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All sizes</SelectItem>
-                {sizes.map((sz) => <SelectItem key={sz} value={sz}><span className="tabular-nums">{sz}</span></SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-      </div>
+    <div className={PAGE}>
+      <PageHeader
+        title="Assets"
+        count={assets.length > 0 ? (shown.length === 1 ? "1 video" : `${shown.length} videos`) : undefined}
+        toolbar={
+          assets.length > 0 && (
+            <>
+              <DateFilter value={dates} onChange={setDates} className="w-[150px]" />
+              <Select value={sizeFilter} onValueChange={setSizeFilter}>
+                <SelectTrigger className="w-[140px]" aria-label="Size"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All sizes</SelectItem>
+                  {sizes.map((sz) => <SelectItem key={sz} value={sz}><span className="tabular-nums">{sz}</span></SelectItem>)}
+                </SelectContent>
+              </Select>
+            </>
+          )
+        }
+      />
 
       {/* filtering fetches again */}
       <Loading k={[sizeFilter, dates]} skipFirst skeleton={<div className="mt-6"><CardsSkeleton count={12} cols="grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6" aspect="aspect-[9/16]" lines={0} /></div>}>

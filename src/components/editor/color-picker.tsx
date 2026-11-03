@@ -97,7 +97,7 @@ export function ColorPanel({ value, onChange, onPicking }: { value: string; onCh
               variant="outline"
               size="icon-sm"
               aria-label="Pick colour from canvas"
-              className="size-8 shrink-0 rounded-lg"
+              className="size-8 shrink-0"
               onClick={async () => {
                 onPicking?.(true)
                 document.body.dataset.picking = "1"
@@ -113,7 +113,7 @@ export function ColorPanel({ value, onChange, onPicking }: { value: string; onCh
           </TooltipTrigger>
           <TooltipContent>Pick from canvas</TooltipContent>
         </Tooltip>
-        <label className="flex h-8 min-w-0 flex-1 items-center gap-1.5 rounded-lg px-2 text-sm ring-1 ring-foreground/10 focus-within:ring-2 focus-within:ring-ring/50">
+        <label className="flex h-8 min-w-0 flex-1 items-center gap-1.5 rounded-2xl px-2.5 text-sm ring-1 ring-foreground/10 focus-within:ring-2 focus-within:ring-ring/50">
           <span className="size-4 shrink-0 rounded-[4px] ring-1 ring-foreground/15" style={{ background: swatchBg(toHex(c)) }} />
           <span className="text-muted-foreground">#</span>
           <InputGroupInput
@@ -129,7 +129,7 @@ export function ColorPanel({ value, onChange, onPicking }: { value: string; onCh
             className="w-full min-w-0 bg-transparent font-mono text-sm uppercase px-0"
           />
         </label>
-        <label className="flex h-8 w-[4.5rem] items-center gap-0.5 rounded-lg px-2 text-sm ring-1 ring-foreground/10 focus-within:ring-2 focus-within:ring-ring/50">
+        <label className="flex h-8 w-[4.5rem] items-center gap-0.5 rounded-2xl px-2.5 text-sm ring-1 ring-foreground/10 focus-within:ring-2 focus-within:ring-ring/50">
           <InputGroupInput
             aria-label="Opacity percent"
             inputMode="numeric"

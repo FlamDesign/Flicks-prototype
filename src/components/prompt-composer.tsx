@@ -154,7 +154,7 @@ export function PromptComposer({
         className={cn(
           "relative w-full rounded-3xl border bg-background p-3 shadow-lg transition-[box-shadow,border-color] duration-300 focus-within:border-foreground/20 focus-within:shadow-xl",
           flash && "ring-2 ring-ring ring-offset-2 ring-offset-transparent",
-          dragging && "border-primary ring-2 ring-primary/30",
+          dragging && "border-brand ring-2 ring-brand/30",
         )}
       >
         {media.ui}
@@ -169,7 +169,7 @@ export function PromptComposer({
               <Badge variant="secondary" className="h-7 gap-1.5 pl-1 pr-1 font-medium">
                 {template.image && <img loading="lazy" decoding="async" src={template.image} alt="" className="size-5 rounded-lg object-cover" />}
                 {template.title}
-                <Button variant="ghost" size="icon-xs" className="size-5" onClick={onClearTemplate} aria-label="Remove template">
+                <Button variant="ghost" size="icon-xs" className="size-6" onClick={onClearTemplate} aria-label="Remove template">
                   <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
                 </Button>
               </Badge>
@@ -245,7 +245,7 @@ export function PromptComposer({
                     variant="outline"
                     className={cn(
                       "gap-1.5 pl-3 pr-2 font-normal transition-all duration-300",
-                      sizeFlash && "border-primary bg-primary/10 ring-2 ring-primary/30",
+                      sizeFlash && "border-brand bg-brand/10 ring-2 ring-brand/30",
                     )}
                     aria-label={`Size: ${size} ${sizeInfo?.label ?? ""}`}
                   >
@@ -407,7 +407,7 @@ export function ReferenceThumb({ r, onRemove, onRetry, onOpen }: { r: Reference;
             size="icon-xs"
             onClick={onRemove}
             aria-label={`Remove ${r.name}`}
-            className={cn("absolute -right-1.5 -top-1.5 size-5 rounded-full shadow-sm ring-1 ring-foreground/10 transition-opacity focus-visible:opacity-100", r.failed ? "opacity-100" : "opacity-0 group-hover/thumb:opacity-100")}
+            className={cn("absolute -right-1.5 -top-1.5 size-6 shadow-sm ring-1 ring-foreground/10 transition-opacity focus-visible:opacity-100", r.failed ? "opacity-100" : "opacity-0 group-hover/thumb:opacity-100")}
           >
             <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
           </Button>

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react"
+import { PAGE, PageHeader } from "@/components/page-kit"
 import { PendingButton } from "@/components/page-skeletons"
 import { createPortal } from "react-dom"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Add01Icon, ArrowRight01Icon, ArrowUpRight01Icon, Copy01Icon, Delete02Icon, GitForkIcon, LockIcon, MoreHorizontalIcon, PencilEdit01Icon, Tick02Icon } from "@hugeicons/core-free-icons"
+import { Add01Icon, ArrowUpRight01Icon, Copy01Icon, Delete02Icon, GitForkIcon, LockIcon, MoreHorizontalIcon, PencilEdit01Icon, Tick02Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -21,7 +22,7 @@ import { NewEmbedDialog } from "@/embeds/embeds-ui"
 import { cn } from "@/lib/utils"
 import { PlaceAnalyticsCard } from "@/analytics/place-analytics-card"
 
-const dateLabel = (t: number) => new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric" })
+const dateLabel = (t: number) => new Date(t).toLocaleDateString("en-US", { month: "short", day: "numeric" })
 const ctr = (clicks: number, views: number) => (views ? `${((clicks / views) * 100).toFixed(1)}%` : "—")
 const range = (h: EmbedHistory) => `${dateLabel(h.from)} – ${dateLabel(h.to ?? h.from)}`
 /** Placeholder guides; the docs come later. */
@@ -40,43 +41,35 @@ export function EmbedsPage({ openEmbed, onRemixFlick, onOpenFlick }: { openEmbed
   const current = list.find((e) => e.id === view)
 
   return (
-    <div className="mx-auto w-full max-w-[1280px] px-4 py-8 md:px-8 md:py-10">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        {current ? (
-          <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 text-xl font-medium tracking-tight sm:text-2xl">
-            <button type="button" onClick={() => setView(null)} className="-ml-1 rounded-md px-1 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
-              Embeds
-            </button>
-            <HugeiconsIcon icon={ArrowRight01Icon} className="size-5 shrink-0 text-muted-foreground" />
-            <span className="truncate px-1" aria-current="page">
-              {current.name}
-            </span>
+    <div className={PAGE}>
+      <PageHeader
+        crumbs={current ? [{ label: "Embeds", onClick: () => setView(null) }] : undefined}
+        title={current ? current.name : "Embeds"}
+        titleExtra={
+          current && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Badge variant="secondary" tabIndex={0} className="ml-1 shrink-0 gap-1 font-normal tabular-nums">
+                <Badge variant="secondary" tabIndex={0} className="shrink-0 gap-1 font-normal tabular-nums">
                   <HugeiconsIcon icon={LockIcon} className="size-3" />
                   {current.size}
                 </Badge>
               </TooltipTrigger>
               <TooltipContent>Fixed when the embed was made</TooltipContent>
             </Tooltip>
-          </nav>
-        ) : (
-          <div className="space-y-1">
-            <h1 className="text-2xl font-semibold tracking-tight">Embeds</h1>
-            <p className="text-sm text-muted-foreground">Create an embed to show Flick on your website. You can replace the Flick in embed any time.</p>
-          </div>
-        )}
-        <div className="flex items-center gap-2">
-          <div ref={setActionsEl} className="contents" />
-          {!current && (
-            <Button className="gap-1.5" onClick={() => setCreating(true)}>
-              <HugeiconsIcon icon={Add01Icon} className="size-4" />
-              New embed
-            </Button>
-          )}
-        </div>
-      </div>
+          )
+        }
+        actions={
+          <>
+            <div ref={setActionsEl} className="contents" />
+            {!current && (
+              <Button className="gap-1.5" onClick={() => setCreating(true)}>
+                <HugeiconsIcon icon={Add01Icon} className="size-4" />
+                New embed
+              </Button>
+            )}
+          </>
+        }
+      />
 
       <div className="mt-6">
         {current ? (
@@ -85,7 +78,7 @@ export function EmbedsPage({ openEmbed, onRemixFlick, onOpenFlick }: { openEmbed
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {list.map((e) => (
               <li key={e.id}>
-                <button type="button" onClick={() => setView(e.id)} className="flex w-full flex-col gap-2.5 rounded-2xl p-2 text-left outline-none ring-1 ring-foreground/10 transition hover:ring-foreground/25 focus-visible:ring-2 focus-visible:ring-ring">
+                <button type="button" onClick={() => setView(e.id)} className="flex w-full flex-col gap-2.5 rounded-2xl p-2 text-left outline-none ring-1 ring-foreground/10 transition hover:ring-foreground/20 focus-visible:ring-2 focus-visible:ring-ring">
                   <span className="relative grid aspect-square place-items-center overflow-hidden rounded-xl bg-muted">
                     {e.flick ? <img loading="lazy" decoding="async" src={e.flick.image} alt="" className="absolute inset-0 size-full object-cover" /> : <span className="text-xs text-muted-foreground">No Flick yet</span>}
                     <span className="absolute bottom-2 left-2 rounded-md bg-black/50 px-1.5 py-0.5 text-xs font-medium tabular-nums text-white backdrop-blur-sm">{e.size}</span>
@@ -402,7 +395,7 @@ function EmbedView({ e, actionsEl, onDeleted, onRemixFlick, onOpenFlick }: { e: 
             <section className="flex flex-col gap-1 rounded-2xl p-4 ring-1 ring-foreground/10">
               <h2 className="pb-1 text-sm font-medium">Learn more about embeds</h2>
               {LEARN_LINKS.map((l) => (
-                <a key={l} href="#" onClick={(ev) => ev.preventDefault()} className="-mx-2 flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm text-primary outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring">
+                <a key={l} href="#" onClick={(ev) => ev.preventDefault()} className="-mx-2 flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring">
                   {l}
                   <HugeiconsIcon icon={ArrowUpRight01Icon} className="size-4 shrink-0" />
                 </a>
