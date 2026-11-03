@@ -681,7 +681,7 @@ const SECTIONS: Section[] = [
         <UL
           items={[
             "Shares one frame with Account and Ad Balance: title, description and the main action (Get credits) top right, four stat cards (Balance, Auto-reload, Used, Added), then Usage history (spent, added, refunded, granted; filter by type and the shared date filter, default Last 30 days; 10 at a time) beside Invoices (each downloadable).",
-            "Get credits: choose an amount; continue to payment. A typical video (1080×1920, 8 seconds) is 48 credits.",
+            "Get credits: a calm dialog (“Credits pay for AI video generation.”): the amount large, its credits and about how many videos under it (with “includes N bonus” from $1,000), a slider ($100 to $10,000), quick amounts ($200, $500, $1,000 +10%, $2,500 +10%), one muted line on the 10% bonus, then Auto-reload (On/Off) and Continue to payment, with Contact sales beside it. Amber is not used here. A typical video (1080×1920, 8 seconds) is 48 credits.",
             "Auto-reload: top up when credits drop below a chosen amount.",
           ]}
         />

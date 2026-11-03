@@ -4,7 +4,6 @@ import { PendingButton } from "@/components/page-skeletons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   SparklesIcon,
-  GiftIcon,
   WalletAdd02Icon,
   ArrowRight01Icon,
   Tick02Icon,
@@ -148,7 +147,6 @@ function BuyCreditsDialog({
 
   const amount = STOPS[i]
   const { total, bonus } = creditsFor(amount)
-  const firstBonusStop = BONUS_FROM_USD
 
   const change = (o: boolean) => {
     if (!o) {
@@ -178,38 +176,16 @@ function BuyCreditsDialog({
           <>
             <DialogHeader>
               <DialogTitle>Get credits</DialogTitle>
-              <DialogDescription>Credits are used for AI video generation.</DialogDescription>
+              <DialogDescription>Credits pay for AI video generation.</DialogDescription>
             </DialogHeader>
-
-            {/* Offer first: nudge below the threshold, confirmation once it applies (same height, no layout shift) */}
-            {bonus > 0 ? (
-              <div className="flex h-11 items-center gap-3 rounded-xl border border-transparent bg-brand/10 px-3 text-sm">
-                <HugeiconsIcon icon={GiftIcon} className="size-4 shrink-0 text-brand" />
-                <span className="flex-1 font-medium">{BONUS_RATE * 100}% bonus applied</span>
-                <span className="font-semibold tabular-nums text-brand">+{bonus.toLocaleString("en-US")} credits</span>
-              </div>
-            ) : (
-              <div className="flex h-11 items-center gap-3 rounded-xl border border-dashed border-brand/40 px-3 text-sm">
-                <HugeiconsIcon icon={GiftIcon} className="size-4 shrink-0 text-brand" />
-                <span className="flex-1">
-                  Get <span className="font-medium">{BONUS_RATE * 100}% extra credits</span> on {usd(BONUS_FROM_USD)}+
-                </span>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="-mr-1 h-7 px-2.5 text-brand hover:text-brand"
-                  onClick={() => setI(STOPS.indexOf(firstBonusStop))}
-                >
-                  Try {usd(firstBonusStop)}
-                </Button>
-              </div>
-            )}
 
             <div className="space-y-4">
               <div>
                 <p className="text-3xl font-semibold tabular-nums tracking-tight">{usd(amount)}</p>
                 <p className="pt-1 text-sm text-muted-foreground tabular-nums">
-                  {total.toLocaleString("en-US")} credits · about {plural(videos(total), "video generation")}
+                  {total.toLocaleString("en-US")} credits
+                  {bonus > 0 && <span className="text-foreground"> (includes {bonus.toLocaleString("en-US")} bonus)</span>}
+                  {" "}· about {plural(videos(total), "video")}
                 </p>
               </div>
 
@@ -245,11 +221,12 @@ function BuyCreditsDialog({
                       onClick={() => setI(STOPS.indexOf(v))}
                     >
                       {usd(v)}
-                      {v >= BONUS_FROM_USD && <span className="text-xs font-semibold text-brand">+{BONUS_RATE * 100}%</span>}
+                      {v >= BONUS_FROM_USD && <span className="text-xs text-muted-foreground">+{BONUS_RATE * 100}%</span>}
                     </Button>
                   )
                 })}
               </div>
+              <p className="text-xs text-muted-foreground">{BONUS_RATE * 100}% extra credits on {usd(BONUS_FROM_USD)} or more.</p>
             </div>
 
             <Separator />
@@ -259,17 +236,12 @@ function BuyCreditsDialog({
               onClick={onAutoTopUp}
               className="-my-2 -mx-2 h-auto justify-start gap-3 px-2 py-2 text-left font-normal"
             >
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
-                <HugeiconsIcon icon={WalletAdd02Icon} className="size-4" />
-              </span>
               <span className="flex-1">Auto-reload</span>
-              <span className={cn("text-sm font-medium", autoTopUp.enabled ? "text-brand" : "text-muted-foreground")}>
+              <span className={cn("text-sm", autoTopUp.enabled ? "font-medium text-foreground" : "text-muted-foreground")}>
                 {autoTopUp.enabled ? "On" : "Off"}
               </span>
               <HugeiconsIcon icon={ArrowRight01Icon} className="size-4 text-muted-foreground" />
             </Button>
-
-            <Separator />
 
             <DialogFooter className="items-center sm:justify-between">
               <p className="text-sm text-muted-foreground">
