@@ -1,6 +1,5 @@
 import { EmptyState } from "@/components/empty-state"
 import { useMemo, useState } from "react"
-import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { TemplateCard } from "@/components/template-card"
@@ -24,10 +23,10 @@ export function TemplateGallery({ onUse, saved = [] }: { onUse: (t: Template) =>
 
 
   return (
-    <Card className="relative py-5 shadow-lg">
-      <CardContent>
+    <section className="relative px-3 md:px-5">
+      <div>
         <div className="flex min-h-8 flex-wrap items-center justify-between gap-3">
-          <h2 className="text-base font-medium">Start with templates</h2>
+          <h2 className="text-lg font-semibold tracking-tight">Start with templates</h2>
           {all.length > 0 && <div className="flex gap-2">
             <Select value={industry} onValueChange={setIndustry}>
               <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
@@ -68,9 +67,9 @@ export function TemplateGallery({ onUse, saved = [] }: { onUse: (t: Template) =>
           )}
           </Loading>
         </div>
-      </CardContent>
+      </div>
 
-    </Card>
+    </section>
   )
 }
 

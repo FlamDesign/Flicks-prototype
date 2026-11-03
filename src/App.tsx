@@ -336,7 +336,7 @@ export default function App() {
           </header>
           <div
             ref={scroller}
-            className="relative min-h-0 flex-1 overflow-y-auto rounded-2xl border bg-background"
+            className="relative min-h-0 flex-1 overflow-y-auto rounded-2xl border border-border/60 bg-background shadow-sm"
           >
             {page === "Template" && previewTemplate ? (
               <Suspense fallback={<DetailSkeleton />}><TemplatePreview t={previewTemplate} onBack={() => setPage("Create")} onUse={useTemplate} onOpen={openTemplate} /></Suspense>
@@ -411,21 +411,14 @@ export default function App() {
               </Loaded>
             ) : (
             <>
-            {/* Hero */}
-            <section className="hero-mesh grain relative overflow-hidden px-4 pb-24 pt-14 md:pt-20">
-              <div aria-hidden className="absolute inset-0 overflow-hidden">
-                <div className="blob blob-1" />
-                <div className="blob blob-2" />
-                <div className="blob blob-3" />
-                <div className="blob blob-4" />
-              </div>
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-b from-transparent to-background" />
+            {/* Hero: calm warm page, the prompt is the one focal point */}
+            <section className="relative px-4 pb-20 pt-16 md:pt-24">
               <div className="relative mx-auto flex max-w-[760px] flex-col items-center gap-7">
                 <div className="space-y-3 text-center">
-                  <h1 className="text-balance text-3xl font-semibold tracking-tight md:text-4xl">
+                  <h1 className="text-balance text-4xl font-semibold tracking-tighter md:text-5xl">
                     Hey {firstName}, let’s start with a video
                   </h1>
-                  <p className="text-sm text-foreground/70">Describe it, add photos or videos, and make variations next.</p>
+                  <p className="text-sm text-muted-foreground md:text-base">Describe it, add photos or videos, and make variations next.</p>
                 </div>
                 <PromptComposer
                   credits={credits}
@@ -455,11 +448,11 @@ export default function App() {
                 {/* starter ideas: fill the box with an example to edit (hidden once something is typed) */}
                 <div className={cn("flex flex-wrap justify-center gap-2 transition-opacity duration-200", prompt.trim() && "pointer-events-none opacity-0")} aria-hidden={!!prompt.trim()}>
                   {STARTERS.map((s) => (
-                    <Button key={s.label} variant="outline" size="sm" className="border-foreground/15 bg-background/60 font-normal shadow-none backdrop-blur-sm hover:bg-background" onClick={() => setPrompt(s.prompt)}>
+                    <Button key={s.label} variant="secondary" size="sm" className="font-normal" onClick={() => setPrompt(s.prompt)}>
                       {s.label}
                     </Button>
                   ))}
-                  <Button variant="ghost" size="sm" onClick={() => setDev({ featureIntro: true })} className="gap-1.5 rounded-full font-normal text-foreground/70">
+                  <Button variant="ghost" size="sm" onClick={() => setDev({ featureIntro: true })} className="gap-1.5 font-normal text-muted-foreground">
                     <HugeiconsIcon icon={HelpCircleIcon} className="size-4" />
                     How Flicks work
                   </Button>
@@ -477,7 +470,7 @@ export default function App() {
             </section>
 
             {/* Templates sheet, pulled up so the first row sits above the fold */}
-            <section id="templates" className="relative -mt-12 scroll-mt-4 px-3 pb-3 md:px-4 md:pb-4">
+            <section id="templates" className="relative scroll-mt-4 px-3 pb-3 md:px-4 md:pb-4">
               <TemplateGallery onUse={openTemplate} saved={savedTemplates} />
             </section>
             </>

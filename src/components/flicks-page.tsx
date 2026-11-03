@@ -209,7 +209,7 @@ function LibraryList({
         {/* searching or filtering fetches again */}
         <Loading k={[query.trim(), size, dates]} skipFirst skeleton={<CardsSkeleton count={8} cols="grid-cols-2 gap-x-4 sm:grid-cols-3 lg:grid-cols-4" />}>
         {list.length ? (
-          <div className="grid grid-cols-2 gap-x-4 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-x-6 sm:grid-cols-3 lg:grid-cols-4">
             {list.map((it) => (
               <Card key={it.id} it={it} when={when(it.at, now)} whenTitle={whenTitle(it.at)} onOpen={() => onOpen(it)} menu={menu(it)} warm={warm} />
             ))}

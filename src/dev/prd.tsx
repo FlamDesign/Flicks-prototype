@@ -208,8 +208,9 @@ const SECTIONS: Section[] = [
         <H>Prompt composer</H>
         <UL
           items={[
+            "A calm warm page with a large greeting by first name and one line under it; the prompt box is the one focal point (no background effects).",
             "A large text box (16px text, three lines tall to start): “Describe your video. Type @ to mention a photo or element”. \u2318\u21b5 (Ctrl \u21b5) generates; the Generate tooltip shows the shortcut.",
-            "Under the box: starter ideas (Product launch, Colourway variations, Holiday promo, Social teaser) that fill the box with an example to edit, then How Flicks work. The ideas fade out once something is typed.",
+            "Under the box: starter ideas as soft stone chips (Product launch, Colourway variations, Holiday promo, Social teaser) that fill the box with an example to edit, then How Flicks work. The ideas fade out once something is typed.",
             "Image references: add images and tag each as Packshot or product photo, Character (model or mascot), or Background or setting. Uploads show progress. No limit: the row scrolls sideways when full (no scrollbar; trackpad, mouse wheel or shift-scroll).",
             "Upload problems (same in every prompt box and in the image uploader): only JPG, PNG, WebP or GIF up to 20 MB are taken. Anything else is not added and a toast says why (\u201cbrief.pdf can\u2019t be uploaded \u00b7 Use JPG, PNG, WebP or GIF images.\u201d or \u201csofa.png is too large \u00b7 Images can be up to 20 MB.\u201d).",
             "An upload that fails stays in place, greyed with a red tint and a retry button in the middle (\u201cCouldn\u2019t upload. Click to retry.\u201d), with \u00d7 to remove. A toast (\u201cCouldn\u2019t upload sofa.png\u201d, or \u201c3 images didn\u2019t upload\u201d for a batch) has Retry / Retry all. In a prompt box a red line under the images repeats it with Retry, and Generate waits until they\u2019re retried or removed. A failed upload can\u2019t be added to the canvas.",
@@ -254,7 +255,7 @@ const SECTIONS: Section[] = [
         <H>Templates</H>
         <UL
           items={[
-            "“Start with templates” gallery below the composer, filterable by industry and size. Square (1:1) cards, 4 to a row on wide screens (3 on medium, 2 on small). 13 sample templates cover every size and nine industries (Home & living, Travel, Fashion, Footwear, Luxury, Sports & fitness, Electronics, Retail, Food & beverage); using one opens the editor with the matching product\u2019s sample videos.",
+            "“Start with templates” gallery below the composer, sitting directly on the page (no card around it), filterable by industry and size. Square (1:1) cards, 4 to a row on wide screens (3 on medium, 2 on small). 13 sample templates cover every size and nine industries (Home & living, Travel, Fashion, Footwear, Luxury, Sports & fitness, Electronics, Retail, Food & beverage); using one opens the editor with the matching product\u2019s sample videos.",
             "Brand templates come first: GAP (Fashion, 1:1), Diageo, Little Caesars, General Mills (Food & beverage, 1:1) and Modelo (Food & beverage, 9:16). Each is a complete project from real campaign videos: three products with the reference video included in the Flick, product thumbnails in the strip, the brand’s logo, colours and closest editor fonts, and five feeds per product (title, subtitle, price, cta, cta-link) holding real names, prices and links. Alcohol templates carry “Please drink responsibly.”",
             "Your templates (saved by the user) appear first and have their own filter option.",
             "Empty states: no templates yet; no templates match these filters (with Clear filters).",
@@ -838,7 +839,7 @@ const SECTIONS: Section[] = [
             "Buttons press in slightly when clicked. Pictures fade in as they load, over a muted frame.",
             "Light, Dark or System is remembered in the browser, applied before the page shows, and switching it cross-fades the page.",
             "Empty lists show a small drawing, one line and one action. Highlighted text and the text cursor use the brand orange.",
-            "Colour: surfaces and buttons are neutral (near-black buttons in light mode, near-white in dark). The brand orange marks only what\u2019s selected, in progress, AI or the brand itself. One filled button per screen; everything else is outline or ghost.",
+            "Colour: surfaces are warm stone: a warm-white page on a stone shell, with white cards and popovers that lift off the page; dark mode uses the same warm hue. Buttons are neutral (near-black in light mode, near-white in dark). The brand orange marks only what\u2019s selected, in progress, AI or the brand itself. One filled button per screen; everything else is outline or ghost.",
             "Dark mode is a soft charcoal in steps: the sidebar darkest, then the page, then cards and menus. In the editor the panels sit on the page colour and the workspace behind the canvas is a step deeper.",
             "Every page has the same header: a small trail back when it\u2019s a detail page, the title (with a count or size beside it), its actions on the right, then one row of search and filters. Lists show \u22ef on every card; rows and cards share one hover.",
             "Numbers and dates read the same everywhere: 9,500 · 656K · 1.2M, $4,212.00, 2.4%, Oct 21 (the year only when it isn\u2019t this year), and 5m / 3h ago.",
