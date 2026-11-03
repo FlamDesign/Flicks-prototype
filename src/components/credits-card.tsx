@@ -49,8 +49,6 @@ export const creditsFor = (usd: number) => {
 // Slider stops for one-time purchase ($100 to $10,000), denser at the low end.
 const STOPS = [100, 150, 200, 250, 300, 400, 500, 600, 750, 1000, 1250, 1500, 2000, 2500, 3000, 4000, 5000, 6000, 7500, 10000]
 const MAX_USD = STOPS[STOPS.length - 1]
-// TODO: replace with the real sales contact link
-const SALES_URL = "#contact-sales"
 const SUGGESTED = [200, 500, 1000, 2500]
 
 // Auto-reload ranges
@@ -177,9 +175,7 @@ function BuyCreditsDialog({
           <>
             <DialogHeader>
               <DialogTitle>Get credits</DialogTitle>
-              <DialogDescription>
-                Credits pay for AI video generation. You have <span className="font-medium text-foreground tabular-nums">{balance.toLocaleString("en-US")}</span>.
-              </DialogDescription>
+              <DialogDescription className="sr-only">Choose an amount and pay. You have {balance.toLocaleString("en-US")} credits.</DialogDescription>
             </DialogHeader>
 
             {/* the exchange, side by side: what you pay, what you get */}
@@ -231,12 +227,7 @@ function BuyCreditsDialog({
                 />
                 <div className="flex justify-between text-xs text-muted-foreground tabular-nums">
                   <span>{usd(STOPS[0])}</span>
-                  <span>
-                    Over {usd(MAX_USD)}?{" "}
-                    <a href={SALES_URL} className="font-medium text-foreground underline-offset-4 hover:underline">
-                      Contact sales
-                    </a>
-                  </span>
+                  <span>{usd(MAX_USD)}</span>
                 </div>
               </div>
 
@@ -275,10 +266,7 @@ function BuyCreditsDialog({
               <HugeiconsIcon icon={ArrowRight01Icon} className="size-4 text-muted-foreground" />
             </Button>
 
-            <DialogFooter className="items-center sm:justify-between">
-              <p className="text-sm text-muted-foreground tabular-nums">
-                New balance <span className="font-medium text-foreground">{(balance + total).toLocaleString("en-US")}</span>
-              </p>
+            <DialogFooter>
               <Button onClick={pay} disabled={paying}>
                 {paying ? (
                   <>
