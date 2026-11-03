@@ -27,6 +27,7 @@ import {
   PlayCircleIcon,
 } from "@hugeicons/core-free-icons"
 import { BRAND_TEMPLATES } from "@/templates/brands"
+import { REAL_CARDS, REAL_TEMPLATES } from "@/templates/real-flicks"
 
 export type Mechanic = "Variants" | "Swap" | "Carousel" | "Hotspots" | "Video"
 
@@ -83,6 +84,14 @@ export type Template = {
   saved?: unknown
   /** video length in seconds, when the template has its own videos */
   duration?: number
+  /** the card's shape in the templates grid (e.g. "3/4"); square when unset */
+  cardRatio?: string
+  /** the card's headline colour: light on a dark card, dark on a light one */
+  cardInk?: "light" | "dark"
+  /** the brand as written (e.g. "Paramount+"), on the card */
+  brandName?: string
+  /** a shorter line for the card, when the headline is long */
+  cardHeadline?: string
 }
 
 const TEMPLATE_BASE: Template[] = [
@@ -461,14 +470,17 @@ const TEMPLATE_SIZES: Record<string, string> = {
   shades: "320×480",
   coffee: "1080×1920",
 }
-export const TEMPLATES: Template[] = [
-  // brand templates first: complete projects from real campaign assets
-  ...BRAND_TEMPLATES,
-  ...TEMPLATE_BASE.filter((t) => t.image).map((t) => {
-    const size = TEMPLATE_SIZES[t.id] ?? t.size
-    return { ...t, size, sizes: [size] }
-  }),
-]
+/** the made-up sample templates (kept for older references; the gallery shows the real Flicks) */
+export const SAMPLE_TEMPLATES: Template[] = TEMPLATE_BASE.filter((t) => t.image).map((t) => {
+  const size = TEMPLATE_SIZES[t.id] ?? t.size
+  return { ...t, size, sizes: [size] }
+})
+/** the order cards appear in: mixed shapes and colours so the masonry reads well */
+const TEMPLATE_ORDER = ["real-coach", "real-amazon", "brand-gap", "real-ulta", "real-geico", "brand-modelo", "real-sony", "real-wwe2k", "brand-diageo", "real-lovesac", "real-homedepot", "brand-little-caesars", "real-amex", "real-paramount", "brand-general-mills", "real-redbull"]
+/** every template is a real Flick (16 brands), each a complete project with its own videos */
+export const TEMPLATES: Template[] = [...BRAND_TEMPLATES.map((t) => ({ ...t, ...(REAL_CARDS[t.id] ? { image: REAL_CARDS[t.id].card, cardRatio: REAL_CARDS[t.id].cardRatio, cardInk: REAL_CARDS[t.id].cardInk, brandName: REAL_CARDS[t.id].name, cardHeadline: REAL_CARDS[t.id].line } : {}) })), ...REAL_TEMPLATES].sort(
+  (a, b) => TEMPLATE_ORDER.indexOf(a.id) - TEMPLATE_ORDER.indexOf(b.id),
+)
 
 /**
  * An exported Flick: fixed once made; change it by remixing it into a new project.

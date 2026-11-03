@@ -37,8 +37,9 @@ import up10 from "@/assets/uploads/boot-pro-brown.jpg"
 import up11 from "@/assets/uploads/dress-rust-tiered.jpg"
 import up12 from "@/assets/uploads/dress-ombre-gown.jpg"
 import { BRAND_VIDEOS, type BrandSet } from "@/templates/brand-assets"
+import { REAL_BASE, REAL_VIDEOS, type RealSlug } from "@/templates/real-media"
 
-export type SampleVideo = { name: string; set: "sunglasses" | "boots" | "dress" | "made" | BrandSet; size: string; mp4: string; webm?: string; poster: string }
+export type SampleVideo = { name: string; set: "sunglasses" | "boots" | "dress" | "made" | BrandSet | `real-${RealSlug}`; size: string; mp4: string; webm?: string; poster: string }
 /**
  * Sample generated videos, in three product sets. The first of each set is its reference video;
  * the rest are its variations. Sunglasses are 9:16 with WebM + MP4; boots and dresses are MP4 only.
@@ -86,6 +87,8 @@ export function addMadeVideo(v: { name: string; size: string; mp4: string; poste
   }
   return GENERATED_VIDEOS.length - 1
 }
+/** a video index kept in range: wraps the samples and made videos, leaves real Flicks' videos as they are */
+export const wrapVideo = (i: number) => (i >= REAL_BASE ? i : i % GENERATED_VIDEOS.length)
 export const isMadeVideo = (i?: number) => i !== undefined && GENERATED_VIDEOS[i]?.set === "made"
 
 /**
@@ -93,7 +96,7 @@ export const isMadeVideo = (i?: number) => i !== undefined && GENERATED_VIDEOS[i
  * if this device couldn't keep it (storage full or cleared), and a project must still open.
  */
 export const videoAt = (i?: number): SampleVideo =>
-  (i !== undefined && GENERATED_VIDEOS[i]) || { name: "missing", set: "made", size: "1080×1080", mp4: "", poster: MISSING_POSTER }
+  (i !== undefined && (i >= REAL_BASE ? REAL_VIDEOS[i - REAL_BASE] : GENERATED_VIDEOS[i])) || { name: "missing", set: "made", size: "1080×1080", mp4: "", poster: MISSING_POSTER }
 
 /** How many of GENERATED_VIDEOS are the generic samples (the rest belong to brand templates). */
 export const SAMPLE_VIDEO_COUNT = 10
@@ -101,6 +104,12 @@ export const SAMPLE_VIDEO_COUNT = 10
 export const REFERENCE_VIDEOS = [0, 5, 8]
 /** The video `step` places along from `base` within its set, so variations stay the same product. */
 export const inSet = (base: number, step: number) => {
+  // a real Flick's videos: its three, in order
+  if (base >= REAL_BASE) {
+    const set = REAL_VIDEOS[base - REAL_BASE]?.set
+    const ids = REAL_VIDEOS.flatMap((v, i) => (v.set === set ? [REAL_BASE + i] : []))
+    return ids.length ? ids[(Math.max(0, ids.indexOf(base)) + step) % ids.length] : base
+  }
   const set = GENERATED_VIDEOS[base]?.set ?? "sunglasses"
   const ids = GENERATED_VIDEOS.flatMap((v, i) => (v.set === set ? [i] : []))
   return ids[(Math.max(0, ids.indexOf(base)) + step) % ids.length]

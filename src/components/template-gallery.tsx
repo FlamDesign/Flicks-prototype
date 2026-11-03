@@ -3,7 +3,7 @@ import { useMemo, useState } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { TemplateCard } from "@/components/template-card"
-import { INDUSTRIES, SIZES, TEMPLATES, type Template } from "@/data"
+import { TEMPLATES, type Template } from "@/data"
 import { useDevState } from "@/dev/state"
 import { CardsSkeleton, Loading } from "@/components/page-skeletons"
 
@@ -20,6 +20,9 @@ export function TemplateGallery({ onUse, saved = [] }: { onUse: (t: Template) =>
       ),
     [all, industry, size],
   )
+  // filters offer only what the templates have
+  const industries = useMemo(() => [...new Set(all.map((t) => t.industry))].sort(), [all])
+  const sizes = useMemo(() => [...new Set(all.map((t) => t.size))], [all])
 
 
   return (
@@ -33,14 +36,14 @@ export function TemplateGallery({ onUse, saved = [] }: { onUse: (t: Template) =>
               <SelectContent>
                 <SelectItem value="all">All industries</SelectItem>
                 {saved.length > 0 && <SelectItem value="Your templates">Your templates</SelectItem>}
-                {INDUSTRIES.map((i) => <SelectItem key={i} value={i}>{i}</SelectItem>)}
+                {industries.filter((i) => i !== "Your templates").map((i) => <SelectItem key={i} value={i}>{i}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={size} onValueChange={setSize}>
               <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All sizes</SelectItem>
-                {SIZES.map((s) => <SelectItem key={s.value} value={s.value}>{s.value}</SelectItem>)}
+                {sizes.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>}
@@ -48,10 +51,10 @@ export function TemplateGallery({ onUse, saved = [] }: { onUse: (t: Template) =>
 
         <div className="mt-5">
           {/* loads on arrival and whenever the filters change */}
-          <Loading k={[industry, size]} skeleton={<CardsSkeleton count={8} cols="grid-cols-2 gap-x-5 sm:grid-cols-3 lg:grid-cols-4" aspect="aspect-square" />}>
+          <Loading k={[industry, size]} skeleton={<CardsSkeleton count={8} cols="grid-cols-2 gap-x-5 sm:grid-cols-3 lg:grid-cols-4" aspect="aspect-[3/4]" />}>
           {list.length ? (
-            // square cards in rows: 4 on wide screens, fewer as it narrows
-            <div className="grid grid-cols-2 gap-x-5 sm:grid-cols-3 lg:grid-cols-4">
+            // masonry: each card keeps its own shape; 4 columns on wide screens, fewer as it narrows
+            <div className="columns-2 gap-x-5 sm:columns-3 lg:columns-4">
               {list.map((t) => <TemplateCard key={t.id} t={t} onUse={onUse} />)}
             </div>
           ) : (

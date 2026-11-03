@@ -11,9 +11,9 @@ import { asset, type BrandSet } from "@/templates/brand-assets"
  * Fonts are the closest editor fonts to each brand's type; colours come from the brand assets.
  */
 
-type Product = { name: string; title: string; subtitle: string; price: string; cta: string; link: string; thumb: string; color: string }
-type Ids = { title: string; subtitle: string; price: string; cta: string; link: string }
-type Layout = (ids: Ids, first: Product, count: number) => CanvasElement[]
+export type Product = { name: string; title: string; subtitle: string; price: string; cta: string; link: string; thumb: string; color: string }
+export type Ids = { title: string; subtitle: string; price: string; cta: string; link: string }
+export type Layout = (ids: Ids, first: Product, count: number) => CanvasElement[]
 
 const FEED_NAMES: [keyof Ids, string, Feed["type"]][] = [
   ["title", "title", "text"],
@@ -23,11 +23,11 @@ const FEED_NAMES: [keyof Ids, string, Feed["type"]][] = [
   ["link", "cta-link", "link"],
 ]
 
-const SQUARE = 1
-const TALL = 1080 / 1920
+export const SQUARE = 1
+export const TALL = 1080 / 1920
 
 /** an image element centred at x, y, `w` % of the frame wide, keeping the image's shape */
-const image = (id: string, src: string, x: number, y: number, w: number, ar: number, ratio: number): CanvasElement => ({
+export const image = (id: string, src: string, x: number, y: number, w: number, ar: number, ratio: number): CanvasElement => ({
   id,
   kind: "image",
   src,
@@ -43,12 +43,16 @@ const image = (id: string, src: string, x: number, y: number, w: number, ar: num
 })
 
 /** full-width shade behind text: `h` % of the frame tall, from the top or the bottom edge */
-const scrim = (id: string, file: string, top: boolean, h: number, ratio: number): CanvasElement =>
+export const scrim = (id: string, file: string, top: boolean, h: number, ratio: number): CanvasElement =>
   image(id, asset(file), 50, top ? h / 2 : 100 - h / 2, 100, (100 * ratio) / h, ratio)
 
-function brandTemplate(o: {
+export function brandTemplate(o: {
   id: string
-  set: BrandSet
+  /** the brand's first video: by its set (bundled brand videos), or `base` (real Flicks) */
+  set?: BrandSet
+  base?: number
+  cardRatio?: string
+  cardInk?: "light" | "dark"
   title: string
   description: string
   industry: string
@@ -64,7 +68,7 @@ function brandTemplate(o: {
   products: Product[]
   layout: Layout
 }): Template {
-  const base = GENERATED_VIDEOS.findIndex((v) => v.set === o.set)
+  const base = o.base ?? GENERATED_VIDEOS.findIndex((v) => v.set === o.set)
   const ids = Object.fromEntries(FEED_NAMES.map(([k]) => [k, `${o.id}-${k}`])) as Ids
   const feeds: Feed[] = FEED_NAMES.map(([k, name, type]) => ({ id: ids[k], name, type }))
   const values = (p: Product) => ({ [ids.title]: p.title, [ids.subtitle]: p.subtitle, [ids.price]: p.price, [ids.cta]: p.cta, [ids.link]: p.link })
@@ -98,6 +102,8 @@ function brandTemplate(o: {
     image: o.card,
     video: base,
     duration: o.duration,
+    ...(o.cardRatio ? { cardRatio: o.cardRatio } : {}),
+    ...(o.cardInk ? { cardInk: o.cardInk } : {}),
     saved: { elements: o.layout(ids, o.products[0], o.products.length), slides, feeds, start: "main", includeRef: true },
   }
 }

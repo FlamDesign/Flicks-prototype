@@ -38,7 +38,7 @@ import { isTyping } from "@/lib/keys"
 import { GeneratingGradient } from "@/components/editor/generation-progress"
 import { AgentComposer, isDocked, QuestionDeck, threadGroups, type AgentCtx } from "@/components/editor/agent-chat"
 import { PlanningView, PlanSteps } from "@/components/editor/planning-view"
-import { addMadeVideo, isMadeVideo, BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, defaultFill, defaultInk, GENERATED_VIDEOS, SAMPLE_UPLOADS, inSet, clampStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload, videoAt } from "@/components/editor/elements"
+import { addMadeVideo, isMadeVideo, BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, defaultFill, defaultInk, SAMPLE_UPLOADS, inSet, clampStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload, videoAt, wrapVideo } from "@/components/editor/elements"
 
 export type Generation = {
   id: string
@@ -1094,7 +1094,7 @@ export function GenerationCanvas({
       // the plan's stills in the demo: the sample set's variations, in order
       if (purpose === "variation") return videoAt(inSet(generation.video ?? 0, Number(target) + 1)).poster
       const sl = target ? findSlide(target) : undefined
-      if (sl?.video !== undefined) return videoAt(sl.video % GENERATED_VIDEOS.length).poster
+      if (sl?.video !== undefined) return videoAt(wrapVideo(sl.video)).poster
       void purpose
       return videoAt(generation.video ?? 0).poster
     },
@@ -1829,7 +1829,7 @@ export function GenerationCanvas({
               const s = slides.find((x) => x.id === id)
               return s && nameOf(s)
             }}
-            posterOf={(v) => videoAt(v % GENERATED_VIDEOS.length).poster}
+            posterOf={(v) => videoAt(wrapVideo(v)).poster}
             isGenerating={(h) => {
               const s = slides.find((x) => x.id === h.slideId)
               return !!s && s.startedAt === h.startedAt && status(s) === "generating"
@@ -1901,7 +1901,7 @@ export function GenerationCanvas({
                   <AgentComposer
                     agent={agent}
                     placeholder={agent.waiting ? "Or reply directly…" : slides[0].startedAt ? "Ask for a change: a headline, a colour, another variation. Type @ to mention" : undefined}
-                    variations={slides[0].startedAt ? slides.map((x) => ({ name: nameOf(x), poster: x.video !== undefined ? videoAt(x.video % GENERATED_VIDEOS.length)?.poster : undefined })) : undefined}
+                    variations={slides[0].startedAt ? slides.map((x) => ({ name: nameOf(x), poster: x.video !== undefined ? videoAt(wrapVideo(x.video))?.poster : undefined })) : undefined}
                     brand={!!brand}
                   />
                 </div>
@@ -1922,7 +1922,7 @@ export function GenerationCanvas({
               onGenerate={() => requestGenerate(activeSlide.id)}
               onOpenFixed={status(slides[0]) === "done" ? () => setPreview("main") : undefined}
               cost={VIDEO_COST}
-              mentionVariations={slides.map((x) => ({ name: nameOf(x), poster: x.video !== undefined ? videoAt(x.video % GENERATED_VIDEOS.length)?.poster : undefined }))}
+              mentionVariations={slides.map((x) => ({ name: nameOf(x), poster: x.video !== undefined ? videoAt(wrapVideo(x.video))?.poster : undefined }))}
               brand={!!brand}
             />
               )

@@ -1,4 +1,4 @@
-import { GENERATED_VIDEOS, videoAt } from "@/components/editor/elements"
+import { GENERATED_VIDEOS, videoAt, wrapVideo } from "@/components/editor/elements"
 import type { Slide } from "@/components/editor/slides-strip"
 import { MediaViewer, type ViewerItem } from "@/components/media-viewer"
 
@@ -26,7 +26,7 @@ export function VideoLightbox({
 }) {
   const items: ViewerItem[] = slides.map((s) => {
     const used = s.used ?? { prompt: s.prompt ?? "", refs: s.refs ?? [], fromReference: s.id !== "main" }
-    const v = videoAt((s.video ?? 0) % GENERATED_VIDEOS.length)
+    const v = videoAt(wrapVideo(s.video ?? 0))
     const ref = GENERATED_VIDEOS.find((g) => g.poster === referencePoster)
     return {
       id: s.id,
