@@ -1,3 +1,4 @@
+import { onboarding } from "@/onboarding/onboarding"
 import { useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { RefreshIcon, UserIcon } from "@hugeicons/core-free-icons"
@@ -62,7 +63,7 @@ export function StateManager({ open, onOpenChange }: { open: boolean; onOpenChan
             ))}
           </nav>
           <div className="mt-auto">
-            <Button variant="ghost" size="sm" className="w-full justify-start gap-2 px-2 text-muted-foreground" onClick={newUser}>
+            <Button variant="ghost" size="sm" className="w-full justify-start gap-2 px-2 text-muted-foreground" onClick={() => (newUser(), onboarding.reset())}>
               <HugeiconsIcon icon={UserIcon} className="size-4" />
               New user
             </Button>

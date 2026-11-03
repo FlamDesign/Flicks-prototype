@@ -275,61 +275,9 @@ export function TargetChip({ name, poster, removed, onClick }: { name: string; p
 /** a history entry's image references, from the prompt box's references */
 export const refsOf = (refs: Reference[] | undefined) => (refs ?? []).filter((r) => !r.loading).map((r) => ({ url: r.url, name: r.name, media: r.media, poster: r.poster }))
 
-/**
- * Bring the prompt box into focus from elsewhere (a tip, the strip). With a label, it's also
- * spotlit for a moment: the rest dims and a label says what to write ("Describe Variation 2 here").
- */
-export function focusPromptBox(label?: string) {
+/** Bring the prompt box into focus from elsewhere (a tip, the strip, the canvas). */
+export function focusPromptBox() {
   setTimeout(() => {
-    const box = document.querySelector<HTMLElement>('aside[aria-label="Prompts"] [data-composer]')
-    if (!box) return
-    box.querySelector<HTMLTextAreaElement>("textarea")?.focus()
-    box.dataset.flash = ""
-    setTimeout(() => delete box.dataset.flash, 700)
-    if (label) window.dispatchEvent(new CustomEvent("flam:prompt-spotlight", { detail: label }))
+    document.querySelector<HTMLTextAreaElement>('aside[aria-label="Prompts"] [data-composer] textarea')?.focus()
   }, 80)
-}
-
-/** The prompt box cue: the page dims a little, with a ring on the box and a small label above it for about a second. Fades on its own, or on typing or a click. */
-export function PromptSpotlight() {
-  const [spot, setSpot] = useState<{ label: string; rect: DOMRect; n: number } | null>(null)
-  const [leaving, setLeaving] = useState(false)
-  useEffect(() => {
-    const on = (e: Event) => {
-      const box = document.querySelector<HTMLElement>('aside[aria-label="Prompts"] [data-composer]')
-      if (!box) return
-      setLeaving(false)
-      setSpot((s) => ({ label: (e as CustomEvent<string>).detail, rect: box.getBoundingClientRect(), n: (s?.n ?? 0) + 1 }))
-    }
-    window.addEventListener("flam:prompt-spotlight", on)
-    return () => window.removeEventListener("flam:prompt-spotlight", on)
-  }, [])
-  useEffect(() => {
-    if (!spot) return
-    const fade = () => setLeaving(true)
-    const t1 = setTimeout(fade, 700)
-    window.addEventListener("keydown", fade, { once: true })
-    window.addEventListener("pointerdown", fade, { once: true })
-    return () => (clearTimeout(t1), window.removeEventListener("keydown", fade), window.removeEventListener("pointerdown", fade))
-  }, [spot?.n])
-  useEffect(() => {
-    if (!leaving) return
-    const t = setTimeout(() => setSpot(null), 200)
-    return () => clearTimeout(t)
-  }, [leaving])
-  if (!spot) return null
-  const r = spot.rect
-  const pad = 6
-  return (
-    <div aria-hidden className={cn("pointer-events-none fixed inset-0 z-[60] transition-opacity duration-200 animate-in fade-in-0", leaving && "opacity-0")}>
-      {/* everything else dims a little */}
-      <div className="absolute rounded-[20px]" style={{ left: r.left - pad, top: r.top - pad, width: r.width + pad * 2, height: r.height + pad * 2, boxShadow: "0 0 0 9999px rgb(0 0 0 / 0.2)" }} />
-      <span
-        className="absolute flex items-center gap-1.5 whitespace-nowrap rounded-full bg-brand px-3 py-1 text-xs font-medium text-brand-foreground shadow-md animate-in slide-in-from-bottom-1 duration-200"
-        style={{ left: r.left + r.width / 2, top: r.top - pad - 12, transform: "translate(-50%, -100%)" }}
-      >
-        {spot.label}
-      </span>
-    </div>
-  )
 }

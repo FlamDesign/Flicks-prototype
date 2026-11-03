@@ -271,6 +271,8 @@ export default function App() {
               setPage("Create")
               // a new account starts at 0: How Flicks work, then the welcome gift, open on Create
               setDev({ onboarded: true, welcomeGift: true, featureIntro: true, credits: 0 })
+              // and the editor tour and tips are still to come
+              onboarding.reset()
             }}
             onSignOut={signOut}
             dark={dark}

@@ -10,7 +10,7 @@ import type { Reference } from "@/components/prompt-composer"
 import { TEMPLATES, type Template } from "@/data"
 import { MAX_VARIATIONS, SlidesStrip, slideName, type Slide, type SlideStatus } from "@/components/editor/slides-strip"
 import { SlidePrompt } from "@/components/editor/slide-prompt"
-import { focusPromptBox, PromptChat, PromptSpotlight, refsOf, TargetChip, type HistoryItem } from "@/components/editor/prompt-chat"
+import { focusPromptBox, PromptChat, refsOf, TargetChip, type HistoryItem } from "@/components/editor/prompt-chat"
 import { FeedsPanel, FeedsTitle } from "@/components/editor/feeds-panel"
 import { VideoLightbox } from "@/components/editor/video-lightbox"
 import { ExportControl } from "@/components/editor/export-flick"
@@ -1307,11 +1307,17 @@ export function GenerationCanvas({
   // onboarding: the tour starts on the first project once its video is ready; one-time tips at tricky moments
   const anyStale = slides.some(stale)
   const ob = useOnboarding()
+  // not while the chat is planning (no canvas yet) or in Preview (the tour points at the editor)
   useEffect(() => {
-    if (!mainDone || ob.toured || ob.tour !== null || ob.spot) return
+    if (!mainDone || planning || previewing || ob.toured || ob.tour !== null || ob.spot) return
     const t = setTimeout(() => onboarding.startTour(0), 600)
     return () => clearTimeout(t)
-  }, [mainDone, ob.toured, ob.tour, ob.spot])
+  }, [mainDone, planning, previewing, ob.toured, ob.tour, ob.spot])
+  // switching to Preview mid-tour ends it; leaving the editor closes any tour or tip, so neither follows into another project
+  useEffect(() => {
+    if (previewing && ob.tour !== null) onboarding.endTour()
+  }, [previewing, ob.tour])
+  useEffect(() => () => onboarding.leaveEditor(), [])
   // the first text, button or layout added: show how to make it change per variation
   const designed = elements.filter((e) => (e.kind === "text" || (e.kind === "button" && e.variant !== "icon")) && !e.hidden).length
   const designedBefore = useRef(designed)
@@ -1328,9 +1334,6 @@ export function GenerationCanvas({
   useEffect(() => {
     if (stripSelected) onboarding.tip("strip")
   }, [stripSelected])
-  useEffect(() => {
-    if (previewing) onboarding.tip("preview")
-  }, [previewing])
 
   const patchSlide = (id: string, p: Partial<Slide>) => setSlides((list) => list.map((s) => (s.id === id ? { ...s, ...p } : s)))
   const activeIndex = slides.indexOf(activeSlide)
@@ -1392,7 +1395,6 @@ export function GenerationCanvas({
         </div>
       </header>
 
-      <PromptSpotlight />
       {/* file menu: Save as template */}
       <Dialog open={panel === "template"} onOpenChange={(o) => !o && setPanel(null)}>
         <DialogContent className="sm:max-w-md" data-keep-selection>
@@ -1667,7 +1669,7 @@ export function GenerationCanvas({
                       onClick={() => {
                         // write its prompt: open the prompts and spotlight the box
                         setChatHidden(false)
-                        focusPromptBox(`Regenerate ${nameOf(activeSlide)} here`)
+                        focusPromptBox()
                       }}
                       className="absolute bottom-full right-0 z-30 mb-2 flex items-center gap-1.5 whitespace-nowrap rounded-full bg-background/85 py-1 pl-2 pr-2.5 text-xs font-medium shadow-sm ring-1 ring-foreground/10 backdrop-blur-md outline-none transition-colors hover:bg-background focus-visible:ring-2 focus-visible:ring-ring/50"
                     >
@@ -1693,7 +1695,7 @@ export function GenerationCanvas({
                     data-keep-selection
                     onClick={() => {
                       setChatHidden(false)
-                      focusPromptBox(`Describe ${nameOf(activeSlide)} here`)
+                      focusPromptBox()
                     }}
                     className="absolute bottom-full right-0 z-30 mb-2 flex items-center gap-1 whitespace-nowrap rounded-full bg-background/85 py-0.5 pl-1.5 pr-2 text-xs font-medium shadow-sm ring-1 ring-foreground/10 backdrop-blur-md outline-none transition-colors hover:bg-background focus-visible:ring-2 focus-visible:ring-ring/50"
                   >
@@ -1742,7 +1744,7 @@ export function GenerationCanvas({
             select(id)
             // straight to writing its prompt
             setChatHidden(false)
-            focusPromptBox(`Describe Variation ${n + 1} here`)
+            focusPromptBox()
           }}
           onRemove={setConfirmRemove}
           start={start}

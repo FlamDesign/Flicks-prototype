@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { PAGE, PageHeader } from "@/components/page-kit"
 import { Spinner } from "@/components/ui/spinner"
-import { onboarding } from "@/onboarding/onboarding"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Add01Icon, ArrowRight01Icon, Download01Icon, ArrowUpRight01Icon, Copy01Icon, Delete02Icon, GitForkIcon, MoreHorizontalIcon, PencilEdit01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
@@ -55,13 +54,6 @@ export function FlickPage({
   const [confirmDelete, setConfirmDelete] = useState(false)
   // dev tools: views coming in
   const progress = useExportProgress(f)
-  // first ready Flick: a tip that Flicks don't change (Remix to change one)
-  const ready = !!f && !f.exporting
-  useEffect(() => {
-    if (!ready) return
-    const t = setTimeout(() => onboarding.tip("remix"), 800)
-    return () => clearTimeout(t)
-  }, [ready])
   useDevAction(f && !f.exporting ? { id: "flick-views", label: "Add 1,000 views", run: () => library.addViews(f.id, 1000) } : null)
 
   if (!f)

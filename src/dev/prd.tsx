@@ -561,7 +561,7 @@ const SECTIONS: Section[] = [
             "Variations can generate at the same time: write and send the next variation while another is still generating. A video\u2019s own prompt box is dimmed while that video generates. The reference video can\u2019t be regenerated while any variation is generating (they\u2019re made from it); its box stays dimmed until they finish. Variations wait for the reference video while it generates.",
             "A template's reference video is fixed: the box explains that and asks to pick a variation.",
             "The newest message stays in view.",
-            "When something else sends you to the prompt box (adding a variation, the \u201cGenerate this variation\u201d or \u201cNeeds regenerating\u201d tip), the prompts panel opens if hidden, the cursor lands in the box, and it\u2019s cued briefly, the rest of the page dims a little: a primary ring on the box and a small primary label above it saying what to write (\u201cDescribe Variation 3 here\u201d, or \u201cRegenerate Variation 1 here\u201d). It fades after about a second, or as soon as you type or click.",
+            "When something else sends you to the prompt box (adding a variation, \u201cGenerate this variation\u201d or \u201cNeeds regenerating\u201d), the prompts panel opens if hidden and the cursor lands in the box. No highlight.",
             "The prompts panel has a header, Prompts, with a hide button at its right. While hidden, a Prompts button (chat icon) at the canvas\u2019s top-right brings it back. While hidden, a small spinner on the Prompts button shows something is generating. Clicking a video in the slides strip opens the panel again. Adding a variation opens it too and puts the cursor in the prompt box. Remembered on this device.",
             "Drag the panel's right edge to resize it between 280 and 560px (default 340); double-click the edge to reset. Arrow keys work when the edge is focused. The width is remembered on this device.",
             "A variation\u2019s prompt box shows the reference video it is made from; clicking it opens the reference video full screen. Sending clears the prompt box; the prompt is kept only in the history. Regenerating a video marked \u201cNeeds regenerating\u201d without typing reuses its last prompt.",
@@ -821,7 +821,7 @@ const SECTIONS: Section[] = [
     title: "23. Onboarding",
     body: (
       <>
-        <P>New users learn in place: a short tour in the editor, one-time tips at tricky moments, a Help Center with a sample project, and a first-run explainer on Campaigns. All of it can be skipped; the tour and the sample come back from the Help Center.</P>
+        <P>New users learn in place: a short tour in the editor, one-time tips at tricky moments, and a Help Center with a sample project. Only new users see them: a returning user (the default) has seen everything. All of it can be skipped; the tour and the sample come back from the Help Center.</P>
         <H>Sample project</H>
         <P>\u201cSample: Sport lens switch\u201d (1080\u00d71920): a reference video, three colourways named Gold, Sapphire and White with thumbnails, a heading, a price from the price feed, a Shop now button whose link comes from the shop-link feed, and the strip. Opened from the Help Center; it saves to Projects like any other.</P>
         <H>Search and keys</H>
@@ -866,7 +866,7 @@ const SECTIONS: Section[] = [
         <H>Editor tour</H>
         <UL
           items={[
-            "Starts once, the first time a project\u2019s video is ready (or from the Help Center). The page dims, with a soft cut-out around what each stop is about; the cut-out and card glide from stop to stop.",
+            "Starts once, the first time a project\u2019s video is ready (or from the Help Center); never while the chat is still planning or in Preview. Switching to Preview ends it, and leaving the editor closes it (a tour left half way counts as seen), so it never follows into another project. The page dims, with a soft cut-out around what each stop is about; the cut-out and card glide from stop to stop.",
             "Each card: a small looping illustration made from the escalator Flick\u2019s stills, a title, one line, step dots, Skip, Back and Next (Done on the last). Esc skips.",
             "1 Your reference video (the canvas): every variation is made from it; change it and they need regenerating. 2 Add variations (the strip and the chat): add one in the strip, describe it in the chat, it generates in the strip. 3 Design once (Text, Images, Buttons and Layouts, lit as one rectangle): what you add shows on every variation. 4 Preview, then export (the Design/Preview switch and Export, lit as one rectangle): an exported Flick can\u2019t be changed; to make edits, export again.",
           ]}
@@ -878,7 +878,6 @@ const SECTIONS: Section[] = [
             "Feeds: the first time text, a button or a layout is added, by its { } tab: \u201cDifferent content for each variation\u201d, with an illustration of a price changing per variation.",
             "Needs regenerating: by the red dot after the reference changes, with an illustration of the reference changing and its variation regenerating.",
             "Thumbnails: the first time the thumbnail strip is selected: \u201cThumbnails\u201d, with an illustration: the thumbnails start empty; picking one shows its variation and the strip toolbar, and Add thumbnail fills it (twice, one per variation).",
-            "Also: the first Preview, the first ready Flick page (Remix).",
           ]}
         />
         <H>Help Center</H>
