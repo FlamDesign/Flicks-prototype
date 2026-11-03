@@ -43,7 +43,7 @@ import { AnalyticsRoute } from "@/analytics/analytics-route"
 import { ModeSwitch, VideoToggle, FileTitle } from "@/components/editor/editor-topbar"
 import { ExportControl } from "@/components/editor/export-flick"
 import { onboarding } from "@/onboarding/onboarding"
-import { AccountSkeleton, DetailSkeleton, FlickPageSkeleton, GridSkeleton, TableSkeleton } from "@/components/page-skeletons"
+import { AccountSkeleton, ChatSkeleton, DetailSkeleton, EditorSkeleton, FlickPageSkeleton, GridSkeleton, TableSkeleton } from "@/components/page-skeletons"
 import { VersionHistoryPanel } from "@/components/editor/version-history"
 import { ToolbarGrip } from "@/components/editor/element-toolbar"
 import { LayersPanel } from "@/components/editor/layers-panel"
@@ -208,10 +208,10 @@ const ENTRIES: Entry[] = [
   {
     name: "Page skeletons",
     kind: "Feedback",
-    about: "Shown while a page loads, matching its layout: grid (Projects, Flicks, Assets, Embeds), table (Campaigns), Flick page, placement or embed, and Credits / Ad Balance.",
+    about: "Shown while a page loads, matching its layout: grid (Projects, Flicks, Assets, Embeds), table (Campaigns), Flick page, placement or embed, and Credits / Ad Balance; the editor (canvas) and, for a chat-made project still planning, the chat.",
     render: () => (
       <div className="flex flex-col gap-6">
-        {[<GridSkeleton count={4} />, <TableSkeleton rows={3} />, <FlickPageSkeleton />, <DetailSkeleton />, <AccountSkeleton />].map((el, i) => (
+        {[<GridSkeleton count={4} />, <TableSkeleton rows={3} />, <FlickPageSkeleton />, <DetailSkeleton />, <AccountSkeleton />, <div className="flex h-[420px]"><EditorSkeleton /></div>, <div className="h-[420px]"><ChatSkeleton /></div>].map((el, i) => (
           <div key={i} className="max-h-[420px] overflow-hidden rounded-2xl ring-1 ring-foreground/10">
             {el}
           </div>

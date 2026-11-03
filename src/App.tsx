@@ -17,7 +17,7 @@ import { CoachLayer } from "@/onboarding/coach"
 import { CAPTURE, onboarding } from "@/onboarding/onboarding"
 import { SAMPLE_ID, sampleProject } from "@/onboarding/sample"
 import { useDevAction } from "@/dev/dev-actions"
-import { AccountSkeleton, DetailSkeleton, EditorSkeleton, FlickPageSkeleton, GridSkeleton, PageLoader, TableSkeleton } from "@/components/page-skeletons"
+import { AccountSkeleton, ChatSkeleton, DetailSkeleton, EditorSkeleton, FlickPageSkeleton, GridSkeleton, PageLoader, TableSkeleton } from "@/components/page-skeletons"
 import { WelcomeGiftDialog, WELCOME_CREDITS } from "@/components/welcome-gift-page"
 import { type Generation } from "@/components/generation-canvas"
 import { REFERENCE_VIDEOS } from "@/components/editor/elements"
@@ -482,7 +482,7 @@ export default function App() {
       {page === "Generate" && generation && (
         <div className="fixed inset-0 z-40 bg-background">
           {/* the editor loads its project first */}
-          <Loaded k={generation.id} ms={dev.pageLoadMs} s={<div className="flex h-full flex-col"><div className="flex h-14 shrink-0 items-center gap-3 border-b px-4"><Skeleton className="h-5 w-40 rounded-md" /><Skeleton className="ml-auto h-9 w-48 rounded-xl" /><Skeleton className="h-9 w-24 rounded-xl" /></div><EditorSkeleton /></div>}>
+          <Loaded k={generation.id} ms={dev.pageLoadMs} s={chatPlanning(generation) ? <ChatSkeleton /> : <div className="flex h-full flex-col"><div className="flex h-14 shrink-0 items-center gap-3 border-b px-4"><Skeleton className="h-5 w-40 rounded-md" /><Skeleton className="ml-auto h-9 w-48 rounded-xl" /><Skeleton className="h-9 w-24 rounded-xl" /></div><EditorSkeleton /></div>}>
           <GenerationCanvas key={generation.id} generation={generation} onBack={() => setPage(generation.back === "Flick" && !flickId ? "Flicks" : (generation.back ?? "Create"))} onGetCredits={() => setBuyOpen(true)} onOpenFlick={openFlickPage}
             onSaveTemplate={(t) => setSavedTemplates((list) => [t, ...list])}
             onDuplicate={(copy) => setGeneration((g) => (g ? { ...g, id: crypto.randomUUID(), copy, resume: undefined, sample: false, remixOf: undefined } : g))}
@@ -521,6 +521,9 @@ function ExportWatcher({ onOpen }: { onOpen: (id: string) => void }) {
   }, [key])
   return null
 }
+
+/** A chat-made project that hasn't generated yet opens in the chat view (no canvas yet). */
+const chatPlanning = (g: Generation) => !!g.agent && !(g.resume?.snap as { slides?: { startedAt?: number }[] } | undefined)?.slides?.[0]?.startedAt
 
 /** What the sample Flicks' reference videos were made from, matching their product set. */
 const FLICK_PROMPTS = [

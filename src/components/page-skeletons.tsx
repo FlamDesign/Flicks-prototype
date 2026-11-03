@@ -315,6 +315,43 @@ export function EditorSkeleton() {
   )
 }
 
+/** The editor while a project made with the chat opens and the chat is still planning: the header
+ *  with the plan steps, then the conversation centred (no rail, canvas or prompts panel). */
+export function ChatSkeleton() {
+  return (
+    <div className="flex h-full flex-col" aria-busy="true" aria-label="Loading">
+      <div className="relative flex h-14 shrink-0 items-center gap-3 border-b px-4">
+        <Skeleton className="h-5 w-40 rounded-md" />
+        <div className="absolute inset-x-0 flex justify-center">
+          <div className="flex items-center gap-2">
+            {Array.from({ length: 4 }, (_, i) => (
+              <Skeleton key={i} className="h-6 w-16 rounded-full" />
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="mx-auto flex w-full max-w-[720px] flex-1 flex-col gap-6 px-5 pt-8">
+          <Skeleton className="ml-auto h-12 w-2/3 rounded-2xl" />
+          <div className="space-y-2.5">
+            <Line className="w-11/12" />
+            <Line className="w-4/5" />
+            <Line className="w-2/5" />
+          </div>
+          <Skeleton className="ml-auto h-10 w-1/3 rounded-2xl" />
+          <div className="space-y-2.5">
+            <Line className="w-3/4" />
+            <Line className="w-1/2" />
+          </div>
+        </div>
+        <div className="mx-auto w-full max-w-[720px] px-5 pb-5">
+          <Skeleton className="h-28 w-full rounded-2xl" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /** A spinner, for buttons. */
 export function Spinner({ className }: { className?: string }) {
   return <UiSpinner aria-hidden className={cn("size-3.5", className)} />
