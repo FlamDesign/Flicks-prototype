@@ -4,6 +4,7 @@ import { PendingButton } from "@/components/page-skeletons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   SparklesIcon,
+  GiftIcon,
   WalletAdd02Icon,
   ArrowRight01Icon,
   Tick02Icon,
@@ -184,8 +185,12 @@ function BuyCreditsDialog({
                 <p className="text-3xl font-semibold tabular-nums tracking-tight">{usd(amount)}</p>
                 <p className="pt-1 text-sm text-muted-foreground tabular-nums">
                   {total.toLocaleString("en-US")} credits
-                  {bonus > 0 && <span className="text-foreground"> (includes {bonus.toLocaleString("en-US")} bonus)</span>}
                   {" "}· about {plural(videos(total), "video")}
+                  {bonus > 0 && (
+                    <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-brand/10 px-2 py-0.5 align-middle text-xs font-medium text-brand">
+                      <HugeiconsIcon icon={GiftIcon} className="size-3" />+{bonus.toLocaleString("en-US")} bonus
+                    </span>
+                  )}
                 </p>
               </div>
 
@@ -221,12 +226,24 @@ function BuyCreditsDialog({
                       onClick={() => setI(STOPS.indexOf(v))}
                     >
                       {usd(v)}
-                      {v >= BONUS_FROM_USD && <span className="text-xs text-muted-foreground">+{BONUS_RATE * 100}%</span>}
+                      {v >= BONUS_FROM_USD && <span className="text-xs font-medium text-brand">+{BONUS_RATE * 100}%</span>}
                     </Button>
                   )
                 })}
               </div>
-              <p className="text-xs text-muted-foreground">{BONUS_RATE * 100}% extra credits on {usd(BONUS_FROM_USD)} or more.</p>
+              <div className="flex h-9 items-center gap-2.5 rounded-lg bg-brand/5 px-3 text-xs">
+                <HugeiconsIcon icon={GiftIcon} className="size-4 shrink-0 text-brand" />
+                {bonus > 0 ? (
+                  <span className="font-medium text-brand">{BONUS_RATE * 100}% bonus applied</span>
+                ) : (
+                  <>
+                    <span className="flex-1 text-muted-foreground">{BONUS_RATE * 100}% extra credits on {usd(BONUS_FROM_USD)} or more</span>
+                    <Button variant="link" size="sm" className="h-auto p-0 text-xs font-medium text-brand" onClick={() => setI(STOPS.indexOf(BONUS_FROM_USD))}>
+                      Try {usd(BONUS_FROM_USD)}
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
 
             <Separator />
