@@ -99,10 +99,10 @@ export function BriefCard({ agent, ctx, className }: { agent: Agent; ctx: AgentC
         <HugeiconsIcon icon={ArrowDown01Icon} className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
       </button>
       {open && (
-        <dl className="grid grid-cols-[minmax(0,7rem)_1fr] gap-x-4 gap-y-2.5 border-t px-3 py-3 text-sm animate-in fade-in-0">
+        <dl className="flex flex-col divide-y divide-foreground/8 border-t text-sm animate-in fade-in-0">
           {entries.map((e) => (
-            <div key={e.key} className="contents">
-              <dt className="truncate text-muted-foreground">{e.label}</dt>
+            <div key={e.key} className="flex flex-col gap-1 px-3 py-2.5">
+              <dt className="text-xs text-muted-foreground">{e.label}</dt>
               <dd className="flex min-w-0 flex-wrap items-center gap-2">
                 {e.images?.map((u) => (
                   <img key={u} src={u} alt="" decoding="async" className="size-12 rounded-lg object-cover ring-1 ring-foreground/10" />
@@ -110,7 +110,7 @@ export function BriefCard({ agent, ctx, className }: { agent: Agent; ctx: AgentC
                 {e.colors?.map((c) => (
                   <span key={c} title={c} className="size-5 rounded-full ring-1 ring-foreground/10" style={{ background: c }} />
                 ))}
-                <span className="min-w-0 font-medium">{e.value}</span>
+                <span className="min-w-0 break-words font-medium">{e.value}</span>
               </dd>
             </div>
           ))}

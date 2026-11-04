@@ -269,19 +269,20 @@ function AddedToBrief({ items }: { items: Item[] }) {
 
 /** answered questions and done image requests, as one compact summary */
 function Answers({ items }: { items: Item[] }) {
+  // one row per question: the question on top, the answer under it, rows split by hairlines
   return (
-    <dl className="mr-6 grid grid-cols-[minmax(0,auto)_1fr] gap-x-4 gap-y-1.5 rounded-xl bg-muted/40 px-3.5 py-2.5 text-sm">
+    <dl className="mr-6 flex flex-col divide-y divide-foreground/8 overflow-hidden rounded-xl bg-muted/40 text-sm">
       {items.map((x) =>
         x.kind === "question" ? (
-          <div key={x.id} className="contents">
-            <dt className="truncate text-muted-foreground">{x.question}</dt>
-            <dd className={cn("min-w-0 font-medium", x.answer === "Skipped" && "font-normal text-muted-foreground")}>{x.answer}</dd>
+          <div key={x.id} className="flex flex-col gap-0.5 px-3.5 py-2.5">
+            <dt className="text-xs text-muted-foreground">{x.question}</dt>
+            <dd className={cn("min-w-0 break-words font-medium", x.answer === "Skipped" && "font-normal text-muted-foreground")}>{x.answer}</dd>
           </div>
         ) : x.kind === "assets" ? (
-          <div key={x.id} className="contents">
-            <dt className="truncate text-muted-foreground">{x.message.split(/[.:]/)[0]}</dt>
+          <div key={x.id} className="flex flex-col gap-1 px-3.5 py-2.5">
+            <dt className="text-xs text-muted-foreground">{x.message.split(/[.:]/)[0]}</dt>
             <dd className="flex min-w-0 flex-wrap gap-1">
-              {x.done === "added" && x.images?.length ? x.images.map((u) => <img loading="lazy" decoding="async" key={u} src={u} alt="" className="size-6 rounded object-cover ring-1 ring-foreground/10" />) : <span className="text-muted-foreground">Skipped</span>}
+              {x.done === "added" && x.images?.length ? x.images.map((u) => <img loading="lazy" decoding="async" key={u} src={u} alt="" className="size-8 rounded-md object-cover ring-1 ring-foreground/10" />) : <span className="text-muted-foreground">Skipped</span>}
             </dd>
           </div>
         ) : null,
