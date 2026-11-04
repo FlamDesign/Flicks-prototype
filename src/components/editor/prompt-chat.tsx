@@ -1,10 +1,10 @@
 import { Arrive } from "@/components/arrive"
+import { Shortcut } from "@/components/shortcut"
 import { GeneratingGradient } from "@/components/editor/generation-progress"
 import { useEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Alert02Icon, PanelRightCloseIcon, SparklesIcon } from "@hugeicons/core-free-icons"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { Kbd } from "@/components/ui/kbd"
 import { MOD } from "@/lib/keys"
 import { Button } from "@/components/ui/button"
 import { RefStill, type Reference } from "@/components/prompt-composer"
@@ -219,7 +219,7 @@ export function PromptChat({
                 <HugeiconsIcon icon={PanelRightCloseIcon} className="size-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom" align="end" className="flex items-center gap-2">Hide prompts<Kbd>{MOD} \</Kbd></TooltipContent>
+            <TooltipContent side="bottom" align="end" className="flex items-center gap-2">Hide prompts<Shortcut keys={[MOD, "\\"]} /></TooltipContent>
           </Tooltip>
         )}
       </div>

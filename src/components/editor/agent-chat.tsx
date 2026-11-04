@@ -1,4 +1,5 @@
 import { GeneratingGradient } from "@/components/editor/generation-progress"
+import { Shortcut } from "@/components/shortcut"
 import { createContext, useContext, useEffect, useRef, useState } from "react"
 import { Spinner } from "@/components/ui/spinner"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -1377,7 +1378,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
                 <SizeFrame size={o.size} />
                 <span className="flex min-w-0 flex-col">
                   <span className="truncate text-xs font-medium">
-                    <span className="mr-1 tabular-nums text-muted-foreground">{n + 1}</span>
+                    <Shortcut keys={[String(n + 1)]} className="mr-1 align-middle" />
                     {o.label}
                   </span>
                   {o.size && <span className="text-xs tabular-nums text-muted-foreground">{o.size}</span>}
@@ -1481,7 +1482,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
                   </span>
                 )}
                 <span className="flex items-center gap-1.5 px-1 text-xs font-medium leading-tight">
-                  <span className="text-muted-foreground tabular-nums">{n + 1}</span>
+                  <Shortcut keys={[String(n + 1)]} />
                   {o.label}
                 </span>
               </button>
@@ -1500,7 +1501,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
           className="h-8 min-w-0 flex-1 bg-transparent text-sm placeholder:text-muted-foreground px-0"
         />
         <Button size="sm" variant="ghost" disabled={agent.busy} onClick={() => commit("Skipped")} className="gap-1.5 text-muted-foreground">
-          Skip <kbd className="rounded bg-muted px-1 text-xs font-normal">Esc</kbd>
+          Skip <Shortcut keys={["Esc"]} />
         </Button>
         {(q.multi || typed.trim()) && (
           <Button size="sm" disabled={agent.busy || !(mine.length || typed.trim())} onClick={cont}>

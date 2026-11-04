@@ -58,6 +58,7 @@ import { DevBadge } from "@/dev/state-manager"
 import { cn } from "@/lib/utils"
 import { AgentItemView, QuestionDeck } from "@/components/editor/agent-chat"
 import { BriefCard } from "@/components/editor/brief-card"
+import { Shortcut } from "@/components/shortcut"
 import type { Item } from "@/ai/agent"
 import type { Plan } from "@/ai/design"
 
@@ -600,7 +601,7 @@ const ENTRIES: Entry[] = [
       <div className="flex items-center gap-3 text-sm">
         <KbdGroup><Kbd>{MOD}</Kbd><Kbd>K</Kbd></KbdGroup>
         <Kbd>P</Kbd>
-        <Kbd>{MOD} ↵</Kbd>
+        <Shortcut keys={[MOD, "↵"]} />
       </div>
     ),
   },

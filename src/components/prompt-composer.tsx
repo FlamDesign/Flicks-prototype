@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react"
+import { Shortcut } from "@/components/shortcut"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Add01Icon,
@@ -13,7 +14,6 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { Kbd } from "@/components/ui/kbd"
 import { MOD } from "@/lib/keys"
 import {
   DropdownMenu,
@@ -297,7 +297,7 @@ export function PromptComposer({
                 </Button>
               </span>
             </TooltipTrigger>
-            <TooltipContent className="flex items-center gap-2">{uploading ? "Uploading images" : failedRefs ? "Retry or remove the images that didn’t upload" : planFirst ? "Plan it in the chat first. Credits are used when you generate." : "Generate video"}{canSend && <Kbd>{MOD} ↵</Kbd>}</TooltipContent>
+            <TooltipContent className="flex items-center gap-2">{uploading ? "Uploading images" : failedRefs ? "Retry or remove the images that didn’t upload" : planFirst ? "Plan it with the chat. No credits yet" : "Generate video"}{canSend && <Shortcut keys={[MOD, "↵"]} />}</TooltipContent>
           </Tooltip>
         </div>
 

@@ -249,7 +249,8 @@ button, a[href], summary, label[for], select,
 [data-slot="dropdown-menu-trigger"], [data-slot="select-trigger"], [data-slot="dialog-trigger"], [data-slot="dialog-close"] {
   cursor: pointer;
 }
-button:disabled, [aria-disabled="true"], [data-disabled] {
+/* cmdk marks enabled items data-disabled="false", so only a present, non-false flag counts */
+button:disabled, [aria-disabled="true"], [data-disabled]:not([data-disabled="false"]) {
   cursor: not-allowed;
 }
 textarea, input[type="text"] { cursor: text; }

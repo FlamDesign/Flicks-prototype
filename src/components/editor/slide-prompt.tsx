@@ -1,9 +1,9 @@
 import { useState } from "react"
+import { Shortcut } from "@/components/shortcut"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Add01Icon, PlayIcon, SparklesIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { Kbd } from "@/components/ui/kbd"
 import { MOD } from "@/lib/keys"
 import { FailedRefsNote, ReferenceThumb, ReferenceViewer, scrollSideways, useReferenceUploads, type Reference } from "@/components/prompt-composer"
 import { useMediaAdd } from "@/components/media-picker"
@@ -150,7 +150,7 @@ export function SlidePrompt({
               </Button>
             </span>
           </TooltipTrigger>
-          <TooltipContent className="flex items-center gap-2">{disabled ?? (generating && canSend ? `Start again with this prompt · ${cost} credits` : failedRefs ? "Retry or remove the images that didn’t upload" : `Uses ${cost} credits`)}{canSend && <Kbd>{MOD} ↵</Kbd>}</TooltipContent>
+          <TooltipContent className="flex items-center gap-2">{disabled ?? (generating && canSend ? `Start again with this prompt · ${cost} credits` : failedRefs ? "Retry or remove the images that didn’t upload" : `Uses ${cost} credits`)}{canSend && <Shortcut keys={[MOD, "↵"]} />}</TooltipContent>
         </Tooltip>
       </div>
       )}

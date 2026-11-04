@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react"
+import { Shortcut } from "@/components/shortcut"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Add01Icon, HelpCircleIcon, Moon02Icon, Sun03Icon, BookOpen01Icon } from "@hugeicons/core-free-icons"
-import { Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut } from "@/components/ui/command"
+import { Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command"
 import { MANAGE, NAV } from "@/components/app-sidebar"
 import { useLibrary, type Project } from "@/library"
 import { openHelp } from "@/help/open"
@@ -59,8 +60,8 @@ export function CommandPalette({
         <CommandGroup heading="Actions">
           <CommandItem onSelect={run(onNew)}>
             <HugeiconsIcon icon={Add01Icon} />
-            New video
-            <CommandShortcut>N</CommandShortcut>
+            <span className="flex-1">New video</span>
+            <Shortcut keys={["N"]} />
           </CommandItem>
           <CommandItem onSelect={run(onToggleTheme)}>
             <HugeiconsIcon icon={dark ? Sun03Icon : Moon02Icon} />
