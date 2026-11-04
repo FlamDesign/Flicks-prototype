@@ -404,6 +404,7 @@ const SECTIONS: Section[] = [
             "The prompt box clears when a video is sent and stays open: a new prompt can be sent right away. Sending one for a video that\u2019s still generating starts it again with the new prompt (the earlier one shows as Replaced). Variations wait only until Variation 1 exists.",
             "When a video arrives, its thumbnail in the strip fades in with one soft glow.",
             "A variation that hasn't been generated shows the reference video faded underneath its elements.",
+            "Switching variations swaps the video instantly, with no fade, everywhere: the canvas, previews, templates and the Flick player.",
           ]}
         />
       </>

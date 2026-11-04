@@ -64,7 +64,7 @@ export function GeneratedVideo({
         playsInline
         preload="auto"
         onPlay={() => setPaused(false)}
-        className="animate-in fade-in-0 absolute inset-0 h-full w-full object-cover duration-700"
+        className="absolute inset-0 h-full w-full object-cover"
       />
       {paused && playing && (
         <div className="absolute inset-0 flex items-center justify-center">

@@ -50,7 +50,7 @@ export function FlickPreview({
           key={posters[active]}
           src={posters[active]}
           alt=""
-          className={cn("absolute inset-0 size-full object-cover animate-in fade-in-0 duration-500", dim && "opacity-40 blur-[2px]")}
+          className={cn("absolute inset-0 size-full object-cover", dim && "opacity-40 blur-[2px]")}
           draggable={false}
         />
       )}
