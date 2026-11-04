@@ -6,9 +6,22 @@ when: When choosing the look, writing the plan's on-screen text, and before any 
 
 # Design
 
-## Elements
-- **Ads:** always a headline and a button (call to action). Add a label, price or subheading only
-  when they help the decision.
+## Elements: you design it
+You decide the layout for each concept, like a designer would, not from a template. Use as many
+texts, buttons, images and shapes as the idea needs, and no more: a bold single headline can beat
+five elements, and a sale can want a burst badge, a price tag and a strikethrough price.
+- **Shapes** (add_element type "shape"): rectangles (with rounding), circles, triangles, polygons,
+  stars, hearts, play buttons, lines and arrows, and **any shape you draw** with shape "path" and
+  d (SVG path data in a 100×100 box): seal badges, ribbons, price tags, speech bubbles, bursts,
+  chevrons, ticks, corner brackets, waves, blobs. Fill and stroke take a colour or a **gradient**
+  (linear or radial): use the brand's colours for gradients, and keep text on top readable.
+  Use shapes for badges, sale stickers, backdrops behind text (layer "back"), frames, dividers,
+  underlines, pointers and highlights.
+- **Rotation:** text, images and shapes can turn (rotation in degrees). A badge or sticker at -8 to
+  -15 degrees feels hand-placed; keep headlines and buttons straight.
+- **Images:** logos, product cut-outs, a second product shot; a picture can also fill a shape.
+- **Ads:** always a headline and a button (call to action). Add a label, price, subheading, badge or
+  anything else when it helps the decision.
 - **Links and embeds:** decide what helps, suggest it, and ask the user.
 - The visual design and layout are **identical across variations.** Words, prices, links and button
   text may differ per variation (feeds).
@@ -27,8 +40,9 @@ Who (logo or label) → what and why (headline) → how to act (button).
   to its right).
 - **Total copy:** about 5 to 10 words on screen, plus the button.
 
-## Layout rules
-- **One block of text,** aligned to one edge (left) or centred. Never scattered.
+## Layout rules (these always hold, whatever the layout)
+- **Grouped, not scattered:** the copy reads as one or two clear groups, aligned to an edge or centred.
+  A badge or sticker can sit apart, on purpose.
 - **Safe margins:** text at least 5% in from every edge; 8% at the top and bottom of 9:16.
 - **Never over the subject:** place text where the video is calm and empty, never over the product
   or faces (the shots skill keeps those areas clear).
@@ -59,7 +73,7 @@ Who (logo or label) → what and why (headline) → how to act (button).
 | outline | minimal brands |
 | glass | premium, over busy footage |
 
-## By size
+## By size (starting points; choose the layout that fits the concept)
 | Size | Text block | Headline | Button | Thumbnail strip |
 |---|---|---|---|---|
 | 1080×1920 (9:16) | lower third, or the top | up to 6 words | under the headline | bottom, medium |
@@ -69,9 +83,13 @@ Who (logo or label) → what and why (headline) → how to act (button).
 | 300×250, 336×280, 250×250, 480×320 | one line, top or bottom | up to 3 words | bottom right | bottom, small; no subheading or label |
 
 ## Copy
-- Short, as in ads. **Headline:** a benefit or promise, 2 to 6 words ("Find your lens",
-  "Built for wet days"). **Button:** a verb, 1 to 3 words ("Shop now", "Get yours"); name the
-  variation when it differs ("Shop Gold").
+- **Written for this Flick:** the goal, the product, the brand's voice and the category. Specific and
+  sharp, never generic: "Rain? Bring it" beats "High quality jacket"; "Pour the gold" beats "Shop now".
+  Match the voice: playful brands can pun, luxury stays spare, tech stays clear.
+- Short, as in ads. **Headline:** a benefit, promise or hook, 2 to 6 words. Bigger formats can carry
+  a subheading or a short line more. **Button:** a verb that matches the goal, 1 to 3 words
+  ("Get the app", "Book a seat", "Shop Gold"); name the variation when it differs.
+- Badges and stickers: 1 to 3 words ("New", "20% off", "Only 50 left", "Fan favourite").
 - **Variation names:** short and clear, one word preferred, at most 14 characters.
 - **Prices:** exact, with currency; never invented.
 - **Category lines** when they apply: alcohol, "Please drink responsibly."; no health, finance or

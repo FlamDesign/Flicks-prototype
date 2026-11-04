@@ -3,7 +3,7 @@ import { Shortcut } from "@/components/shortcut"
 import { createContext, useContext, useEffect, useRef, useState } from "react"
 import { Spinner } from "@/components/ui/spinner"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Add01Icon, Alert02Icon, ArrowLeft01Icon, ArrowRight01Icon, ArrowDown01Icon, BookOpen01Icon, CheckmarkBadge01Icon, Globe02Icon, ArrowUp02Icon, ImageAdd01Icon, Loading03Icon, PencilEdit01Icon, LeftToRightListNumberIcon, PaintBoardIcon, RefreshIcon, SparklesIcon, StopIcon, Tick02Icon, Cancel01Icon, PlayIcon } from "@hugeicons/core-free-icons"
+import { Add01Icon, Alert02Icon, ArrowLeft01Icon, ArrowRight01Icon, ArrowDown01Icon, CheckmarkBadge01Icon, Globe02Icon, ArrowUp02Icon, ImageAdd01Icon, Loading03Icon, PencilEdit01Icon, LeftToRightListNumberIcon, PaintBoardIcon, RefreshIcon, SparklesIcon, StopIcon, Tick02Icon, Cancel01Icon, PlayIcon, Search01Icon, ArrowUpRight01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { InputGroupInput } from "@/components/ui/input-group"
@@ -11,7 +11,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import type { Choice, Item, useAgent } from "@/ai/agent"
 import type { Brand, Plan, PlanVariation } from "@/ai/design"
 import { FlickPreview } from "@/components/editor/flick-preview"
-import { skillTitle } from "@/ai/skills"
+import { noNames } from "@/ai/client"
+import { BriefUpdate, briefAt, briefSig, sigOf } from "@/components/editor/brief-card"
 import { cn } from "@/lib/utils"
 import { useMediaAdd } from "@/components/media-picker"
 import { MentionTextarea, useMentionOptions } from "@/components/mention-input"
@@ -91,9 +92,10 @@ export function AgentItemView({ item, agent, ctx }: { item: Item; agent: Agent; 
     case "assets":
       return <Assets item={item} agent={agent} />
     case "brand":
-      return <BrandCard item={item} />
+      return <BrandTable item={item} />
     case "plan":
-      return <PlanCard item={item} agent={agent} ctx={ctx} />
+      // once approved, the storyboard folds to one row
+      return item.state === "approved" ? <ApprovedPlan item={item} agent={agent} ctx={ctx} /> : <PlanCard item={item} agent={agent} ctx={ctx} />
     case "image":
       return <ImageCard item={item} ctx={ctx} agent={agent} />
     case "build":
@@ -101,12 +103,11 @@ export function AgentItemView({ item, agent, ctx }: { item: Item; agent: Agent; 
     case "site":
       return <SiteCard item={item} />
     case "skill":
-      return (
-        <p className="flex items-center gap-1.5 px-1 text-xs text-muted-foreground">
-          <HugeiconsIcon icon={BookOpen01Icon} className="size-3.5" />
-          Following Flam’s guides: {item.names.map(skillTitle).join(" · ")}
-        </p>
-      )
+      return <Recap items={[item]} />
+    case "browse":
+      return <BrowseCard items={[item]} />
+    case "design":
+      return <DesignCard items={[item]} />
     case "review":
       return item.fail.length ? (
         <Card className="gap-2">
@@ -149,7 +150,8 @@ export function AgentItemView({ item, agent, ctx }: { item: Item; agent: Agent; 
 }
 
 /** An error in plain words; the raw message (for us) sits behind "Details". */
-function ErrorText({ text }: { text: string }) {
+function ErrorText({ text: raw0 }: { text: string }) {
+  const text = noNames(raw0)
   const [open, setOpen] = useState(false)
   const raw = /^[{[]|invalid_request|_error|status \d{3}/i.test(text)
   const plain = !raw
@@ -174,67 +176,130 @@ function ErrorText({ text }: { text: string }) {
   )
 }
 
-/** behind-the-scenes lines: guides read, searches, pages read, a passed review */
-const isQuiet = (it: Item) => it.kind === "skill" || it.kind === "note" || (it.kind === "review" && !it.fail.length)
-/** questions answered and image requests done: shown together as one summary */
+/** what reading each guide meant, said as the work it was */
+const SKILL_DONE: Record<string, string> = {
+  brief: "shaped the brief",
+  categories: "found the angle",
+  concepts: "explored concepts",
+  brand: "studied the brand",
+  shots: "blocked out the shots",
+  video: "directed the videos",
+  models: "set up the shoot",
+  images: "framed the shots",
+  design: "laid out the frame",
+  review: "checked every frame",
+}
+const isLegacyBrowse = (it: Item) => it.kind === "note" && (it.text.startsWith("Searched the web") || /^Read \S/.test(it.text))
+/** which per-turn card an item folds into, if any */
+function bucketOf(it: Item): "recap" | "browse" | "design" | "gallery" | undefined {
+  if (it.kind === "site" || it.kind === "browse" || isLegacyBrowse(it)) return "browse"
+  if (it.kind === "design" || (it.kind === "image" && it.purpose === "view")) return "design"
+  if (it.kind === "image") return "gallery"
+  if (it.kind === "skill" || it.kind === "note" || (it.kind === "review" && !it.fail.length)) return "recap"
+  return undefined
+}
+/** questions answered and image requests done: they become a brief update */
 const isAnswered = (it: Item) => (it.kind === "question" && it.answer !== undefined && it.display !== "concepts") || (it.kind === "assets" && !!it.done)
 
+type Group = { key: string; at: number; node: React.ReactNode }
 /**
- * The conversation as groups: runs of behind-the-scenes lines fold into one "Worked" line, and runs
- * of answered questions into one summary card, so the chat reads as a conversation, not a log.
+ * The conversation as groups. Between two things the user did, the chat's behind-the-scenes work folds
+ * into one card of each kind (a recap line, the websites it visited, the images it made, the changes to
+ * the Flick), placed where the first of them happened; answers become a "Brief updated" card.
  */
-export function threadGroups(items: Item[], agent: Agent, ctx: AgentCtx, opts: { brief?: boolean } = {}): { key: string; at: number; node: React.ReactNode }[] {
-  const out: { key: string; at: number; node: React.ReactNode }[] = []
+export function threadGroups(items: Item[], agent: Agent, ctx: AgentCtx): Group[] {
+  const out: Group[] = []
+  const isInput = (it: Item) => it.kind === "user" || isAnswered(it)
+  let before = briefSig([])
   for (let i = 0; i < items.length; ) {
     const it = items[i]
-    const run = (test: (x: Item) => boolean) => {
+    if (isAnswered(it)) {
       let j = i
-      while (j < items.length && test(items[j])) j++
-      return items.slice(i, j)
+      while (j < items.length && isAnswered(items[j])) j++
+      const entries = briefAt(items.slice(0, j), agent, ctx)
+      const changed = entries.filter((e) => before.get(e.key) !== sigOf(e))
+      before = briefSig(entries)
+      if (changed.length) out.push({ key: it.id, at: it.at, node: <BriefUpdate changed={changed} all={entries} /> })
+      i = j
+      continue
     }
-    if (isQuiet(it)) {
-      const g = run(isQuiet)
-      out.push({ key: g[0].id, at: g[0].at, node: g.length === 1 ? <AgentItemView item={g[0]} agent={agent} ctx={ctx} /> : <Steps items={g} /> })
-      i += g.length
-    } else if (isAnswered(it)) {
-      const g = run(isAnswered)
-      out.push({ key: g[0].id, at: g[0].at, node: opts.brief ? <AddedToBrief items={g} /> : <Answers items={g} /> })
-      i += g.length
-    } else {
+    if (it.kind === "user") {
       out.push({ key: it.id, at: it.at, node: <AgentItemView item={it} agent={agent} ctx={ctx} /> })
       i++
+      continue
     }
+    // one stretch of the chat's own work, up to the user's next message or answer
+    let j = i
+    while (j < items.length && !isInput(items[j])) j++
+    const buckets = new Map<string, { group: Group; items: Item[] }>()
+    for (const x of items.slice(i, j)) {
+      const b = bucketOf(x)
+      if (!b) {
+        out.push({ key: x.id, at: x.at, node: <AgentItemView item={x} agent={agent} ctx={ctx} /> })
+        continue
+      }
+      const known = buckets.get(b)
+      if (known) known.items.push(x)
+      else {
+        const group: Group = { key: `${b}-${x.id}`, at: x.at, node: null }
+        buckets.set(b, { group, items: [x] })
+        out.push(group)
+      }
+    }
+    for (const [b, { group, items: g }] of buckets)
+      group.node =
+        b === "recap" ? (
+          g.length === 1 && g[0].kind === "note" ? <AgentItemView item={g[0]} agent={agent} ctx={ctx} /> : <Recap items={g} />
+        ) : b === "browse" ? (
+          <BrowseCard items={g} />
+        ) : b === "design" ? (
+          <DesignCard items={g} />
+        ) : g.length === 1 ? (
+          <AgentItemView item={g[0]} agent={agent} ctx={ctx} />
+        ) : (
+          <Gallery items={g as Extract<Item, { kind: "image" }>[]} agent={agent} ctx={ctx} />
+        )
+    // what the chat's own cards showed (brand, plan, concept) is already seen: brief updates list only what answers changed
+    before = briefSig(briefAt(items.slice(0, j), agent, ctx))
+    i = j
   }
-  return out
+  return out.filter((g) => g.node !== null)
 }
 
-/** several behind-the-scenes lines as one: a short summary that opens to the list */
-function Steps({ items }: { items: Item[] }) {
+/** a line that opens to more: the shared look of the folded cards */
+function Fold({ head, children, defaultOpen = false, className }: { head: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean; className?: string }) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div className={cn("mr-6 flex flex-col overflow-hidden rounded-xl ring-1 ring-foreground/10", className)}>
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex min-h-10 w-full items-center gap-2 px-3 py-1.5 text-left text-sm outline-none hover:bg-muted/50 focus-visible:bg-muted/50">
+        {head}
+        <HugeiconsIcon icon={ArrowDown01Icon} className={cn("ml-auto size-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
+      </button>
+      {open && <div className="border-t animate-in fade-in-0">{children}</div>}
+    </div>
+  )
+}
+
+/** the chat's quiet work in one line: what it did, in plain words */
+function Recap({ items }: { items: Item[] }) {
   const [open, setOpen] = useState(false)
-  const guides = [...new Set(items.flatMap((x) => (x.kind === "skill" ? x.names : [])))]
+  const did = [...new Set(items.flatMap((x) => (x.kind === "skill" ? x.names.map((n) => SKILL_DONE[n]).filter(Boolean) : [])))]
   const notes = items.filter((x): x is Extract<Item, { kind: "note" }> => x.kind === "note")
-  const searches = notes.filter((n) => n.text.startsWith("Searched the web")).length
-  const reads = notes.filter((n) => n.text.startsWith("Read ")).length
-  const other = notes.length - searches - reads
   const passed = items.find((x): x is Extract<Item, { kind: "review" }> => x.kind === "review")
-  const summary = [
-    guides.length && `read ${guides.length} guide${guides.length > 1 ? "s" : ""}`,
-    searches && `searched the web${searches > 1 ? ` ${searches}×` : ""}`,
-    reads && `read ${reads} page${reads > 1 ? "s" : ""}`,
-    other && `${other} step${other > 1 ? "s" : ""}`,
-    passed && "review passed",
-  ].filter(Boolean)
+  const lines = [...did, ...notes.map((n) => n.text.replace(/\.$/, "")), ...(passed ? [`review passed: all ${passed.pass} checks`] : [])]
+  if (!lines.length) return null
+  const summary = [...did, notes.length && `${notes.length} more step${notes.length > 1 ? "s" : ""}`, passed && "review passed"].filter(Boolean) as string[]
   return (
     <div className="flex flex-col gap-1.5 px-1">
       <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex items-center gap-1.5 self-start rounded-md text-xs text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
         <HugeiconsIcon icon={Tick02Icon} className="size-3.5" />
         <span className="first-letter:uppercase">{summary.join(" · ")}</span>
-        <HugeiconsIcon icon={ArrowDown01Icon} className={cn("size-3 transition-transform", open && "rotate-180")} />
+        {lines.length > summary.length || notes.length ? <HugeiconsIcon icon={ArrowDown01Icon} className={cn("size-3 transition-transform", open && "rotate-180")} /> : null}
       </button>
       {open && (
         <ul className="ml-1.5 flex flex-col gap-1 border-l pl-3 text-xs text-muted-foreground animate-in fade-in-0">
-          {items.map((x) => (
-            <li key={x.id}>{x.kind === "skill" ? `Followed Flam’s guides: ${x.names.map(skillTitle).join(", ")}` : x.kind === "note" ? x.text : x.kind === "review" ? `Review passed: all ${x.pass} checks` : null}</li>
+          {lines.map((l, k) => (
+            <li key={k} className="first-letter:uppercase">{l}</li>
           ))}
         </ul>
       )}
@@ -242,57 +307,185 @@ function Steps({ items }: { items: Item[] }) {
   )
 }
 
-/** with the brief pinned above: answers just say where they went, with their picture when they have one */
-function AddedToBrief({ items }: { items: Item[] }) {
-  const said = items.flatMap((x) => {
-    if (x.kind === "question") return x.answer && x.answer !== "Skipped" ? [{ text: x.answer, image: x.options.find((o) => o.label === x.answer)?.image }] : []
-    if (x.kind === "assets" && x.done === "added") return [{ text: `${x.images?.length ?? 0} image${x.images?.length === 1 ? "" : "s"}`, image: x.images?.[0] }]
-    return []
-  })
-  if (!said.length) return null
-  return (
-    <p className="flex flex-wrap items-center gap-1.5 px-1 text-xs text-muted-foreground">
-      <HugeiconsIcon icon={Tick02Icon} className="size-3.5" />
-      Added to the brief:
-      {said.map((x, i) => (
-        <span key={i} className="flex items-center gap-1 font-medium text-foreground">
-          {x.image && <img src={x.image} alt="" decoding="async" className="size-4 rounded object-cover" />}
-          <span>
-            {x.text}
-            {i < said.length - 1 && <span className="font-normal text-muted-foreground">,</span>}
-          </span>
-        </span>
-      ))}
-    </p>
+const hostOf = (url: string) => {
+  try {
+    return new URL(/^https?:/.test(url) ? url : `https://${url}`).hostname.replace(/^www\./, "")
+  } catch {
+    return url.split("/")[0]
+  }
+}
+/** a site's own small icon */
+function SiteIcon({ host, className }: { host: string; className?: string }) {
+  const [broken, setBroken] = useState(false)
+  return broken ? (
+    <span className={cn("grid size-4 shrink-0 place-items-center rounded-sm bg-muted text-muted-foreground", className)}>
+      <HugeiconsIcon icon={Globe02Icon} className="size-3" />
+    </span>
+  ) : (
+    <img src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`} alt="" loading="lazy" onError={() => setBroken(true)} className={cn("size-4 shrink-0 rounded-sm bg-muted", className)} />
   )
 }
 
-/** answered questions and done image requests, as one compact summary */
-function Answers({ items }: { items: Item[] }) {
-  // one row per question: the question on top, the answer under it, rows split by hairlines
-  return (
-    <dl className="mr-6 flex flex-col divide-y divide-foreground/8 overflow-hidden rounded-xl bg-muted/40 text-sm">
-      {items.map((x) =>
-        x.kind === "question" ? (
-          <div key={x.id} className="flex flex-col gap-0.5 px-3.5 py-2.5">
-            <dt className="text-xs text-muted-foreground">{x.question}</dt>
-            <dd className={cn("min-w-0 break-words font-medium", x.answer === "Skipped" && "font-normal text-muted-foreground")}>{x.answer}</dd>
-          </div>
-        ) : x.kind === "assets" ? (
-          <div key={x.id} className="flex flex-col gap-1 px-3.5 py-2.5">
-            <dt className="text-xs text-muted-foreground">{x.message.split(/[.:]/)[0]}</dt>
-            <dd className="flex min-w-0 flex-wrap gap-1">
-              {x.done === "added" && x.images?.length ? x.images.map((u) => <img loading="lazy" decoding="async" key={u} src={u} alt="" className="size-8 rounded-md object-cover ring-1 ring-foreground/10" />) : <span className="text-muted-foreground">Skipped</span>}
-            </dd>
-          </div>
-        ) : null,
+/** the websites it visited and the searches it ran, folded into one row; open for what it found */
+function BrowseCard({ items }: { items: Item[] }) {
+  type Row = { key: string; kind: "site" | "read" | "search"; host: string; title: string; detail?: string; url?: string; images: string[]; state: "working" | "done" | "failed" }
+  const rows: Row[] = []
+  for (const x of items) {
+    if (x.kind === "site") {
+      const host = hostOf(x.url)
+      rows.push({ key: x.id, kind: "site", host, title: x.state === "failed" ? `Couldn't open ${host}` : x.title || host, detail: x.state === "failed" ? x.reason : x.state === "done" ? [host, x.price, x.images.length ? `${x.images.length} image${x.images.length === 1 ? "" : "s"}` : ""].filter(Boolean).join(" · ") : `Visiting ${host}…`, url: x.url, images: x.images, state: x.state })
+    } else if (x.kind === "browse") {
+      if (x.what === "search") rows.push({ key: x.id, kind: "search", host: "", title: x.text, detail: "Web search", images: [], state: "done" })
+      else rows.push({ key: x.id, kind: "read", host: hostOf(x.text), title: x.text, url: x.url ?? `https://${x.text}`, images: [], state: "done" })
+    } else if (x.kind === "note") {
+      const search = x.text.startsWith("Searched the web")
+      const t = search ? x.text.replace(/^Searched the web:\s*/, "") : x.text.replace(/^Read\s+/, "")
+      rows.push({ key: x.id, kind: search ? "search" : "read", host: search ? "" : hostOf(t), title: t, detail: search ? "Web search" : undefined, url: search ? undefined : `https://${t}`, images: [], state: "done" })
+    }
+  }
+  const hosts = [...new Set(rows.filter((r) => r.kind !== "search").map((r) => r.host))]
+  const searches = rows.filter((r) => r.kind === "search").length
+  const working = rows.find((r) => r.state === "working")
+  const thumbs = rows.flatMap((r) => r.images).slice(0, 4)
+  const head = (
+    <>
+      <span className="flex shrink-0 -space-x-1">
+        {hosts.length ? hosts.slice(0, 3).map((h) => <SiteIcon key={h} host={h} className="ring-2 ring-background" />) : <HugeiconsIcon icon={Search01Icon} className="size-4 text-muted-foreground" />}
+      </span>
+      <span className={cn("min-w-0 truncate", working && "text-shimmer")}>
+        {working
+          ? working.detail
+          : hosts.length
+            ? `Visited ${hosts.length} site${hosts.length > 1 ? "s" : ""}: ${hosts.slice(0, 2).join(", ")}${hosts.length > 2 ? ` +${hosts.length - 2}` : ""}`
+            : `Searched the web${searches > 1 ? ` ${searches} times` : ""}`}
+      </span>
+      {hosts.length > 0 && searches > 0 && !working && <span className="shrink-0 text-xs text-muted-foreground">· {searches} search{searches > 1 ? "es" : ""}</span>}
+      {!working && thumbs.length > 0 && (
+        <span className="ml-auto flex shrink-0 -space-x-1.5">
+          {thumbs.map((u) => (
+            <img key={u} src={u} alt="" loading="lazy" decoding="async" className="size-6 rounded-md object-cover ring-2 ring-background" />
+          ))}
+        </span>
       )}
-    </dl>
+    </>
+  )
+  return (
+    <Fold head={head}>
+      <ul className="flex flex-col divide-y divide-foreground/8">
+        {rows.map((r) => (
+          <li key={r.key} className="flex flex-col gap-2 px-3 py-2.5">
+            <div className="flex min-w-0 items-center gap-2">
+              {r.kind === "search" ? <HugeiconsIcon icon={Search01Icon} className="size-4 shrink-0 text-muted-foreground" /> : r.state === "failed" ? <HugeiconsIcon icon={Alert02Icon} className="size-4 shrink-0 text-destructive" /> : <SiteIcon host={r.host} />}
+              <div className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate text-sm font-medium">{r.title}</span>
+                {r.detail && <span className="truncate text-xs text-muted-foreground">{r.detail}</span>}
+              </div>
+              {r.url && r.state === "done" && (
+                <a href={/^https?:/.test(r.url) ? r.url : `https://${r.url}`} target="_blank" rel="noreferrer" aria-label={`Open ${r.host}`} className="grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+                  <HugeiconsIcon icon={ArrowUpRight01Icon} className="size-3.5" />
+                </a>
+              )}
+            </div>
+            {r.images.length > 0 && (
+              <div className="grid grid-cols-6 gap-1.5">
+                {r.images.slice(0, 12).map((u) => (
+                  <a key={u} href={u} target="_blank" rel="noreferrer" aria-label="Open image">
+                    <img loading="lazy" decoding="async" src={u} alt="" className="aspect-square w-full rounded-md object-cover ring-1 ring-foreground/10" />
+                  </a>
+                ))}
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+    </Fold>
+  )
+}
+
+/** the changes it made to the Flick, as one card: how many, and a look at the result when it took one */
+function DesignCard({ items }: { items: Item[] }) {
+  const changes = items.filter((x): x is Extract<Item, { kind: "design" }> => x.kind === "design")
+  const look = [...items].reverse().find((x): x is Extract<Item, { kind: "image" }> => x.kind === "image" && x.state === "done" && !!x.url)
+  const head = (
+    <>
+      {look?.url ? <img src={look.url} alt="" decoding="async" className="size-7 shrink-0 rounded-md object-cover ring-1 ring-foreground/10" /> : <HugeiconsIcon icon={PaintBoardIcon} className="size-4 shrink-0 text-muted-foreground" />}
+      <span className="min-w-0 truncate">{changes.length ? `Flick updated · ${changes.length} change${changes.length > 1 ? "s" : ""}` : `Watched ${look?.target ?? "the Flick"} as viewers will`}</span>
+    </>
+  )
+  return (
+    <Fold head={head}>
+      <div className="flex gap-3 p-3">
+        {look?.url && (
+          <a href={look.url} target="_blank" rel="noreferrer" aria-label="Open the picture" className="shrink-0">
+            <img src={look.url} alt={look.prompt} decoding="async" className="max-h-48 w-28 rounded-lg object-contain ring-1 ring-foreground/10" />
+          </a>
+        )}
+        {changes.length > 0 && (
+          <ul className="flex min-w-0 flex-1 list-disc flex-col gap-1 pl-4 text-xs text-muted-foreground">
+            {changes.map((c) => (
+              <li key={c.id}>{c.text.replace(/\.$/, "")}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </Fold>
+  )
+}
+
+/** several images from one stretch of work, side by side */
+function Gallery({ items, agent, ctx }: { items: Extract<Item, { kind: "image" }>[]; agent: Agent; ctx: AgentCtx }) {
+  const making = items.filter((x) => x.state === "working").length
+  const failed = items.filter((x) => x.state === "failed").length
+  return (
+    <Card className="gap-2.5">
+      <p className="flex items-center gap-1.5 text-sm font-medium">
+        {items.length} images
+        {making > 0 && <span className="text-shimmer text-xs font-normal">{making} on the way…</span>}
+        {failed > 0 && <span className="text-xs font-normal text-destructive">{failed} failed</span>}
+      </p>
+      <div className="grid grid-cols-3 gap-2">
+        {items.map((x) => (
+          <ImageTile key={x.id} item={x} agent={agent} ctx={ctx} />
+        ))}
+      </div>
+    </Card>
+  )
+}
+
+function ImageTile({ item, agent, ctx }: { item: Extract<Item, { kind: "image" }>; agent: Agent; ctx: AgentCtx }) {
+  const [added, setAdded] = useState(false)
+  return (
+    <figure className="flex min-w-0 flex-col gap-1">
+      <div className="relative aspect-square overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/10">
+        {item.state === "working" ? (
+          <GeneratingGradient spinner />
+        ) : item.state === "done" ? (
+          <a href={item.url} target="_blank" rel="noreferrer" aria-label="Open image">
+            <img loading="lazy" decoding="async" src={item.url} alt={item.prompt} className="absolute inset-0 size-full object-cover" />
+          </a>
+        ) : (
+          <span className="absolute inset-0 grid place-items-center">
+            <Button size="xs" variant="outline" onClick={() => agent.retryImage(item.id)} className="gap-1">
+              <HugeiconsIcon icon={RefreshIcon} className="size-3" />
+              Retry
+            </Button>
+          </span>
+        )}
+        {item.state === "done" && !item.placed && (
+          <Button size="xs" variant="secondary" disabled={added} onClick={() => (ctx.addToCanvas(item.url!), setAdded(true))} className="absolute inset-x-1 bottom-1">
+            {added ? "Added" : "Add"}
+          </Button>
+        )}
+      </div>
+      <figcaption className="truncate px-0.5 text-xs text-muted-foreground">{imageWhat(item)}</figcaption>
+    </figure>
   )
 }
 
 /** the chat's own words: paragraphs, bullets and **bold** */
-function Said({ text, streaming }: { text: string; streaming?: boolean }) {
+function Said({ text: said, streaming }: { text: string; streaming?: boolean }) {
+  // never a service or model name, even if the chat writes one
+  const text = noNames(said)
   if (!text && streaming)
     return (
       <span className="flex h-6 items-center px-1 text-sm">
@@ -613,35 +806,92 @@ function FileThumb({ file, url, className }: { file: File; url: string; classNam
   )
 }
 
-function BrandCard({ item }: { item: Extract<Item, { kind: "brand" }> }) {
+/** the brand it found, as a clear table: only the rows it has */
+function BrandTable({ item }: { item: Extract<Item, { kind: "brand" }> }) {
   const b = item.brand
-  const swatches = [b.primary_color, b.secondary_color, b.text_color].filter((c): c is string => !!c && /^#/.test(c))
-  return (
-    <Card className="flex-row items-start gap-3">
-      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground">
-        <HugeiconsIcon icon={PaintBoardIcon} className="size-4.5" />
-      </span>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-sm font-medium">{b.name || "Brand"}</span>
-        <span className="truncate text-xs text-muted-foreground">{[b.font, b.tone].filter(Boolean).join(" · ") || "Colours saved"}</span>
-        {b.notes && <span className="mt-1 text-xs leading-snug text-muted-foreground">{b.notes}</span>}
-        {!!b.sources?.length && (
-          <span className="mt-1 flex flex-wrap gap-x-2 text-xs text-muted-foreground">
-            From{" "}
-            {b.sources.slice(0, 4).map((u) => (
-              <a key={u} href={u} target="_blank" rel="noreferrer" className="underline-offset-2 hover:text-foreground hover:underline">
-                {u.replace(/^https?:\/\/(www\.)?/, "").split("/")[0]}
-              </a>
-            ))}
+  const colours = (
+    [
+      ["Main", b.primary_color],
+      ["Second", b.secondary_color],
+      ["Text", b.text_color],
+    ] as [string, string | undefined][]
+  ).filter((c): c is [string, string] => !!c[1] && /^#/.test(c[1]))
+  const rows: [string, React.ReactNode][] = []
+  if (b.logo) rows.push(["Logo", <img src={b.logo} alt={`${b.name ?? "Brand"} logo`} decoding="async" className="h-8 max-w-32 rounded object-contain" />])
+  if (colours.length)
+    rows.push([
+      "Colours",
+      <span className="flex flex-wrap gap-x-3 gap-y-1.5">
+        {colours.map(([n, c]) => (
+          <span key={n} className="flex items-center gap-1.5">
+            <span className="size-4 rounded-full ring-1 ring-foreground/15" style={{ background: c }} />
+            <span className="font-mono text-xs uppercase">{c}</span>
+            <span className="text-xs text-muted-foreground">{n}</span>
           </span>
-        )}
-      </div>
-      <div className="flex -space-x-1.5">
-        {swatches.map((c) => (
-          <span key={c} title={c} className="size-6 rounded-full ring-2 ring-background" style={{ background: c }} />
         ))}
+      </span>,
+    ])
+  if (b.font) rows.push(["Font", <span style={{ fontFamily: `"${b.font}", var(--font-sans)` }}>{b.font}</span>])
+  if (b.tagline) rows.push(["Tagline", <span>“{b.tagline}”</span>])
+  if (b.tone) rows.push(["Voice", b.tone])
+  if (b.notes) rows.push(["Notes", <span className="text-muted-foreground">{b.notes}</span>])
+  if (b.sources?.length)
+    rows.push([
+      "Sources",
+      <span className="flex flex-wrap gap-x-3 gap-y-1">
+        {b.sources.slice(0, 4).map((u) => (
+          <a key={u} href={u} target="_blank" rel="noreferrer" className="flex items-center gap-1 underline-offset-2 hover:underline">
+            <SiteIcon host={hostOf(u)} className="size-3.5" />
+            {hostOf(u)}
+          </a>
+        ))}
+      </span>,
+    ])
+  return (
+    <section aria-label="Brand" className="mr-6 overflow-hidden rounded-xl ring-1 ring-foreground/10">
+      <header className="flex items-center gap-2 bg-muted/40 px-3 py-2">
+        <HugeiconsIcon icon={PaintBoardIcon} className="size-4 text-muted-foreground" />
+        <span className="text-xs text-muted-foreground">Brand</span>
+        <span className="truncate text-sm font-medium">{b.name || "Your brand"}</span>
+      </header>
+      <dl className="flex flex-col divide-y divide-foreground/8 text-sm">
+        {rows.map(([k, v]) => (
+          <div key={k} className="grid grid-cols-[5.5rem_1fr] items-center gap-3 px-3 py-2">
+            <dt className="text-xs text-muted-foreground">{k}</dt>
+            <dd className="min-w-0 break-words">{v}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  )
+}
+
+/** an approved storyboard, folded to one row; opens to the full card */
+function ApprovedPlan({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>; agent: Agent; ctx: AgentCtx }) {
+  const n = item.plan.variations.length
+  const stills = (item.frames ?? item.previews ?? []).filter((x): x is string => !!x).slice(0, 4)
+  return (
+    <Fold
+      head={
+        <>
+          <HugeiconsIcon icon={Tick02Icon} className="size-4 shrink-0 text-muted-foreground" />
+          <span className="min-w-0 truncate">
+            Storyboard approved · {n} variation{n === 1 ? "" : "s"}
+          </span>
+          {stills.length > 0 && (
+            <span className="ml-auto flex shrink-0 -space-x-1.5">
+              {stills.map((u) => (
+                <img key={u} src={u} alt="" decoding="async" className="size-6 rounded-md object-cover ring-2 ring-background" />
+              ))}
+            </span>
+          )}
+        </>
+      }
+    >
+      <div className="p-2">
+        <PlanCard item={item} agent={agent} ctx={ctx} />
       </div>
-    </Card>
+    </Fold>
   )
 }
 
@@ -976,6 +1226,19 @@ function BuildCard({ ctx, agent }: { ctx: AgentCtx; agent: Agent }) {
   const stillOf = (i: number) => plan?.previews?.[i] ?? agent.imageUrl(plan?.plan.variations[i]?.image_ids?.[0])
   const others = steps.slice(2)
   const ready = videos.filter((v) => v.state === "done").length
+  const [open, setOpen] = useState(false)
+  // all done: one row that opens to the videos
+  if (done === steps.length && steps.length && !open)
+    return (
+      <button type="button" onClick={() => setOpen(true)} aria-expanded={false} className="mr-6 flex min-h-10 items-center gap-2 rounded-xl px-3 py-1.5 text-left text-sm ring-1 ring-foreground/10 outline-none hover:bg-muted/50 focus-visible:bg-muted/50">
+        <HugeiconsIcon icon={Tick02Icon} className="size-4 shrink-0 text-muted-foreground" />
+        <span className="min-w-0 truncate">Your Flick is ready{videos.length ? ` · ${videos.length} videos` : ""}</span>
+        <span className="ml-auto flex shrink-0 -space-x-1.5">
+          {videos.slice(0, 4).map((v, i) => (v.poster ? <img key={i} src={v.poster} alt="" decoding="async" className="size-6 rounded-md object-cover ring-2 ring-background" /> : null))}
+        </span>
+        <HugeiconsIcon icon={ArrowDown01Icon} className="size-3.5 shrink-0 text-muted-foreground" />
+      </button>
+    )
   return (
     <Card className="gap-3">
       <div className="flex items-center gap-2">
@@ -1047,7 +1310,7 @@ function BuildTile({ video: v, still, ratio, waiting }: { video: BuildVideo; sti
   )
 }
 
-const STATUS: Record<string, string> = { starting: "starting", queued: "waiting in Higgsfield's queue", in_progress: "generating", completed: "finishing" }
+const STATUS: Record<string, string> = { starting: "starting", queued: "in the queue", in_progress: "generating", completed: "finishing" }
 /** seconds since an image started, ticking */
 function Elapsed({ since }: { since: number }) {
   const [, tick] = useState(0)
@@ -1059,8 +1322,9 @@ function Elapsed({ since }: { since: number }) {
   return <>{s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`} · usually 20 to 60s</>
 }
 
-function ImageCard({ item, ctx, agent }: { item: Extract<Item, { kind: "image" }>; ctx: AgentCtx; agent: Agent }) {
-  const what =
+/** what an image is for, in a few words */
+function imageWhat(item: Extract<Item, { kind: "image" }>) {
+  return (
     item.purpose === "view"
       ? `Looked at ${item.target ?? "the Flick"}`
       : item.purpose === "thumbnail" && item.target
@@ -1074,6 +1338,11 @@ function ImageCard({ item, ctx, agent }: { item: Extract<Item, { kind: "image" }
             : item.purpose === "edit"
               ? "Edited photo"
               : "Image idea"
+  )
+}
+
+function ImageCard({ item, ctx, agent }: { item: Extract<Item, { kind: "image" }>; ctx: AgentCtx; agent: Agent }) {
+  const what = imageWhat(item)
   const [added, setAdded] = useState(false)
   return (
     <div className="mr-10 flex items-center gap-3 rounded-2xl p-1.5 pr-3">
@@ -1091,7 +1360,7 @@ function ImageCard({ item, ctx, agent }: { item: Extract<Item, { kind: "image" }
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="text-sm font-medium">{item.state === "working" ? `${what}: ${STATUS[item.status ?? ""] ?? "making it"}…` : item.state === "failed" ? "Image failed" : what}</span>
         <span className={cn("text-xs text-muted-foreground", item.state !== "failed" && "truncate")}>
-          {item.state === "failed" ? item.error : item.purpose === "view" ? "As viewers see it" : item.state === "done" && item.placed ? "Added to the Flick" : item.state === "working" && item.startedAt ? <Elapsed since={item.startedAt} /> : item.prompt}
+          {item.state === "failed" ? noNames(item.error ?? "") : item.purpose === "view" ? "As viewers see it" : item.state === "done" && item.placed ? "Added to the Flick" : item.state === "working" && item.startedAt ? <Elapsed since={item.startedAt} /> : item.prompt}
         </span>
       </span>
       {item.state === "failed" && (
@@ -1202,7 +1471,7 @@ export function AgentComposer({ agent, placeholder, variations, brand }: { agent
 type Q = Extract<Item, { kind: "question" }>
 
 /**
- * The questions the chat is waiting on, docked above the composer like Claude's and Higgsfield's:
+ * The questions the chat is waiting on, docked above the composer:
  * one at a time ("1 of 3", arrows), numbered answers (keys 1 to 9), "Something else", Skip and
  * Continue. Picking moves to the next question; the answers go back together once all are in.
  */

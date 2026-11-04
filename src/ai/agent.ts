@@ -82,6 +82,8 @@ export type ElementSpec = {
   stroke_width?: number
   height?: number
   points?: number
+  /** shape "path": SVG path data in a 100×100 box */
+  d?: string
   opacity?: number
   /** degrees, clockwise (text, images, shapes) */
   rotation?: number
@@ -142,6 +144,10 @@ export type Item = Base &
     | { kind: "plan"; toolId: string; plan: Plan; state: "open" | "approved" | "skipped"; previews?: (string | undefined)[]; frames?: (string | undefined)[] }
     | { kind: "image"; prompt: string; purpose: string; target?: string; aspect?: string; state: "working" | "done" | "failed"; url?: string; error?: string; placed?: boolean; status?: string; startedAt?: number }
     | { kind: "note"; text: string }
+    /** a change it made to the Flick (design, copy, variations): grouped as one card per turn */
+    | { kind: "design"; text: string }
+    /** a web search or a page it read: grouped with the websites it visited */
+    | { kind: "browse"; what: "search" | "read"; text: string; url?: string }
     /** skills the chat read (shown as one line) */
     | { kind: "skill"; names: string[] }
     /** the review's result */
@@ -294,7 +300,7 @@ export const TOOLS: Tool[] = [
   },
   {
     name: "set_format",
-    description: "Set the Flick's size (width×height in pixels) and, only if the user asked, its length. Use it when the user names a size in their own words; a size question (purpose 'size') applies the answer by itself. Videos are made in the closest shape the video model makes and cover the frame, centred.",
+    description: "Set the Flick's size (width×height in pixels) and, only if the user asked, its length. Use it when the user names a size in their own words; a size question (purpose 'size') applies the answer by itself. Videos are made in the closest available shape and cover the frame, centred.",
     input_schema: { type: "object", properties: { size: { type: "string", description: "e.g. '300×250' or '728×90'" }, seconds: { type: "number", description: "4 to 15; only when the user asked for a length" } }, required: ["size"] },
   },
   {
@@ -319,6 +325,8 @@ export const TOOLS: Tool[] = [
         font: str,
         tone: str,
         notes: { type: "string", description: "Key guideline points in one or two lines (logo use, photography style, do and don't)" },
+        logo_image_id: { type: "string", description: "The project image id of the brand's logo, when you have one (uploaded or from its website)" },
+        tagline: { type: "string", description: "The brand's own tagline or slogan, word for word, if it has one" },
         sources: { type: "array", items: { type: "string" }, description: "Addresses of the pages the brand details came from" },
       },
     },
@@ -373,7 +381,7 @@ export const TOOLS: Tool[] = [
   {
     name: "generate_image",
     description:
-      "Generate one image (Higgsfield; 10 to 60 seconds; runs in the background). purpose 'thumbnail' with a variation name sets that variation's thumbnail in the strip; 'canvas' adds it to the design; 'idea' just shows it. Pass reference_image_ids (the user's product photos, a website's product images) whenever the image shows their product: the model keeps the real product and changes the scene. Use sparingly.",
+      "Generate one image (10 to 60 seconds; runs in the background). purpose 'thumbnail' with a variation name sets that variation's thumbnail in the strip; 'canvas' adds it to the design; 'idea' just shows it. Pass reference_image_ids (the user's product photos, a website's product images) whenever the image shows their product: the model keeps the real product and changes the scene. Use sparingly.",
     input_schema: {
       type: "object",
       properties: {
@@ -488,12 +496,13 @@ export const TOOLS: Tool[] = [
   {
     name: "add_element",
     description:
-      "Add any text, button, image or shape to the canvas (on every variation). Shapes (rect with radius, ellipse, triangle, star with 4 to 8 points, polygon, line, arrow, heart, play button) take fill and stroke as a colour or a gradient, stroke_width, points, opacity, width and height: use them for badges, backdrops behind text, dividers, frames and pointers, under the text they support (add them first or say so). Text styles: heading, subheading, body, caption, label. Button styles: pill, rounded, sharp, light, outline, glass, link. Images: image_id of a project image (uploaded, from a website or generated; a logo, a product shot). Place it with position (top, upper, center, lower, bottom) and align (left, center, right), or exact x and y (% of the frame; x is the left edge, centre or right edge by align, y the middle). width: % of the frame (images, or a text box that wraps). size: font size in % of frame width (heading is 8, body 3.4). Keep clear of other elements and the thumbnail strip (see design). Returns the new element's id.",
+      "Add any text, button, image or shape to the canvas (on every variation). Shapes (rect with radius, ellipse, triangle, star with 4 to 8 points, polygon, line, arrow, heart, play button) take fill and stroke as a colour or a gradient, stroke_width, points, opacity, width and height: use them for badges, stickers, backdrops behind text, dividers, frames and pointers, under the text they support (add them first or say so). shape 'path' with d draws any other shape (seal, ribbon, tag, speech bubble, burst, chevron, tick, blob). rotation turns text, images and shapes. You decide the layout and how many elements it needs (design skill). Text styles: heading, subheading, body, caption, label. Button styles: pill, rounded, sharp, light, outline, glass, link. Images: image_id of a project image (uploaded, from a website or generated; a logo, a product shot). Place it with position (top, upper, center, lower, bottom) and align (left, center, right), or exact x and y (% of the frame; x is the left edge, centre or right edge by align, y the middle). width: % of the frame (images, or a text box that wraps). size: font size in % of frame width (heading is 8, body 3.4). Keep clear of other elements and the thumbnail strip (see design). Returns the new element's id.",
     input_schema: {
       type: "object",
       properties: {
         type: { type: "string", enum: ["text", "button", "image", "shape"] },
-        shape: { type: "string", enum: ["rect", "ellipse", "triangle", "star", "polygon", "line", "arrow", "heart", "play"], description: "Shapes: which one (play is a round play button). image_id fills a shape with a picture" },
+        shape: { type: "string", enum: ["rect", "ellipse", "triangle", "star", "polygon", "line", "arrow", "heart", "play", "path"], description: "Shapes: which one (play is a round play button; path is any shape you draw with d). image_id fills a shape with a picture" },
+        d: { type: "string", description: "Shape 'path': SVG path data drawn in a 100×100 box (0,0 top-left), stretched to the shape's width and height. Any shape: a seal badge, ribbon, tag, speech bubble, burst, blob, chevron, check, brackets, a wave" },
         fill: { description: "A hex colour, 'transparent', or a gradient: {type: 'linear' or 'radial', angle (degrees, CSS style: 90 = left to right), stops: [{color, at (0 to 100)}]}", anyOf: [{ type: "string" }, { type: "object", properties: { type: { type: "string", enum: ["linear", "radial"] }, angle: { type: "number" }, stops: { type: "array", items: { type: "object", properties: { color: { type: "string" }, at: { type: "number" } }, required: ["color", "at"] } } }, required: ["type", "stops"] }] },
         stroke: { description: "A hex colour, 'transparent', or a gradient: {type: 'linear' or 'radial', angle (degrees, CSS style: 90 = left to right), stops: [{color, at (0 to 100)}]}", anyOf: [{ type: "string" }, { type: "object", properties: { type: { type: "string", enum: ["linear", "radial"] }, angle: { type: "number" }, stops: { type: "array", items: { type: "object", properties: { color: { type: "string" }, at: { type: "number" } }, required: ["color", "at"] } } }, required: ["type", "stops"] }] },
         stroke_width: { type: "number", description: "Shapes: outline or line width in px at 1080 wide (0 = none)" },
@@ -573,25 +582,67 @@ export const TOOLS: Tool[] = [
 
 
 const ACTIVITY: Record<string, string> = {
-  read_skill: "Reading Flam’s guides",
-  ask_user: "Preparing a question",
-  set_format: "Setting the size",
-  propose_concepts: "Sketching concepts",
-  request_assets: "Preparing a question",
-  propose_plan: "Writing the plan",
-  set_brand: "Setting the brand",
-  generate_image: "Describing an image",
-  read_website: "Reading the website",
-  web_search: "Searching the web",
-  web_fetch: "Reading a page",
-  view_image: "Looking at images",
-  search_library: "Searching the library",
-  use_library: "Bringing in earlier work",
-  review_flick: "Reviewing the Flick",
-  view_flick: "Looking at the Flick",
-  update_design: "Designing",
-  add_element: "Designing",
-  edit_element: "Designing",
+  read_skill: "Getting into it",
+  ask_user: "Lining up a question",
+  set_format: "Sizing the frame",
+  propose_concepts: "Dreaming up concepts",
+  request_assets: "Lining up a question",
+  propose_plan: "Writing the storyboard",
+  set_brand: "Studying the brand",
+  generate_image: "Shooting a look",
+  make_sheet: "Shooting a reference sheet",
+  read_website: "Visiting the website",
+  web_search: "Scouting the web",
+  web_fetch: "Reading up",
+  view_image: "Studying your photos",
+  search_library: "Digging through your library",
+  use_library: "Bringing back earlier work",
+  review_flick: "Giving it a final once-over",
+  view_flick: "Watching it as viewers will",
+  update_design: "Styling the frame",
+  add_element: "Laying out the frame",
+  edit_element: "Fine-tuning the design",
+  remove_element: "Clearing some space",
+  set_variation: "Reworking a variation",
+  add_variation: "Adding a variation",
+  vary_field: "Writing the copy",
+  same_for_all: "Writing the copy",
+}
+/** what reading each skill means for the user's Flick */
+const SKILL_ACTIVITY: Record<string, string> = {
+  flicks: "Getting to know your Flick",
+  brief: "Shaping the brief",
+  categories: "Finding the angle",
+  concepts: "Dreaming up concepts",
+  brand: "Studying the brand",
+  shots: "Blocking out the shots",
+  video: "Directing your Flick",
+  models: "Setting up the shoot",
+  images: "Framing the shot",
+  design: "Laying out the frame",
+  review: "Giving it a final once-over",
+}
+/** a livelier line from what the tool call says so far (which skill, which element, which site) */
+function activityFrom(name: string, json: string): string | undefined {
+  const val = (k: string) => json.match(new RegExp(`"${k}"\\s*:\\s*"([^"]+)"`))?.[1]
+  if (name === "read_skill") {
+    const first = json.match(/"names"\s*:\s*\[\s*"([^"]+)"/)?.[1]
+    return first ? SKILL_ACTIVITY[first] : undefined
+  }
+  if (name === "add_element") {
+    const type = val("type")
+    const style = val("style")
+    if (type === "shape") return val("shape") === "path" ? "Drawing a shape" : "Adding a shape"
+    if (type === "button") return "Placing the button"
+    if (type === "image") return "Placing an image"
+    if (type === "text") return style === "heading" ? "Writing the headline" : style === "label" ? "Adding a label" : "Writing the copy"
+  }
+  if (name === "read_website" || name === "web_fetch") {
+    const url = val("url")
+    const host = url?.replace(/^https?:\/\/(www\.)?/, "").split("/")[0]
+    return host && host.includes(".") ? `Visiting ${host}` : undefined
+  }
+  return undefined
 }
 
 export function systemPrompt(s: ProjectState) {
@@ -618,7 +669,7 @@ How the app works (the mechanics, not what to ask):
 - Questions: ask_user shows tappable answers. display "chips" for words; "layouts", "palettes" or "thumbnails" for visual choices; step "idea", "look" or "plan" moves the progress bar. Several ask_user calls in one reply show together. request_assets asks for files.
 - Web: web_search finds pages; web_fetch reads a page or PDF (text) that appeared in the conversation or in search results; read_website reads a product page for its products, prices, colours and images (and keeps the images for the project). Use them on your own whenever a brand or product is hinted.
 - Brand: set_brand records the brand (name, colours, font, voice).
-- Images: generate_image (with reference_image_ids to keep the user's images, has_text for readable words), view_image to look at any project image, use_image to place one. The app picks the model from these (models skill). When the user gave nothing to work from, suggest looks first: concept previews (propose_concepts) and generate_image purpose "look" make reference images; the picked or approved one goes into the plan's reference_image_ids. To change a user's photo before animating it, generate_image purpose "edit" with that photo in reference_image_ids, then plan reference_mode "animate" with the result as first_frame_id.
+- Images: generate_image (with reference_image_ids to keep the user's images, has_text for readable words), view_image to look at any project image, use_image to place one. The app picks how it's made from these (models skill). When the user gave nothing to work from, suggest looks first: concept previews (propose_concepts) and generate_image purpose "look" make reference images; the picked or approved one goes into the plan's reference_image_ids. To change a user's photo before animating it, generate_image purpose "edit" with that photo in reference_image_ids, then plan reference_mode "animate" with the result as first_frame_id.
 - Sheets: make_sheet makes a product sheet or character sheet (several views on a clean background) from the user's images, so a product or person stays the same in every video. Make one when a product or person must stay consistent across videos, or when there's only one photo of it; use it in reference_image_ids and variations' image_ids. Ask the user to approve it (ask_user) when getting it right matters (a hero product, a face).
 - Videos: the reference video is Variation 1 (the first video in state.videos, role "reference"): it is in the Flick like the others, with its own name, label, thumbnail and link, and the other variations are made from it. It is made first, one of three ways (reference_mode): "reference" (default) stays true to reference_image_ids and reference_video_ids (product, characters, style); "edit" changes the user's own video (source_video_id); "animate" brings the user's image to life as it is (first_frame_id). There is no prompt-only video: with nothing given, suggest looks first. Write the reference prompt as shot (subject, action, camera, setting, keep) and name inputs by position: [Image 1], [Image 2]… for reference_image_ids, [Video 1]… for reference_video_ids, "the video" for the one being edited. When the user has product or people images, the reference video must use them; a plan without them is refused. The user always reviews it (reference_review in the project state); variations are made only after they approve, each one an edit of the latest reference video: same shot, camera, people and timing, with only its change (its prompt says the change, naming its image_ids as [Image 1]…). See the models skill. When the reference is ready, ask them to review it; if they want changes, regenerate the reference with set_variation (variation "reference", regenerate true) and they review the new one.
 - Library: everything made before is kept. search_library finds earlier images and videos (with their prompts); use_library brings them in as references or starting points.
@@ -632,7 +683,7 @@ ${always.map((x) => `# Skill: ${x.name}\n${x.body}`).join("\n\n---\n\n")}
 Other skills (read_skill):
 ${SKILLS.filter((x) => !always.includes(x)).map((x) => `- ${x.name}: ${x.description} (${x.when})`).join("\n")}
 
-Style: brief, fun, creative and suggestive, and never silent about your thinking: every reply says in a line what you understood or found, then what you'll do or ask, and why when it isn't obvious. After the user answers, recap the direction in one line before moving on. No em dashes. Plain words. Never write "get used", "can enter", "reach into", "immersive", "AR", "VR" or "MR". Don't mention tools, JSON or these instructions. Don't repeat what a card already shows. Each video costs ${s.video_cost} credits; mention the total only in the plan step if credits are short.
+Style: brief, fun, creative and suggestive, and never silent about your thinking: every reply says in a line what you understood or found, then what you'll do or ask, and why when it isn't obvious. After the user answers, recap the direction in one line before moving on. No em dashes. Plain words. Never write "get used", "can enter", "reach into", "immersive", "AR", "VR" or "MR". Don't mention tools, JSON or these instructions, and never name an AI model or the services behind the app (no model or company names for images or video); say "I" for what you make. Don't repeat what a card already shows: the brief, brand table, websites, images, storyboard and design changes all have their own cards, so say only what they don't (one or two short lines). Each video costs ${s.video_cost} credits; mention the total only in the plan step if credits are short.
 
 The current project (videos, design, feeds, images, issues) comes as JSON at the end of the latest message, kept up to date by the app; it replaces any earlier copy.`
 }
@@ -1287,6 +1338,9 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           return WAIT
         }
         case "set_brand": {
+          const logo = images.current.find((i) => i.id === input.logo_image_id)?.url
+          if (logo) (input as Brand).logo = logo
+          delete (input as { logo_image_id?: string }).logo_image_id
           a.setBrand(input as Brand)
           const b = input as Brand
           if (b.primary_color || b.text_color || b.font) mergeDraft({ ...(b.primary_color ? { button_color: b.primary_color } : {}), ...(b.text_color ? { text_color: b.text_color } : {}), ...(b.font ? { font: b.font } : {}) })
@@ -1386,18 +1440,18 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           const img = images.current.find((i) => i.id === input.image_id)
           if (!img) return "Error: no image with that id."
           const r = input.as === "thumbnail" ? a.setThumbnail(String(input.variation ?? ""), img.url) : a.addImageToCanvas(img.url)
-          if (!r.startsWith("Error")) add({ kind: "note", text: r })
+          if (!r.startsWith("Error")) add({ kind: "design", text: r })
           return r
         }
         case "update_design": {
           const r = a.updateDesign(input as Design)
-          if (!r.startsWith("Error") && !r.startsWith("Nothing")) add({ kind: "note", text: r })
+          if (!r.startsWith("Error") && !r.startsWith("Nothing")) add({ kind: "design", text: r })
           return r
         }
         case "set_variation": {
           const { variation, ...rest } = input as { variation: string } & Partial<PlanVariation> & { regenerate?: boolean }
           const r = a.setVariation(variation, rest)
-          if (!r.startsWith("Error")) add({ kind: "note", text: r.replace(/ Check: .*$/, "") })
+          if (!r.startsWith("Error")) add({ kind: "design", text: r.replace(/ Check: .*$/, "") })
           return r
         }
         case "vary_field":
@@ -1409,7 +1463,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
               : u.name === "same_for_all"
                 ? a.sameForAll(input.field as string | undefined, input.feed as string | undefined, input.value as string | undefined)
                 : a.renameFeed(String(input.from ?? ""), String(input.to ?? ""))
-          if (!r.startsWith("Error") && !r.startsWith("Nothing")) add({ kind: "note", text: r.replace(/ Check: .*$/, "") })
+          if (!r.startsWith("Error") && !r.startsWith("Nothing")) add({ kind: "design", text: r.replace(/ Check: .*$/, "") })
           return r
         }
         case "add_element":
@@ -1423,12 +1477,12 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
             spec.type = spec.type ?? "image"
           }
           const r = u.name === "add_element" ? a.addElement(spec) : u.name === "edit_element" ? a.editElement(String(input.id ?? ""), spec) : a.removeElement(String(input.id ?? ""))
-          if (!r.startsWith("Error") && !r.startsWith("Nothing")) add({ kind: "note", text: r.replace(/ \(id [^)]*\)/, "") })
+          if (!r.startsWith("Error") && !r.startsWith("Nothing")) add({ kind: "design", text: r.replace(/ \(id [^)]*\)/, "") })
           return r
         }
         case "add_variation": {
           const r = a.addVariation(input as unknown as PlanVariation, input.generate !== false)
-          if (!r.startsWith("Error")) add({ kind: "note", text: r.replace(/ Check: .*$/, "") })
+          if (!r.startsWith("Error")) add({ kind: "design", text: r.replace(/ Check: .*$/, "") })
           return r
         }
         default:
@@ -1458,7 +1512,12 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         const onText = (text: string) => patch(itemId, { text } as Partial<Item>)
         // what it's doing while it writes a tool call (a plan can take a while, with no words to show)
         const onTool = (name: string) => patch(itemId, { activity: ACTIVITY[name] ?? "Working" } as Partial<Item>)
-        const ask = (r: typeof req) => (live.current ? streamChat(r, onText, abort.current!.signal, onTool, onToolJson) : mockReply(msgs.current, state(), onText))
+        const onJson = (tid: string, name: string, json: string) => {
+          onToolJson(tid, name, json)
+          const said = activityFrom(name, json)
+          if (said) patch(itemId, { activity: said } as Partial<Item>)
+        }
+        const ask = (r: typeof req) => (live.current ? streamChat(r, onText, abort.current!.signal, onTool, onJson) : mockReply(msgs.current, state(), onText))
         // if the API refuses how earlier searches or thinking were sent back, send them once more as plain notes
         const res = await ask(req).catch((e) => {
           if (e instanceof Error && /tool_result|thinking|signature/i.test(e.message)) return ask(cachedRequest(systemPrompt(now), msgs.current, now, true))
@@ -1472,7 +1531,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         for (const b of res.content)
           if (b.type === "server_tool_use") {
             const q = (b.input ?? {}) as { query?: string; url?: string }
-            add({ kind: "note", text: b.name === "web_search" ? `Searched the web: ${q.query ?? ""}` : `Read ${String(q.url ?? "a page").replace(/^https?:\/\//, "").slice(0, 60)}` })
+            add(b.name === "web_search" ? { kind: "browse", what: "search", text: String(q.query ?? "") } : { kind: "browse", what: "read", text: String(q.url ?? "a page").replace(/^https?:\/\/(www\.)?/, "").slice(0, 80), url: q.url })
           }
         // a long search can pause the turn: send it back as it is to carry on
         if (res.stop === "pause_turn") continue

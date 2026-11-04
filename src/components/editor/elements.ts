@@ -214,6 +214,7 @@ type BaseElement =
       strokeWidth: number // px at 1080 wide; 0 = none
       radius: number // rectangles: % of the largest possible corner radius
       points?: number // stars: points; polygons: sides
+      d?: string // "path": SVG path data in a 100×100 box, stretched to the shape's box
       opacity?: number // 0 to 1
       fillImage?: string // a picture filling the shape (over the fill colour)
       fillFit?: "cover" | "contain"
@@ -237,7 +238,7 @@ type BaseElement =
       savedFree?: { x: number; y: number; size: number; free: { x: number; y: number }[] }
     }
 
-export type ShapeKind = "rect" | "ellipse" | "triangle" | "star" | "polygon" | "line" | "arrow" | "heart" | "play"
+export type ShapeKind = "rect" | "ellipse" | "triangle" | "star" | "polygon" | "line" | "arrow" | "heart" | "play" | "path"
 /** a solid colour (hex, or "transparent"), or a gradient (the chat can set these; the editor offers solid colours) */
 export type Paint = string | { type: "linear" | "radial"; angle?: number; stops: { color: string; at: number }[] }
 export const isGradient = (p: Paint | undefined): p is Exclude<Paint, string> => !!p && typeof p === "object"
@@ -261,7 +262,7 @@ export const SHAPES: { id: string; shape: ShapeKind; label: string; ar: number; 
 /** the colour new shapes start in */
 export const SHAPE_GREY = "#a8a29e"
 export const shapeLabel = (s: ShapeKind, points?: number) =>
-  s === "star" ? `${points ?? 5}-point star` : s === "polygon" ? (({ 3: "Triangle", 4: "Diamond", 5: "Pentagon", 6: "Hexagon", 8: "Octagon" }) as Record<number, string>)[points ?? 6] ?? `${points}-sided shape` : (SHAPES.find((x) => x.shape === s)?.label ?? "Shape")
+  s === "path" ? "Custom shape" : s === "star" ? `${points ?? 5}-point star` : s === "polygon" ? (({ 3: "Triangle", 4: "Diamond", 5: "Pentagon", 6: "Hexagon", 8: "Octagon" }) as Record<number, string>)[points ?? 6] ?? `${points}-sided shape` : (SHAPES.find((x) => x.shape === s)?.label ?? "Shape")
 /** elements that turn by the rotation handles */
 export const canRotate = (e: CanvasElement) => e.kind === "text" || e.kind === "image" || e.kind === "shape"
 

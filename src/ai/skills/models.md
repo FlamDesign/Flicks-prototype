@@ -14,10 +14,10 @@ reference or a variation. Never name models or providers to the user; the video 
 ## Images
 | Step | You ask for | Model the app uses | Cost each | Speed |
 |---|---|---|---|---|
-| Concept previews, suggested looks | propose_concepts, or generate_image purpose "look" | ad image model (Flare); draft quality for previews | about 1 to 3 cents | fast |
-| Product or character sheets | make_sheet with the user's photos | ad image model (Flare), keeps the real product or person | about 3 cents | medium |
-| A user's photo changed before animating it | generate_image purpose "edit", the photo in reference_image_ids | ad image model (Flare), precise editing model as backup | about 3 cents | medium |
-| Thumbnails or canvas images | purpose "thumbnail" or "canvas" (with reference_image_ids when it shows their product) | ad image model (Flare) | about 1 to 3 cents | fast |
+| Concept previews, suggested looks | propose_concepts, or generate_image purpose "look" | ad image model; draft quality for previews | about 1 to 3 cents | fast |
+| Product or character sheets | make_sheet with the user's photos | ad image model, keeps the real product or person | about 3 cents | medium |
+| A user's photo changed before animating it | generate_image purpose "edit", the photo in reference_image_ids | ad image model, precise editing model as backup | about 3 cents | medium |
+| Thumbnails or canvas images | purpose "thumbnail" or "canvas" (with reference_image_ids when it shows their product) | ad image model | about 1 to 3 cents | fast |
 | Images with readable words (a badge, an offer, a sign) | has_text: true | text-rendering model | 3 cents | medium |
 
 Rules:

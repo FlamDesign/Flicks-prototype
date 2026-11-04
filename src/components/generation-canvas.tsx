@@ -1019,10 +1019,12 @@ export function GenerationCanvas({
       const at = placeOf(spec)
       let el: CanvasElement
       if (type === "shape") {
-        const def = SHAPES.find((x) => x.shape === spec.shape) ?? SHAPES[0]
+        const path = spec.shape === "path"
+        if (path && !spec.d?.trim()) return "Error: A path shape needs d (SVG path data in a 100×100 box)."
+        const def = path ? { shape: "path" as const, ar: 1, filled: true, points: undefined } : (SHAPES.find((x) => x.shape === spec.shape) ?? SHAPES[0])
         const w = Math.min(100, Math.max(1, spec.width ?? (def.ar >= 4 ? 40 : 30)))
         const h = Math.min(100, Math.max(0.5, spec.height ?? (w * ratio) / def.ar))
-        el = { id, kind: "shape", shape: def.shape, x: at.x, y: at.y, w, h, ar: def.ar, lock: false, fill: spec.fill ?? (def.filled ? SHAPE_GREY : "transparent"), stroke: spec.stroke ?? SHAPE_GREY, ...(spec.url ? { fillImage: spec.url, fillFit: "cover" as const } : {}), strokeWidth: spec.stroke_width ?? (def.filled ? 0 : 8), radius: spec.radius ?? 0, ...(spec.points ? { points: Math.min(12, Math.max(3, Math.round(spec.points))) } : def.points ? { points: def.points } : {}), opacity: spec.opacity ?? 1 }
+        el = { id, kind: "shape", shape: def.shape, x: at.x, y: at.y, w, h, ar: def.ar, lock: false, fill: spec.fill ?? (def.filled ? SHAPE_GREY : "transparent"), stroke: spec.stroke ?? SHAPE_GREY, ...(spec.url ? { fillImage: spec.url, fillFit: "cover" as const } : {}), strokeWidth: spec.stroke_width ?? (def.filled ? 0 : 8), radius: spec.radius ?? 0, ...(path ? { d: spec.d!.slice(0, 4000) } : {}), ...(spec.points ? { points: Math.min(12, Math.max(3, Math.round(spec.points))) } : def.points ? { points: def.points } : {}), opacity: spec.opacity ?? 1 }
       } else if (type === "image") {
         if (!spec.url) return "Error: Give image_id for an image."
         const w = Math.min(100, Math.max(4, spec.width ?? 30))
@@ -1062,6 +1064,7 @@ export function GenerationCanvas({
           ...(spec.stroke_width !== undefined ? { strokeWidth: Math.max(0, spec.stroke_width) } : {}),
           ...(spec.radius !== undefined ? { radius: spec.radius } : {}),
           ...(spec.points !== undefined ? { points: Math.min(12, Math.max(3, Math.round(spec.points))) } : {}),
+          ...(spec.d && sh.shape === "path" ? { d: spec.d.slice(0, 4000) } : {}),
           ...(spec.opacity !== undefined ? { opacity: Math.min(1, Math.max(0, spec.opacity)) } : {}),
           ...(spec.url ? { fillImage: spec.url } : {}),
         } as CanvasElement
@@ -1957,7 +1960,7 @@ export function GenerationCanvas({
                   <TooltipTrigger asChild>
                     <span className={cn("rounded-full px-1.5 py-0.5 text-xs font-medium", live ? "bg-brand/10 text-brand" : "bg-muted text-muted-foreground")}>{live ? "Claude" : "Demo"}</span>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom">{live ? "Live: Claude plans and designs, Higgsfield makes images" : "Scripted demo. Connect AI in dev tools for live Claude and Higgsfield."}</TooltipContent>
+                  <TooltipContent side="bottom">{live ? "Live: Claude plans and designs, Flam Forge makes images and videos" : "Scripted demo. Connect AI in dev tools to go live."}</TooltipContent>
                 </Tooltip>
               ),
               // questions waiting for an answer dock above the composer instead

@@ -5,7 +5,6 @@ import type { Item, Step, useAgent } from "@/ai/agent"
 import type { Design, Field } from "@/ai/design"
 import { Arrive } from "@/components/arrive"
 import { AgentComposer, isDocked, QuestionDeck, threadGroups, type AgentCtx } from "@/components/editor/agent-chat"
-import { BriefCard } from "@/components/editor/brief-card"
 import { cn } from "@/lib/utils"
 
 type Agent = ReturnType<typeof useAgent>
@@ -41,7 +40,7 @@ export function PlanSteps({ step }: { step: Step }) {
 }
 
 /**
- * Before anything is generated: just the conversation, centred, like Claude's and Higgsfield's chat.
+ * Before anything is generated: just the conversation, centred, like a chat app.
  * Questions dock above the composer; image requests and the plan sit in the conversation. The Flick
  * itself appears in the editor once the plan is approved.
  */
@@ -58,12 +57,8 @@ export function PlanningView({ agent, ctx }: { agent: Agent; ctx: AgentCtx; desi
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-background">
       <div ref={list} className="min-h-0 flex-1 overflow-y-auto">
-        {/* the brief so far, pinned while the conversation scrolls under it */}
-        <div className="sticky top-0 z-10 mx-auto w-full max-w-[720px] bg-gradient-to-b from-background via-background/90 to-transparent px-5 pb-3 pt-3 empty:hidden">
-          <BriefCard agent={agent} ctx={ctx} />
-        </div>
         <div className="mx-auto flex w-full max-w-[720px] flex-col gap-5 px-5 pb-6 pt-5">
-          {threadGroups(agent.items.filter((it) => !asking(it)), agent, ctx, { brief: true }).map((g) => (
+          {threadGroups(agent.items.filter((it) => !asking(it)), agent, ctx).map((g) => (
             <Arrive key={g.key} className="flex flex-col">
               {g.node}
             </Arrive>

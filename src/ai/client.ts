@@ -53,12 +53,24 @@ export const isLive = (c: AiConfig = config) => !!(c.url.trim() && c.passcode.tr
 const base = () => config.url.trim().replace(/\/+$/, "")
 const headers = () => ({ "content-type": "application/json", "x-flicks-pass": config.passcode.trim() })
 
+/**
+ * Words people see never name the services or models behind the app: they're all Flam Forge.
+ * (Setup errors keep their meaning: "Flam Forge didn't accept the key".)
+ */
+export function noNames(text: string) {
+  return text
+    .replace(/\s*(?:in|from|at)\s+(?:https?:\/\/)?[\w.-]*higgsfield\.ai[\w./-]*/gi, "")
+    .replace(/\bHIGGSFIELD_API_KEY\b/g, "image key")
+    .replace(/\b(?:the\s+)?higgsfield(?:\s+api)?(?:\s+account)?(?:'s)?\b/gi, (m) => (/'s$/i.test(m) ? "Flam Forge's" : /account/i.test(m) ? "The Flam Forge account" : "Flam Forge"))
+    .replace(/\b(?:bytedance\s*\/?\s*)?seedance(?:[\s-]*[\d.]+)?\b|\b(?:higgsfield-ai\/)?soul(?:\/v2)?\b(?=\s*(?:model|image|standard))|\bflare\b(?=\s*(?:model|image))|\bkling\b|\bnano[\s-]?banana\b|\bveo\s*\d?\b|\bgpt-image\S*|\bflux\b/gi, "Flam Forge")
+}
+
 export class AiError extends Error {
   constructor(
     public code: string,
     message: string,
   ) {
-    super(message)
+    super(noNames(message))
   }
 }
 const MESSAGES: Record<string, string> = {
@@ -66,7 +78,7 @@ const MESSAGES: Record<string, string> = {
   origin_not_allowed: "The AI server doesn't accept requests from this site.",
   daily_limit: "Today's AI limit is reached. Try again tomorrow.",
   claude_not_set_up: "The AI server has no Claude key yet.",
-  images_not_set_up: "The AI server has no Higgsfield key yet.",
+  images_not_set_up: "The AI server has no image key yet.",
   server_not_set_up: "The AI server isn't set up yet (no passcode).",
   network: "Couldn't reach the AI server. Check your connection and try again.",
 }
@@ -228,9 +240,9 @@ export async function generateImage(prompt: string, aspect: string, signal?: Abo
     const s = (await (await steady(`/image/${id}`, { signal })).json()) as { status: string; url?: string }
     onStatus?.(s.status)
     if (s.status === "completed" && s.url) return s.url
-    if (s.status === "completed") throw new AiError("image_failed", "Higgsfield finished but sent no image. Try again.")
+    if (s.status === "completed") throw new AiError("image_failed", "The image finished but came back empty. Try again.")
     if (s.status === "failed" || s.status === "canceled") throw new AiError("image_failed", "The image didn't generate. Try again.")
-    if (s.status === "nsfw") throw new AiError("image_blocked", "Higgsfield blocked this image. Try a different description.")
+    if (s.status === "nsfw") throw new AiError("image_blocked", "This image was blocked. Try a different description.")
     wait = Math.min(wait * 1.25, 3000)
   }
   throw new AiError("image_timeout", "The image is taking too long. Try again.")

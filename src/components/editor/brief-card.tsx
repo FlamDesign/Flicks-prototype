@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { ArrowDown01Icon } from "@hugeicons/core-free-icons"
+import { ArrowDown01Icon, Tick02Icon } from "@hugeicons/core-free-icons"
 import type { Item, useAgent } from "@/ai/agent"
 import type { AgentCtx } from "@/components/editor/agent-chat"
 import { cn } from "@/lib/utils"
@@ -9,45 +9,60 @@ type Agent = ReturnType<typeof useAgent>
 type Q = Extract<Item, { kind: "question" }>
 
 /** one thing the brief holds: a name, and what it looks like (pictures, swatches, words) */
-type Entry = { key: string; label: string; value: string; images?: string[]; colors?: string[] }
+export type BriefEntry = { key: string; label: string; value: string; images?: string[]; colors?: string[] }
 
-/** What the brief holds so far, from the conversation: product, brand, concept, answers, format. */
-export function briefEntries(agent: Agent, ctx: AgentCtx): Entry[] {
-  const out: Entry[] = []
-  const own = agent.ownImages()
-  if (own.length) out.push({ key: "product", label: "Product", value: `${own.length} photo${own.length > 1 ? "s" : ""}`, images: own.slice(-4) })
-  const b = ctx.brand
-  if (b?.name || b?.primary_color) {
-    const colors = [b.primary_color, b.secondary_color, b.text_color].filter((c): c is string => !!c && /^#/.test(c))
-    out.push({ key: "brand", label: "Brand", value: [b.name, b.font].filter(Boolean).join(" · ") || "Colours", colors })
+/**
+ * What the brief held at a point in the conversation (the items so far): your images, brand, goal and
+ * the other answers, concept, variations and format. Read from the chat itself, so each update shows
+ * what changed at that moment.
+ */
+export function briefAt(items: Item[], agent: Agent, ctx: AgentCtx): BriefEntry[] {
+  void agent
+  const out: BriefEntry[] = []
+  const photos = [...new Set(items.flatMap((x) => (x.kind === "user" ? x.images : x.kind === "assets" && x.done === "added" ? (x.images ?? []) : [])))]
+  if (photos.length) out.push({ key: "product", label: "Your images", value: `${photos.length} image${photos.length > 1 ? "s" : ""}`, images: photos.slice(-4) })
+  const brand = [...items].reverse().find((x): x is Extract<Item, { kind: "brand" }> => x.kind === "brand")?.brand
+  if (brand?.name || brand?.primary_color) {
+    const colors = [brand.primary_color, brand.secondary_color, brand.text_color].filter((c): c is string => !!c && /^#/.test(c))
+    out.push({ key: "brand", label: "Brand", value: [brand.name, brand.font].filter(Boolean).join(" · ") || "Colours", colors, images: brand.logo ? [brand.logo] : undefined })
   }
-  for (const it of agent.items) {
+  let size: string | undefined
+  for (const it of items) {
     if (it.kind !== "question" || it.answer === undefined || it.answer === "Skipped") continue
-    // the size shows as the Format line
-    if (it.purpose === "size" || it.display === "sizes") continue
     const q = it as Q
     const picked = q.options.find((o) => o.label === q.answer)
-    if (q.display === "concepts") {
-      out.push({ key: q.id, label: "Concept", value: q.answer!, images: picked?.image ? [picked.image] : undefined })
+    // the size shows as the Format line
+    if (q.purpose === "size" || q.display === "sizes") {
+      size = picked?.size ?? q.answer!.match(/\d{2,5}\s*[x×]\s*\d{2,5}/)?.[0]?.replace(/\s*[x×]\s*/, "×")
       continue
     }
-    out.push({
-      key: q.id,
-      label: q.purpose === "placement" ? "Runs in" : q.purpose === "size" || q.display === "sizes" ? "Size" : shortQuestion(q.question),
+    const key = q.display === "concepts" ? "concept" : q.purpose === "goal" || q.purpose === "placement" ? q.purpose : q.id
+    const entry: BriefEntry = {
+      key,
+      label: q.display === "concepts" ? "Concept" : q.purpose === "goal" ? "Goal" : q.purpose === "placement" ? "Runs in" : shortQuestion(q.question),
       value: q.answer!,
       images: picked?.image ? [picked.image] : undefined,
       colors: q.display === "palettes" ? picked?.colors?.slice(0, 4) : undefined,
-    })
+    }
+    // a later answer to the same kind of question replaces the earlier one
+    const at = out.findIndex((e) => e.key === key)
+    if (at >= 0) out[at] = entry
+    else out.push(entry)
   }
-  if (agent.plan) out.push({ key: "variations", label: "Variations", value: agent.plan.variations.map((v) => v.name).join(", ") })
-  if (out.length) out.push({ key: "format", label: "Format", value: `${ctx.size} · ${ctx.seconds}s` })
+  const plan = [...items].reverse().find((x): x is Extract<Item, { kind: "plan" }> => x.kind === "plan" && x.state !== "skipped")
+  if (plan) out.push({ key: "variations", label: "Variations", value: plan.plan.variations.map((v) => v.name).join(", ") })
+  const fmt = size ?? (plan ? ctx.size : undefined)
+  if (fmt) out.push({ key: "format", label: "Format", value: `${fmt} · ${ctx.seconds}s` })
   return out
 }
+
+export const sigOf = (e: BriefEntry) => [e.value, ...(e.images ?? []), ...(e.colors ?? [])].join("|")
+export const briefSig = (entries: BriefEntry[]) => new Map(entries.map((e) => [e.key, sigOf(e)]))
 
 /** "What mood should it have?" → "Mood"; long questions keep their first few words */
 function shortQuestion(q: string) {
   const t = q.replace(/[?.!]+$/, "").trim()
-  const by = [[/^where\b/i, "Setting"], [/^when\b/i, "Timing"], [/^who\b/i, "People"], [/\bmood\b/i, "Mood"], [/\blight/i, "Light"], [/\bcolou?r/i, "Colours"], [/\blayout\b/i, "Layout"]] as const
+  const by = [[/^where\b/i, "Setting"], [/^when\b/i, "Timing"], [/^who\b/i, "People"], [/\bmood\b/i, "Mood"], [/\blight/i, "Light"], [/\bcolou?r/i, "Colours"], [/\blayout\b/i, "Layout"], [/\bvariations?\b|\bchange between\b/i, "What changes"]] as const
   const hit = by.find(([re]) => re.test(t))
   if (hit) return hit[1]
   const m = t.match(/^(?:what|which|how|pick|choose)\s+(?:a\s+|the\s+)?(\w+(?:\s\w+)?)/i)
@@ -55,62 +70,66 @@ function shortQuestion(q: string) {
   return w.charAt(0).toUpperCase() + w.slice(1)
 }
 
-/**
- * The brief, pinned above the conversation: everything settled so far as pictures, swatches and
- * words, so the user sees what the Flick will be made from without scrolling back. One row; opens
- * to the full list.
- */
-export function BriefCard({ agent, ctx, className }: { agent: Agent; ctx: AgentCtx; className?: string }) {
-  const [open, setOpen] = useState(false)
-  const entries = briefEntries(agent, ctx)
-  // only once there's more than the format to show
-  if (entries.length < 2) return null
+/** one entry's look: pictures or swatches, then the words */
+function Value({ e, big }: { e: BriefEntry; big?: boolean }) {
   return (
-    <section aria-label="Brief" className={cn("rounded-2xl bg-card/95 shadow-xs ring-1 ring-foreground/10 backdrop-blur", className)}>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        className="flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <span className="shrink-0 text-xs font-medium text-muted-foreground">Brief</span>
-        <span className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden [mask-image:linear-gradient(to_right,black_85%,transparent)]">
-          {entries.map((e) => (
-            <span key={e.key} className="flex h-7 shrink-0 items-center gap-1.5 rounded-lg bg-muted/60 pl-0.5 pr-2 text-xs animate-in fade-in-0 zoom-in-95 duration-300">
-              {e.images?.length ? (
-                <span className="flex -space-x-2">
-                  {e.images.slice(0, 3).map((u) => (
-                    <img key={u} src={u} alt="" decoding="async" className="size-6 rounded-md object-cover ring-2 ring-card" />
-                  ))}
-                </span>
-              ) : e.colors?.length ? (
-                <span className="flex -space-x-1 pl-1">
-                  {e.colors.map((c) => (
-                    <span key={c} className="size-4 rounded-full ring-2 ring-card" style={{ background: c }} />
-                  ))}
-                </span>
-              ) : (
-                <span className="pl-1.5 text-muted-foreground">{e.label}</span>
-              )}
-              <span className="max-w-40 truncate font-medium">{e.value}</span>
-            </span>
+    <>
+      {e.images?.length ? (
+        <span className={cn("flex", big ? "flex-wrap gap-1.5" : "-space-x-2")}>
+          {e.images.slice(0, big ? 8 : 3).map((u) => (
+            <img key={u} src={u} alt="" decoding="async" className={cn("object-cover", big ? "size-12 rounded-lg ring-1 ring-foreground/10" : "size-5 rounded-md ring-2 ring-card")} />
           ))}
         </span>
-        <HugeiconsIcon icon={ArrowDown01Icon} className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
-      </button>
+      ) : null}
+      {e.colors?.length ? (
+        <span className={cn("flex", big ? "gap-1" : "-space-x-1")}>
+          {e.colors.map((c) => (
+            <span key={c} title={c} className={cn("rounded-full", big ? "size-5 ring-1 ring-foreground/10" : "size-3.5 ring-2 ring-card")} style={{ background: c }} />
+          ))}
+        </span>
+      ) : null}
+      <span className={cn("min-w-0 font-medium", big ? "break-words" : "truncate")}>{e.value}</span>
+    </>
+  )
+}
+
+/**
+ * "Brief updated": appears in the conversation when answers change the brief. It names only what
+ * changed; "See full brief" opens everything settled so far, top to bottom.
+ */
+export function BriefUpdate({ changed, all }: { changed: BriefEntry[]; all: BriefEntry[] }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <section aria-label="Brief updated" className="mr-6 overflow-hidden rounded-xl bg-muted/40 ring-1 ring-foreground/8">
+      <div className="flex flex-col gap-2 px-3 py-2.5">
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <HugeiconsIcon icon={Tick02Icon} className="size-3.5" />
+          Brief updated
+        </p>
+        <ul className="flex flex-col gap-1.5">
+          {changed.map((e) => (
+            <li key={e.key} className="flex min-w-0 items-center gap-2 text-sm">
+              <span className="w-20 shrink-0 text-xs text-muted-foreground">{e.label}</span>
+              <span className="flex min-w-0 items-center gap-1.5">
+                <Value e={e} />
+              </span>
+            </li>
+          ))}
+        </ul>
+        {all.length > changed.length && (
+          <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex items-center gap-1 self-start rounded-md text-xs text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+            {open ? "Hide full brief" : "See full brief"}
+            <HugeiconsIcon icon={ArrowDown01Icon} className={cn("size-3 transition-transform", open && "rotate-180")} />
+          </button>
+        )}
+      </div>
       {open && (
-        <dl className="flex flex-col divide-y divide-foreground/8 border-t text-sm animate-in fade-in-0">
-          {entries.map((e) => (
+        <dl className="flex flex-col divide-y divide-foreground/8 border-t bg-card text-sm animate-in fade-in-0">
+          {all.map((e) => (
             <div key={e.key} className="flex flex-col gap-1 px-3 py-2.5">
               <dt className="text-xs text-muted-foreground">{e.label}</dt>
               <dd className="flex min-w-0 flex-wrap items-center gap-2">
-                {e.images?.map((u) => (
-                  <img key={u} src={u} alt="" decoding="async" className="size-12 rounded-lg object-cover ring-1 ring-foreground/10" />
-                ))}
-                {e.colors?.map((c) => (
-                  <span key={c} title={c} className="size-5 rounded-full ring-1 ring-foreground/10" style={{ background: c }} />
-                ))}
-                <span className="min-w-0 break-words font-medium">{e.value}</span>
+                <Value e={e} big />
               </dd>
             </div>
           ))}

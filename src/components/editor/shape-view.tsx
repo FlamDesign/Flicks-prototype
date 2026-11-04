@@ -40,6 +40,9 @@ function outline(el: ShapeEl, w: number, h: number, sw: number) {
       const y = (f: number) => i + f * H
       return <path d={`M${x(0.5)},${y(0.28)} C${x(0.5)},${y(0.08)} ${x(0.12)},${y(-0.02)} ${x(0.03)},${y(0.25)} C${x(-0.06)},${y(0.55)} ${x(0.32)},${y(0.78)} ${x(0.5)},${y(1)} C${x(0.68)},${y(0.78)} ${x(1.06)},${y(0.55)} ${x(0.97)},${y(0.25)} C${x(0.88)},${y(-0.02)} ${x(0.5)},${y(0.08)} ${x(0.5)},${y(0.28)} Z`} />
     }
+    case "path":
+      // drawn in a 100×100 box, stretched to the shape's own box; the line keeps its width
+      return <path d={el.d ?? ""} transform={`translate(${i} ${i}) scale(${W / 100} ${H / 100})`} vectorEffect="non-scaling-stroke" />
     case "line":
       return <line x1={i} y1={h / 2} x2={w - i} y2={h / 2} />
     case "arrow": {

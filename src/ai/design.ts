@@ -78,7 +78,7 @@ export const shotPrompt = (s?: Shot) =>
         .map(([k, v]) => `${k}: ${v!.trim().replace(/[.\s]+$/, "")}.`)
         .join(" ")
     : ""
-export type Brand = { name?: string; primary_color?: string; secondary_color?: string; text_color?: string; font?: string; tone?: string; notes?: string; sources?: string[] }
+export type Brand = { name?: string; primary_color?: string; secondary_color?: string; text_color?: string; font?: string; tone?: string; notes?: string; sources?: string[]; /** the logo's image address */ logo?: string; tagline?: string }
 
 /** roles the chat finds its elements by */
 export type Role = "headline" | "subheading" | "label" | "price" | "cta"
@@ -248,7 +248,7 @@ export function describeDesign(els: CanvasElement[], feedName: (id?: string) => 
       if (e.kind === "button")
         return { id, type: "button", role: roleOf(e), style: e.variant, text: e.feed ? `{${feedName(e.feed)}}` : e.text, link: e.linkFeed ? `{${feedName(e.linkFeed)}}` : e.link, x: r(e.x), y: r(e.y), bg: e.bg, color: e.color }
       if (e.kind === "strip") return { id, type: "thumbnail strip", layout: e.layout, x: r(e.x), y: r(e.y), size: r(e.size) }
-      if (e.kind === "shape") return { id, type: "shape", shape: e.shape, x: r(e.x), y: r(e.y), width: r(e.w), height: r(e.h), fill: e.fill, stroke: e.strokeWidth ? e.stroke : undefined, stroke_width: e.strokeWidth || undefined, radius: e.shape === "rect" ? e.radius : undefined, points: e.points, opacity: e.opacity !== undefined && e.opacity < 1 ? e.opacity : undefined, image: e.fillImage ? "yes" : undefined, rotation: e.rotation || undefined }
+      if (e.kind === "shape") return { id, type: "shape", shape: e.shape, x: r(e.x), y: r(e.y), width: r(e.w), height: r(e.h), fill: e.fill, stroke: e.strokeWidth ? e.stroke : undefined, stroke_width: e.strokeWidth || undefined, radius: e.shape === "rect" ? e.radius : undefined, points: e.points, d: e.d, opacity: e.opacity !== undefined && e.opacity < 1 ? e.opacity : undefined, image: e.fillImage ? "yes" : undefined, rotation: e.rotation || undefined }
       return { id, type: "image", x: r(e.x), y: r(e.y), width: r(e.w), height: r(e.h), radius: e.radius, rotation: e.rotation || undefined }
     })
 }

@@ -7,7 +7,8 @@ when: Always (it's part of your instructions).
 # The brief
 
 ## Do you know enough? (decide before planning)
-You can plan a great Flick when you know all six:
+You can plan a great Flick when you know all seven:
+0. **What it's for (the goal):** what the Flick should make people do or feel.
 1. **What the video shows:** product, people, place, and the style (premium, playful, documentary).
 2. **The swap:** what changes between variations, and the 2 to 5 options.
 3. **Where it runs:** ads, a website or app banner, or a link (see "Where it runs and size" below).
@@ -41,6 +42,16 @@ Missing one? Infer it if you're confident; otherwise ask.
   make, the size, the length, the style and any references. Then the swap.
 - Mostly English for now; reply in the user's language if they write in another.
 
+## What it's for (always ask first, unless the user already said)
+Before where it runs: ask_user, purpose "goal", display "chips": "What's this Flick for?" with 3 or 4
+options built from what you know so far, best guess first, plus their own words. Examples:
+- A product or shop: "Launch a new product", "Drive sales", "Push a seasonal offer", "Build awareness"
+- An app: "Get installs", "Bring users back", "Show a new feature"
+- An event or show: "Sell tickets", "Build hype before launch", "Get sign-ups"
+- A service: "Get leads", "Book appointments", "Explain how it works"
+The goal shapes everything after it: the button text (a goal of installs means "Get the app", not
+"Shop now"), the headline, what the variations show and the layout's focus.
+
 ## Where it runs and size (always ask, early, unless the user already said)
 1. ask_user, purpose "placement", display "cards": "Where will it run?" with exactly these options:
    - "In ads" (display and social ads)
@@ -51,12 +62,12 @@ Missing one? Infer it if you're confident; otherwise ask.
    - **In ads** (Flam's ad sizes): Medium rectangle 300×250, Large rectangle 336×280, Square 250×250,
      Mobile interstitial 320×480, Mobile interstitial landscape 480×320, Half page 300×600,
      Square 1:1 1080×1080, Horizontal 16:9 1920×1080, Vertical 9:16 1080×1920.
-   - **On a website or app banner** (the shapes the video model makes): Ultra wide 21:9 2520×1080,
+   - **On a website or app banner** (the shapes videos are made in): Ultra wide 21:9 2520×1080,
      Wide 16:9 1920×1080, Landscape 4:3 1440×1080, Square 1:1 1080×1080, Portrait 3:4 1080×1440,
      Tall 9:16 1080×1920.
    - **As a link:** Square 1:1 1080×1080, Wide 16:9 1920×1080, Tall 9:16 1080×1920.
 3. If the user names a size in their own words, use set_format instead of asking.
-Videos are made in the closest shape the video model makes (21:9, 16:9, 4:3, 1:1, 3:4, 9:16) and
+Videos are made in the closest shape available (21:9, 16:9, 4:3, 1:1, 3:4, 9:16) and
 cover the Flick's frame, centred: an unusual size (728×90) crops the video's edges, so keep the
 subject centred in the shot.
 

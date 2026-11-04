@@ -56,8 +56,8 @@ import { PromptChat, type HistoryItem } from "@/components/editor/prompt-chat"
 import { ReferenceThumb } from "@/components/prompt-composer"
 import { DevBadge } from "@/dev/state-manager"
 import { cn } from "@/lib/utils"
-import { AgentItemView, QuestionDeck } from "@/components/editor/agent-chat"
-import { BriefCard } from "@/components/editor/brief-card"
+import { AgentItemView, QuestionDeck, threadGroups } from "@/components/editor/agent-chat"
+import { BriefUpdate } from "@/components/editor/brief-card"
 import { Shortcut } from "@/components/shortcut"
 import type { Item } from "@/ai/agent"
 import type { Plan } from "@/ai/design"
@@ -1079,12 +1079,43 @@ function ChatCardsDemo() {
     { label: "Question: sizes", node: <AgentItemView item={it({ kind: "question", toolId: "sz", question: "Which size?", display: "sizes", purpose: "size", multi: false, custom: true, options: [{ label: "Medium rectangle", size: "300×250" }, { label: "Half page", size: "300×600" }, { label: "Wide 16:9", size: "1920×1080" }] })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Question: pictures", node: <AgentItemView item={it({ kind: "question", toolId: "pq", question: "Where should it be set?", display: "pictures", step: "look", multi: false, custom: true, options: [{ label: "City dawn", image: GENERATED_VIDEOS[0].poster }, { label: "Beach", image: GENERATED_VIDEOS[2].poster }, { label: "Studio", image: GENERATED_VIDEOS[3].poster }, { label: "Desert" }] })} agent={fakeAgent} ctx={chatCtx} /> },
     {
-      label: "Brief (pinned above the chat)",
+      label: "Brief updated (in the chat)",
       node: (
-        <BriefCard
-          agent={{ ...fakeAgent, ownImages: () => [GENERATED_VIDEOS[0].poster, GENERATED_VIDEOS[1].poster], items: [it({ kind: "question", toolId: "b1", question: "Pick a concept", display: "concepts", multi: false, custom: true, options: [{ label: "Golden hour run", image: GENERATED_VIDEOS[2].poster }], answer: "Golden hour run" }), it({ kind: "question", toolId: "b2", question: "What mood should it have?", display: "chips", multi: false, custom: true, options: [{ label: "Energetic" }], answer: "Energetic" })] } as typeof fakeAgent}
-          ctx={{ ...chatCtx, brand: { name: "Lumen", primary_color: "#ea580c", text_color: "#ffffff", font: "Montserrat" } }}
+        <BriefUpdate
+          changed={[{ key: "goal", label: "Goal", value: "Launch a new product" }, { key: "format", label: "Format", value: "1080×1920 · 8s" }]}
+          all={[
+            { key: "product", label: "Your images", value: "2 images", images: [GENERATED_VIDEOS[0].poster, GENERATED_VIDEOS[1].poster] },
+            { key: "brand", label: "Brand", value: "Lumen · Montserrat", colors: ["#ea580c", "#ffffff"] },
+            { key: "goal", label: "Goal", value: "Launch a new product" },
+            { key: "format", label: "Format", value: "1080×1920 · 8s" },
+          ]}
         />
+      ),
+    },
+    {
+      label: "Chat work, folded per stretch (recap, websites, images, changes)",
+      node: (
+        <div className="flex flex-col gap-4">
+          {threadGroups(
+            [
+              it({ kind: "skill", names: ["brief", "brand"] }),
+              it({ kind: "browse", what: "search", text: "Lumen lens range prices" }),
+              it({ kind: "site", url: "https://lumen.example.com/lenses", state: "done", title: "Lumen lenses", price: "$129", images: [GENERATED_VIDEOS[0].poster, GENERATED_VIDEOS[1].poster, GENERATED_VIDEOS[2].poster] }),
+              it({ kind: "browse", what: "read", text: "lumen.example.com/brand", url: "https://lumen.example.com/brand" }),
+              it({ kind: "image", prompt: "Gold lens close-up", purpose: "thumbnail", target: "Gold", state: "done", url: GENERATED_VIDEOS[1].poster, placed: true }),
+              it({ kind: "image", prompt: "Silver lens close-up", purpose: "thumbnail", target: "Silver", state: "working" }),
+              it({ kind: "image", prompt: "Black lens close-up", purpose: "thumbnail", target: "Black", state: "done", url: GENERATED_VIDEOS[3].poster }),
+              it({ kind: "design", text: "Added “See it sharper” as the headline." }),
+              it({ kind: "design", text: "Added a 5-point star badge, turned -12°." }),
+              it({ kind: "image", prompt: "The Flick", purpose: "view", target: "Gold", state: "done", url: GENERATED_VIDEOS[1].poster, placed: true }),
+              it({ kind: "review", pass: 9, fail: [] }),
+            ],
+            fakeAgent,
+            chatCtx,
+          ).map((g) => (
+            <div key={g.key}>{g.node}</div>
+          ))}
+        </div>
       ),
     },
     { label: "Image, making", node: <AgentItemView item={it({ kind: "image", prompt: "Gold lens close-up", purpose: "thumbnail", target: "Gold", state: "working" })} agent={fakeAgent} ctx={chatCtx} /> },
