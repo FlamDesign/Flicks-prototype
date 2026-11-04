@@ -11,7 +11,7 @@ type Agent = ReturnType<typeof useAgent>
 const STEPS: { id: Step; label: string }[] = [
   { id: "idea", label: "Idea" },
   { id: "look", label: "Look" },
-  { id: "plan", label: "Plan" },
+  { id: "plan", label: "Storyboard" },
   { id: "build", label: "Build" },
 ]
 

@@ -166,6 +166,7 @@ const variationSchema = {
   type: "object",
   properties: {
     name: { type: "string", description: "Short name shown to viewers on its thumbnail, e.g. 'Gold' or 'Rain'" },
+    direction: { type: "string", description: "What the user sees on the storyboard instead of the prompt (prompts are never shown): one plain, vivid line of direction, under 15 words, no camera jargon and no [Image n]. Variation 1: what the video shows ('The bottle catches golden light as it's poured over ice'); the others: what's different ('Same pour, with the Gold Label bottle')." },
     image_ids: { type: "array", items: { type: "string" }, description: "Project image ids (or a product sheet) showing exactly how this variation's changed thing looks; in its prompt they are [Image 1], [Image 2]… in this order" },
     prompt: { type: "string", description: "Only what changes from the reference video, naming its inputs: e.g. 'Replace the boot with the black boot from [Image 1].' Every variation is an edit of the approved reference video (same shot, camera, people and timing), so describe the change only. One or two sentences." },
     video_id: { type: "string", description: "Only when the user gave a finished video for this variation: its project video id. It's used as it is: nothing is generated for it, and its prompt can be empty." },
@@ -334,7 +335,7 @@ export const TOOLS: Tool[] = [
   {
     name: "propose_plan",
     description:
-      "Show the full plan for approval: a title, the reference video prompt, 2 to 5 variations and the on-screen design. The reference video IS Variation 1: variations[0] is it (its name, label, price, link; its prompt is reference_prompt), and variations[1..] are made from it. So 3 variations means 3 videos. The user can edit it, then Generate all. The result says whether it was approved (and generated) or what to change.",
+      "Show the storyboard (the user calls it that; never say 'plan' to them) for approval: a title, the reference video prompt, 2 to 5 variations and the on-screen design. The reference video IS Variation 1: variations[0] is it (its name, label, price, link; its prompt is reference_prompt), and variations[1..] are made from it. So 3 variations means 3 videos. The user can edit it, then Generate all. The result says whether it was approved (and generated) or what to change.",
     input_schema: {
       type: "object",
       properties: {
@@ -662,7 +663,7 @@ The order of work (always):
 How the app works (the mechanics, not what to ask):
 - The user's own variation videos: when the user gives a finished video for each variation (e.g. 'here are my 3 videos'), nothing needs generating. Skip concepts, looks, sheets, shots and storyboards: settle only what's missing for the design (names, copy, prices, links), then propose_plan with each variation's video_id (and thumbnail_id when they gave thumbnails); no shot or reference fields. The app checks the videos match each other and the Flick in frame shape and length, and tells you if they don't. After approval, make thumbnails only for variations without one; if every variation has a thumbnail, make none. If only some variations have a video, the rest are made as usual (from Variation 1).
 - Pictures over words: when a question is about something the user judges by eye (setting, mood, light, styling, people, props), ask with display 'pictures' and an image_prompt per answer (up to 4); the app draws each with their product.
-- Storyboard: every plan gives storyboard, the reference video as 3 or 4 frames (what happens, how it's framed); the app draws a quick still per frame.
+- Storyboard: propose_plan shows the storyboard card; call it "the storyboard" to the user, never "the plan". Every one gives storyboard frames (the reference video as 3 or 4 frames: what happens, how it's framed; the app draws a quick still per frame) and a direction per variation. The user never sees prompts, only directions, frames and the on-screen copy; when they edit a direction, it reaches the video as their direction. Don't quote prompts to the user either: describe the idea.
 - Concepts: propose_concepts shows up to 3 concepts as cards with preview images; use it before every plan unless the user already gave a full concept or asked to skip ideas.
 - Videos the user adds (vid-1, vid-2...) arrive as three stills (start, middle, end) with their length (15 seconds at most; longer ones were trimmed). Say what happens in each. Decide from the context what each upload is for, and say it in a line: a video to change (plan reference_mode "edit", source_video_id), a video or image to follow for style, characters or the product (reference_video_ids / reference_image_ids), or an image to bring to life as it is (reference_mode "animate", first_frame_id). Ask only when it's truly unclear.
 - Mentions: the user can type @ to point at things. @Image 1 / @Video 1 are that message's own files in order; @<element name> is a saved element (a product, character, logo or style saved once with its images, listed in saved_elements); it arrives with its images, kept as project images, and a [Mentions: ...] line maps each @name to image ids: use exactly those ids (reference_image_ids, a variation's image_ids, generate_image reference_image_ids). @<variation name> means that variation, @Brand the brand kit. You can suggest saved elements by name ("use @Samba OG?").
@@ -1263,8 +1264,11 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
             })
           return WAIT
         }
-        case "set_format":
-          return apiRef.current.setFormat(String(input.size ?? ""), typeof input.seconds === "number" ? input.seconds : undefined)
+        case "set_format": {
+          const r = apiRef.current.setFormat(String(input.size ?? ""), typeof input.seconds === "number" ? input.seconds : undefined)
+          if (!r.startsWith("Error")) add({ kind: "note", text: `Sized the frame to ${String(input.size ?? "")}` })
+          return r
+        }
         case "propose_concepts": {
           if (live.current && !variationsSettled(fromOf(input), false)) return NOT_SETTLED
           const list = ((input.concepts as Record<string, unknown>[]) ?? []).slice(0, 3)
@@ -1389,6 +1393,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         }
         case "search_library": {
           if (!live.current) return "The library needs the AI server; nothing is saved in the demo."
+          add({ kind: "note", text: `Looked through your library for “${String(input.query ?? "")}”` })
           const all = await library()
           const words = String(input.query ?? "").toLowerCase().split(/\s+/).filter(Boolean)
           const found = all
@@ -1422,6 +1427,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           const ids = ((input.image_ids as string[]) ?? []).slice(0, 4)
           const found = ids.map((x) => images.current.find((i) => i.id === x)).filter((i): i is ProjectImage => !!i)
           if (!found.length) return "Error: No images with those ids."
+          add({ kind: "note", text: found.length === 1 ? `Studied ${found[0].name}` : `Studied ${found.length} of your images` })
           const blocks: Block[] = []
           for (const i of found) {
             try {

@@ -893,7 +893,7 @@ export function GenerationCanvas({
       return withIssues(`Generating ${toMake} videos (${cost.toLocaleString("en-US")} credits): ${main.name ?? "Variation 1"} (the reference video) first, then the other ${toMake - 1}; ${liveRef.current ? "Variation 1 comes first (a few minutes); the user reviews it, and the others are made from it once they approve (or after you regenerate it with their changes)" : `they take about ${dev.generationSeconds * 2} seconds`}.${mine} ${designLine} ${thumbsLine}`)
     },
     updateDesign(d) {
-      if (!slidesNow.current[0].startedAt) return "Error: Approve the plan first."
+      if (!slidesNow.current[0].startedAt) return "Error: Approve the storyboard first."
       // text that differs per variation can't be set for everyone here: say so instead of silently not changing
       const skipped: string[] = []
       const rest = { ...d }
@@ -975,7 +975,7 @@ export function GenerationCanvas({
       )
     },
     varyField(field, feed, values) {
-      if (!slidesNow.current[0].startedAt) return "Error: Approve the plan first."
+      if (!slidesNow.current[0].startedAt) return "Error: Approve the storyboard first."
       const r = resolve(field, feed)
       if (r.field) return withIssues(varyField(r.field, values))
       if (r.feedId) {
@@ -1013,7 +1013,7 @@ export function GenerationCanvas({
       return `Renamed the feed ${from} to ${to.trim()}.`
     },
     addElement(spec) {
-      if (!slidesNow.current[0].startedAt) return "Error: Approve the plan first."
+      if (!slidesNow.current[0].startedAt) return "Error: Approve the storyboard first."
       const type = spec.type ?? (spec.url ? "image" : "text")
       const id = crypto.randomUUID()
       const at = placeOf(spec)
@@ -1159,7 +1159,7 @@ export function GenerationCanvas({
       return `Set ${nameOfSlide(sl)}'s thumbnail.`
     },
     addImageToCanvas(url) {
-      if (!slidesNow.current[0].startedAt) return "Error: Approve the plan first."
+      if (!slidesNow.current[0].startedAt) return "Error: Approve the storyboard first."
       addImage(url)
       keepImage(url, "image")
       return "Added the image to the canvas."
@@ -1773,7 +1773,7 @@ export function GenerationCanvas({
                   <div className="relative flex max-w-[75%] flex-col items-center gap-2 text-center">
                     <HugeiconsIcon icon={SparklesIcon} className="size-5 text-brand" />
                     <p className="text-sm font-medium">Planning your Flick</p>
-                    <p className="text-xs leading-relaxed text-muted-foreground">Answer a few questions in the chat. Your videos and design show up here once you approve the plan.</p>
+                    <p className="text-xs leading-relaxed text-muted-foreground">Answer a few questions in the chat. Your videos and design show up here once you approve the storyboard.</p>
                   </div>
                 </div>
               ) : done ? (

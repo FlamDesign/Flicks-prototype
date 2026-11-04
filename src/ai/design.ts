@@ -28,6 +28,8 @@ export type VideoMedia = { mode?: VideoMode; first_frame?: string; last_frame?: 
 export type PlanVariation = {
   name: string
   prompt: string
+  /** what the user sees instead of the prompt: one plain line of direction */
+  direction?: string
   image_ids?: string[]
   method?: "edit" | "regenerate"
   media?: VideoMedia

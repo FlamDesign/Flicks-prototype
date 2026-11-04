@@ -1,9 +1,8 @@
-import { GeneratingGradient } from "@/components/editor/generation-progress"
+import { GeneratingGradient, PictureSlot } from "@/components/editor/generation-progress"
 import { Shortcut } from "@/components/shortcut"
 import { createContext, useContext, useEffect, useRef, useState } from "react"
-import { Spinner } from "@/components/ui/spinner"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Add01Icon, Alert02Icon, ArrowLeft01Icon, ArrowRight01Icon, ArrowDown01Icon, CheckmarkBadge01Icon, Globe02Icon, ArrowUp02Icon, ImageAdd01Icon, Loading03Icon, PencilEdit01Icon, LeftToRightListNumberIcon, PaintBoardIcon, RefreshIcon, SparklesIcon, StopIcon, Tick02Icon, Cancel01Icon, PlayIcon, Search01Icon, ArrowUpRight01Icon } from "@hugeicons/core-free-icons"
+import { Add01Icon, Alert02Icon, ArrowLeft01Icon, ArrowRight01Icon, ArrowDown01Icon, CheckmarkBadge01Icon, Globe02Icon, ArrowUp02Icon, ImageAdd01Icon, PencilEdit01Icon, LeftToRightListNumberIcon, PaintBoardIcon, RefreshIcon, SparklesIcon, StopIcon, Tick02Icon, Cancel01Icon, PlayIcon, ArrowUpRight01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { InputGroupInput } from "@/components/ui/input-group"
@@ -12,7 +11,7 @@ import type { Choice, Item, useAgent } from "@/ai/agent"
 import type { Brand, Plan, PlanVariation } from "@/ai/design"
 import { FlickPreview } from "@/components/editor/flick-preview"
 import { noNames } from "@/ai/client"
-import { BriefUpdate, briefAt, briefSig, sigOf } from "@/components/editor/brief-card"
+import { BriefUpdate, briefAt, briefSig, sigOf, type BriefEntry } from "@/components/editor/brief-card"
 import { cn } from "@/lib/utils"
 import { useMediaAdd } from "@/components/media-picker"
 import { MentionTextarea, useMentionOptions } from "@/components/mention-input"
@@ -51,7 +50,7 @@ export function ChoicePointer({ item, onShow }: { item: Item; onShow: () => void
     <button type="button" onClick={onShow} className="flex items-start gap-2 rounded-lg px-1 text-left text-xs text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
       <HugeiconsIcon icon={LeftToRightListNumberIcon} className="mt-px size-3.5 shrink-0" />
       <span>
-        {item.kind === "plan" ? "Opened the plan" : item.kind === "assets" ? "Asked for images" : "Opened a choice"}: <span className="text-foreground">{what}</span>
+        {item.kind === "plan" ? "Opened the storyboard" : item.kind === "assets" ? "Asked for images" : "Opened a choice"}: <span className="text-foreground">{what}</span>
       </span>
     </button>
   )
@@ -101,13 +100,11 @@ export function AgentItemView({ item, agent, ctx }: { item: Item; agent: Agent; 
     case "build":
       return <BuildCard ctx={ctx} agent={agent} />
     case "site":
-      return <SiteCard item={item} />
+      return <Steps items={[item]} live={item.state === "working"} />
     case "skill":
-      return <Recap items={[item]} />
     case "browse":
-      return <BrowseCard items={[item]} />
     case "design":
-      return <DesignCard items={[item]} />
+      return <Steps items={[item]} live={false} />
     case "review":
       return item.fail.length ? (
         <Card className="gap-2">
@@ -191,11 +188,9 @@ const SKILL_DONE: Record<string, string> = {
 }
 const isLegacyBrowse = (it: Item) => it.kind === "note" && (it.text.startsWith("Searched the web") || /^Read \S/.test(it.text))
 /** which per-turn card an item folds into, if any */
-function bucketOf(it: Item): "recap" | "browse" | "design" | "gallery" | undefined {
-  if (it.kind === "site" || it.kind === "browse" || isLegacyBrowse(it)) return "browse"
-  if (it.kind === "design" || (it.kind === "image" && it.purpose === "view")) return "design"
-  if (it.kind === "image") return "gallery"
-  if (it.kind === "skill" || it.kind === "note" || (it.kind === "review" && !it.fail.length)) return "recap"
+function bucketOf(it: Item): "steps" | "gallery" | undefined {
+  if (it.kind === "image" && it.purpose !== "view") return "gallery"
+  if (it.kind === "site" || it.kind === "browse" || it.kind === "design" || it.kind === "image" || it.kind === "skill" || it.kind === "note" || (it.kind === "review" && !it.fail.length)) return "steps"
   return undefined
 }
 /** questions answered and image requests done: they become a brief update */
@@ -208,9 +203,12 @@ type Group = { key: string; at: number; node: React.ReactNode }
  * the Flick), placed where the first of them happened; answers become a "Brief updated" card.
  */
 export function threadGroups(items: Item[], agent: Agent, ctx: AgentCtx): Group[] {
+  const busy = agent.busy
   const out: Group[] = []
   const isInput = (it: Item) => it.kind === "user" || isAnswered(it)
   let before = briefSig([])
+  // brief updates: only the newest shows in full, earlier ones fold to a line
+  const briefs: { group: Group; entries: BriefEntry[] }[] = []
   for (let i = 0; i < items.length; ) {
     const it = items[i]
     if (isAnswered(it)) {
@@ -219,7 +217,11 @@ export function threadGroups(items: Item[], agent: Agent, ctx: AgentCtx): Group[
       const entries = briefAt(items.slice(0, j), agent, ctx)
       const changed = entries.filter((e) => before.get(e.key) !== sigOf(e))
       before = briefSig(entries)
-      if (changed.length) out.push({ key: it.id, at: it.at, node: <BriefUpdate changed={changed} all={entries} /> })
+      if (changed.length) {
+        const group: Group = { key: it.id, at: it.at, node: null }
+        briefs.push({ group, entries })
+        out.push(group)
+      }
       i = j
       continue
     }
@@ -246,14 +248,12 @@ export function threadGroups(items: Item[], agent: Agent, ctx: AgentCtx): Group[
         out.push(group)
       }
     }
+    // the stretch still under way: its steps stay open while the chat works
+    const live = busy && j === items.length
     for (const [b, { group, items: g }] of buckets)
       group.node =
-        b === "recap" ? (
-          g.length === 1 && g[0].kind === "note" ? <AgentItemView item={g[0]} agent={agent} ctx={ctx} /> : <Recap items={g} />
-        ) : b === "browse" ? (
-          <BrowseCard items={g} />
-        ) : b === "design" ? (
-          <DesignCard items={g} />
+        b === "steps" ? (
+          <Steps items={g} live={live} />
         ) : g.length === 1 ? (
           <AgentItemView item={g[0]} agent={agent} ctx={ctx} />
         ) : (
@@ -263,6 +263,7 @@ export function threadGroups(items: Item[], agent: Agent, ctx: AgentCtx): Group[
     before = briefSig(briefAt(items.slice(0, j), agent, ctx))
     i = j
   }
+  briefs.forEach((b, k) => (b.group.node = <BriefUpdate all={b.entries} latest={k === briefs.length - 1} />))
   return out.filter((g) => g.node !== null)
 }
 
@@ -276,33 +277,6 @@ function Fold({ head, children, defaultOpen = false, className }: { head: React.
         <HugeiconsIcon icon={ArrowDown01Icon} className={cn("ml-auto size-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
       </button>
       {open && <div className="border-t animate-in fade-in-0">{children}</div>}
-    </div>
-  )
-}
-
-/** the chat's quiet work in one line: what it did, in plain words */
-function Recap({ items }: { items: Item[] }) {
-  const [open, setOpen] = useState(false)
-  const did = [...new Set(items.flatMap((x) => (x.kind === "skill" ? x.names.map((n) => SKILL_DONE[n]).filter(Boolean) : [])))]
-  const notes = items.filter((x): x is Extract<Item, { kind: "note" }> => x.kind === "note")
-  const passed = items.find((x): x is Extract<Item, { kind: "review" }> => x.kind === "review")
-  const lines = [...did, ...notes.map((n) => n.text.replace(/\.$/, "")), ...(passed ? [`review passed: all ${passed.pass} checks`] : [])]
-  if (!lines.length) return null
-  const summary = [...did, notes.length && `${notes.length} more step${notes.length > 1 ? "s" : ""}`, passed && "review passed"].filter(Boolean) as string[]
-  return (
-    <div className="flex flex-col gap-1.5 px-1">
-      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex items-center gap-1.5 self-start rounded-md text-xs text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
-        <HugeiconsIcon icon={Tick02Icon} className="size-3.5" />
-        <span className="first-letter:uppercase">{summary.join(" · ")}</span>
-        {lines.length > summary.length || notes.length ? <HugeiconsIcon icon={ArrowDown01Icon} className={cn("size-3 transition-transform", open && "rotate-180")} /> : null}
-      </button>
-      {open && (
-        <ul className="ml-1.5 flex flex-col gap-1 border-l pl-3 text-xs text-muted-foreground animate-in fade-in-0">
-          {lines.map((l, k) => (
-            <li key={k} className="first-letter:uppercase">{l}</li>
-          ))}
-        </ul>
-      )}
     </div>
   )
 }
@@ -326,109 +300,125 @@ function SiteIcon({ host, className }: { host: string; className?: string }) {
   )
 }
 
-/** the websites it visited and the searches it ran, folded into one row; open for what it found */
-function BrowseCard({ items }: { items: Item[] }) {
-  type Row = { key: string; kind: "site" | "read" | "search"; host: string; title: string; detail?: string; url?: string; images: string[]; state: "working" | "done" | "failed" }
-  const rows: Row[] = []
+/** one step the chat took, said plainly, with more behind it when there is more to see */
+type StepRow = { key: string; label: string; working?: boolean; failed?: boolean; link?: string; host?: string; detail?: React.ReactNode }
+const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1)
+
+function stepRows(items: Item[]): StepRow[] {
+  const rows: StepRow[] = []
   for (const x of items) {
-    if (x.kind === "site") {
+    if (x.kind === "skill") {
+      for (const n of x.names) if (SKILL_DONE[n] && !rows.some((r) => r.key === `skill-${n}`)) rows.push({ key: `skill-${n}`, label: cap(SKILL_DONE[n]) })
+    } else if (x.kind === "site") {
       const host = hostOf(x.url)
-      rows.push({ key: x.id, kind: "site", host, title: x.state === "failed" ? `Couldn't open ${host}` : x.title || host, detail: x.state === "failed" ? x.reason : x.state === "done" ? [host, x.price, x.images.length ? `${x.images.length} image${x.images.length === 1 ? "" : "s"}` : ""].filter(Boolean).join(" · ") : `Visiting ${host}…`, url: x.url, images: x.images, state: x.state })
-    } else if (x.kind === "browse") {
-      if (x.what === "search") rows.push({ key: x.id, kind: "search", host: "", title: x.text, detail: "Web search", images: [], state: "done" })
-      else rows.push({ key: x.id, kind: "read", host: hostOf(x.text), title: x.text, url: x.url ?? `https://${x.text}`, images: [], state: "done" })
-    } else if (x.kind === "note") {
-      const search = x.text.startsWith("Searched the web")
-      const t = search ? x.text.replace(/^Searched the web:\s*/, "") : x.text.replace(/^Read\s+/, "")
-      rows.push({ key: x.id, kind: search ? "search" : "read", host: search ? "" : hostOf(t), title: t, detail: search ? "Web search" : undefined, url: search ? undefined : `https://${t}`, images: [], state: "done" })
-    }
-  }
-  const hosts = [...new Set(rows.filter((r) => r.kind !== "search").map((r) => r.host))]
-  const searches = rows.filter((r) => r.kind === "search").length
-  const working = rows.find((r) => r.state === "working")
-  const thumbs = rows.flatMap((r) => r.images).slice(0, 4)
-  const head = (
-    <>
-      <span className="flex shrink-0 -space-x-1">
-        {hosts.length ? hosts.slice(0, 3).map((h) => <SiteIcon key={h} host={h} className="ring-2 ring-background" />) : <HugeiconsIcon icon={Search01Icon} className="size-4 text-muted-foreground" />}
-      </span>
-      <span className={cn("min-w-0 truncate", working && "text-shimmer")}>
-        {working
-          ? working.detail
-          : hosts.length
-            ? `Visited ${hosts.length} site${hosts.length > 1 ? "s" : ""}: ${hosts.slice(0, 2).join(", ")}${hosts.length > 2 ? ` +${hosts.length - 2}` : ""}`
-            : `Searched the web${searches > 1 ? ` ${searches} times` : ""}`}
-      </span>
-      {hosts.length > 0 && searches > 0 && !working && <span className="shrink-0 text-xs text-muted-foreground">· {searches} search{searches > 1 ? "es" : ""}</span>}
-      {!working && thumbs.length > 0 && (
-        <span className="ml-auto flex shrink-0 -space-x-1.5">
-          {thumbs.map((u) => (
-            <img key={u} src={u} alt="" loading="lazy" decoding="async" className="size-6 rounded-md object-cover ring-2 ring-background" />
-          ))}
-        </span>
-      )}
-    </>
-  )
-  return (
-    <Fold head={head}>
-      <ul className="flex flex-col divide-y divide-foreground/8">
-        {rows.map((r) => (
-          <li key={r.key} className="flex flex-col gap-2 px-3 py-2.5">
-            <div className="flex min-w-0 items-center gap-2">
-              {r.kind === "search" ? <HugeiconsIcon icon={Search01Icon} className="size-4 shrink-0 text-muted-foreground" /> : r.state === "failed" ? <HugeiconsIcon icon={Alert02Icon} className="size-4 shrink-0 text-destructive" /> : <SiteIcon host={r.host} />}
-              <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate text-sm font-medium">{r.title}</span>
-                {r.detail && <span className="truncate text-xs text-muted-foreground">{r.detail}</span>}
-              </div>
-              {r.url && r.state === "done" && (
-                <a href={/^https?:/.test(r.url) ? r.url : `https://${r.url}`} target="_blank" rel="noreferrer" aria-label={`Open ${r.host}`} className="grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
-                  <HugeiconsIcon icon={ArrowUpRight01Icon} className="size-3.5" />
-                </a>
+      rows.push({
+        key: x.id,
+        host,
+        working: x.state === "working",
+        failed: x.state === "failed",
+        label: x.state === "working" ? `Visiting ${host}` : x.state === "failed" ? `Couldn't open ${host}` : `Visited ${host}${x.price ? ` · ${x.price}` : ""}${x.images.length ? ` · ${x.images.length} image${x.images.length === 1 ? "" : "s"}` : ""}`,
+        link: x.state === "done" ? x.url : undefined,
+        detail:
+          x.state === "failed" ? (
+            <p className="text-xs text-muted-foreground">{x.reason}</p>
+          ) : x.state === "done" ? (
+            <div className="flex flex-col gap-2">
+              {x.title && <p className="text-xs text-muted-foreground">{x.title}</p>}
+              {x.images.length > 0 && (
+                <div className="grid grid-cols-6 gap-1.5">
+                  {x.images.slice(0, 12).map((u) => (
+                    <a key={u} href={u} target="_blank" rel="noreferrer" aria-label="Open image" className="relative block aspect-square overflow-hidden rounded-md ring-1 ring-foreground/10">
+                      <PictureSlot src={u} />
+                    </a>
+                  ))}
+                </div>
               )}
             </div>
-            {r.images.length > 0 && (
-              <div className="grid grid-cols-6 gap-1.5">
-                {r.images.slice(0, 12).map((u) => (
-                  <a key={u} href={u} target="_blank" rel="noreferrer" aria-label="Open image">
-                    <img loading="lazy" decoding="async" src={u} alt="" className="aspect-square w-full rounded-md object-cover ring-1 ring-foreground/10" />
-                  </a>
-                ))}
-              </div>
-            )}
-          </li>
-        ))}
-      </ul>
-    </Fold>
-  )
+          ) : undefined,
+      })
+    } else if (x.kind === "browse") {
+      rows.push(x.what === "search" ? { key: x.id, label: `Searched “${x.text}”` } : { key: x.id, label: `Read ${x.text}`, host: hostOf(x.text), link: x.url ?? `https://${x.text}` })
+    } else if (isLegacyBrowse(x) && x.kind === "note") {
+      const search = x.text.startsWith("Searched the web")
+      const t = search ? x.text.replace(/^Searched the web:\s*/, "") : x.text.replace(/^Read\s+/, "")
+      rows.push(search ? { key: x.id, label: `Searched “${t}”` } : { key: x.id, label: `Read ${t}`, host: hostOf(t), link: `https://${t}` })
+    } else if (x.kind === "design") {
+      rows.push({ key: x.id, label: x.text.replace(/\.$/, "") })
+    } else if (x.kind === "image" && x.purpose === "view") {
+      rows.push({
+        key: x.id,
+        label: `Watched ${x.target ?? "the Flick"} as viewers will`,
+        working: x.state === "working",
+        detail: x.url ? (
+          <a href={x.url} target="_blank" rel="noreferrer" aria-label="Open the picture" className="relative block h-40 w-28 overflow-hidden rounded-lg ring-1 ring-foreground/10">
+            <PictureSlot src={x.url} imgClassName="object-contain" />
+          </a>
+        ) : undefined,
+      })
+    } else if (x.kind === "review") {
+      rows.push({ key: x.id, label: `Checked every frame · all ${x.pass} checks passed` })
+    } else if (x.kind === "note") {
+      rows.push({ key: x.id, label: x.text.replace(/\.$/, "") })
+    }
+  }
+  return rows
 }
 
-/** the changes it made to the Flick, as one card: how many, and a look at the result when it took one */
-function DesignCard({ items }: { items: Item[] }) {
-  const changes = items.filter((x): x is Extract<Item, { kind: "design" }> => x.kind === "design")
-  const look = [...items].reverse().find((x): x is Extract<Item, { kind: "image" }> => x.kind === "image" && x.state === "done" && !!x.url)
-  const head = (
-    <>
-      {look?.url ? <img src={look.url} alt="" decoding="async" className="size-7 shrink-0 rounded-md object-cover ring-1 ring-foreground/10" /> : <HugeiconsIcon icon={PaintBoardIcon} className="size-4 shrink-0 text-muted-foreground" />}
-      <span className="min-w-0 truncate">{changes.length ? `Flick updated · ${changes.length} change${changes.length > 1 ? "s" : ""}` : `Watched ${look?.target ?? "the Flick"} as viewers will`}</span>
-    </>
-  )
+/**
+ * The steps the chat took in one stretch of work: a line that says how many, opening to a list of
+ * plain-worded steps; one with more to see (a website's images, a look at the Flick) opens in place.
+ * Open while it's working, folded once it's done.
+ */
+function Steps({ items, live }: { items: Item[]; live: boolean }) {
+  const rows = stepRows(items)
+  const [open, setOpen] = useState<boolean | null>(null)
+  const [more, setMore] = useState<string | null>(null)
+  if (!rows.length) return null
+  const shown = open ?? live
+  const n = rows.length
   return (
-    <Fold head={head}>
-      <div className="flex gap-3 p-3">
-        {look?.url && (
-          <a href={look.url} target="_blank" rel="noreferrer" aria-label="Open the picture" className="shrink-0">
-            <img src={look.url} alt={look.prompt} decoding="async" className="max-h-48 w-28 rounded-lg object-contain ring-1 ring-foreground/10" />
-          </a>
-        )}
-        {changes.length > 0 && (
-          <ul className="flex min-w-0 flex-1 list-disc flex-col gap-1 pl-4 text-xs text-muted-foreground">
-            {changes.map((c) => (
-              <li key={c.id}>{c.text.replace(/\.$/, "")}</li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </Fold>
+    <div className="mr-6 flex flex-col gap-2">
+      <button type="button" onClick={() => setOpen(!shown)} aria-expanded={shown} className="flex items-center gap-1.5 self-start rounded-md px-1 text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+        <span className={cn(live && "text-shimmer")}>{live ? `Working · ${n} step${n === 1 ? "" : "s"} so far` : `Took ${n} step${n === 1 ? "" : "s"}`}</span>
+        <HugeiconsIcon icon={ArrowDown01Icon} className={cn("size-3.5 transition-transform", shown && "rotate-180")} />
+      </button>
+      {shown && (
+        <ol className="flex flex-col divide-y divide-foreground/8 overflow-hidden rounded-xl ring-1 ring-foreground/10 animate-in fade-in-0">
+          {rows.map((r) => {
+            const opened = more === r.key
+            const head = (
+              <>
+                {r.host && <SiteIcon host={r.host} />}
+                <span className={cn("min-w-0 truncate", r.working && "text-shimmer", r.failed && "text-destructive")}>
+                  {r.label}
+                  {r.working ? "…" : ""}
+                </span>
+                {r.detail && <HugeiconsIcon icon={ArrowRight01Icon} className={cn("size-3 shrink-0 text-muted-foreground transition-transform", opened && "rotate-90")} />}
+              </>
+            )
+            return (
+              <li key={r.key} className="flex flex-col">
+                <div className="flex min-h-10 items-center gap-2 px-3 text-sm">
+                  {r.detail ? (
+                    <button type="button" onClick={() => setMore(opened ? null : r.key)} aria-expanded={opened} className="flex min-w-0 items-center gap-2 py-2 text-left outline-none focus-visible:underline">
+                      {head}
+                    </button>
+                  ) : (
+                    <span className="flex min-w-0 items-center gap-2 py-2">{head}</span>
+                  )}
+                  {r.link && (
+                    <a href={/^https?:/.test(r.link) ? r.link : `https://${r.link}`} target="_blank" rel="noreferrer" aria-label={`Open ${r.host ?? "the page"}`} className="ml-auto grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+                      <HugeiconsIcon icon={ArrowUpRight01Icon} className="size-3.5" />
+                    </a>
+                  )}
+                </div>
+                {opened && r.detail && <div className="px-3 pb-3 animate-in fade-in-0">{r.detail}</div>}
+              </li>
+            )
+          })}
+        </ol>
+      )}
+    </div>
   )
 }
 
@@ -458,10 +448,10 @@ function ImageTile({ item, agent, ctx }: { item: Extract<Item, { kind: "image" }
     <figure className="flex min-w-0 flex-col gap-1">
       <div className="relative aspect-square overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/10">
         {item.state === "working" ? (
-          <GeneratingGradient spinner />
+          <GeneratingGradient sweep />
         ) : item.state === "done" ? (
           <a href={item.url} target="_blank" rel="noreferrer" aria-label="Open image">
-            <img loading="lazy" decoding="async" src={item.url} alt={item.prompt} className="absolute inset-0 size-full object-cover" />
+            <PictureSlot src={item.url} />
           </a>
         ) : (
           <span className="absolute inset-0 grid place-items-center">
@@ -661,11 +651,7 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
               )}
               {item.display === "pictures" && (
                 <span className="relative block overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/10" style={{ aspectRatio: String(Math.min(1.25, Math.max(0.8, ctx.ratio))) }}>
-                  {o.image ? (
-                    <img decoding="async" src={o.image} alt="" className="absolute inset-0 size-full object-cover transition-transform duration-300 animate-in fade-in-0 group-hover/opt:scale-[1.03]" />
-                  ) : (
-                    <span className="shimmer absolute inset-0" />
-                  )}
+                  <PictureSlot src={o.image} imgClassName="transition-[opacity,transform] group-hover/opt:scale-[1.03]" />
                 </span>
               )}
               {item.display === "palettes" && (
@@ -895,10 +881,26 @@ function ApprovedPlan({ item, agent, ctx }: { item: Extract<Item, { kind: "plan"
   )
 }
 
+/** a variation's direction: its own line, else (older storyboards) its first frame or nothing; never the prompt */
+function directionOf(v: PlanVariation, i: number, plan: Plan) {
+  return v.direction ?? (i === 0 ? (plan.reference.storyboard?.map((f) => f.action).join(", then ") ?? "") : "")
+}
+/** a prompt carrying the user's own direction, replacing any they gave before */
+const withDirection = (prompt: string, d: string) => {
+  const base = prompt.replace(/\s*The user's direction: [\s\S]*$/, "")
+  return d.trim() ? `${base} The user's direction: ${d.trim()}` : base
+}
+
 function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>; agent: Agent; ctx: AgentCtx }) {
   const plan = item.plan
   const set = (p: Partial<Plan>) => agent.editPlan(item.id, { ...plan, ...p })
   const setVar = (i: number, p: Partial<PlanVariation>) => set({ variations: plan.variations.map((v, j) => (j === i ? { ...v, ...p } : v)) })
+  // the user edits directions, never prompts: an edited direction reaches the video as theirs
+  const setDirection = (i: number, d: string) => {
+    const v = plan.variations[i]
+    const next = plan.variations.map((x, j) => (j === i ? { ...x, direction: d, prompt: withDirection(x.prompt, d) } : x))
+    set(i === 0 && !v.video_id ? { variations: next, reference: { ...plan.reference, prompt: withDirection(plan.reference.prompt, d) } } : { variations: next })
+  }
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
   // the plan's prompts can @mention elements, variations and the brand
@@ -917,7 +919,7 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
           <HugeiconsIcon icon={item.state === "approved" ? Tick02Icon : Cancel01Icon} className="size-3.5 text-muted-foreground" />
           <span className="text-sm font-medium">{plan.title}</span>
           <span className="text-xs text-muted-foreground">
-            {item.state === "approved" ? `${plan.variations.length} variations` : "Replaced by a newer plan"}
+            {item.state === "approved" ? `${plan.variations.length} variations` : "Replaced by a newer storyboard"}
           </span>
           <HugeiconsIcon icon={ArrowDown01Icon} className={cn("ml-auto size-3.5 text-muted-foreground transition-transform", open && "rotate-180")} />
         </button>
@@ -926,7 +928,8 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
             {plan.variations.map((v, i) => (
               <li key={i}>
                 <span className="font-medium text-foreground">{v.name}</span>
-                {v.price ? ` · ${v.price}` : ""}: {v.video_id ? "your video" : i === 0 ? plan.reference.prompt : v.prompt}
+                {v.price ? ` · ${v.price}` : ""}
+                {v.video_id ? ": your video" : directionOf(v, i, plan) ? `: ${directionOf(v, i, plan)}` : ""}
               </li>
             ))}
           </ol>
@@ -948,7 +951,7 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
     <Card className="gap-0 overflow-hidden p-0 animate-in fade-in-0 slide-in-from-bottom-1 duration-300">
       <div className="flex flex-col gap-3 p-3">
         <div className="flex items-center gap-2">
-          <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">Plan</span>
+          <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">Storyboard</span>
           <Input value={plan.title} onChange={(e) => set({ title: e.target.value })} aria-label="Project name" className={cn(quiet, "h-7 min-w-0 flex-1 text-sm font-medium")} />
         </div>
         {/* the Flick as it will look: layout, copy and buttons, with images standing in for the videos */}
@@ -981,7 +984,7 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
           <p className="text-center text-xs text-muted-foreground">{videos === 0 ? "Your videos, used as they are." : making ? "Making a still for each variation…" : "Stills stand in for the videos until they’re made."}</p>
         </div>
         {/* the reference video as frames, then exactly what it's made from */}
-        {!!plan.reference.storyboard?.length && <Storyboard frames={plan.reference.storyboard} stills={item.frames ?? []} ratio={ctx.ratio} />}
+        {!!plan.reference.storyboard?.length && <Storyboard frames={plan.reference.storyboard} stills={item.frames ?? []} ratio={ctx.ratio} name={plan.variations[0]?.name} />}
         <InputsTray plan={plan} agent={agent} onChange={(reference) => set({ reference })} />
         {/* the outline: one card per video, edited in place */}
         <ol className="flex flex-col gap-1.5">
@@ -1007,10 +1010,10 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
                 i === 0 ? (
                   <>
                     <span className="px-1.5 text-xs text-muted-foreground">Made first; the others are made from it</span>
-                    <MentionTextarea options={planMentions} value={plan.reference.prompt} onChange={(prompt) => set({ reference: { ...plan.reference, prompt } })} aria-label={`${v.name} prompt (reference video)`} rows={1} className={cn(quiet, "field-sizing-content min-h-0 resize-none py-0.5 text-sm leading-relaxed text-foreground/80")} />
+                    <MentionTextarea options={planMentions} value={directionOf(v, 0, plan)} placeholder="What should this video show?" onChange={(d) => setDirection(0, d)} aria-label={`${v.name} direction`} rows={1} className={cn(quiet, "field-sizing-content min-h-0 resize-none py-0.5 text-sm leading-relaxed text-foreground/80")} />
                   </>
                 ) : (
-                  <MentionTextarea options={planMentions} value={v.prompt} onChange={(prompt) => setVar(i, { prompt })} aria-label={`${v.name} prompt`} rows={1} className={cn(quiet, "field-sizing-content min-h-0 resize-none py-0.5 text-sm leading-relaxed text-foreground/80")} />
+                  <MentionTextarea options={planMentions} value={directionOf(v, i, plan)} placeholder="What's different in this one?" onChange={(d) => setDirection(i, d)} aria-label={`${v.name} direction`} rows={1} className={cn(quiet, "field-sizing-content min-h-0 resize-none py-0.5 text-sm leading-relaxed text-foreground/80")} />
                 )}
                 {/* on-screen text this plan sets per variation (feeds) */}
                 {perVar.length > 0 && (
@@ -1042,7 +1045,7 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
         {plan.variations.length < 5 && (
           <button
             type="button"
-            onClick={() => set({ variations: [...plan.variations, { name: `Variation ${plan.variations.length + 1}`, prompt: "Same scene, " }] })}
+            onClick={() => set({ variations: [...plan.variations, { name: `Variation ${plan.variations.length + 1}`, prompt: "Same scene, ", direction: "" }] })}
             className="flex h-8 items-center justify-center gap-1.5 rounded-xl border border-dashed border-foreground/15 text-xs text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
           >
             <HugeiconsIcon icon={Add01Icon} className="size-3.5" />
@@ -1073,15 +1076,15 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
 }
 
 /** The reference video as 3 or 4 frames: a quick still each, what happens and how it's framed. */
-function Storyboard({ frames, stills, ratio }: { frames: NonNullable<Plan["reference"]["storyboard"]>; stills: (string | undefined)[]; ratio: number }) {
+function Storyboard({ frames, stills, ratio, name }: { frames: NonNullable<Plan["reference"]["storyboard"]>; stills: (string | undefined)[]; ratio: number; name?: string }) {
   return (
     <section aria-label="Storyboard" className="flex flex-col gap-1.5">
-      <span className="px-1.5 text-xs font-medium text-muted-foreground">Storyboard · Variation 1</span>
+      <span className="px-1.5 text-xs font-medium text-muted-foreground">How {name ?? "Variation 1"} plays</span>
       <ol className="grid gap-2" style={{ gridTemplateColumns: `repeat(${frames.length}, minmax(0, 1fr))` }}>
         {frames.map((f, i) => (
           <li key={i} className="flex min-w-0 flex-col gap-1">
             <span className="relative block overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/10" style={{ aspectRatio: String(Math.min(1.78, Math.max(0.56, ratio))) }}>
-              {stills[i] ? <img src={stills[i]} alt="" decoding="async" className="absolute inset-0 size-full object-cover animate-in fade-in-0 duration-500" /> : <span className="shimmer absolute inset-0" />}
+              <PictureSlot src={stills[i]} />
               <span className="absolute left-1 top-1 grid size-5 place-items-center rounded-md bg-background/85 text-xs font-medium tabular-nums backdrop-blur">{i + 1}</span>
             </span>
             <span className="line-clamp-2 px-0.5 text-xs leading-snug">{f.action}</span>
@@ -1174,45 +1177,6 @@ function InputsTray({ plan, agent, onChange }: { plan: Plan; agent: Agent; onCha
   )
 }
 
-/** A page the chat read through the server: the site, what it found, and the images it kept. */
-function SiteCard({ item }: { item: Extract<Item, { kind: "site" }> }) {
-  let host = item.url
-  try {
-    host = new URL(/^https?:/.test(item.url) ? item.url : `https://${item.url}`).hostname.replace(/^www\./, "")
-  } catch {
-    /* show it as typed */
-  }
-  return (
-    <Card className="gap-2.5">
-      <div className="flex items-center gap-2">
-        <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
-          <HugeiconsIcon icon={item.state === "working" ? Loading03Icon : item.state === "failed" ? Alert02Icon : Globe02Icon} className={cn("size-3.5", item.state === "working" && "animate-spin")} />
-        </span>
-        <div className="flex min-w-0 flex-1 flex-col">
-          <span className="truncate text-sm font-medium">{item.state === "working" ? `Reading ${host}…` : item.state === "failed" ? `Couldn't read ${host}` : (item.title || host)}</span>
-          <span className="truncate text-xs text-muted-foreground">
-            {item.state === "failed" ? item.reason : item.state === "done" ? [host, item.price, `${item.images.length} image${item.images.length === 1 ? "" : "s"}`].filter(Boolean).join(" · ") : "Through the app, without leaving it"}
-          </span>
-        </div>
-      </div>
-      {item.state === "working" && (
-        <div className="grid grid-cols-4 gap-1.5">
-          {[0, 1, 2, 3].map((i) => (
-            <span key={i} className="shimmer aspect-square rounded-lg bg-muted" />
-          ))}
-        </div>
-      )}
-      {item.state === "done" && item.images.length > 0 && (
-        <div className="grid grid-cols-4 gap-1.5">
-          {item.images.map((u) => (
-            <img loading="lazy" decoding="async" key={u} src={u} alt="" className="aspect-square w-full rounded-lg object-cover ring-1 ring-foreground/10 animate-in fade-in-0 duration-300" />
-          ))}
-        </div>
-      )}
-    </Card>
-  )
-}
-
 /**
  * After Generate all: the videos are made in place. Each variation shows its plan still under the
  * generating look with its progress, then turns into its video; the rest of the build ticks off below.
@@ -1258,7 +1222,7 @@ function BuildCard({ ctx, agent }: { ctx: AgentCtx; agent: Agent }) {
         {(videos.length ? others : steps).map((x) => (
           <li key={x.label} className="flex items-center gap-2 text-xs">
             <span className={cn("grid size-4 shrink-0 place-items-center rounded-full", x.state === "done" ? "bg-foreground text-background" : "ring-1 ring-foreground/20")}>
-              {x.state === "done" ? <HugeiconsIcon icon={Tick02Icon} className="size-2.5" strokeWidth={3} /> : x.state === "working" ? <Spinner className="size-3 text-brand" /> : null}
+              {x.state === "done" ? <HugeiconsIcon icon={Tick02Icon} className="size-2.5" strokeWidth={3} /> : x.state === "working" ? <span className="size-1.5 animate-pulse rounded-full bg-brand" /> : null}
             </span>
             <span className={cn(x.state === "done" ? "text-foreground" : "text-muted-foreground")}>{x.label}</span>
           </li>
@@ -1290,7 +1254,6 @@ function BuildTile({ video: v, still, ratio, waiting }: { video: BuildVideo; sti
             <span className="absolute inset-x-1.5 bottom-1.5 flex min-w-0 items-center gap-1 truncate rounded-md bg-background/85 px-1.5 py-0.5 text-xs tabular-nums text-muted-foreground backdrop-blur">
               {v.state === "generating" ? (
                 <>
-                  <Spinner className="size-3 text-brand" />
                   {pct !== undefined ? `${pct}%` : `${STATUS[v.status ?? ""] ?? "generating"} · ${secs < 60 ? `${secs}s` : `${Math.floor(secs / 60)}m`}`}
                 </>
               ) : waiting ? (
@@ -1348,10 +1311,10 @@ function ImageCard({ item, ctx, agent }: { item: Extract<Item, { kind: "image" }
     <div className="mr-10 flex items-center gap-3 rounded-2xl p-1.5 pr-3">
       <span className="relative grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-muted ring-1 ring-foreground/10">
         {item.state === "working" ? (
-          <GeneratingGradient spinner />
+          <GeneratingGradient sweep />
         ) : item.state === "done" ? (
           <a href={item.url} target="_blank" rel="noreferrer" aria-label="Open image">
-            <img loading="lazy" decoding="async" src={item.url} alt={item.prompt} className="absolute inset-0 size-full object-cover" />
+            <PictureSlot src={item.url} />
           </a>
         ) : (
           <HugeiconsIcon icon={Alert02Icon} className="size-4 text-destructive" />
@@ -1360,7 +1323,7 @@ function ImageCard({ item, ctx, agent }: { item: Extract<Item, { kind: "image" }
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="text-sm font-medium">{item.state === "working" ? `${what}: ${STATUS[item.status ?? ""] ?? "making it"}…` : item.state === "failed" ? "Image failed" : what}</span>
         <span className={cn("text-xs text-muted-foreground", item.state !== "failed" && "truncate")}>
-          {item.state === "failed" ? noNames(item.error ?? "") : item.purpose === "view" ? "As viewers see it" : item.state === "done" && item.placed ? "Added to the Flick" : item.state === "working" && item.startedAt ? <Elapsed since={item.startedAt} /> : item.prompt}
+          {item.state === "failed" ? noNames(item.error ?? "") : item.purpose === "view" ? "As viewers see it" : item.state === "done" && item.placed ? "Added to the Flick" : item.state === "working" && item.startedAt ? <Elapsed since={item.startedAt} /> : "Ready to add"}
         </span>
       </span>
       {item.state === "failed" && (
@@ -1606,13 +1569,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
                 )}
               >
                 <span className="relative w-full overflow-hidden rounded-xl bg-muted" style={{ aspectRatio: Math.max(ctx.ratio, 0.8) }}>
-                  {o.image ? (
-                    <img loading="lazy" decoding="async" src={o.image} alt="" className="absolute inset-0 size-full object-cover transition-transform duration-500 animate-in fade-in-0 group-hover/c:scale-[1.03]" />
-                  ) : (
-                    <span className="shimmer absolute inset-0 grid place-items-center">
-                      <Spinner className="size-4 text-muted-foreground" />
-                    </span>
-                  )}
+                  <PictureSlot src={o.image} imgClassName="transition-[opacity,transform] duration-500 group-hover/c:scale-[1.03]" />
                   <span className="absolute left-2 top-2 grid size-6 place-items-center rounded-full bg-black/50 text-xs font-medium text-white tabular-nums backdrop-blur-sm">{n + 1}</span>
                   {!!o.variations?.length && (
                     <span className="absolute inset-x-0 bottom-0 flex flex-wrap gap-1 bg-gradient-to-t from-black/70 to-transparent p-2 pt-6 opacity-0 transition-opacity group-hover/c:opacity-100 group-focus-visible/c:opacity-100">
@@ -1676,13 +1633,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
                 )}
                 style={{ aspectRatio: Math.min(1.25, Math.max(ctx.ratio, 0.8)) }}
               >
-                {o.image ? (
-                  <img decoding="async" src={o.image} alt="" className="absolute inset-0 size-full object-cover transition-transform duration-500 animate-in fade-in-0 group-hover/p:scale-[1.03]" />
-                ) : (
-                  <span className="shimmer absolute inset-0 grid place-items-center">
-                    <Spinner className="size-4 text-muted-foreground" />
-                  </span>
-                )}
+                <PictureSlot src={o.image} imgClassName="transition-[opacity,transform] duration-500 group-hover/p:scale-[1.03]" />
                 <span className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-gradient-to-t from-black/70 to-transparent px-2.5 pb-2 pt-8 text-sm font-medium text-white">
                   <span className="grid size-5 shrink-0 place-items-center rounded-full bg-white/20 text-xs tabular-nums backdrop-blur-sm">{n + 1}</span>
                   <span className="truncate">{o.label}</span>

@@ -1082,7 +1082,6 @@ function ChatCardsDemo() {
       label: "Brief updated (in the chat)",
       node: (
         <BriefUpdate
-          changed={[{ key: "goal", label: "Goal", value: "Launch a new product" }, { key: "format", label: "Format", value: "1080×1920 · 8s" }]}
           all={[
             { key: "product", label: "Your images", value: "2 images", images: [GENERATED_VIDEOS[0].poster, GENERATED_VIDEOS[1].poster] },
             { key: "brand", label: "Brand", value: "Lumen · Montserrat", colors: ["#ea580c", "#ffffff"] },

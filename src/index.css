@@ -188,8 +188,10 @@
 @media (prefers-reduced-motion: reduce) { .animate-fade-up { animation: none; } }
 
 /* Shimmer loading state for uploads */
+/* in the components layer, so an element's own utilities (absolute inset-0) win over its default position */
+@layer components { .shimmer { position: relative; } }
 .shimmer {
-  position: relative; overflow: hidden;
+  overflow: hidden;
   background: color-mix(in oklch, var(--foreground) 9%, transparent);
 }
 .shimmer::after {

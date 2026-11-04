@@ -77,7 +77,7 @@ function Value({ e, big }: { e: BriefEntry; big?: boolean }) {
       {e.images?.length ? (
         <span className={cn("flex", big ? "flex-wrap gap-1.5" : "-space-x-2")}>
           {e.images.slice(0, big ? 8 : 3).map((u) => (
-            <img key={u} src={u} alt="" decoding="async" className={cn("object-cover", big ? "size-12 rounded-lg ring-1 ring-foreground/10" : "size-5 rounded-md ring-2 ring-card")} />
+            <img key={u} src={u} alt="" decoding="async" className={cn("object-cover", big ? "size-10 rounded-lg ring-1 ring-foreground/10" : "size-5 rounded-md ring-2 ring-card")} />
           ))}
         </span>
       ) : null}
@@ -94,39 +94,24 @@ function Value({ e, big }: { e: BriefEntry; big?: boolean }) {
 }
 
 /**
- * "Brief updated": appears in the conversation when answers change the brief. It names only what
- * changed; "See full brief" opens everything settled so far, top to bottom.
+ * "Brief updated": appears in the conversation when answers change the brief, showing the whole brief
+ * as it now stands, top to bottom. Only the newest one is open; earlier ones fold to a line.
  */
-export function BriefUpdate({ changed, all }: { changed: BriefEntry[]; all: BriefEntry[] }) {
-  const [open, setOpen] = useState(false)
+export function BriefUpdate({ all, latest = true }: { all: BriefEntry[]; latest?: boolean }) {
+  const [open, setOpen] = useState<boolean | null>(null)
+  const shown = open ?? latest
   return (
-    <section aria-label="Brief updated" className="mr-6 overflow-hidden rounded-xl bg-muted/40 ring-1 ring-foreground/8">
-      <div className="flex flex-col gap-2 px-3 py-2.5">
-        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <HugeiconsIcon icon={Tick02Icon} className="size-3.5" />
-          Brief updated
-        </p>
-        <ul className="flex flex-col gap-1.5">
-          {changed.map((e) => (
-            <li key={e.key} className="flex min-w-0 items-center gap-2 text-sm">
-              <span className="w-20 shrink-0 text-xs text-muted-foreground">{e.label}</span>
-              <span className="flex min-w-0 items-center gap-1.5">
-                <Value e={e} />
-              </span>
-            </li>
-          ))}
-        </ul>
-        {all.length > changed.length && (
-          <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex items-center gap-1 self-start rounded-md text-xs text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
-            {open ? "Hide full brief" : "See full brief"}
-            <HugeiconsIcon icon={ArrowDown01Icon} className={cn("size-3 transition-transform", open && "rotate-180")} />
-          </button>
-        )}
-      </div>
-      {open && (
-        <dl className="flex flex-col divide-y divide-foreground/8 border-t bg-card text-sm animate-in fade-in-0">
+    <section aria-label="Brief" className="mr-6 overflow-hidden rounded-xl ring-1 ring-foreground/10">
+      <button type="button" onClick={() => setOpen(!shown)} aria-expanded={shown} className="flex min-h-10 w-full items-center gap-2 bg-muted/40 px-3 py-1.5 text-left outline-none hover:bg-muted/60 focus-visible:bg-muted/60">
+        <HugeiconsIcon icon={Tick02Icon} className="size-3.5 shrink-0 text-muted-foreground" />
+        <span className="text-sm font-medium">{latest ? "Brief updated" : "Brief"}</span>
+        {!shown && <span className="min-w-0 truncate text-xs text-muted-foreground">{all.map((e) => e.value).join(" · ")}</span>}
+        <HugeiconsIcon icon={ArrowDown01Icon} className={cn("ml-auto size-3.5 shrink-0 text-muted-foreground transition-transform", shown && "rotate-180")} />
+      </button>
+      {shown && (
+        <dl className="flex flex-col divide-y divide-foreground/8 border-t text-sm animate-in fade-in-0">
           {all.map((e) => (
-            <div key={e.key} className="flex flex-col gap-1 px-3 py-2.5">
+            <div key={e.key} className="grid grid-cols-[6rem_1fr] items-center gap-3 px-3 py-2">
               <dt className="text-xs text-muted-foreground">{e.label}</dt>
               <dd className="flex min-w-0 flex-wrap items-center gap-2">
                 <Value e={e} big />
