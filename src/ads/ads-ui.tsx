@@ -644,7 +644,7 @@ export function LiveFlick({ flick, tall, fit, videos: given, start = 0 }: { flic
         {videos.map((v, k) => {
           const m = videoAt(v)
           return (
-            <video key={v} autoPlay muted loop playsInline poster={m.poster} aria-hidden className={cn("absolute inset-0 size-full object-cover transition-opacity duration-700", k === active ? "opacity-100" : "opacity-0")}>
+            <video key={v} autoPlay muted loop playsInline poster={m.poster} aria-hidden className={cn("absolute inset-0 size-full object-cover", k === active ? "opacity-100" : "opacity-0")}>
               {m.webm && <source src={m.webm} type="video/webm" />}
               <source src={m.mp4} type="video/mp4" />
             </video>
