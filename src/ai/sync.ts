@@ -18,6 +18,12 @@ export async function loadSaved<T>(key: string): Promise<T | null> {
   return (await res.json()) as T | null
 }
 
+/**
+ * Pictures shown from a local copy of something already on the web (a website's images): saved by
+ * their own address instead of being uploaded, since only the ones actually used need keeping.
+ */
+export const webSource = new Map<string, string>()
+
 /** what each key last saved, so an unchanged value is never written again (the server's storage counts every write) */
 const lastSaved = new Map<string, string>()
 
@@ -29,6 +35,11 @@ export async function save(key: string, value: unknown, keepalive = false) {
   let text = JSON.stringify(value)
   const blobs = [...new Set(text.match(/blob:[^"\\\s)]+/g) ?? [])]
   for (const b of blobs) {
+    const src = webSource.get(b)
+    if (src) {
+      text = text.split(b).join(src)
+      continue
+    }
     try {
       text = text.split(b).join(await shareable(b))
     } catch {

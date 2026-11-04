@@ -36,10 +36,12 @@ export function briefAt(items: Item[], agent: Agent, ctx: AgentCtx): BriefEntry[
       size = picked?.size ?? q.answer!.match(/\d{2,5}\s*[x×]\s*\d{2,5}/)?.[0]?.replace(/\s*[x×]\s*/, "×")
       continue
     }
-    const key = q.display === "concepts" ? "concept" : q.purpose === "goal" || q.purpose === "placement" ? q.purpose : q.id
+    // the goal, even when the question wasn't tagged as it ("What's this Flick for?")
+    const goal = q.purpose === "goal" || /\b(what'?s|what is)\b.*\bfor\b|\bgoal\b|\bpurpose\b|\baim\b/i.test(q.question)
+    const key = q.display === "concepts" ? "concept" : goal ? "goal" : q.purpose === "placement" ? q.purpose : q.id
     const entry: BriefEntry = {
       key,
-      label: q.display === "concepts" ? "Concept" : q.purpose === "goal" ? "Goal" : q.purpose === "placement" ? "Runs in" : shortQuestion(q.question),
+      label: q.display === "concepts" ? "Concept" : goal ? "Goal" : q.purpose === "placement" ? "Runs in" : shortQuestion(q.question),
       value: q.answer!,
       images: picked?.image ? [picked.image] : undefined,
       colors: q.display === "palettes" ? picked?.colors?.slice(0, 4) : undefined,

@@ -9,7 +9,7 @@ import type { Paint, ShapeKind } from "@/components/editor/elements"
 import { shotPrompt, type Brand, type Design, type Plan, type PlanVariation, type Shot, type VideoMode } from "@/ai/design"
 import { mockReply } from "@/ai/mock"
 import { findSkill, SKILLS } from "@/ai/skills"
-import { loadSaved, saver } from "@/ai/sync"
+import { loadSaved, saver, webSource } from "@/ai/sync"
 import { blobUrl, probeVideo, sameUrl, stillsAt } from "@/lib/media"
 import { elements as elementStore, elementsIn, plainMentions, type FlickElement } from "@/lib/elements"
 const elementsList = () => elementStore.get()
@@ -663,6 +663,9 @@ The order of work (always):
 How the app works (the mechanics, not what to ask):
 - The user's own variation videos: when the user gives a finished video for each variation (e.g. 'here are my 3 videos'), nothing needs generating. Skip concepts, looks, sheets, shots and storyboards: settle only what's missing for the design (names, copy, prices, links), then propose_plan with each variation's video_id (and thumbnail_id when they gave thumbnails); no shot or reference fields. The app checks the videos match each other and the Flick in frame shape and length, and tells you if they don't. After approval, make thumbnails only for variations without one; if every variation has a thumbnail, make none. If only some variations have a video, the rest are made as usual (from Variation 1).
 - Pictures over words: when a question is about something the user judges by eye (setting, mood, light, styling, people, props), ask with display 'pictures' and an image_prompt per answer (up to 4); the app draws each with their product.
+- The goal question is always ask_user purpose "goal"; where it runs is purpose "placement" and the size purpose "size": ask placement and size in the same batch (any size options; the app shows the right sizes for the answer).
+- Links: each variation links to its own product page (that flavour, colour or model), never a range or variety page, unless the user gives one.
+- The storyboard card shows only the storyboard frames; approving it makes the first video (Variation 1). The variations, copy and links you set are applied with it and the user can change them later. When the first video is in, run view_flick and fix the design (text over the product or faces, anything on the thumbnail strip, crowding) before asking the user to review it.
 - Storyboard: propose_plan shows the storyboard card; call it "the storyboard" to the user, never "the plan". Every one gives storyboard frames (the reference video as 3 or 4 frames: what happens, how it's framed; the app draws a quick still per frame) and a direction per variation. The user never sees prompts, only directions, frames and the on-screen copy; when they edit a direction, it reaches the video as their direction. Don't quote prompts to the user either: describe the idea.
 - Concepts: propose_concepts shows up to 3 concepts as cards with preview images; use it before every plan unless the user already gave a full concept or asked to skip ideas.
 - Videos the user adds (vid-1, vid-2...) arrive as three stills (start, middle, end) with their length (15 seconds at most; longer ones were trimmed). Say what happens in each. Decide from the context what each upload is for, and say it in a line: a video to change (plan reference_mode "edit", source_video_id), a video or image to follow for style, characters or the product (reference_video_ids / reference_image_ids), or an image to bring to life as it is (reference_mode "animate", first_frame_id). Ask only when it's truly unclear.
@@ -1018,7 +1021,9 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           if (!live.current) return { src, blob: null as Blob | null, show: src }
           try {
             const blob = await siteImage(src)
-            return { src, blob, show: URL.createObjectURL(blob) }
+            const show = URL.createObjectURL(blob)
+            webSource.set(show, src)
+            return { src, blob, show }
           } catch {
             return null
           }
@@ -1641,7 +1646,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     async (itemId: string, value: string, choice?: Choice) => {
       const it = items.find((x) => x.id === itemId)
       if (!it || it.kind !== "question" || busy) return
-      patch(itemId, { answer: value } as Partial<Item>)
+      // an option the app worked out (sizes for where it runs) is kept on the question, so the brief can read it
+      patch(itemId, { answer: value, ...(choice && !it.options.some((o) => o.label === choice.label) ? { options: [...it.options, choice] } : {}) } as Partial<Item>)
       // a visual answer shows in the preview straight away
       if (choice?.design) mergeDraft(choice.design)
       if (choice?.colors?.length) mergeDraft({ button_color: choice.colors[0], ...(choice.colors[2] ? { text_color: choice.colors[2] } : {}) })

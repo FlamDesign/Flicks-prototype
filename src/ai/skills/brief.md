@@ -57,7 +57,8 @@ The goal shapes everything after it: the button text (a goal of installs means "
    - "In ads" (display and social ads)
    - "On a website or app banner"
    - "As a link" (opened on phones or desktops)
-2. Then ask_user, purpose "size", display "sizes", options by the answer (label + size). The user can
+2. In the same batch, ask_user, purpose "size", display "sizes" (options can be any of the lists
+   below: the app shows the list that matches the "where" answer, so it's one round, not two). The user can
    also type any size (width×height); the app applies the answer, so don't call set_format after it.
    - **In ads** (Flam's ad sizes): Medium rectangle 300×250, Large rectangle 336×280, Square 250×250,
      Mobile interstitial 320×480, Mobile interstitial landscape 480×320, Half page 300×600,

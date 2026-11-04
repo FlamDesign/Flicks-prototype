@@ -56,7 +56,6 @@ export function ChoicePointer({ item, onShow }: { item: Item; onShow: () => void
   )
 }
 
-const FIELD_LABEL = { label: "Label", headline: "Headline", subheading: "Subheading", cta: "Button" } as const
 
 /** One chat item: the chat's words, its questions and cards, and the user's messages. */
 export function AgentItemView({ item, agent, ctx }: { item: Item; agent: Agent; ctx: AgentCtx }) {
@@ -189,7 +188,7 @@ const SKILL_DONE: Record<string, string> = {
 const isLegacyBrowse = (it: Item) => it.kind === "note" && (it.text.startsWith("Searched the web") || /^Read \S/.test(it.text))
 /** which per-turn card an item folds into, if any */
 function bucketOf(it: Item): "steps" | "gallery" | undefined {
-  if (it.kind === "image" && it.purpose !== "view") return "gallery"
+  if (it.kind === "image" && it.purpose !== "view" && it.purpose !== "sheet") return "gallery"
   if (it.kind === "site" || it.kind === "browse" || it.kind === "design" || it.kind === "image" || it.kind === "skill" || it.kind === "note" || (it.kind === "review" && !it.fail.length)) return "steps"
   return undefined
 }
@@ -344,6 +343,26 @@ function stepRows(items: Item[]): StepRow[] {
       rows.push(search ? { key: x.id, label: `Searched “${t}”` } : { key: x.id, label: `Read ${t}`, host: hostOf(t), link: `https://${t}` })
     } else if (x.kind === "design") {
       rows.push({ key: x.id, label: x.text.replace(/\.$/, "") })
+    } else if (x.kind === "image" && x.purpose === "sheet") {
+      // reference sheets are working material: one step for all of them, pictures inside
+      const at = rows.find((r) => r.key === "sheets")
+      const sheets = items.filter((y): y is Extract<Item, { kind: "image" }> => y.kind === "image" && y.purpose === "sheet")
+      if (at) continue
+      const making = sheets.filter((y) => y.state === "working").length
+      rows.push({
+        key: "sheets",
+        working: making > 0,
+        label: making ? `Making ${sheets.length > 1 ? `${sheets.length} reference sheets` : "a reference sheet"}` : `Made ${sheets.length > 1 ? `${sheets.length} reference sheets` : "a reference sheet"}${sheets.length && sheets.every((y) => y.target) ? ` for ${sheets.map((y) => y.target).join(", ")}` : ""}`,
+        detail: (
+          <div className="grid grid-cols-4 gap-1.5">
+            {sheets.map((y) => (
+              <span key={y.id} className="relative block aspect-square overflow-hidden rounded-md ring-1 ring-foreground/10">
+                {y.state === "failed" ? <span className="absolute inset-0 grid place-items-center bg-muted text-xs text-muted-foreground">Failed</span> : <PictureSlot src={y.state === "done" ? y.url : undefined} />}
+              </span>
+            ))}
+          </div>
+        ),
+      })
     } else if (x.kind === "image" && x.purpose === "view") {
       rows.push({
         key: x.id,
@@ -825,7 +844,7 @@ function BrandTable({ item }: { item: Extract<Item, { kind: "brand" }> }) {
     rows.push([
       "Sources",
       <span className="flex flex-wrap gap-x-3 gap-y-1">
-        {b.sources.slice(0, 4).map((u) => (
+        {[...new Map(b.sources.map((u) => [hostOf(u), u])).values()].slice(0, 4).map((u) => (
           <a key={u} href={u} target="_blank" rel="noreferrer" className="flex items-center gap-1 underline-offset-2 hover:underline">
             <SiteIcon host={hostOf(u)} className="size-3.5" />
             {hostOf(u)}
@@ -885,32 +904,9 @@ function ApprovedPlan({ item, agent, ctx }: { item: Extract<Item, { kind: "plan"
 function directionOf(v: PlanVariation, i: number, plan: Plan) {
   return v.direction ?? (i === 0 ? (plan.reference.storyboard?.map((f) => f.action).join(", then ") ?? "") : "")
 }
-/** a prompt carrying the user's own direction, replacing any they gave before */
-const withDirection = (prompt: string, d: string) => {
-  const base = prompt.replace(/\s*The user's direction: [\s\S]*$/, "")
-  return d.trim() ? `${base} The user's direction: ${d.trim()}` : base
-}
-
 function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>; agent: Agent; ctx: AgentCtx }) {
   const plan = item.plan
-  const set = (p: Partial<Plan>) => agent.editPlan(item.id, { ...plan, ...p })
-  const setVar = (i: number, p: Partial<PlanVariation>) => set({ variations: plan.variations.map((v, j) => (j === i ? { ...v, ...p } : v)) })
-  // the user edits directions, never prompts: an edited direction reaches the video as theirs
-  const setDirection = (i: number, d: string) => {
-    const v = plan.variations[i]
-    const next = plan.variations.map((x, j) => (j === i ? { ...x, direction: d, prompt: withDirection(x.prompt, d) } : x))
-    set(i === 0 && !v.video_id ? { variations: next, reference: { ...plan.reference, prompt: withDirection(plan.reference.prompt, d) } } : { variations: next })
-  }
   const [open, setOpen] = useState(false)
-  const [active, setActive] = useState(0)
-  // the plan's prompts can @mention elements, variations and the brand
-  const planMentions = useMentionOptions({ variations: plan.variations.map((v) => ({ name: v.name })), brand: !!ctx.brand })
-  // the reference video is Variation 1, so one video per variation, except the ones the user gave
-  const videos = plan.variations.filter((v) => !v.video_id).length
-  const total = videos * ctx.videoCost
-  // fields some variation sets for itself: every variation gets a box for them
-  const perVar = (["label", "headline", "subheading", "cta"] as const).filter((f) => plan.variations.some((v) => v[f] !== undefined))
-  const short = ctx.credits < total
   // approved (or replaced): one line, opens to read
   if (item.state !== "open")
     return (
@@ -936,139 +932,45 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
         )}
       </div>
     )
-  const quiet = "rounded-md border-0 bg-transparent px-1.5 shadow-none outline-none transition-colors hover:bg-muted/50 focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-ring/40 dark:bg-transparent"
-  // the Flick as planned, with pictures for videos: each variation's own image, else the reference's,
-  // else the concept picked, else the user's photo
-  const picked = [...agent.items].reverse().find((x): x is Q => x.kind === "question" && x.display === "concepts" && x.answer !== undefined)
-  const conceptImage = picked?.options.find((o) => o.label === picked.answer)?.image
-  const base = agent.imageUrl(plan.reference.first_frame_id) ?? agent.imageUrl(plan.reference.image_ids?.[0]) ?? conceptImage ?? agent.ownImages()[0] ?? ctx.posters[0]
-  // a variation's own image, else its draft still (made when the plan opened), else the base picture
-  const posters = plan.variations.map((v, i) => agent.imageUrl(v.image_ids?.[0]) ?? item.previews?.[i] ?? base ?? "")
-  const making = plan.variations.some((v, i) => !v.image_ids?.length && !item.previews?.[i])
-  const shown = Math.min(active, plan.variations.length - 1)
-  const sv = plan.variations[shown]
+  // just the storyboard: how the first video plays, and one action that approves it and makes that video
+  const first = plan.variations[0]
+  const own = !!first?.video_id
+  const cost = own ? 0 : ctx.videoCost
+  const frames = plan.reference.storyboard ?? []
   return (
     <Card className="gap-0 overflow-hidden p-0 animate-in fade-in-0 slide-in-from-bottom-1 duration-300">
       <div className="flex flex-col gap-3 p-3">
         <div className="flex items-center gap-2">
           <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">Storyboard</span>
-          <Input value={plan.title} onChange={(e) => set({ title: e.target.value })} aria-label="Project name" className={cn(quiet, "h-7 min-w-0 flex-1 text-sm font-medium")} />
+          <span className="min-w-0 flex-1 truncate text-sm font-medium">{plan.title}</span>
         </div>
-        {/* the Flick as it will look: layout, copy and buttons, with images standing in for the videos */}
-        <div className="flex flex-col items-center gap-2 rounded-xl bg-muted/40 p-3">
-          <FlickPreview
-            design={plan.design}
-            brand={ctx.brand}
-            ratio={ctx.ratio}
-            posters={posters}
-            active={shown}
-            values={{ label: sv?.label ?? sv?.name, price: sv?.price, headline: sv?.headline, subheading: sv?.subheading, cta: sv?.cta }}
-            className="w-full"
-            style={{ maxWidth: `min(100%, ${Math.round(340 * Math.min(1.6, ctx.ratio))}px)`, maxHeight: 420 }}
-          />
-          <div role="tablist" aria-label="Variations" className="flex max-w-full gap-1 overflow-x-auto rounded-lg bg-background p-0.5 ring-1 ring-foreground/10">
+        {frames.length ? (
+          <Storyboard frames={frames} stills={item.frames ?? []} ratio={ctx.ratio} name={first?.name} />
+        ) : (
+          // the user's own videos: nothing to storyboard, just what's in it
+          <ol className="flex flex-col gap-1 px-1.5 text-sm">
             {plan.variations.map((v, i) => (
-              <button
-                key={i}
-                type="button"
-                role="tab"
-                aria-selected={i === shown}
-                onClick={() => setActive(i)}
-                className={cn("flex shrink-0 items-center gap-1.5 rounded-md py-1 pl-1 pr-2 text-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring", i === shown ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground")}
-              >
-                {posters[i] ? <img loading="lazy" decoding="async" src={posters[i]} alt="" className="size-5 rounded object-cover" /> : <span className="size-5 rounded bg-muted" />}
-                {v.name}
-              </button>
+              <li key={i} className="flex items-center gap-2">
+                <span className="grid size-5 shrink-0 place-items-center rounded-md bg-muted text-xs tabular-nums">{i + 1}</span>
+                <span className="font-medium">{v.name}</span>
+                <span className="truncate text-muted-foreground">{v.video_id ? "your video" : directionOf(v, i, plan)}</span>
+              </li>
             ))}
-          </div>
-          <p className="text-center text-xs text-muted-foreground">{videos === 0 ? "Your videos, used as they are." : making ? "Making a still for each variation…" : "Stills stand in for the videos until they’re made."}</p>
-        </div>
-        {/* the reference video as frames, then exactly what it's made from */}
-        {!!plan.reference.storyboard?.length && <Storyboard frames={plan.reference.storyboard} stills={item.frames ?? []} ratio={ctx.ratio} name={plan.variations[0]?.name} />}
-        <InputsTray plan={plan} agent={agent} onChange={(reference) => set({ reference })} />
-        {/* the outline: one card per video, edited in place */}
-        <ol className="flex flex-col gap-1.5">
-          {plan.variations.map((v, i) => (
-            <li key={i} onFocusCapture={() => setActive(i)} onClick={() => setActive(i)} className={cn("group/v relative flex gap-2.5 rounded-xl bg-muted/50 p-2", i === shown && "ring-1 ring-foreground/15")}>
-              {posters[i] ? (
-                <img loading="lazy" decoding="async" src={posters[i]} alt="" className="size-6 shrink-0 rounded-md object-cover ring-1 ring-foreground/10" />
-              ) : (
-                <span className="grid size-6 shrink-0 place-items-center rounded-md bg-background text-xs font-medium tabular-nums ring-1 ring-foreground/10">{i + 1}</span>
-              )}
-              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <div className="flex items-center gap-1">
-                  <Input value={v.name} onChange={(e) => setVar(i, { name: e.target.value })} aria-label={`Variation ${i + 1} name`} className={cn(quiet, "h-6 min-w-0 flex-1 text-sm font-medium")} />
-                  <Input value={v.price ?? ""} onChange={(e) => setVar(i, { price: e.target.value || undefined })} placeholder="Price" aria-label={`${v.name} price`} className={cn(quiet, "h-6 w-16 text-right text-sm tabular-nums placeholder:text-muted-foreground/60")} />
-                </div>
-                {/* the user's own video: used as it is, so no prompt */}
-                {v.video_id ? (
-                  <span className="flex items-center gap-1.5 px-1.5 text-xs text-muted-foreground">
-                    <HugeiconsIcon icon={PlayIcon} className="size-3" />
-                    Your video, used as it is{agent.media(v.video_id)?.name ? ` · ${agent.media(v.video_id)!.name}` : ""}
-                  </span>
-                ) : /* Variation 1 is the reference video: its prompt is the reference prompt; the others say what changes */
-                i === 0 ? (
-                  <>
-                    <span className="px-1.5 text-xs text-muted-foreground">Made first; the others are made from it</span>
-                    <MentionTextarea options={planMentions} value={directionOf(v, 0, plan)} placeholder="What should this video show?" onChange={(d) => setDirection(0, d)} aria-label={`${v.name} direction`} rows={1} className={cn(quiet, "field-sizing-content min-h-0 resize-none py-0.5 text-sm leading-relaxed text-foreground/80")} />
-                  </>
-                ) : (
-                  <MentionTextarea options={planMentions} value={directionOf(v, i, plan)} placeholder="What's different in this one?" onChange={(d) => setDirection(i, d)} aria-label={`${v.name} direction`} rows={1} className={cn(quiet, "field-sizing-content min-h-0 resize-none py-0.5 text-sm leading-relaxed text-foreground/80")} />
-                )}
-                {/* on-screen text this plan sets per variation (feeds) */}
-                {perVar.length > 0 && (
-                  <div className="flex flex-wrap gap-x-1">
-                    {perVar.map((f) => (
-                      <label key={f} className="flex min-w-0 flex-1 basis-32 items-center gap-1 text-xs text-muted-foreground">
-                        <span className="shrink-0 pl-1.5">{FIELD_LABEL[f]}</span>
-                        <Input value={v[f] ?? ""} onChange={(e) => setVar(i, { [f]: e.target.value })} aria-label={`${v.name} ${FIELD_LABEL[f]}`} className={cn(quiet, "h-6 min-w-0 flex-1 text-xs text-foreground")} />
-                      </label>
-                    ))}
-                  </div>
-                )}
-                {v.thumbnail_id && (
-                  <span className="flex items-center gap-1.5 px-1.5 text-xs text-muted-foreground">
-                    {agent.imageUrl(v.thumbnail_id) && <img src={agent.imageUrl(v.thumbnail_id)} alt="" decoding="async" className="size-4 rounded object-cover ring-1 ring-foreground/10" />}
-                    Your thumbnail
-                  </span>
-                )}
-                <Input value={v.link ?? ""} onChange={(e) => setVar(i, { link: e.target.value || undefined })} placeholder="Add a link for the button" aria-label={`${v.name} link`} className={cn(quiet, "h-6 text-xs text-muted-foreground placeholder:text-muted-foreground/60")} />
-              </div>
-              {plan.variations.length > 2 && i > 0 && (
-                <Button variant="ghost" size="icon-xs" aria-label={`Remove ${v.name}`} onClick={() => set({ variations: plan.variations.filter((_, j) => j !== i) })} className="absolute -right-1.5 -top-1.5 size-5 rounded-full bg-background opacity-0 shadow-sm ring-1 ring-foreground/10 group-hover/v:opacity-100 focus-visible:opacity-100">
-                  <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
-                </Button>
-              )}
-            </li>
-          ))}
-        </ol>
-        {plan.variations.length < 5 && (
-          <button
-            type="button"
-            onClick={() => set({ variations: [...plan.variations, { name: `Variation ${plan.variations.length + 1}`, prompt: "Same scene, ", direction: "" }] })}
-            className="flex h-8 items-center justify-center gap-1.5 rounded-xl border border-dashed border-foreground/15 text-xs text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <HugeiconsIcon icon={Add01Icon} className="size-3.5" />
-            Add variation
-          </button>
+          </ol>
         )}
-        <div className="flex flex-col gap-1">
-          <span className="px-1.5 text-xs font-medium text-muted-foreground">On screen</span>
-          <div className="flex gap-1.5">
-            <Input value={plan.design.headline ?? ""} onChange={(e) => set({ design: { ...plan.design, headline: e.target.value } })} placeholder="Headline" aria-label="Headline" className={cn(quiet, "h-8 min-w-0 flex-1 bg-muted/50 text-sm")} />
-            <Input value={plan.design.cta ?? ""} onChange={(e) => set({ design: { ...plan.design, cta: e.target.value } })} placeholder="Button" aria-label="Button text" className={cn(quiet, "h-8 w-28 bg-muted/50 text-sm")} />
-          </div>
-        </div>
+        <p className="px-1.5 text-xs text-muted-foreground">
+          {plan.variations.length > 1 ? `${plan.variations.length - 1} more variation${plan.variations.length > 2 ? "s" : ""} (${plan.variations.slice(1).map((v) => v.name).join(", ")}) follow once you like the first video. ` : ""}
+          Want something different? Tell me below.
+        </p>
       </div>
-      {/* like Gamma: the count and the one action, always at the bottom */}
       <div className="flex items-center gap-3 border-t bg-muted/40 px-3 py-2.5">
         <span className="text-xs text-muted-foreground">
-          {videos === 0 ? "Your videos · nothing to generate" : `${videos} video${videos === 1 ? "" : "s"} · ${total.toLocaleString("en-US")} credits`}
-          {short && <span className="text-destructive"> · you have {ctx.credits.toLocaleString("en-US")}</span>}
+          {own ? "Your video, used as it is" : `First video · ${cost.toLocaleString("en-US")} credits`}
+          {ctx.credits < cost && <span className="text-destructive"> · you have {ctx.credits.toLocaleString("en-US")}</span>}
         </span>
         <Button size="sm" className="ml-auto gap-1.5" disabled={agent.busy} onClick={() => agent.decidePlan(item.id, plan)}>
           <HugeiconsIcon icon={SparklesIcon} className="size-4" />
-          {videos === 0 ? "Build the Flick" : "Generate all"}
+          {own ? "Approve storyboard" : "Approve and make the first video"}
         </Button>
       </div>
     </Card>
@@ -1096,86 +998,12 @@ function Storyboard({ frames, stills, ratio, name }: { frames: NonNullable<Plan[
   )
 }
 
-/** "[Image 3]" → its new number after a reorder or removal (gone: dropped from the words) */
-function renumber(text: string | undefined, kind: "Image" | "Video", map: Map<number, number | null>) {
-  if (!text) return text
-  return text
-    .replace(new RegExp(`\\[${kind} (\\d+)\\]`, "g"), (m, n) => {
-      const to = map.get(Number(n))
-      return to === undefined ? m : to === null ? "" : `[${kind} ${to}]`
-    })
-    .replace(/\s{2,}/g, " ")
-    .replace(/\s+([.,])/g, "$1")
-    .trim()
-}
 
 /**
  * What the reference video is made from, numbered as the prompt names them ([Image 1], [Video 1]):
  * the user's video to change, the image it opens on, the references. Remove or move one and the
  * prompt's numbers follow.
  */
-function InputsTray({ plan, agent, onChange }: { plan: Plan; agent: Agent; onChange: (r: Plan["reference"]) => void }) {
-  const ref = plan.reference
-  const fixed = [
-    ref.mode === "edit" && ref.source_video_id ? { id: ref.source_video_id, tag: "The video" } : null,
-    ref.mode === "animate" && ref.first_frame_id ? { id: ref.first_frame_id, tag: "Opens on" } : null,
-    ref.mode === "animate" && ref.last_frame_id ? { id: ref.last_frame_id, tag: "Ends on" } : null,
-  ].filter((x): x is { id: string; tag: string } => !!x)
-  const images = ref.image_ids ?? []
-  const videos = ref.video_ids ?? []
-  if (!fixed.length && !images.length && !videos.length) return null
-  // a new order for one list: the prompt (and its parts) renumbered to match
-  const reorder = (kind: "Image" | "Video", next: string[]) => {
-    const old = kind === "Image" ? images : videos
-    const map = new Map(old.map((id, i) => [i + 1, next.includes(id) ? next.indexOf(id) + 1 : null] as const))
-    const fix = (t?: string) => renumber(t, kind, map)
-    const shot = ref.shot ? { ...ref.shot, subject: fix(ref.shot.subject) ?? "", action: fix(ref.shot.action) ?? "", camera: fix(ref.shot.camera) ?? "", setting: fix(ref.shot.setting), keep: fix(ref.shot.keep) } : undefined
-    onChange({ ...ref, prompt: fix(ref.prompt) ?? "", shot, ...(kind === "Image" ? { image_ids: next } : { video_ids: next }) })
-  }
-  const move = (kind: "Image" | "Video", list: string[], i: number, by: number) => {
-    const j = i + by
-    if (j < 0 || j >= list.length) return
-    const next = [...list]
-    ;[next[i], next[j]] = [next[j], next[i]]
-    reorder(kind, next)
-  }
-  const tile = (id: string, tag: string, list?: { kind: "Image" | "Video"; ids: string[]; i: number }) => {
-    const m = agent.media(id)
-    return (
-      <li key={`${tag}-${id}`} className="group/in relative flex w-16 shrink-0 flex-col gap-1">
-        <span className="relative block size-16 overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/10">
-          {m?.video ? <video src={m.url} muted playsInline preload="metadata" className="absolute inset-0 size-full object-cover" /> : m?.url ? <img src={m.url} alt={m.name} decoding="async" className="absolute inset-0 size-full object-cover" /> : null}
-          {list && (
-            <span className="absolute inset-x-0 bottom-0 flex justify-between bg-gradient-to-t from-black/50 to-transparent p-0.5 opacity-0 transition-opacity group-hover/in:opacity-100 group-focus-within/in:opacity-100">
-              <Button variant="ghost" size="icon-xs" aria-label={`Move ${tag} earlier`} disabled={list.i === 0} onClick={() => move(list.kind, list.ids, list.i, -1)} className="size-5 text-white hover:bg-white/20 hover:text-white disabled:opacity-0">
-                <HugeiconsIcon icon={ArrowLeft01Icon} className="size-3" />
-              </Button>
-              <Button variant="ghost" size="icon-xs" aria-label={`Move ${tag} later`} disabled={list.i === list.ids.length - 1} onClick={() => move(list.kind, list.ids, list.i, 1)} className="size-5 text-white hover:bg-white/20 hover:text-white disabled:opacity-0">
-                <HugeiconsIcon icon={ArrowRight01Icon} className="size-3" />
-              </Button>
-            </span>
-          )}
-        </span>
-        {list && (images.length + videos.length > 1 || ref.mode !== "reference") && (
-          <Button variant="ghost" size="icon-xs" aria-label={`Remove ${tag}`} onClick={() => reorder(list.kind, list.ids.filter((x) => x !== id))} className="absolute -right-1.5 -top-1.5 size-5 rounded-full bg-background opacity-0 shadow-sm ring-1 ring-foreground/10 group-hover/in:opacity-100 focus-visible:opacity-100">
-            <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
-          </Button>
-        )}
-        <span className="truncate text-center text-xs text-muted-foreground">{tag}</span>
-      </li>
-    )
-  }
-  return (
-    <section aria-label="Made from" className="flex flex-col gap-1.5">
-      <span className="px-1.5 text-xs font-medium text-muted-foreground">Made from</span>
-      <ol className="flex gap-2 overflow-x-auto px-1.5 pb-0.5 pt-1.5">
-        {fixed.map((f) => tile(f.id, f.tag))}
-        {images.map((id, i) => tile(id, `Image ${i + 1}`, { kind: "Image", ids: images, i }))}
-        {videos.map((id, i) => tile(id, `Video ${i + 1}`, { kind: "Video", ids: videos, i }))}
-      </ol>
-    </section>
-  )
-}
 
 /**
  * After Generate all: the videos are made in place. Each variation shows its plan still under the
@@ -1187,7 +1015,7 @@ function BuildCard({ ctx, agent }: { ctx: AgentCtx; agent: Agent }) {
   const done = steps.filter((x) => x.state === "done").length
   // the plan the build came from: its stills stand in while each video is made
   const plan = [...agent.items].reverse().find((x): x is Extract<Item, { kind: "plan" }> => x.kind === "plan" && x.state === "approved")
-  const stillOf = (i: number) => plan?.previews?.[i] ?? agent.imageUrl(plan?.plan.variations[i]?.image_ids?.[0])
+  const stillOf = (i: number) => (i === 0 ? plan?.frames?.[0] : undefined) ?? plan?.previews?.[i] ?? agent.imageUrl(plan?.plan.variations[i]?.image_ids?.[0])
   const others = steps.slice(2)
   const ready = videos.filter((v) => v.state === "done").length
   const [open, setOpen] = useState(false)
@@ -1454,8 +1282,23 @@ export function SizeFrame({ size, className }: { size?: string; className?: stri
   )
 }
 
+/** the sizes for where it runs, by its answer: Flam's ad sizes, the shapes videos are made in, or link shapes */
+const SIZES_FOR: Record<"ads" | "banner" | "link", [string, string][]> = {
+  ads: [["Medium rectangle", "300×250"], ["Large rectangle", "336×280"], ["Square", "250×250"], ["Mobile interstitial", "320×480"], ["Mobile landscape", "480×320"], ["Half page", "300×600"], ["Square 1:1", "1080×1080"], ["Horizontal 16:9", "1920×1080"], ["Vertical 9:16", "1080×1920"]],
+  banner: [["Ultra wide 21:9", "2520×1080"], ["Wide 16:9", "1920×1080"], ["Landscape 4:3", "1440×1080"], ["Square 1:1", "1080×1080"], ["Portrait 3:4", "1080×1440"], ["Tall 9:16", "1080×1920"]],
+  link: [["Square 1:1", "1080×1080"], ["Wide 16:9", "1920×1080"], ["Tall 9:16", "1080×1920"]],
+}
+/** a size question asked with where it runs: its options follow that answer */
+function withSizes<T extends Deckable>(q: T, items: Item[]): T {
+  if (q.kind !== "question" || !(q.purpose === "size" || q.display === "sizes") || q.answer !== undefined) return q
+  const where = [...items].reverse().find((x): x is Extract<Item, { kind: "question" }> => x.kind === "question" && x.purpose === "placement" && !!x.answer && x.answer !== "Skipped")?.answer
+  if (!where) return q
+  const list = /\bads?\b/i.test(where) ? SIZES_FOR.ads : /banner|website|app/i.test(where) ? SIZES_FOR.banner : /link/i.test(where) ? SIZES_FOR.link : null
+  return list ? { ...q, options: list.map(([label, size]) => ({ label, size })) } : q
+}
+
 export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: AgentCtx; className?: string }) {
-  const qs = agent.items.filter((x): x is Deckable => isDocked(x, agent.pendingIds))
+  const qs = agent.items.filter((x): x is Deckable => isDocked(x, agent.pendingIds)).map((x) => withSizes(x, agent.items))
   const [at, setAt] = useState(0)
   const [picked, setPicked] = useState<Record<string, string[]>>({})
   const [other, setOther] = useState<Record<string, string>>({})
