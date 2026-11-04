@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { InputGroupInput } from "@/components/ui/input-group"
 import { ensureFont } from "@/lib/fonts"
-import { BUTTON_SIZE, BUTTON_STYLES, canRotate, defaultBorder, DEFAULT_BOLD, FONTS, isBox, TEXT_STYLES, type CanvasElement, type Feed } from "@/components/editor/elements"
+import { BUTTON_SIZE, BUTTON_STYLES, canRotate, defaultBorder, DEFAULT_BOLD, FONTS, isBox, stripExtent, TEXT_STYLES, type CanvasElement, type Feed } from "@/components/editor/elements"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { parse, toHex } from "@/components/editor/color-picker"
 import { cn } from "@/lib/utils"
@@ -452,9 +452,11 @@ export function CanvasStage({
         const dirY = corner === "s" ? 1 : corner === "n" ? -1 : 0
         const shiftX = align === "center" ? (dirX * gw) / 2 : align === "left" ? (dirX < 0 ? -gw : 0) : dirX > 0 ? gw : 0
         const shiftY = (dirY * gh) / 2
+        // a turned box moves along its own sides
+        const [mx, my] = turn ? [shiftX * Math.cos(turn) - shiftY * Math.sin(turn), shiftX * Math.sin(turn) + shiftY * Math.cos(turn)] : [shiftX, shiftY]
         update(el.id, {
-          x: snapshot.x + (shiftX / rect.width) * 100,
-          y: snapshot.y + (shiftY / rect.height) * 100,
+          x: snapshot.x + (mx / rect.width) * 100,
+          y: snapshot.y + (my / rect.height) * 100,
           w: (W / rect.width) * 100,
           h: (H / rect.height) * 100,
         } as Partial<CanvasElement>)
@@ -469,12 +471,20 @@ export function CanvasStage({
         update(el.id, { h, w: snapshot.lock ? (snapshot.w * h) / snapshot.h : snapshot.w })
       } else if (isBox(snapshot)) {
         // Shift keeps the aspect ratio even when it's unlocked
-        const w = clamp(snapshot.w + ((dx * 2) / rect.width) * 100, 5, 200)
-        let h = snapshot.lock || ev.shiftKey ? (snapshot.h * w) / snapshot.w : onlyX ? snapshot.h : clamp(snapshot.h + ((dy * 2) / rect.height) * 100, 5, 200)
+        const kc = ev.altKey ? 2 : 1
+        const w = clamp(snapshot.w + ((dx * kc) / rect.width) * 100, 5, 200)
+        let h = snapshot.lock || ev.shiftKey ? (snapshot.h * w) / snapshot.w : onlyX ? snapshot.h : clamp(snapshot.h + ((dy * kc) / rect.height) * 100, 5, 200)
         // unlocked: snap to the image's own aspect ratio when close
         const natural = (w * (rect.width / rect.height)) / snapshot.ar
         if (!snapshot.lock && !ev.shiftKey && !ev.altKey && !onlyX) h = (shapeSnap((h / 100) * rect.height, (natural / 100) * rect.height) / rect.height) * 100
-        update(el.id, { w, h })
+        // the opposite corner stays put (Alt grows from the centre): move the centre by half the growth, along the element's own turn
+        if (ev.altKey) update(el.id, { w, h })
+        else {
+          const gx = (((w - snapshot.w) / 100) * rect.width * sx) / 2
+          const gy = (((h - snapshot.h) / 100) * rect.height * (onlyX ? 0 : sy)) / 2
+          const [cx, cy] = [gx * Math.cos(turn) - gy * Math.sin(turn), gx * Math.sin(turn) + gy * Math.cos(turn)]
+          update(el.id, { w, h, x: snapshot.x + (cx / rect.width) * 100, y: snapshot.y + (cy / rect.height) * 100 })
+        }
       } else if (snapshot.kind === "button") {
         // buttons resize freely; never smaller than their label needs
         let w = Math.max(min.w, b.width + dx * kx)
@@ -491,9 +501,27 @@ export function CanvasStage({
         update(el.id, { w: (w / rect.width) * 100, h: (h / rect.height) * 100 })
       } else if (snapshot.kind === "strip") {
         // thumbnails scale together (strips are anchored top-left)
-        const size = clamp((snapshot.size * (b.width + dx)) / b.width, 3, 40)
-        const k = size / snapshot.size
-        update(el.id, { size, free: snapshot.free?.map((o) => ({ x: o.x * k, y: o.y * k })) } as Partial<CanvasElement>)
+        const at = (size: number) => ({ ...snapshot, size, free: snapshot.free?.map((o) => ({ x: (o.x * size) / snapshot.size, y: (o.y * size) / snapshot.size })) })
+        // it stops growing at the frame's edge (room kept for the active outline), so the gap and position never shift
+        const mw = snapshot.highlightWidth / 10.8
+        const fits = (size: number) => {
+          const ex = stripExtent(at(size), thumbs.length, ratio)
+          return snapshot.x + ex.w <= 100 - mw + 0.01 && snapshot.y + ex.h <= 100 - mw * ratio + 0.01
+        }
+        let size = clamp((snapshot.size * (b.width + dx)) / b.width, 3, 40)
+        if (!fits(size)) {
+          let lo = Math.min(size, snapshot.size)
+          let hi = size
+          if (!fits(lo)) lo = 3
+          for (let i = 0; i < 24; i++) {
+            const mid = (lo + hi) / 2
+            if (fits(mid)) lo = mid
+            else hi = mid
+          }
+          size = Math.max(lo, Math.min(snapshot.size, size))
+        }
+        const next = at(size)
+        update(el.id, { size, free: next.free } as Partial<CanvasElement>)
       } else {
         const base = snapshot.size ?? (snapshot.kind === "text" ? TEXT_STYLES.find((t) => t.variant === snapshot.variant)!.size : BUTTON_SIZE)
         const size = clamp((base * (b.width + dx * kx)) / b.width, 1, 30)

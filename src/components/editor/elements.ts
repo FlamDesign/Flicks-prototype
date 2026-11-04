@@ -566,14 +566,17 @@ export function fitStrip(el: Extract<CanvasElement, { kind: "strip" }>, layout: 
  * Keeps a thumbnail strip fully on the frame: shrinks it if it's too big, then nudges it back inside.
  * Sizes: widths in % of frame width (= cqw), heights in % of frame height; a square thumbnail is size * ratio tall in %H.
  */
+/** A strip's width (% of frame width) and height (% of frame height). */
+export function stripExtent(s: Extract<CanvasElement, { kind: "strip" }>, count: number, ratio: number) {
+  const g = s.gap / 10.8
+  if (s.layout === "horizontal") return { w: count * s.size + (count - 1) * g, h: s.size * ratio }
+  if (s.layout === "vertical") return { w: s.size, h: (count * s.size + (count - 1) * g) * ratio }
+  const fr = Array.from({ length: count }, (_, i) => s.free?.[i] ?? { x: i * (s.size + g), y: 0 })
+  return { w: Math.max(...fr.map((o) => o.x)) + s.size, h: (Math.max(...fr.map((o) => o.y)) + s.size) * ratio }
+}
+
 export function clampStrip(el: Extract<CanvasElement, { kind: "strip" }>, count: number, ratio: number): Extract<CanvasElement, { kind: "strip" }> {
-  const extent = (s: typeof el) => {
-    const g = s.gap / 10.8
-    if (s.layout === "horizontal") return { w: count * s.size + (count - 1) * g, h: s.size * ratio }
-    if (s.layout === "vertical") return { w: s.size, h: (count * s.size + (count - 1) * g) * ratio }
-    const fr = Array.from({ length: count }, (_, i) => s.free?.[i] ?? { x: i * (s.size + g), y: 0 })
-    return { w: Math.max(...fr.map((o) => o.x)) + s.size, h: (Math.max(...fr.map((o) => o.y)) + s.size) * ratio }
-  }
+  const extent = (s: typeof el) => stripExtent(s, count, ratio)
   // room for the active highlight, which sits outside the thumbnail
   const mw = el.highlightWidth / 10.8
   const mh = mw * ratio

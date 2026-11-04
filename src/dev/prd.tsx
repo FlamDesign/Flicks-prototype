@@ -446,8 +446,8 @@ const SECTIONS: Section[] = [
             ["Text", "Scale the text from the centre; a set box width scales with it", "Left and right set the box width; text wraps; font size stays"],
             ["Button", "Resize freely from the centre; never smaller than the label; Shift keeps shape", "Move only that edge; the opposite edge stays fixed"],
             ["Icon button", "Resize from the centre", "Move only that edge"],
-            ["Image", "Resize from the centre; aspect lock or Shift keeps shape", "Move only that edge; a locked image keeps its shape"],
-            ["Thumbnail strip", "Scale all thumbnails together", "None"],
+            ["Image and shape", "Resize from the dragged corner; the opposite corner stays fixed (Alt resizes from the centre); aspect lock or Shift keeps shape", "Move only that edge; a locked one keeps its shape"],
+            ["Thumbnail strip", "Scale all thumbnails together from the top-left; stops at the frame’s edge, so the gap and position never change", "None"],
           ]}
         />
         <UL
