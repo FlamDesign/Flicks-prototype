@@ -381,11 +381,23 @@ export default {
         const page = await env.USAGE!.list({ prefix: "req:", limit })
         const rows = (await Promise.all(page.keys.map((k) => env.USAGE!.get(k.name)))).flatMap((x) => (x ? [JSON.parse(x) as { request_id?: string }] : []))
         const libs = await Promise.all(rows.map((r) => (r.request_id ? env.USAGE!.get(`lib:${r.request_id}`) : Promise.resolve(null))))
-        const items = rows.map((r, i) => {
-          const lib = libs[i] ? (JSON.parse(libs[i]!) as Record<string, unknown>) : undefined
-          return { ...r, job: lib ? { kind: lib.kind, project: lib.project, variation: lib.variation, purpose: lib.purpose, status: lib.status ?? (lib.saved ? "completed" : undefined), finished: lib.finished, error: lib.error, saved: lib.saved, file: lib.saved ? `${url.origin}/file/${lib.id}` : undefined, source: lib.source } : undefined }
-        })
-        return json({ items }, 200, cors)
+        const jobOf = (lib: Record<string, unknown>) => ({ kind: lib.kind, project: lib.project, variation: lib.variation, purpose: lib.purpose, status: lib.status ?? (lib.saved ? "completed" : undefined), finished: lib.finished, error: lib.error, saved: lib.saved, file: lib.saved ? `${url.origin}/file/${lib.id}` : undefined, source: lib.source })
+        const items: Record<string, unknown>[] = rows.map((r, i) => ({ ...r, job: libs[i] ? jobOf(JSON.parse(libs[i]!) as Record<string, unknown>) : undefined }))
+        // jobs from before the log began: rebuilt from the library (prompt and inputs only)
+        const seen = new Set(rows.map((r) => r.request_id))
+        const keys: string[] = []
+        let cursor: string | undefined
+        do {
+          const pg = await env.USAGE!.list({ prefix: "lib:", limit: 1000, cursor })
+          keys.push(...pg.keys.map((k) => k.name))
+          cursor = pg.list_complete ? undefined : pg.cursor
+        } while (cursor && keys.length < 3000)
+        const older = (await Promise.all(keys.filter((k) => !seen.has(k.slice(4))).map((k) => env.USAGE!.get(k))))
+          .flatMap((x) => (x ? [JSON.parse(x) as Record<string, unknown>] : []))
+          .filter((x) => x.model !== "upload" && typeof x.model === "string" && String(x.model).startsWith("/"))
+          .map((x) => ({ at: x.created, ms: 0, path: x.model, payload: { prompt: x.prompt, ...(Array.isArray(x.refs) && x.refs.length ? { image_urls: x.refs } : {}) }, status: 200, request_id: x.id, earlier: true, job: jobOf(x) }))
+        const all = [...items, ...older].sort((a, b) => Number(b.at) - Number(a.at)).slice(0, limit)
+        return json({ items: all }, 200, cors)
       }
 
       if (req.method === "GET" && url.pathname === "/library") {

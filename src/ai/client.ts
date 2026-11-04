@@ -346,6 +346,22 @@ export async function posterOf(videoUrl: string): Promise<string | undefined> {
 /** an image or video made through the AI server; `file` is our own copy, once it's saved */
 export type LibraryItem = { id: string; kind: "image" | "video"; prompt: string; model: string; created: number; saved: boolean; file?: string; project?: string; variation?: string; purpose?: string; refs?: string[]; bytes?: number; type?: string }
 export const library = async () => ((await (await call("/library")).json()) as { items: LibraryItem[] }).items
+/** one job sent to Higgsfield through the server: what was sent, what came back, and its outcome */
+export type HfRequest = {
+  at: number
+  ms: number
+  path: string
+  payload: Record<string, unknown> | string | null
+  status: number
+  request_id?: string
+  error?: string
+  /** from before the log began: rebuilt from the library (no settings or timing) */
+  earlier?: boolean
+  job?: { kind?: "image" | "video"; project?: string; variation?: string; purpose?: string; status?: string; finished?: number; error?: string; saved?: boolean; file?: string; source?: string }
+}
+export const requestLog = async (limit = 150) => ((await (await call(`/requests?limit=${limit}`)).json()) as { items: HfRequest[] }).items
+/** asks Higgsfield again how a job is doing (the server saves the outcome on the log) */
+export const jobStatus = async (kind: "image" | "video", id: string) => (await (await call(`/${kind}/${id}`)).json()) as { status?: string; url?: string }
 /** keeps copies of finished media the app still has links to (Higgsfield deletes its own after 7 days) */
 export const importToLibrary = async (items: { url: string; kind: "image" | "video"; prompt?: string; name?: string; created?: number }[]) =>
   ((await (await call("/library/import", { method: "POST", body: JSON.stringify({ items }) })).json()) as { imported: number }).imported

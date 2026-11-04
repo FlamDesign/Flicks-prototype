@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { AiChat02Icon, DashboardSquare01Icon, DragDropVerticalIcon, File01Icon, Mail01Icon, FlashIcon, TestTubeIcon } from "@hugeicons/core-free-icons"
+import { AiChat02Icon, ApiIcon, DashboardSquare01Icon, DragDropVerticalIcon, File01Icon, Mail01Icon, FlashIcon, TestTubeIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
@@ -15,7 +15,7 @@ const MARGIN = 8
  * Drag the grip to move it; it remembers where it was left on this device.
  * Compact by default (grip and icons); hovering or focusing it shows the names of the shortcuts and tools.
  */
-export function DevWidget({ onStateManager, onComponents, onPrd, onEmails }: { onStateManager: () => void; onComponents: () => void; onPrd: () => void; onEmails: () => void }) {
+export function DevWidget({ onStateManager, onComponents, onPrd, onEmails, onRequests }: { onStateManager: () => void; onComponents: () => void; onPrd: () => void; onEmails: () => void; onRequests: () => void }) {
   const box = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ x: number; y: number } | null>(() => {
     try {
@@ -106,6 +106,7 @@ export function DevWidget({ onStateManager, onComponents, onPrd, onEmails }: { o
     { label: "State manager", icon: TestTubeIcon, onClick: onStateManager },
     { label: "Components", icon: DashboardSquare01Icon, onClick: onComponents },
     { label: "Emails", icon: Mail01Icon, onClick: onEmails },
+    { label: "Requests", icon: ApiIcon, onClick: onRequests },
     { label: "PRD", icon: File01Icon, onClick: onPrd },
   ]
 

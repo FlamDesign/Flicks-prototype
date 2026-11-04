@@ -40,6 +40,7 @@ const StateManager = lazy(() => import("@/dev/state-manager").then((m) => ({ def
 const ComponentGallery = lazy(() => import("@/dev/component-gallery").then((m) => ({ default: m.ComponentGallery })))
 const PrdDialog = lazy(() => import("@/dev/prd").then((m) => ({ default: m.PrdDialog })))
 const EmailGallery = lazy(() => import("@/dev/email-gallery").then((m) => ({ default: m.EmailGallery })))
+const HfRequests = lazy(() => import("@/dev/hf-requests").then((m) => ({ default: m.HfRequests })))
 const AnalyticsRoute = lazy(() => import("@/analytics/analytics-route").then((m) => ({ default: m.AnalyticsRoute })))
 const CampaignsPage = lazy(() => import("@/ads/campaigns-page").then((m) => ({ default: m.CampaignsPage })))
 const EmbedsPage = lazy(() => import("@/embeds/embeds-page").then((m) => ({ default: m.EmbedsPage })))
@@ -134,6 +135,7 @@ export default function App() {
   const [componentsOpen, setComponentsOpen] = useState(false)
   const [prdOpen, setPrdOpen] = useState(false)
   const [emailsOpen, setEmailsOpen] = useState(false)
+  const [requestsOpen, setRequestsOpen] = useState(false)
   // Analytics opened on one Flick (from its page); the sidebar opens the overview
   const [analyticsTarget, setAnalyticsTarget] = useState<AnalyticsTarget | null>(null)
   const openAnalytics = useCallback((t: AnalyticsTarget) => {
@@ -231,12 +233,13 @@ export default function App() {
   }, [])
   const devLayer = DEV_TOOLS && !CAPTURE && (
     <>
-      <DevWidget onStateManager={() => setStateManagerOpen(true)} onComponents={() => setComponentsOpen(true)} onPrd={() => setPrdOpen(true)} onEmails={() => setEmailsOpen(true)} />
+      <DevWidget onStateManager={() => setStateManagerOpen(true)} onComponents={() => setComponentsOpen(true)} onPrd={() => setPrdOpen(true)} onEmails={() => setEmailsOpen(true)} onRequests={() => setRequestsOpen(true)} />
       <Suspense fallback={null}>
         {stateManagerOpen && <StateManager open={stateManagerOpen} onOpenChange={setStateManagerOpen} />}
         {componentsOpen && <ComponentGallery open={componentsOpen} onOpenChange={setComponentsOpen} />}
         {prdOpen && <PrdDialog open={prdOpen} onOpenChange={setPrdOpen} />}
         {emailsOpen && <EmailGallery open={emailsOpen} onOpenChange={setEmailsOpen} />}
+        {requestsOpen && <HfRequests open={requestsOpen} onOpenChange={setRequestsOpen} />}
       </Suspense>
     </>
   )
