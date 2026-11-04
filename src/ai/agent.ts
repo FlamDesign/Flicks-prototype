@@ -42,6 +42,8 @@ export type EditorApi = {
   state(): Omit<ProjectState, "images" | "skills_read">
   /** sets up every video, starts generating them all, places the design; error text if it can't */
   approvePlan(plan: Plan): string
+  /** a picture of the Flick as viewers see it, for one variation (Variation 1 when not named) */
+  shot(variation?: string): Promise<{ blob: Blob; name: string; note: string }>
   /** where it runs, as a size (width×height) and optionally a length */
   setFormat(size: string, seconds?: number): string
   updateDesign(d: Design): string
@@ -221,8 +223,13 @@ export const TOOLS: Tool[] = [
   },
   {
     name: "review_flick",
-    description: "Check the built Flick against the review skill: text fits the format, nothing overlaps or leaves the frame, buttons readable and linked, feeds filled, every variation has a thumbnail and a distinct name. Returns what passes and what to fix.",
+    description: "Check the built Flick against the review skill: text fits the format, nothing overlaps or leaves the frame, buttons readable and linked, feeds filled, every variation has a thumbnail and a distinct name. Returns what passes and what to fix, plus a picture of the Flick as viewers see it (Variation 1, and any variation with its own copy): look at it for what the checks can't measure.",
     input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "view_flick",
+    description: "See the built Flick as viewers see it: a frame of a variation's video with every element (text, buttons, logo, thumbnail strip) drawn on top, at the Flick's shape. Use it after big design changes, before handing over, and when the user says something looks off. Check by eye: text readable over the video, nothing covering the product or faces, not crowded, the strip clear of the action.",
+    input_schema: { type: "object", properties: { variation: { type: "string", description: "Its name; Variation 1 when left out" } } },
   },
   {
     name: "propose_concepts",
@@ -551,6 +558,7 @@ const ACTIVITY: Record<string, string> = {
   search_library: "Searching the library",
   use_library: "Bringing in earlier work",
   review_flick: "Reviewing the Flick",
+  view_flick: "Looking at the Flick",
   update_design: "Designing",
   add_element: "Designing",
   edit_element: "Designing",
@@ -586,7 +594,7 @@ How the app works (the mechanics, not what to ask):
 - Library: everything made before is kept. search_library finds earlier images and videos (with their prompts); use_library brings them in as references or starting points.
 - The plan: propose_plan is the approval before any video credits are spent. It carries the reference video prompt (that video is Variation 1, the first in the list, not an extra one), each variation (name, prompt, label, price, link, and headline, subheading or button text only when they differ) and the design. The user edits it and presses Generate all; the app then makes every video and places the design and thumbnail strip.
 - Feeds: on-screen text that differs per variation is a feed. The project state lists every feed, what uses it, each variation's value and any issues. Change them with vary_field, same_for_all, set_variation and rename_feed; update_design can't change text that differs per variation. Fix reported issues in the same turn.
-- After the build: update_design, set_variation, add_variation, add_element, edit_element and remove_element change the Flick. The design list gives each element's id, type, text and position. run review_flick after the build and after big changes, and fix every failure.
+- After the build: update_design, set_variation, add_variation, add_element, edit_element and remove_element change the Flick. The design list gives each element's id, type, text and position. run review_flick after the build and after big changes, and fix every failure, including what you see in its picture. view_flick shows any variation as viewers see it: use it after design changes and whenever the user says something looks off, and fix what you see (text over a busy area, covering the product or a face, crowding, the strip over the action). A screenshot the user pastes is their canvas: edit from it.
 - Never end a reply by saying you'll do something next: call the tool in the same reply. End a turn only with a question for the user (ask_user, request_assets, propose_plan) or when the work is done.
 
 ${always.map((x) => `# Skill: ${x.name}\n${x.body}`).join("\n\n---\n\n")}
@@ -1074,6 +1082,21 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     })
   }
 
+  /** pictures of the Flick for Claude, one per variation asked for, each shown small in the chat too */
+  const lookAt = async (variations: (string | undefined)[]): Promise<Block[]> => {
+    const out: Block[] = []
+    for (const v of variations) {
+      try {
+        const shot = await apiRef.current.shot(v)
+        out.push({ type: "text", text: shot.note }, await imageBlock(shot.blob))
+        add({ kind: "image", prompt: shot.note, purpose: "view", target: shot.name, state: "done", url: URL.createObjectURL(shot.blob), placed: true })
+      } catch {
+        /* not built yet, or it couldn't be drawn */
+      }
+    }
+    return out
+  }
+
   /** a picture of a project item for the image models: itself, or for a video a still from it (kept) */
   const pictureOf = async (i: ProjectImage) => {
     if (i.kind !== "video") return i.url
@@ -1268,7 +1291,17 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
             return [`No thumbnail: ${left.join(", ")}.`]
           })
           add({ kind: "review", pass: r.pass.length, fail: r.fail })
-          return r.fail.length ? `Fix these, then run review_flick again:\n- ${r.fail.join("\n- ")}\n(Passing: ${r.pass.length} checks.)` : `All ${r.pass.length} checks pass.`
+          const verdict = r.fail.length ? `Fix these, then run review_flick again:\n- ${r.fail.join("\n- ")}\n(Passing: ${r.pass.length} checks.)` : `All ${r.pass.length} checks pass.`
+          // and a look: Variation 1, plus the variations with their own copy (headline, subheading, button text)
+          const st = a.state() as unknown as { feeds?: { used_by?: string[]; values?: Record<string, string> }[] }
+          const ownCopy = (st.feeds ?? []).some((f) => f.used_by?.some((u) => /headline|subheading|button text/i.test(u)))
+          const names = ownCopy ? [...new Set((st.feeds ?? []).flatMap((f) => Object.keys(f.values ?? {})))].slice(0, 3) : []
+          const looks = await lookAt(names.length ? names : [undefined])
+          return looks.length ? [{ type: "text", text: `${verdict}\nHow it looks (check by eye: readable text, nothing over the product or faces, not crowded, strip clear of the action):` }, ...looks] : verdict
+        }
+        case "view_flick": {
+          const looks = await lookAt([input.variation ? String(input.variation) : undefined])
+          return looks.length ? looks : "Error: couldn't draw the Flick (is it built yet?)."
         }
         case "search_library": {
           if (!live.current) return "The library needs the AI server; nothing is saved in the demo."

@@ -1060,7 +1060,9 @@ function Elapsed({ since }: { since: number }) {
 
 function ImageCard({ item, ctx, agent }: { item: Extract<Item, { kind: "image" }>; ctx: AgentCtx; agent: Agent }) {
   const what =
-    item.purpose === "thumbnail" && item.target
+    item.purpose === "view"
+      ? `Looked at ${item.target ?? "the Flick"}`
+      : item.purpose === "thumbnail" && item.target
       ? `Thumbnail for ${item.target}`
       : item.purpose === "canvas"
         ? "For the canvas"
@@ -1088,7 +1090,7 @@ function ImageCard({ item, ctx, agent }: { item: Extract<Item, { kind: "image" }
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="text-sm font-medium">{item.state === "working" ? `${what}: ${STATUS[item.status ?? ""] ?? "making it"}…` : item.state === "failed" ? "Image failed" : what}</span>
         <span className={cn("text-xs text-muted-foreground", item.state !== "failed" && "truncate")}>
-          {item.state === "failed" ? item.error : item.state === "done" && item.placed ? "Added to the Flick" : item.state === "working" && item.startedAt ? <Elapsed since={item.startedAt} /> : item.prompt}
+          {item.state === "failed" ? item.error : item.purpose === "view" ? "As viewers see it" : item.state === "done" && item.placed ? "Added to the Flick" : item.state === "working" && item.startedAt ? <Elapsed since={item.startedAt} /> : item.prompt}
         </span>
       </span>
       {item.state === "failed" && (

@@ -38,6 +38,7 @@ import { isTyping } from "@/lib/keys"
 import { GeneratingGradient } from "@/components/editor/generation-progress"
 import { AgentComposer, isDocked, QuestionDeck, threadGroups, type AgentCtx } from "@/components/editor/agent-chat"
 import { PlanningView, PlanSteps } from "@/components/editor/planning-view"
+import { renderFlickShot } from "@/components/editor/flick-shot"
 import { addMadeVideo, isMadeVideo, MISSING_POSTER, BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, defaultFill, defaultInk, SAMPLE_UPLOADS, inSet, clampStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload, videoAt, wrapVideo } from "@/components/editor/elements"
 
 export type Generation = {
@@ -762,6 +763,29 @@ export function GenerationCanvas({
       design: describeDesign(elementsNow.current, (id) => feedsNow.current.find((f) => f.id === id)?.name),
       sample_set: videoAt(generation.video)?.set ?? "sunglasses",
     }),
+    async shot(variation) {
+      // the Flick as viewers see it: a frame of this variation’s video with the design on top
+      const list = slidesNow.current
+      const sl = (variation ? findSlide(variation) : undefined) ?? list[0]
+      if (!sl) throw new Error("No variation to show.")
+      const shown = list.filter((x) => x.id === "main" || x.startedAt)
+      const made = status(sl) === "done" && sl.video !== undefined
+      const v = sl.video !== undefined ? videoAt(wrapVideo(sl.video)) : undefined
+      const blob = await renderFlickShot({
+        size: generation.size,
+        elements: elementsNow.current,
+        video: made ? v?.mp4 : undefined,
+        poster: v?.poster,
+        thumbs: shown.map((x) => ({ poster: x.thumb })),
+        active: Math.max(0, shown.indexOf(sl)),
+        feedOf: (id) => {
+          const f = feedsNow.current.find((x) => x.id === id)
+          return f && { name: f.name, value: sl.feeds?.[id] ?? "" }
+        },
+      })
+      const name = slideName(sl, list.indexOf(sl))
+      return { blob, name, note: made ? `${name}, a frame at 1.5 s` : `${name}: its video isn't made yet, so the frame behind the design is a stand-in` }
+    },
     setFormat(size, seconds) {
       const m = size.match(/^\s*(\d{2,4})\s*[x×]\s*(\d{2,4})\s*$/i)
       if (!m) return "Error: give the size as width×height in pixels, e.g. 300×250."
@@ -1052,7 +1076,8 @@ export function GenerationCanvas({
       const list = slidesNow.current
       const vars = list.slice(1)
       const shown = includeRef ? list : vars
-      check(vars.length >= 2 && vars.length <= 5, `${vars.length} variations`, `There are ${vars.length} variations; a Flick needs 2 to 5.`)
+      // Variation 1 counts when it's in the Flick
+      check(shown.length >= 2 && shown.length <= 5, `${shown.length} variations`, `There are ${shown.length} variations; a Flick needs 2 to 5.`)
       const names = vars.map(nameOfSlide)
       check(new Set(names.map((n) => n.toLowerCase())).size === names.length, "Variation names are distinct", "Two variations share a name.")
       const long = names.filter((n) => n.length > 14)
