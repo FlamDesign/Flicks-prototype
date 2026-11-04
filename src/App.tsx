@@ -434,7 +434,8 @@ export default function App() {
                       // each new generation shows the next product set's reference video
                       const next = prev ? REFERENCE_VIDEOS[(Math.max(0, REFERENCE_VIDEOS.indexOf(prev.video)) + 1) % REFERENCE_VIDEOS.length] : 0
                       // with the chat on, nothing generates yet: the chat plans the Flick first
-                      return { ...g, id: crypto.randomUUID(), startedAt: chatFirst ? 0 : Date.now(), video: next, ...(chatFirst ? { agent: true } : {}) }
+                      // the chat asks where it runs and sets the size; until then a square, 8 s
+                      return { ...g, ...(chatFirst ? { size: "1080×1080", duration: 8 } : {}), id: crypto.randomUUID(), startedAt: chatFirst ? 0 : Date.now(), video: next, ...(chatFirst ? { agent: true } : {}) }
                     })
                     setPage("Generate")
                     // the editor keeps the template's details, so the home box starts fresh
@@ -488,7 +489,7 @@ export default function App() {
         <div className="fixed inset-0 z-40 bg-background">
           {/* the editor loads its project first */}
           <Loaded k={generation.id} ms={dev.pageLoadMs} s={chatPlanning(generation) ? <ChatSkeleton /> : <div className="flex h-full flex-col"><div className="flex h-14 shrink-0 items-center gap-3 border-b px-4"><Skeleton className="h-5 w-40 rounded-md" /><Skeleton className="ml-auto h-9 w-48 rounded-xl" /><Skeleton className="h-9 w-24 rounded-xl" /></div><EditorSkeleton /></div>}>
-          <GenerationCanvas key={generation.id} generation={generation} onBack={() => setPage(generation.back === "Flick" && !flickId ? "Flicks" : (generation.back ?? "Create"))} onGetCredits={() => setBuyOpen(true)} onOpenFlick={openFlickPage}
+          <GenerationCanvas key={generation.id} generation={generation} onFormat={(size, duration) => setGeneration((g) => (g ? { ...g, size, ...(duration ? { duration } : {}) } : g))} onBack={() => setPage(generation.back === "Flick" && !flickId ? "Flicks" : (generation.back ?? "Create"))} onGetCredits={() => setBuyOpen(true)} onOpenFlick={openFlickPage}
             onSaveTemplate={(t) => setSavedTemplates((list) => [t, ...list])}
             onDuplicate={(copy) => setGeneration((g) => (g ? { ...g, id: crypto.randomUUID(), copy, resume: undefined, sample: false, remixOf: undefined } : g))}
             onHomeTemplates={() => {

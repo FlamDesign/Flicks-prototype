@@ -79,8 +79,11 @@ export function GenerationCanvas({
   onSaveTemplate,
   onHomeTemplates,
   onDuplicate,
+  onFormat,
 }: {
   generation: Generation
+  /** the chat set where it runs: the Flick's size (and length) */
+  onFormat?: (size: string, duration?: number) => void
   onBack: () => void
   onGetCredits: () => void
   /** open a Flick this project exported (from Version history) */
@@ -759,6 +762,16 @@ export function GenerationCanvas({
       design: describeDesign(elementsNow.current, (id) => feedsNow.current.find((f) => f.id === id)?.name),
       sample_set: videoAt(generation.video)?.set ?? "sunglasses",
     }),
+    setFormat(size, seconds) {
+      const m = size.match(/^\s*(\d{2,4})\s*[x×]\s*(\d{2,4})\s*$/i)
+      if (!m) return "Error: give the size as width×height in pixels, e.g. 300×250."
+      const [w, h] = [Number(m[1]), Number(m[2])]
+      if (w < 50 || h < 50 || w > 4000 || h > 4000) return "Error: each side must be 50 to 4000 pixels."
+      if (slidesNow.current[0].startedAt) return "Error: the videos are already made; the size can't change now."
+      const len = seconds ? Math.max(4, Math.min(15, Math.round(seconds))) : undefined
+      onFormat?.(`${w}×${h}`, len)
+      return `Size set to ${w}×${h}${len ? `, ${len} s` : ""}. Videos are made in ${videoAspectOf(`${w}×${h}`)} (the closest shape the video model makes) and cover the frame, centred; a little may be cropped at the edges.`
+    },
     approvePlan(plan) {
       const vars = plan.variations.filter((v) => v.name?.trim()).slice(0, 5)
       if (vars.length < 2) return "Error: The plan needs at least two variations."

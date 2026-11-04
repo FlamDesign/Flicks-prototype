@@ -23,6 +23,8 @@ export function briefEntries(agent: Agent, ctx: AgentCtx): Entry[] {
   }
   for (const it of agent.items) {
     if (it.kind !== "question" || it.answer === undefined || it.answer === "Skipped") continue
+    // the size shows as the Format line
+    if (it.purpose === "size" || it.display === "sizes") continue
     const q = it as Q
     const picked = q.options.find((o) => o.label === q.answer)
     if (q.display === "concepts") {
@@ -31,7 +33,7 @@ export function briefEntries(agent: Agent, ctx: AgentCtx): Entry[] {
     }
     out.push({
       key: q.id,
-      label: shortQuestion(q.question),
+      label: q.purpose === "placement" ? "Runs in" : q.purpose === "size" || q.display === "sizes" ? "Size" : shortQuestion(q.question),
       value: q.answer!,
       images: picked?.image ? [picked.image] : undefined,
       colors: q.display === "palettes" ? picked?.colors?.slice(0, 4) : undefined,

@@ -1075,6 +1075,7 @@ function ChatCardsDemo() {
     { label: "Build, videos made in place", node: <AgentItemView item={it({ kind: "build", count: 3 })} agent={fakeAgent} ctx={buildCtx} /> },
     { label: "Brand", node: <AgentItemView item={it({ kind: "brand", brand: { name: "Lumen", primary_color: "#ea580c", text_color: "#ffffff", font: "Montserrat", tone: "Bold" } })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Plan (storyboard, made from)", node: <AgentItemView item={it({ kind: "plan", toolId: "p", plan: demoPlan, state: "open", frames: [4, 5, 6].map((i) => GENERATED_VIDEOS[i].poster) })} agent={fakeAgent} ctx={chatCtx} /> },
+    { label: "Question: sizes", node: <AgentItemView item={it({ kind: "question", toolId: "sz", question: "Which size?", display: "sizes", purpose: "size", multi: false, custom: true, options: [{ label: "Medium rectangle", size: "300×250" }, { label: "Half page", size: "300×600" }, { label: "Wide 16:9", size: "1920×1080" }] })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Question: pictures", node: <AgentItemView item={it({ kind: "question", toolId: "pq", question: "Where should it be set?", display: "pictures", step: "look", multi: false, custom: true, options: [{ label: "City dawn", image: GENERATED_VIDEOS[0].poster }, { label: "Beach", image: GENERATED_VIDEOS[2].poster }, { label: "Studio", image: GENERATED_VIDEOS[3].poster }, { label: "Desert" }] })} agent={fakeAgent} ctx={chatCtx} /> },
     {
       label: "Brief (pinned above the chat)",

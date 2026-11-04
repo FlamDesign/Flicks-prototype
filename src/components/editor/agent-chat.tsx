@@ -256,8 +256,10 @@ function AddedToBrief({ items }: { items: Item[] }) {
       {said.map((x, i) => (
         <span key={i} className="flex items-center gap-1 font-medium text-foreground">
           {x.image && <img src={x.image} alt="" decoding="async" className="size-4 rounded object-cover" />}
-          {x.text}
-          {i < said.length - 1 && <span className="font-normal text-muted-foreground">,</span>}
+          <span>
+            {x.text}
+            {i < said.length - 1 && <span className="font-normal text-muted-foreground">,</span>}
+          </span>
         </span>
       ))}
     </p>
@@ -434,7 +436,7 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
           ))}
         </div>
       ) : (
-        <div className={cn("grid gap-2", item.display === "pictures" ? (item.options.length === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4") : visual || item.display === "palettes" ? "grid-cols-3" : "grid-cols-2")} role="radiogroup" aria-label={item.question}>
+        <div className={cn("grid gap-2", item.display === "sizes" ? "grid-cols-3" : item.display === "pictures" ? (item.options.length === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4") : visual || item.display === "palettes" ? "grid-cols-3" : "grid-cols-2")} role="radiogroup" aria-label={item.question}>
           {item.options.map((o, i) => (
             <button
               key={o.label}
@@ -455,6 +457,12 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
                   values={{ label: "Label", price: "$99" }}
                   className="w-full rounded-lg shadow-none"
                 />
+              )}
+              {item.display === "sizes" && (
+                <span className="flex flex-col items-center gap-1 pt-1">
+                  <SizeFrame size={o.size} className="size-10" />
+                  {o.size && <span className="text-xs tabular-nums text-muted-foreground">{o.size}</span>}
+                </span>
               )}
               {item.display === "pictures" && (
                 <span className="relative block overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/10" style={{ aspectRatio: String(Math.min(1.25, Math.max(0.8, ctx.ratio))) }}>
@@ -1199,6 +1207,17 @@ type Deckable = Q | Extract<Item, { kind: "assets" }>
 export const isDocked = (x: Item, pendingIds: string[]) => (x.kind === "question" || x.kind === "assets") && pendingIds.includes(x.id)
 const settled = (x: Deckable) => (x.kind === "question" ? x.answer !== undefined : !!x.done)
 
+/** a size drawn to its shape, inside a fixed box: how the Flick's frame will look */
+export function SizeFrame({ size, className }: { size?: string; className?: string }) {
+  const [w, h] = (size ?? "").split(/[x×]/).map(Number)
+  const r = w && h ? w / h : 1
+  return (
+    <span className={cn("grid size-14 shrink-0 place-items-center", className)} aria-hidden>
+      <span className="rounded-[3px] bg-foreground/10 ring-1 ring-foreground/25" style={r >= 1 ? { width: "100%", aspectRatio: String(Math.min(r, 8)) } : { height: "100%", aspectRatio: String(Math.max(r, 1 / 8)) }} />
+    </span>
+  )
+}
+
 export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: AgentCtx; className?: string }) {
   const qs = agent.items.filter((x): x is Deckable => isDocked(x, agent.pendingIds))
   const [at, setAt] = useState(0)
@@ -1335,6 +1354,33 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
                 <span className="flex min-w-0 flex-col gap-0.5 px-1 pb-1">
                   <span className="truncate text-sm font-medium">{o.label}</span>
                   {o.description && <span className="line-clamp-2 text-xs leading-snug text-muted-foreground">{o.description}</span>}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : q.display === "sizes" ? (
+          // frame shapes drawn to scale, with the name and the pixels
+          <div className="grid grid-cols-3 gap-2 p-1 sm:grid-cols-5" role="radiogroup" aria-label={q.question}>
+            {q.options.map((o, n) => (
+              <button
+                key={o.label}
+                type="button"
+                role="radio"
+                aria-checked={chosen(o)}
+                disabled={agent.busy}
+                onClick={() => pick(o)}
+                className={cn(
+                  "flex flex-col items-center gap-2 rounded-xl px-2 pb-2 pt-3 text-center outline-none ring-1 ring-foreground/10 transition-[box-shadow,background-color] hover:bg-muted/50 hover:ring-foreground/30 focus-visible:ring-2 focus-visible:ring-ring",
+                  chosen(o) && "bg-brand/10 ring-2 ring-brand",
+                )}
+              >
+                <SizeFrame size={o.size} />
+                <span className="flex min-w-0 flex-col">
+                  <span className="truncate text-xs font-medium">
+                    <span className="mr-1 tabular-nums text-muted-foreground">{n + 1}</span>
+                    {o.label}
+                  </span>
+                  {o.size && <span className="text-xs tabular-nums text-muted-foreground">{o.size}</span>}
                 </span>
               </button>
             ))}

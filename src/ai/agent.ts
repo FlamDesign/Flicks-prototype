@@ -42,6 +42,8 @@ export type EditorApi = {
   state(): Omit<ProjectState, "images" | "skills_read">
   /** sets up every video, starts generating them all, places the design; error text if it can't */
   approvePlan(plan: Plan): string
+  /** where it runs, as a size (width×height) and optionally a length */
+  setFormat(size: string, seconds?: number): string
   updateDesign(d: Design): string
   setBrand(b: Brand): void
   /** one variation: its name, prompt (regenerate), any on-screen field, or values by feed name */
@@ -93,7 +95,7 @@ export type ElementSpec = {
 /* ---------- what shows in the chat ---------- */
 
 /** how a question's answers show: words, cards, colour palettes, layout previews or thumbnail styles */
-export type Display = "chips" | "cards" | "palettes" | "layouts" | "thumbnails" | "pictures" | "concepts"
+export type Display = "chips" | "cards" | "palettes" | "layouts" | "thumbnails" | "pictures" | "sizes" | "concepts"
 /** where the user is in making the Flick */
 export type Step = "idea" | "look" | "plan" | "build"
 /** one answer: its words, and what it looks like when the answer is visual */
@@ -110,6 +112,8 @@ export type Choice = {
   beats?: string[]
   /** pictures: what the app draws for this answer */
   image_prompt?: string
+  /** sizes: width×height in pixels */
+  size?: string
 }
 
 type Base = { id: string; at: number }
@@ -117,7 +121,7 @@ export type Item = Base &
   (
     | { kind: "user"; text: string; images: string[] }
     | { kind: "assistant"; text: string; streaming?: boolean; activity?: string }
-    | { kind: "question"; toolId: string; question: string; options: Choice[]; display: Display; step?: Step; multi: boolean; custom: boolean; answer?: string }
+    | { kind: "question"; toolId: string; question: string; options: Choice[]; display: Display; step?: Step; multi: boolean; custom: boolean; answer?: string; purpose?: string }
     | { kind: "assets"; toolId: string; message: string; kinds: string[]; done?: "added" | "skipped"; images?: string[] }
     | { kind: "brand"; brand: Brand }
     | { kind: "plan"; toolId: string; plan: Plan; state: "open" | "approved" | "skipped"; previews?: (string | undefined)[]; frames?: (string | undefined)[] }
@@ -192,6 +196,7 @@ const choiceSchema = {
         description: { type: "string", description: "One short line" },
         colors: { type: "array", items: str, description: "Hex colours, for palettes: primary, accent, text" },
         design: { ...designSchema, description: "For layouts and thumbnails: the design this answer applies (layout, align, button_style, thumbnails…)" },
+        size: { type: "string", description: "For sizes: width×height in pixels, e.g. '300×250'" },
         image_prompt: { type: "string", description: "For pictures: a visual description of this answer (setting, light, mood, styling); the app makes a quick picture of it with the user's product" },
       },
       required: ["label"],
@@ -252,20 +257,25 @@ export const TOOLS: Tool[] = [
   {
     name: "ask_user",
     description:
-      "Ask the user one short question with tappable answers; the choice comes back as the result. display picks how the answers look: 'chips' (words), 'cards' (a label and a line each), 'palettes' (colour swatches; give colors), 'layouts' (mini Flick previews; give design with layout, align, button_style and thumbnails), 'thumbnails' (thumbnail strip styles; give design.thumbnails), 'pictures' (a picture per answer; give image_prompt; use it for anything the user judges by eye: setting, mood, light, styling, people, props). Visual answers update the live preview as soon as they're picked. step tags where the user is: idea, look or plan.",
+      "Ask the user one short question with tappable answers; the choice comes back as the result. display picks how the answers look: 'chips' (words), 'cards' (a label and a line each), 'palettes' (colour swatches; give colors), 'layouts' (mini Flick previews; give design with layout, align, button_style and thumbnails), 'thumbnails' (thumbnail strip styles; give design.thumbnails), 'pictures' (a picture per answer; give image_prompt; use it for anything the user judges by eye: setting, mood, light, styling, people, props), 'sizes' (frame shapes drawn to scale; give size; with purpose 'size' the picked or typed size is applied to the Flick). Visual answers update the live preview as soon as they're picked. step tags where the user is: idea, look or plan.",
     input_schema: {
       type: "object",
       properties: {
         question: str,
-        options: { type: "array", items: choiceSchema, minItems: 2, maxItems: 6 },
-        display: { type: "string", enum: ["chips", "cards", "palettes", "layouts", "thumbnails", "pictures"] },
+        options: { type: "array", items: choiceSchema, minItems: 2, maxItems: 9, description: "Up to 6; up to 9 for sizes" },
+        display: { type: "string", enum: ["chips", "cards", "palettes", "layouts", "thumbnails", "pictures", "sizes"] },
         step: { type: "string", enum: ["idea", "look", "plan"] },
-        purpose: { type: "string", enum: ["variations", "other"], description: "'variations' when asking what changes between variations" },
+        purpose: { type: "string", enum: ["variations", "placement", "size", "other"], description: "'variations' when asking what changes between variations; 'placement' for where it will run; 'size' for the Flick's size (the answer is applied)" },
         multi_select: { type: "boolean" },
         allow_custom: { type: "boolean", description: "Let the user type their own answer" },
       },
       required: ["question", "options"],
     },
+  },
+  {
+    name: "set_format",
+    description: "Set the Flick's size (width×height in pixels) and, only if the user asked, its length. Use it when the user names a size in their own words; a size question (purpose 'size') applies the answer by itself. Videos are made in the closest shape the video model makes and cover the frame, centred.",
+    input_schema: { type: "object", properties: { size: { type: "string", description: "e.g. '300×250' or '728×90'" }, seconds: { type: "number", description: "4 to 15; only when the user asked for a length" } }, required: ["size"] },
   },
   {
     name: "request_assets",
@@ -528,6 +538,7 @@ export const TOOLS: Tool[] = [
 const ACTIVITY: Record<string, string> = {
   read_skill: "Reading Flam’s guides",
   ask_user: "Preparing a question",
+  set_format: "Setting the size",
   propose_concepts: "Sketching concepts",
   request_assets: "Preparing a question",
   propose_plan: "Writing the plan",
@@ -1132,12 +1143,12 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           const options: Choice[] = ((input.options as (string | Choice)[] | undefined) ?? [])
             .map((o) => (typeof o === "string" ? { label: o } : o && typeof o.label === "string" ? o : null))
             .filter((o): o is Choice => !!o && !!o.label.trim())
-            .slice(0, 6)
-          const display = (["chips", "cards", "palettes", "layouts", "thumbnails", "pictures"] as Display[]).includes(input.display as Display) ? (input.display as Display) : "chips"
+            .slice(0, input.display === "sizes" ? 9 : 6)
+          const display = (["chips", "cards", "palettes", "layouts", "thumbnails", "pictures", "sizes"] as Display[]).includes(input.display as Display) ? (input.display as Display) : "chips"
           const step = (["idea", "look", "plan"] as Step[]).includes(input.step as Step) ? (input.step as Step) : undefined
           const pictures = display === "pictures"
           const shown = pictures ? options.slice(0, 4) : options
-          const itemId = add({ kind: "question", toolId: u.id, question: String(input.question ?? ""), options: shown, display, step, multi: !!input.multi_select && display === "chips", custom: input.allow_custom !== false && (display === "chips" || pictures) })
+          const itemId = add({ kind: "question", toolId: u.id, question: String(input.question ?? ""), options: shown, display, step, multi: !!input.multi_select && display === "chips", custom: input.allow_custom !== false && (display === "chips" || pictures || display === "sizes"), purpose: typeof input.purpose === "string" ? input.purpose : undefined })
           pending.current.push({ toolId: u.id, itemId })
           // pictures fill in as they're made: a quick draft of each answer, with the user's product in it
           if (pictures)
@@ -1148,6 +1159,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
             })
           return WAIT
         }
+        case "set_format":
+          return apiRef.current.setFormat(String(input.size ?? ""), typeof input.seconds === "number" ? input.seconds : undefined)
         case "propose_concepts": {
           if (live.current && !variationsSettled(fromOf(input), false)) return NOT_SETTLED
           const list = ((input.concepts as Record<string, unknown>[]) ?? []).slice(0, 3)
@@ -1509,8 +1522,15 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       const shown = it.display === "concepts" ? (choice?.image ?? it.options.find((o) => o.label === value)?.image) : undefined
       const look = shown ? (images.current.find((x) => x.url === shown) ?? keep(shown, `Look: ${value}`.slice(0, 40), "generated")) : undefined
       const lookLine = look ? ` (its preview image is ${look.id}: the suggested look; use it in reference_image_ids when the video should look like it)` : ""
+      // the Flick's size: a picked size, or one the user typed ("728x90"), is applied straight away
+      let sizeLine = ""
+      if (it.purpose === "size" || it.display === "sizes") {
+        const typed = value.match(/(\d{2,4})\s*[x×]\s*(\d{2,4})/i)
+        const size = choice?.size ?? it.options.find((o) => o.label === value)?.size ?? (typed ? `${typed[1]}×${typed[2]}` : undefined)
+        sizeLine = size ? ` (${apiRef.current.setFormat(size)})` : " (no size in that answer: ask again or call set_format)"
+      }
       // questions and image requests asked together go back together, once all are answered (or skipped)
-      if (!hold(it.toolId, value + detail + lookLine)) return
+      if (!hold(it.toolId, value + detail + lookLine + sizeLine)) return
       msgs.current.push({ role: "user", content: settle({ ...held.current }) })
       await turn()
     },

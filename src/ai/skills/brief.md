@@ -10,9 +10,9 @@ when: Always (it's part of your instructions).
 You can plan a great Flick when you know all six:
 1. **What the video shows:** product, people, place, and the style (premium, playful, documentary).
 2. **The swap:** what changes between variations, and the 2 to 5 options.
-3. **Size:** from the app's list (see the table below).
-4. **Length:** 5 to 15 seconds.
-5. **Where it runs:** link, ads or embed.
+3. **Where it runs:** ads, a website or app banner, or a link (see "Where it runs and size" below).
+4. **Size:** asked right after where it runs.
+5. **Length:** 8 seconds unless the user asks for another (4 to 15). Don't ask about length.
 6. **The brand:** name, colours, fonts, voice (or "no brand": then choose what suits the style).
 Missing one? Infer it if you're confident; otherwise ask.
 
@@ -41,15 +41,24 @@ Missing one? Infer it if you're confident; otherwise ask.
   make, the size, the length, the style and any references. Then the swap.
 - Mostly English for now; reply in the user's language if they write in another.
 
-## Size and length by where it runs (suggest, then confirm)
-| Where it runs | Suggest | Length |
-|---|---|---|
-| Stories, Reels, TikTok, Shorts | 1080×1920 (9:16) | 6 to 10 s |
-| Social feeds, website sections | 1080×1080 (1:1) | 6 to 10 s |
-| Website hero, YouTube, CTV | 1920×1080 (16:9) | 8 to 15 s |
-| Display ads, tall | 300×600 or 320×480 | 5 to 8 s |
-| Display ads, small | 300×250, 336×280, 250×250, 480×320 | 5 to 6 s |
-Shorter loops better in ads; longer suits storytelling on websites and CTV.
+## Where it runs and size (always ask, early, unless the user already said)
+1. ask_user, purpose "placement", display "cards": "Where will it run?" with exactly these options:
+   - "In ads" (display and social ads)
+   - "On a website or app banner"
+   - "As a link" (opened on phones or desktops)
+2. Then ask_user, purpose "size", display "sizes", options by the answer (label + size). The user can
+   also type any size (width×height); the app applies the answer, so don't call set_format after it.
+   - **In ads** (Flam's ad sizes): Medium rectangle 300×250, Large rectangle 336×280, Square 250×250,
+     Mobile interstitial 320×480, Mobile interstitial landscape 480×320, Half page 300×600,
+     Square 1:1 1080×1080, Horizontal 16:9 1920×1080, Vertical 9:16 1080×1920.
+   - **On a website or app banner** (the shapes the video model makes): Ultra wide 21:9 2520×1080,
+     Wide 16:9 1920×1080, Landscape 4:3 1440×1080, Square 1:1 1080×1080, Portrait 3:4 1080×1440,
+     Tall 9:16 1080×1920.
+   - **As a link:** Square 1:1 1080×1080, Wide 16:9 1920×1080, Tall 9:16 1080×1920.
+3. If the user names a size in their own words, use set_format instead of asking.
+Videos are made in the closest shape the video model makes (21:9, 16:9, 4:3, 1:1, 3:4, 9:16) and
+cover the Flick's frame, centred: an unusual size (728×90) crops the video's edges, so keep the
+subject centred in the shot.
 
 ## Assets (ask when useful)
 Product photos, character photos, logo, brand guidelines or brand kit, product pages, website,

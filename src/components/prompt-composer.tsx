@@ -76,6 +76,8 @@ export function PromptComposer({
   const [sizeFlash, setSizeFlash] = useState(false)
   // video length in seconds
   const [duration, setDuration] = useState(8)
+  // the chat plans the Flick (not a template): it asks for the size itself
+  const askChat = !!chat && !template
   const [dragging, setDragging] = useState(false)
   const firstSize = useRef(true)
   const ref = useRef<MentionTextareaHandle>(null)
@@ -211,6 +213,9 @@ export function PromptComposer({
 
           <div className="flex-1" />
 
+          {/* with the AI chat on, the chat asks where it runs and sets the size; length starts at 8 s */}
+          {!askChat && (
+          <>
           {/* video length, 6 to 15 seconds */}
           <DropdownMenu>
             <Tooltip>
@@ -275,6 +280,8 @@ export function PromptComposer({
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
+          </>
+          )}
 
           <Tooltip>
             <TooltipTrigger asChild>
