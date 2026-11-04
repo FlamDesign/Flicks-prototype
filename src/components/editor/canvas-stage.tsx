@@ -1162,9 +1162,9 @@ function ButtonLinkFloat({
   // no link yet: open the card straight away
   const [open, setOpen] = useState(!link.trim())
   const linkInput = useRef<HTMLInputElement>(null)
-  useEffect(() => {
-    if (open) setTimeout(() => linkInput.current?.focus(), 30)
-  }, [open])
+  // focus the field only when the user opens it (pencil), never on its own: a focused field keeps
+  // Delete and Backspace from removing the button
+  const edit = () => (setOpen(true), setTimeout(() => linkInput.current?.focus(), 30))
 
   // just under the button, clear of its handles (its feed badge sits above)
   const style: React.CSSProperties = { left: box.l + box.w / 2, top: box.t + box.h + (feedTab ? 34 : 14), transform: "translateX(-50%)" }
@@ -1185,11 +1185,11 @@ function ButtonLinkFloat({
             {host}
           </a>
         ) : (
-          <Button variant="link" onClick={() => setOpen(true)} className="h-auto p-0 text-muted-foreground hover:text-foreground">
+          <Button variant="link" onClick={edit} className="h-auto p-0 text-muted-foreground hover:text-foreground">
             Add link
           </Button>
         )}
-        <Button variant="ghost" size="icon-sm" aria-label="Edit link" title="Edit link" onClick={() => setOpen(true)} className="shrink-0 text-muted-foreground">
+        <Button variant="ghost" size="icon-sm" aria-label="Edit link" title="Edit link" onClick={edit} className="shrink-0 text-muted-foreground">
           <HugeiconsIcon icon={PencilEdit01Icon} className="size-4" />
         </Button>
       </div>
