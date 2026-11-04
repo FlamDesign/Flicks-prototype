@@ -292,9 +292,7 @@ export function MediaPicker({
                   Clear
                 </Button>
               </>
-            ) : (
-              `Videos over ${MAX_REF_SECONDS} s are trimmed when added`
-            )}
+            ) : null}
           </span>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
@@ -342,11 +340,13 @@ function Tile({ x, on, onToggle, onOpen, onDuration }: { x: MediaItem; on: boole
   return (
     <MediaTile
       src={x.kind === "video" && !x.poster ? undefined : (x.poster ?? x.url)}
+      video={x.kind === "video" ? { mp4: x.url } : undefined}
       selected={on}
       badges={
         x.kind === "video" && (
           <TileBadge>
             <HugeiconsIcon icon={long ? Scissor01Icon : PlayIcon} className="size-3" />
+            {long && <span className="sr-only">Trimmed to {MAX_REF_SECONDS} seconds when added,</span>}
             {x.duration !== undefined ? length(x.duration) : "Video"}
           </TileBadge>
         )

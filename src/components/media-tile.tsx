@@ -75,7 +75,8 @@ export function MediaTile({
           {details}
         </div>
       )}
-      {badges && <div className="pointer-events-none absolute bottom-2 left-2 flex gap-1 transition-opacity duration-200 group-hover/tile:opacity-0">{badges}</div>}
+      {/* badges make way for details on hover; without details they stay (a video keeps its length while it plays) */}
+      {badges && <div className={cn("pointer-events-none absolute bottom-2 left-2 z-[1] flex gap-1 transition-opacity duration-200", details && "group-hover/tile:opacity-0")}>{badges}</div>}
       {children}
       {actions && <div className="absolute right-2 top-2 z-10 flex gap-1">{actions}</div>}
     </div>
