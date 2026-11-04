@@ -159,7 +159,7 @@ function TryFlick({ t }: { t: Template }) {
                 poster={m.poster}
                 aria-hidden
                 className={cn(
-                  "absolute inset-0 size-full object-cover transition-opacity duration-700",
+                  "absolute inset-0 size-full object-cover",
                   i === active ? "opacity-100" : "opacity-0",
                 )}
               >
