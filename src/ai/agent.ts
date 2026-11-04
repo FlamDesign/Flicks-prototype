@@ -351,7 +351,7 @@ export const TOOLS: Tool[] = [
         purpose: { type: "string", enum: ["thumbnail", "canvas", "idea", "look", "edit"], description: "'look': a suggested reference image for the video when the user gave nothing; 'edit': the user's photo changed (keep it in reference_image_ids) before animating it; 'idea': just to show" },
         variation: { type: "string", description: "Variation name, for thumbnails" },
         aspect_ratio: { type: "string", enum: ["1:1", "4:5", "3:4", "9:16", "16:9"] },
-        reference_image_ids: { type: "array", items: { type: "string" }, description: "Project image ids to keep true to (product first, then a model or scene), up to 16" },
+        reference_image_ids: { type: "array", items: { type: "string" }, description: "Project image ids to keep true to (product first, then a model or scene), up to 16. A video id works too: the app sends a still from it" },
         has_text: { type: "boolean", description: "True when the image must show readable words (a badge, an offer, a sign); a model that renders text well makes it" },
       },
       required: ["prompt", "purpose"],
@@ -849,7 +849,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     const refIds = ((input.reference_image_ids as string[] | undefined) ?? []).slice(0, 16)
     const refImages = refIds.map((r) => images.current.find((i) => i.id === r)).filter((i): i is ProjectImage => !!i)
     // the images to keep, at addresses Higgsfield can open (uploads go to the server first)
-    const refs = () => Promise.all(refImages.map((i) => shareable(i.url).catch(() => null))).then((u) => u.filter((x): x is string => !!x))
+    // a video given as a reference goes as a still from it: the image models take pictures only
+    const refs = () => Promise.all(refImages.map((i) => pictureOf(i).then((u) => shareable(u)).catch(() => null))).then((u) => u.filter((x): x is string => !!x))
     const made: Promise<ProjectImage> = live.current
       ? refs()
           .then((urls) => generateImage(prompt, aspect, undefined, (status) => patch(itemId, { status } as Partial<Item>), urls, { project: apiRef.current.state().title, variation: target, purpose }, { text: !!input.has_text, quality: purpose === "idea" ? "draft" : "final" }))
@@ -955,7 +956,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     const own = images.current.filter((x) => x.from === "upload" || x.from === "website" || x.from === "library").slice(0, 3)
     const picked = ((c.reference_image_ids as string[] | undefined) ?? []).map((r) => images.current.find((x) => x.id === r)).filter((x): x is ProjectImage => !!x)
     const refs = (picked.length ? picked : own).slice(0, 3)
-    const job = Promise.all(refs.map((r) => shareable(r.url).catch(() => null))).then((urls) =>
+    const job = Promise.all(refs.map((r) => pictureOf(r).then((u) => shareable(u)).catch(() => null))).then((urls) =>
       generateImage(prompt, aspectOf(state().flick_size), undefined, undefined, urls.filter((x): x is string => !!x), { project: state().title, purpose: "concept preview" }, { quality: "draft" }),
     )
     job.catch(() => previews.current.delete(key))
@@ -1050,6 +1051,15 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         )
         .then((url) => fill(i, url), () => {})
     })
+  }
+
+  /** a picture of a project item for the image models: itself, or for a video a still from it (kept) */
+  const pictureOf = async (i: ProjectImage) => {
+    if (i.kind !== "video") return i.url
+    if (i.poster) return i.poster
+    const len = i.duration ?? (await probeVideo(i.url).catch(() => undefined))?.duration ?? 2
+    i.poster = URL.createObjectURL((await stillsAt(i.url, [Math.min(1, len / 2)], 1024))[0])
+    return i.poster
   }
 
   /**
