@@ -35,8 +35,49 @@ function Turned({ deg, children }: { deg: number; children: React.ReactNode }) {
     <>{children}</>
   )
 }
-/** the rotate cursor: a curved arrow */
-const ROTATE_CURSOR = `url("data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M19 12a7 7 0 1 1-2.05-4.95" fill="none" stroke="white" stroke-width="4" stroke-linecap="round"/><path d="M19 12a7 7 0 1 1-2.05-4.95" fill="none" stroke="black" stroke-width="1.6" stroke-linecap="round"/><path d="M17.5 3.5v4h-4" fill="none" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M17.5 3.5v4h-4" fill="none" stroke="black" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>')}") 12 12, crosshair`
+/** a cursor as an inline SVG, cached by its drawing */
+const cursorCache = new Map<string, string>()
+function svgCursor(body: string, deg: number, fallback: string) {
+  const a = Math.round((((deg % 360) + 360) % 360) / 5) * 5
+  const key = `${a}|${body}`
+  const hit = cursorCache.get(key)
+  if (hit) return hit
+  // a white halo under a black line, like the system cursors, so it reads on any background
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><g transform="rotate(${a} 12 12)" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="${body}" stroke="white" stroke-width="3.6"/><path d="${body}" stroke="black" stroke-width="1.4"/></g></svg>`
+  const css = `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}") 12 12, ${fallback}`
+  cursorCache.set(key, css)
+  return css
+}
+/**
+ * The rotate cursor (as in Figma): a shallow arc with an arrowhead at each end, across the corner's
+ * diagonal and bulging away from the element. Drawn for the top-left corner, then turned for the
+ * corner and the element's own rotation, so it always sits square to the element.
+ */
+const ROTATE_ARC = (() => {
+  const [p1, p2, R] = [
+    [16.5, 6.5],
+    [6.5, 16.5],
+    13,
+  ] as const
+  const half = Math.hypot(p1[0] - p2[0], p1[1] - p2[1]) / 2
+  const d = Math.sqrt(R * R - half * half)
+  const c = [(p1[0] + p2[0]) / 2 + d * Math.SQRT1_2, (p1[1] + p2[1]) / 2 + d * Math.SQRT1_2]
+  // arrowheads along the arc's direction at each end, 3 px long, opened 35° either side
+  const head = (p: readonly number[], sign: number) => {
+    const r = [p[0] - c[0], p[1] - c[1]]
+    const t = [(-r[1] * sign) / R, (r[0] * sign) / R]
+    const back = (ang: number) => [p[0] - 3.2 * (t[0] * Math.cos(ang) - t[1] * Math.sin(ang)), p[1] - 3.2 * (t[0] * Math.sin(ang) + t[1] * Math.cos(ang))]
+    const [a, b] = [back(0.6), back(-0.6)]
+    return `M${a[0].toFixed(2)} ${a[1].toFixed(2)}L${p[0]} ${p[1]}L${b[0].toFixed(2)} ${b[1].toFixed(2)}`
+  }
+  return `M${p1[0]} ${p1[1]}A${R} ${R} 0 0 0 ${p2[0]} ${p2[1]}${head(p1, 1)}${head(p2, -1)}`
+})()
+const CORNER_TURN: Record<string, number> = { nw: 0, ne: 90, se: 180, sw: 270 }
+const rotateCursor = (corner: Corner, deg: number) => svgCursor(ROTATE_ARC, (CORNER_TURN[corner] ?? 0) + deg, "crosshair")
+/** the resize cursor, a two-headed arrow, turned with the element so it stays square to its side */
+const RESIZE_ARROW = "M4.5 12H19.5M7.5 9L4.5 12L7.5 15M16.5 9L19.5 12L16.5 15"
+const HANDLE_TURN: Record<string, number> = { e: 0, w: 0, n: 90, s: 90, nw: 45, se: 45, ne: 135, sw: 135 }
+const resizeCursor = (c: Corner, deg: number) => (deg ? svgCursor(RESIZE_ARROW, HANDLE_TURN[c] + deg, "move") : undefined)
 /** where each corner's rotate zone sits: just outside the corner handle */
 const rotPos = (c: Corner) => cn("absolute size-5", c.includes("n") ? "-top-5" : "-bottom-5", c.includes("w") ? "-left-5" : "-right-5")
 
@@ -275,7 +316,7 @@ export function CanvasStage({
 
   // turning by a corner: the angle follows the pointer around the element's centre, catching every 45°
   const [turning, setTurning] = useState(false)
-  const onRotate = (e: React.PointerEvent, el: CanvasElement, box: { l: number; t: number; w: number; h: number }) => {
+  const onRotate = (e: React.PointerEvent, el: CanvasElement, box: { l: number; t: number; w: number; h: number }, corner: Corner) => {
     e.stopPropagation()
     e.preventDefault()
     const sr = stage.current!.getBoundingClientRect()
@@ -294,9 +335,14 @@ export function CanvasStage({
       else if (!ev.altKey && Math.abs(deg - near) <= 5) deg = near
       deg = Math.round(deg * 10) / 10
       update(el.id, { rotation: deg % 360 } as Partial<CanvasElement>)
+      // the cursor turns with the element while dragging, wherever the pointer goes
+      document.body.style.setProperty("--turn-cursor", rotateCursor(corner, deg))
+      document.body.classList.add("turning")
     }
     const up = () => {
       setTurning(false)
+      document.body.classList.remove("turning")
+      document.body.style.removeProperty("--turn-cursor")
       window.removeEventListener("pointermove", move)
       window.removeEventListener("pointerup", up)
     }
@@ -610,7 +656,7 @@ export function CanvasStage({
         <div key={x.id} className="absolute outline-1 outline-solid outline-brand" style={{ left: x.l, top: x.t, width: x.w, height: x.h, transform: x.rot ? `rotate(${x.rot}deg)` : undefined }}>
           {/* rotate: just outside each corner (text, images and shapes) */}
           {single && single.id === x.id && editing !== x.id && canRotate(single) &&
-            CORNERS.map((c) => <span key={`r${c}`} onPointerDown={(e) => onRotate(e, single, x)} className={cn(rotPos(c), "pointer-events-auto")} style={{ cursor: ROTATE_CURSOR }} />)}
+            CORNERS.map((c) => <span key={`r${c}`} onPointerDown={(e) => onRotate(e, single, x, c)} className={cn(rotPos(c), "pointer-events-auto")} style={{ cursor: rotateCursor(c, x.rot) }} />)}
           {turning && single && single.id === x.id && (
             <span className="absolute left-1/2 top-full mt-2 -translate-x-1/2 rounded-md bg-foreground px-1.5 py-0.5 text-xs tabular-nums text-background" style={{ transform: `translateX(-50%) rotate(${-x.rot}deg)` }}>
               {Math.round(x.rot)}°
@@ -622,6 +668,7 @@ export function CanvasStage({
                 key={c}
                 onPointerDown={(e) => onResize(e, single, c, stage.current!.querySelector<HTMLElement>(`[data-el="${x.id}"]`)!)}
                 className={cn(HANDLE, "pointer-events-auto", handlePos(c))}
+                style={{ cursor: resizeCursor(c, x.rot) }}
               />
             ))}
           {/* images and buttons: side handles appear on hover and stretch one way */}
@@ -633,6 +680,7 @@ export function CanvasStage({
                 onPointerLeave={() => setOnSide(false)}
                 onPointerDown={(e) => onResize(e, single, c, stage.current!.querySelector<HTMLElement>(`[data-el="${x.id}"]`)!)}
                 className={cn(sidePos(c), "pointer-events-auto", hoverEl === x.id || onSide || resizingSide ? "opacity-100" : "opacity-0")}
+                style={{ cursor: resizeCursor(c, x.rot) }}
               />
             ))}
         </div>

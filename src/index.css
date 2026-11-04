@@ -254,6 +254,8 @@ button:disabled, [aria-disabled="true"], [data-disabled]:not([data-disabled="fal
   cursor: not-allowed;
 }
 textarea, input[type="text"] { cursor: text; }
+/* while an element is being turned, the rotate cursor shows everywhere (it turns with the element) */
+body.turning, body.turning * { cursor: var(--turn-cursor) !important; }
 :has(> button:disabled) { cursor: not-allowed; }
 
 /* Prompt box: grows with text up to 200px, then scrolls with a slim visible scrollbar */
