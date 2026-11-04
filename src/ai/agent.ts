@@ -93,7 +93,7 @@ export type ElementSpec = {
 /* ---------- what shows in the chat ---------- */
 
 /** how a question's answers show: words, cards, colour palettes, layout previews or thumbnail styles */
-export type Display = "chips" | "cards" | "palettes" | "layouts" | "thumbnails" | "concepts"
+export type Display = "chips" | "cards" | "palettes" | "layouts" | "thumbnails" | "pictures" | "concepts"
 /** where the user is in making the Flick */
 export type Step = "idea" | "look" | "plan" | "build"
 /** one answer: its words, and what it looks like when the answer is visual */
@@ -108,6 +108,8 @@ export type Choice = {
   swap?: string
   variations?: string[]
   beats?: string[]
+  /** pictures: what the app draws for this answer */
+  image_prompt?: string
 }
 
 type Base = { id: string; at: number }
@@ -118,7 +120,7 @@ export type Item = Base &
     | { kind: "question"; toolId: string; question: string; options: Choice[]; display: Display; step?: Step; multi: boolean; custom: boolean; answer?: string }
     | { kind: "assets"; toolId: string; message: string; kinds: string[]; done?: "added" | "skipped"; images?: string[] }
     | { kind: "brand"; brand: Brand }
-    | { kind: "plan"; toolId: string; plan: Plan; state: "open" | "approved" | "skipped"; previews?: (string | undefined)[] }
+    | { kind: "plan"; toolId: string; plan: Plan; state: "open" | "approved" | "skipped"; previews?: (string | undefined)[]; frames?: (string | undefined)[] }
     | { kind: "image"; prompt: string; purpose: string; target?: string; aspect?: string; state: "working" | "done" | "failed"; url?: string; error?: string; placed?: boolean; status?: string; startedAt?: number }
     | { kind: "note"; text: string }
     /** skills the chat read (shown as one line) */
@@ -188,6 +190,7 @@ const choiceSchema = {
         description: { type: "string", description: "One short line" },
         colors: { type: "array", items: str, description: "Hex colours, for palettes: primary, accent, text" },
         design: { ...designSchema, description: "For layouts and thumbnails: the design this answer applies (layout, align, button_style, thumbnails…)" },
+        image_prompt: { type: "string", description: "For pictures: a visual description of this answer (setting, light, mood, styling); the app makes a quick picture of it with the user's product" },
       },
       required: ["label"],
     },
@@ -247,13 +250,13 @@ export const TOOLS: Tool[] = [
   {
     name: "ask_user",
     description:
-      "Ask the user one short question with tappable answers; the choice comes back as the result. display picks how the answers look: 'chips' (words), 'cards' (a label and a line each), 'palettes' (colour swatches; give colors), 'layouts' (mini Flick previews; give design with layout, align, button_style and thumbnails), 'thumbnails' (thumbnail strip styles; give design.thumbnails). Visual answers update the live preview as soon as they're picked. step tags where the user is: idea, look or plan.",
+      "Ask the user one short question with tappable answers; the choice comes back as the result. display picks how the answers look: 'chips' (words), 'cards' (a label and a line each), 'palettes' (colour swatches; give colors), 'layouts' (mini Flick previews; give design with layout, align, button_style and thumbnails), 'thumbnails' (thumbnail strip styles; give design.thumbnails), 'pictures' (a picture per answer; give image_prompt; use it for anything the user judges by eye: setting, mood, light, styling, people, props). Visual answers update the live preview as soon as they're picked. step tags where the user is: idea, look or plan.",
     input_schema: {
       type: "object",
       properties: {
         question: str,
         options: { type: "array", items: choiceSchema, minItems: 2, maxItems: 6 },
-        display: { type: "string", enum: ["chips", "cards", "palettes", "layouts", "thumbnails"] },
+        display: { type: "string", enum: ["chips", "cards", "palettes", "layouts", "thumbnails", "pictures"] },
         step: { type: "string", enum: ["idea", "look", "plan"] },
         purpose: { type: "string", enum: ["variations", "other"], description: "'variations' when asking what changes between variations" },
         multi_select: { type: "boolean" },
@@ -313,6 +316,13 @@ export const TOOLS: Tool[] = [
             keep: { type: "string", description: "What must stay exact, e.g. 'the label and bottle shape exactly as in [Image 1]'" },
           },
           required: ["subject", "action", "camera"],
+        },
+        storyboard: {
+          type: "array",
+          minItems: 3,
+          maxItems: 4,
+          description: "The reference video as 3 or 4 frames in order, shown to the user as a storyboard with a quick picture each: what happens in that moment and how it's framed. Plain words, no [Image n].",
+          items: { type: "object", properties: { action: { type: "string", description: "What we see, under 10 words" }, camera: { type: "string", description: "Framing or move, 2 to 4 words" } }, required: ["action"] },
         },
         reference_prompt: { type: "string", description: "Only if you don't give shot: the reference video in 1 to 3 sentences, naming inputs as [Image n] / [Video n]." },
         reference_image_ids: { type: "array", items: { type: "string" }, description: "In order, the project images the reference video must stay true to: the user's product or people photos, website images, an approved suggested look, product or character sheets. They are [Image 1], [Image 2]… in the prompt. Required for 'reference' unless reference_video_ids is given." },
@@ -547,6 +557,8 @@ The order of work (always):
 4. Ask anything else still missing (brief skill), then show concepts built on what you found (propose_concepts), then the plan.
 
 How the app works (the mechanics, not what to ask):
+- Pictures over words: when a question is about something the user judges by eye (setting, mood, light, styling, people, props), ask with display 'pictures' and an image_prompt per answer (up to 4); the app draws each with their product.
+- Storyboard: every plan gives storyboard, the reference video as 3 or 4 frames (what happens, how it's framed); the app draws a quick still per frame.
 - Concepts: propose_concepts shows up to 3 concepts as cards with preview images; use it before every plan unless the user already gave a full concept or asked to skip ideas.
 - Videos the user adds (vid-1, vid-2...) arrive as three stills (start, middle, end) with their length (15 seconds at most; longer ones were trimmed). Say what happens in each. Decide from the context what each upload is for, and say it in a line: a video to change (plan reference_mode "edit", source_video_id), a video or image to follow for style, characters or the product (reference_video_ids / reference_image_ids), or an image to bring to life as it is (reference_mode "animate", first_frame_id). Ask only when it's truly unclear.
 - Mentions: the user can type @ to point at things. @Image 1 / @Video 1 are that message's own files in order; @<element name> is a saved element (a product, character, logo or style saved once with its images, listed in saved_elements); it arrives with its images, kept as project images, and a [Mentions: ...] line maps each @name to image ids: use exactly those ids (reference_image_ids, a variation's image_ids, generate_image reference_image_ids). @<variation name> means that variation, @Brand the brand kit. You can suggest saved elements by name ("use @Samba OG?").
@@ -999,7 +1011,16 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       image_ids: ids(input.reference_image_ids) ?? ids(nested.image_ids) ?? ids(input.image_ids),
       video_ids: ids(input.reference_video_ids) ?? ids(nested.video_ids),
       source_video_id: source,
+      storyboard: framesOf(input.storyboard ?? nested.storyboard),
     }
+  }
+  /** the storyboard's frames: 2 to 4 with something happening in each */
+  const framesOf = (v: unknown): Plan["reference"]["storyboard"] => {
+    const list = (Array.isArray(v) ? v : [])
+      .map((f) => (typeof f === "string" ? { action: f } : f && typeof f === "object" ? { action: String((f as { action?: unknown }).action ?? ""), camera: (f as { camera?: unknown }).camera ? String((f as { camera?: unknown }).camera) : undefined } : null))
+      .filter((f): f is { action: string; camera?: string } => !!f && !!f.action.trim())
+      .slice(0, 4)
+    return list.length >= 2 ? list : undefined
   }
 
   /**
@@ -1024,6 +1045,30 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     })
   }
 
+  /**
+   * The storyboard's pictures: one quick draft still per frame of the reference video, with the
+   * shot's subject and setting so the frames read as one scene, and the plan's references so it's
+   * their product.
+   */
+  const planFrames = (itemId: string, plan: Plan) => {
+    const frames = plan.reference.storyboard ?? []
+    if (!frames.length) return
+    const fill = (i: number, url: string) =>
+      setItems((list) => list.map((x) => (x.id === itemId && x.kind === "plan" ? { ...x, frames: Object.assign([...(x.frames ?? [])], { [i]: url }) } : x)))
+    const shot = plan.reference.shot
+    const refIds = [plan.reference.first_frame_id, ...(plan.reference.image_ids ?? [])].filter((x): x is string => !!x)
+    const own = images.current.filter((x) => x.kind !== "video" && (x.from === "upload" || x.from === "website" || x.from === "library"))
+    const refs = (refIds.length ? refIds.map((r) => images.current.find((x) => x.id === r)).filter((x): x is ProjectImage => !!x) : own).slice(0, 3)
+    const tidy = (t?: string) => (t ?? "").replace(/\[(Image|Video) \d+\]/g, "the reference").trim()
+    frames.forEach((f, i) => {
+      if (!live.current) return void setTimeout(() => fill(i, apiRef.current.sampleImage("variation", String(i % Math.max(2, plan.variations.length)))), 700 + i * 450)
+      const prompt = [tidy(shot?.subject), f.action, f.camera, tidy(shot?.setting)].filter(Boolean).join(". ") || `${plan.reference.prompt} ${f.action}`
+      Promise.all(refs.map((r) => shareable(r.url).catch(() => null)))
+        .then((urls) => generateImage(prompt, aspectOf(state().flick_size), undefined, undefined, urls.filter((x): x is string => !!x), { project: state().title, purpose: "storyboard frame" }, { quality: "draft" }))
+        .then((url) => fill(i, url), () => {})
+    })
+  }
+
   const runTool = async (u: Extract<Block, { type: "tool_use" }>): Promise<string | Block[] | typeof WAIT> => {
     const a = apiRef.current
     const input = cleanInput(u.input ?? {}) as Record<string, unknown>
@@ -1034,10 +1079,19 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
             .map((o) => (typeof o === "string" ? { label: o } : o && typeof o.label === "string" ? o : null))
             .filter((o): o is Choice => !!o && !!o.label.trim())
             .slice(0, 6)
-          const display = (["chips", "cards", "palettes", "layouts", "thumbnails"] as Display[]).includes(input.display as Display) ? (input.display as Display) : "chips"
+          const display = (["chips", "cards", "palettes", "layouts", "thumbnails", "pictures"] as Display[]).includes(input.display as Display) ? (input.display as Display) : "chips"
           const step = (["idea", "look", "plan"] as Step[]).includes(input.step as Step) ? (input.step as Step) : undefined
-          const itemId = add({ kind: "question", toolId: u.id, question: String(input.question ?? ""), options, display, step, multi: !!input.multi_select && display === "chips", custom: input.allow_custom !== false && display === "chips" })
+          const pictures = display === "pictures"
+          const shown = pictures ? options.slice(0, 4) : options
+          const itemId = add({ kind: "question", toolId: u.id, question: String(input.question ?? ""), options: shown, display, step, multi: !!input.multi_select && display === "chips", custom: input.allow_custom !== false && (display === "chips" || pictures) })
           pending.current.push({ toolId: u.id, itemId })
+          // pictures fill in as they're made: a quick draft of each answer, with the user's product in it
+          if (pictures)
+            shown.forEach((o, i) => {
+              const fill = (url: string) => setItems((all) => all.map((x) => (x.id === itemId && x.kind === "question" ? { ...x, options: x.options.map((c, j) => (j === i ? { ...c, image: url } : c)) } : x)))
+              if (!live.current) return void setTimeout(() => fill(apiRef.current.sampleImage("variation", String(i))), 800 + i * 500)
+              previewFor(u.id, i, { image_prompt: o.image_prompt || `${String(input.question ?? "")}: ${o.label}. ${o.description ?? ""}` }).then(fill, () => {})
+            })
           return WAIT
         }
         case "propose_concepts": {
@@ -1091,6 +1145,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           const itemId = add({ kind: "plan", toolId: u.id, plan: { ...plan, variations: vars, design: plan.design ?? {} }, state: "open", previews: [] })
           pending.current.push({ toolId: u.id, itemId })
           planPreviews(itemId, { ...plan, variations: vars })
+          planFrames(itemId, plan)
           return WAIT
         }
         case "set_brand": {
@@ -1537,8 +1592,13 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
 
   /** a project image's address by id (for the plan's preview) */
   const imageUrl = (imageId?: string) => (imageId ? images.current.find((x) => x.id === imageId)?.url : undefined)
+  /** a project image or video by id: its address, whether it's a video, and its name */
+  const media = (imageId?: string) => {
+    const x = imageId ? images.current.find((i) => i.id === imageId) : undefined
+    return x ? { url: x.url, video: x.kind === "video", name: x.name } : undefined
+  }
   /** the user's own images, newest last (a fallback picture for the plan's preview) */
   const ownImages = () => images.current.filter((x) => x.kind !== "video" && (x.from === "upload" || x.from === "library" || x.from === "website")).map((x) => x.url)
 
-  return { imageUrl, ownImages, items, busy, send, answer, pendingIds: pending.current.map((p) => p.itemId), addAssets, decidePlan, editPlan, retryImage, stop, retry, waiting: pending.current.length > 0, draft: draftView, plan: plan?.plan, step }
+  return { imageUrl, media, ownImages, items, busy, send, answer, pendingIds: pending.current.map((p) => p.itemId), addAssets, decidePlan, editPlan, retryImage, stop, retry, waiting: pending.current.length > 0, draft: draftView, plan: plan?.plan, step }
 }

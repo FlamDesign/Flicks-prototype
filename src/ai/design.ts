@@ -52,10 +52,12 @@ export type Design = {
 }
 export type Plan = {
   title: string
-  reference: { prompt: string; mode?: VideoMode; shot?: Shot; first_frame_id?: string; last_frame_id?: string; image_ids?: string[]; video_ids?: string[]; source_video_id?: string; media?: VideoMedia }
+  reference: { prompt: string; mode?: VideoMode; shot?: Shot; storyboard?: Frame[]; first_frame_id?: string; last_frame_id?: string; image_ids?: string[]; video_ids?: string[]; source_video_id?: string; media?: VideoMedia }
   variations: PlanVariation[]
   design: Design
 }
+/** one beat of the reference video, in order: what happens and how it's framed */
+export type Frame = { action: string; camera?: string }
 /** "Subject: … Action: … Camera: … Setting and light: … Keep: …" */
 export const shotPrompt = (s?: Shot) =>
   s

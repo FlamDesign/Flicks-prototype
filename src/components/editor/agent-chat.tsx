@@ -29,7 +29,13 @@ export type AgentCtx = {
   brand?: Brand
   /** the build's steps, read live */
   progress: () => { label: string; state: "done" | "working" | "waiting" }[]
+  /** each video in the build, read live: shown in place in the chat as it's made */
+  videos?: () => BuildVideo[]
+  /** the Flick's size ("1080×1080") and length in seconds, for the brief */
+  size: string
+  seconds: number
 }
+export type BuildVideo = { name: string; state: "empty" | "generating" | "done"; src?: string; poster?: string; since?: number; ms?: number; status?: string }
 
 /** true inside the choices panel (planning, beside the chat): cards get room, options become numbered rows */
 export const StageContext = createContext(false)
@@ -90,7 +96,7 @@ export function AgentItemView({ item, agent, ctx }: { item: Item; agent: Agent; 
     case "image":
       return <ImageCard item={item} ctx={ctx} agent={agent} />
     case "build":
-      return <BuildCard ctx={ctx} />
+      return <BuildCard ctx={ctx} agent={agent} />
     case "site":
       return <SiteCard item={item} />
     case "skill":
@@ -176,7 +182,7 @@ const isAnswered = (it: Item) => (it.kind === "question" && it.answer !== undefi
  * The conversation as groups: runs of behind-the-scenes lines fold into one "Worked" line, and runs
  * of answered questions into one summary card, so the chat reads as a conversation, not a log.
  */
-export function threadGroups(items: Item[], agent: Agent, ctx: AgentCtx): { key: string; at: number; node: React.ReactNode }[] {
+export function threadGroups(items: Item[], agent: Agent, ctx: AgentCtx, opts: { brief?: boolean } = {}): { key: string; at: number; node: React.ReactNode }[] {
   const out: { key: string; at: number; node: React.ReactNode }[] = []
   for (let i = 0; i < items.length; ) {
     const it = items[i]
@@ -191,7 +197,7 @@ export function threadGroups(items: Item[], agent: Agent, ctx: AgentCtx): { key:
       i += g.length
     } else if (isAnswered(it)) {
       const g = run(isAnswered)
-      out.push({ key: g[0].id, at: g[0].at, node: <Answers items={g} /> })
+      out.push({ key: g[0].id, at: g[0].at, node: opts.brief ? <AddedToBrief items={g} /> : <Answers items={g} /> })
       i += g.length
     } else {
       out.push({ key: it.id, at: it.at, node: <AgentItemView item={it} agent={agent} ctx={ctx} /> })
@@ -232,6 +238,29 @@ function Steps({ items }: { items: Item[] }) {
         </ul>
       )}
     </div>
+  )
+}
+
+/** with the brief pinned above: answers just say where they went, with their picture when they have one */
+function AddedToBrief({ items }: { items: Item[] }) {
+  const said = items.flatMap((x) => {
+    if (x.kind === "question") return x.answer && x.answer !== "Skipped" ? [{ text: x.answer, image: x.options.find((o) => o.label === x.answer)?.image }] : []
+    if (x.kind === "assets" && x.done === "added") return [{ text: `${x.images?.length ?? 0} image${x.images?.length === 1 ? "" : "s"}`, image: x.images?.[0] }]
+    return []
+  })
+  if (!said.length) return null
+  return (
+    <p className="flex flex-wrap items-center gap-1.5 px-1 text-xs text-muted-foreground">
+      <HugeiconsIcon icon={Tick02Icon} className="size-3.5" />
+      Added to the brief:
+      {said.map((x, i) => (
+        <span key={i} className="flex items-center gap-1 font-medium text-foreground">
+          {x.image && <img src={x.image} alt="" decoding="async" className="size-4 rounded object-cover" />}
+          {x.text}
+          {i < said.length - 1 && <span className="font-normal text-muted-foreground">,</span>}
+        </span>
+      ))}
+    </p>
   )
 }
 
@@ -405,7 +434,7 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
           ))}
         </div>
       ) : (
-        <div className={cn("grid gap-2", visual || item.display === "palettes" ? "grid-cols-3" : "grid-cols-2")} role="radiogroup" aria-label={item.question}>
+        <div className={cn("grid gap-2", item.display === "pictures" ? (item.options.length === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4") : visual || item.display === "palettes" ? "grid-cols-3" : "grid-cols-2")} role="radiogroup" aria-label={item.question}>
           {item.options.map((o, i) => (
             <button
               key={o.label}
@@ -426,6 +455,15 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
                   values={{ label: "Label", price: "$99" }}
                   className="w-full rounded-lg shadow-none"
                 />
+              )}
+              {item.display === "pictures" && (
+                <span className="relative block overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/10" style={{ aspectRatio: String(Math.min(1.25, Math.max(0.8, ctx.ratio))) }}>
+                  {o.image ? (
+                    <img decoding="async" src={o.image} alt="" className="absolute inset-0 size-full object-cover transition-transform duration-300 animate-in fade-in-0 group-hover/opt:scale-[1.03]" />
+                  ) : (
+                    <span className="shimmer absolute inset-0" />
+                  )}
+                </span>
               )}
               {item.display === "palettes" && (
                 <span className="flex h-12 overflow-hidden rounded-lg ring-1 ring-foreground/10">
@@ -682,6 +720,9 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
           </div>
           <p className="text-center text-xs text-muted-foreground">{making ? "Making a still for each variation…" : "Stills stand in for the videos until they’re made."}</p>
         </div>
+        {/* the reference video as frames, then exactly what it's made from */}
+        {!!plan.reference.storyboard?.length && <Storyboard frames={plan.reference.storyboard} stills={item.frames ?? []} ratio={ctx.ratio} />}
+        <InputsTray plan={plan} agent={agent} onChange={(reference) => set({ reference })} />
         {/* the outline: one card per video, edited in place */}
         <ol className="flex flex-col gap-1.5">
           {plan.variations.map((v, i) => (
@@ -759,6 +800,108 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
   )
 }
 
+/** The reference video as 3 or 4 frames: a quick still each, what happens and how it's framed. */
+function Storyboard({ frames, stills, ratio }: { frames: NonNullable<Plan["reference"]["storyboard"]>; stills: (string | undefined)[]; ratio: number }) {
+  return (
+    <section aria-label="Storyboard" className="flex flex-col gap-1.5">
+      <span className="px-1.5 text-xs font-medium text-muted-foreground">Storyboard · Variation 1</span>
+      <ol className="grid gap-2" style={{ gridTemplateColumns: `repeat(${frames.length}, minmax(0, 1fr))` }}>
+        {frames.map((f, i) => (
+          <li key={i} className="flex min-w-0 flex-col gap-1">
+            <span className="relative block overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/10" style={{ aspectRatio: String(Math.min(1.78, Math.max(0.56, ratio))) }}>
+              {stills[i] ? <img src={stills[i]} alt="" decoding="async" className="absolute inset-0 size-full object-cover animate-in fade-in-0 duration-500" /> : <span className="shimmer absolute inset-0" />}
+              <span className="absolute left-1 top-1 grid size-5 place-items-center rounded-md bg-background/85 text-xs font-medium tabular-nums backdrop-blur">{i + 1}</span>
+            </span>
+            <span className="line-clamp-2 px-0.5 text-xs leading-snug">{f.action}</span>
+            {f.camera && <span className="truncate px-0.5 text-xs text-muted-foreground">{f.camera}</span>}
+          </li>
+        ))}
+      </ol>
+    </section>
+  )
+}
+
+/** "[Image 3]" → its new number after a reorder or removal (gone: dropped from the words) */
+function renumber(text: string | undefined, kind: "Image" | "Video", map: Map<number, number | null>) {
+  if (!text) return text
+  return text
+    .replace(new RegExp(`\\[${kind} (\\d+)\\]`, "g"), (m, n) => {
+      const to = map.get(Number(n))
+      return to === undefined ? m : to === null ? "" : `[${kind} ${to}]`
+    })
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+([.,])/g, "$1")
+    .trim()
+}
+
+/**
+ * What the reference video is made from, numbered as the prompt names them ([Image 1], [Video 1]):
+ * the user's video to change, the image it opens on, the references. Remove or move one and the
+ * prompt's numbers follow.
+ */
+function InputsTray({ plan, agent, onChange }: { plan: Plan; agent: Agent; onChange: (r: Plan["reference"]) => void }) {
+  const ref = plan.reference
+  const fixed = [
+    ref.mode === "edit" && ref.source_video_id ? { id: ref.source_video_id, tag: "The video" } : null,
+    ref.mode === "animate" && ref.first_frame_id ? { id: ref.first_frame_id, tag: "Opens on" } : null,
+    ref.mode === "animate" && ref.last_frame_id ? { id: ref.last_frame_id, tag: "Ends on" } : null,
+  ].filter((x): x is { id: string; tag: string } => !!x)
+  const images = ref.image_ids ?? []
+  const videos = ref.video_ids ?? []
+  if (!fixed.length && !images.length && !videos.length) return null
+  // a new order for one list: the prompt (and its parts) renumbered to match
+  const reorder = (kind: "Image" | "Video", next: string[]) => {
+    const old = kind === "Image" ? images : videos
+    const map = new Map(old.map((id, i) => [i + 1, next.includes(id) ? next.indexOf(id) + 1 : null] as const))
+    const fix = (t?: string) => renumber(t, kind, map)
+    const shot = ref.shot ? { ...ref.shot, subject: fix(ref.shot.subject) ?? "", action: fix(ref.shot.action) ?? "", camera: fix(ref.shot.camera) ?? "", setting: fix(ref.shot.setting), keep: fix(ref.shot.keep) } : undefined
+    onChange({ ...ref, prompt: fix(ref.prompt) ?? "", shot, ...(kind === "Image" ? { image_ids: next } : { video_ids: next }) })
+  }
+  const move = (kind: "Image" | "Video", list: string[], i: number, by: number) => {
+    const j = i + by
+    if (j < 0 || j >= list.length) return
+    const next = [...list]
+    ;[next[i], next[j]] = [next[j], next[i]]
+    reorder(kind, next)
+  }
+  const tile = (id: string, tag: string, list?: { kind: "Image" | "Video"; ids: string[]; i: number }) => {
+    const m = agent.media(id)
+    return (
+      <li key={`${tag}-${id}`} className="group/in relative flex w-16 shrink-0 flex-col gap-1">
+        <span className="relative block size-16 overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/10">
+          {m?.video ? <video src={m.url} muted playsInline preload="metadata" className="absolute inset-0 size-full object-cover" /> : m?.url ? <img src={m.url} alt={m.name} decoding="async" className="absolute inset-0 size-full object-cover" /> : null}
+          {list && (
+            <span className="absolute inset-x-0 bottom-0 flex justify-between bg-gradient-to-t from-black/50 to-transparent p-0.5 opacity-0 transition-opacity group-hover/in:opacity-100 group-focus-within/in:opacity-100">
+              <Button variant="ghost" size="icon-xs" aria-label={`Move ${tag} earlier`} disabled={list.i === 0} onClick={() => move(list.kind, list.ids, list.i, -1)} className="size-5 text-white hover:bg-white/20 hover:text-white disabled:opacity-0">
+                <HugeiconsIcon icon={ArrowLeft01Icon} className="size-3" />
+              </Button>
+              <Button variant="ghost" size="icon-xs" aria-label={`Move ${tag} later`} disabled={list.i === list.ids.length - 1} onClick={() => move(list.kind, list.ids, list.i, 1)} className="size-5 text-white hover:bg-white/20 hover:text-white disabled:opacity-0">
+                <HugeiconsIcon icon={ArrowRight01Icon} className="size-3" />
+              </Button>
+            </span>
+          )}
+        </span>
+        {list && (images.length + videos.length > 1 || ref.mode !== "reference") && (
+          <Button variant="ghost" size="icon-xs" aria-label={`Remove ${tag}`} onClick={() => reorder(list.kind, list.ids.filter((x) => x !== id))} className="absolute -right-1.5 -top-1.5 size-5 rounded-full bg-background opacity-0 shadow-sm ring-1 ring-foreground/10 group-hover/in:opacity-100 focus-visible:opacity-100">
+            <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
+          </Button>
+        )}
+        <span className="truncate text-center text-xs text-muted-foreground">{tag}</span>
+      </li>
+    )
+  }
+  return (
+    <section aria-label="Made from" className="flex flex-col gap-1.5">
+      <span className="px-1.5 text-xs font-medium text-muted-foreground">Made from</span>
+      <ol className="flex gap-2 overflow-x-auto px-1.5 pb-0.5 pt-1.5">
+        {fixed.map((f) => tile(f.id, f.tag))}
+        {images.map((id, i) => tile(id, `Image ${i + 1}`, { kind: "Image", ids: images, i }))}
+        {videos.map((id, i) => tile(id, `Video ${i + 1}`, { kind: "Video", ids: videos, i }))}
+      </ol>
+    </section>
+  )
+}
+
 /** A page the chat read through the server: the site, what it found, and the images it kept. */
 function SiteCard({ item }: { item: Extract<Item, { kind: "site" }> }) {
   let host = item.url
@@ -798,29 +941,87 @@ function SiteCard({ item }: { item: Extract<Item, { kind: "site" }> }) {
   )
 }
 
-/** After Generate all: each part of the Flick, ticking off as it's ready. */
-function BuildCard({ ctx }: { ctx: AgentCtx }) {
+/**
+ * After Generate all: the videos are made in place. Each variation shows its plan still under the
+ * generating look with its progress, then turns into its video; the rest of the build ticks off below.
+ */
+function BuildCard({ ctx, agent }: { ctx: AgentCtx; agent: Agent }) {
   const steps = ctx.progress()
+  const videos = ctx.videos?.() ?? []
   const done = steps.filter((x) => x.state === "done").length
+  // the plan the build came from: its stills stand in while each video is made
+  const plan = [...agent.items].reverse().find((x): x is Extract<Item, { kind: "plan" }> => x.kind === "plan" && x.state === "approved")
+  const stillOf = (i: number) => plan?.previews?.[i] ?? agent.imageUrl(plan?.plan.variations[i]?.image_ids?.[0])
+  const others = steps.slice(2)
+  const ready = videos.filter((v) => v.state === "done").length
   return (
-    <Card className="gap-2.5">
+    <Card className="gap-3">
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium">{done === steps.length ? "Your Flick is ready" : "Building your Flick"}</span>
         <span className="ml-auto text-xs tabular-nums text-muted-foreground">
-          {done}/{steps.length}
+          {videos.length ? `${ready}/${videos.length} videos` : `${done}/${steps.length}`}
         </span>
       </div>
+      {videos.length > 0 && (
+        <div className={cn("grid gap-2", videos.length > 3 ? "grid-cols-3" : videos.length === 3 ? "grid-cols-3" : "grid-cols-2")}>
+          {videos.map((v, i) => (
+            <BuildTile key={i} video={v} still={stillOf(i)} ratio={ctx.ratio} waiting={i > 0 && v.state === "empty" && videos[0].state === "done"} />
+          ))}
+        </div>
+      )}
       <ol className="flex flex-col gap-1.5">
-        {steps.map((x) => (
-          <li key={x.label} className="flex items-center gap-2 text-sm">
+        {(videos.length ? others : steps).map((x) => (
+          <li key={x.label} className="flex items-center gap-2 text-xs">
             <span className={cn("grid size-4 shrink-0 place-items-center rounded-full", x.state === "done" ? "bg-foreground text-background" : "ring-1 ring-foreground/20")}>
               {x.state === "done" ? <HugeiconsIcon icon={Tick02Icon} className="size-2.5" strokeWidth={3} /> : x.state === "working" ? <Spinner className="size-3 text-brand" /> : null}
             </span>
-            <span className={cn(x.state === "waiting" && "text-muted-foreground")}>{x.label}</span>
+            <span className={cn(x.state === "done" ? "text-foreground" : "text-muted-foreground")}>{x.label}</span>
           </li>
         ))}
       </ol>
     </Card>
+  )
+}
+
+/** one video in the build: its still while it's made (with progress), then the video itself */
+function BuildTile({ video: v, still, ratio, waiting }: { video: BuildVideo; still?: string; ratio: number; waiting?: boolean }) {
+  const [, tick] = useState(0)
+  useEffect(() => {
+    if (v.state !== "generating") return
+    const t = setInterval(() => tick((n) => n + 1), 500)
+    return () => clearInterval(t)
+  }, [v.state])
+  const pct = v.state === "generating" && v.since && v.ms ? Math.min(99, Math.round(((Date.now() - v.since) / v.ms) * 100)) : undefined
+  const secs = v.state === "generating" && v.since ? Math.round((Date.now() - v.since) / 1000) : 0
+  return (
+    <figure className="flex min-w-0 flex-col gap-1">
+      <div className="relative overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/10" style={{ aspectRatio: String(Math.min(1.78, Math.max(0.56, ratio))) }}>
+        {v.state === "done" && v.src ? (
+          <video src={v.src} poster={v.poster} autoPlay muted loop playsInline className="absolute inset-0 size-full object-cover animate-in fade-in-0 duration-500" />
+        ) : (
+          <>
+            {still && <img src={still} alt="" decoding="async" className={cn("absolute inset-0 size-full object-cover", v.state === "generating" ? "opacity-60 blur-xs" : "opacity-40 grayscale")} />}
+            {v.state === "generating" && <GeneratingGradient sweep className="bg-transparent opacity-70" />}
+            <span className="absolute inset-x-1.5 bottom-1.5 flex min-w-0 items-center gap-1 truncate rounded-md bg-background/85 px-1.5 py-0.5 text-xs tabular-nums text-muted-foreground backdrop-blur">
+              {v.state === "generating" ? (
+                <>
+                  <Spinner className="size-3 text-brand" />
+                  {pct !== undefined ? `${pct}%` : `${STATUS[v.status ?? ""] ?? "generating"} · ${secs < 60 ? `${secs}s` : `${Math.floor(secs / 60)}m`}`}
+                </>
+              ) : waiting ? (
+                "After your OK"
+              ) : (
+                "Up next"
+              )}
+            </span>
+            {v.state === "generating" && pct !== undefined && (
+              <span className="absolute inset-x-0 top-0 h-0.5 bg-brand transition-[width] duration-500" style={{ width: `${pct}%` }} />
+            )}
+          </>
+        )}
+      </div>
+      <figcaption className="truncate px-0.5 text-xs font-medium">{v.name}</figcaption>
+    </figure>
   )
 }
 
@@ -1122,6 +1323,38 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
                 <span className="flex min-w-0 flex-col gap-0.5 px-1 pb-1">
                   <span className="truncate text-sm font-medium">{o.label}</span>
                   {o.description && <span className="line-clamp-2 text-xs leading-snug text-muted-foreground">{o.description}</span>}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : q.display === "pictures" ? (
+          // one picture per answer, drawn with their product; the name sits on the picture
+          <div className={cn("grid grid-cols-2 gap-2 p-1", q.options.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-4")} role="radiogroup" aria-label={q.question}>
+            {q.options.map((o, n) => (
+              <button
+                key={o.label}
+                type="button"
+                role="radio"
+                aria-checked={chosen(o)}
+                aria-description={o.description}
+                disabled={agent.busy}
+                onClick={() => pick(o)}
+                className={cn(
+                  "group/p relative overflow-hidden rounded-xl bg-muted text-left outline-none ring-1 ring-foreground/10 transition-shadow hover:ring-foreground/30 focus-visible:ring-2 focus-visible:ring-ring",
+                  chosen(o) && "ring-2 ring-brand",
+                )}
+                style={{ aspectRatio: Math.min(1.25, Math.max(ctx.ratio, 0.8)) }}
+              >
+                {o.image ? (
+                  <img decoding="async" src={o.image} alt="" className="absolute inset-0 size-full object-cover transition-transform duration-500 animate-in fade-in-0 group-hover/p:scale-[1.03]" />
+                ) : (
+                  <span className="shimmer absolute inset-0 grid place-items-center">
+                    <Spinner className="size-4 text-muted-foreground" />
+                  </span>
+                )}
+                <span className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-gradient-to-t from-black/70 to-transparent px-2.5 pb-2 pt-8 text-sm font-medium text-white">
+                  <span className="grid size-5 shrink-0 place-items-center rounded-full bg-white/20 text-xs tabular-nums backdrop-blur-sm">{n + 1}</span>
+                  <span className="truncate">{o.label}</span>
                 </span>
               </button>
             ))}

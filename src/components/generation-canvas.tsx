@@ -1211,6 +1211,14 @@ export function GenerationCanvas({
     ratio,
     posters: samplePosters.slice(0, Math.max(2, agent.plan?.variations.length ?? 3)),
     brand,
+    size: generation.size,
+    seconds: generation.duration ?? 8,
+    videos: () =>
+      slides.map((s) => {
+        const st = status(s)
+        const v = st === "done" && s.video !== undefined ? videoAt(wrapVideo(s.video)) : undefined
+        return { name: nameOf(s), state: st, src: v?.mp4 || undefined, poster: v?.poster, since: s.job?.since ?? s.startedAt, ms: s.job ? undefined : ms, status: s.job?.status }
+      }),
     progress: () => {
       const vs = slides.slice(1)
       return [

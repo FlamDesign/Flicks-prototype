@@ -57,6 +57,7 @@ import { ReferenceThumb } from "@/components/prompt-composer"
 import { DevBadge } from "@/dev/state-manager"
 import { cn } from "@/lib/utils"
 import { AgentItemView, QuestionDeck } from "@/components/editor/agent-chat"
+import { BriefCard } from "@/components/editor/brief-card"
 import type { Item } from "@/ai/agent"
 import type { Plan } from "@/ai/design"
 
@@ -702,7 +703,7 @@ const ENTRIES: Entry[] = [
   {
     name: "Chat cards",
     kind: "Editor",
-    about: "What the planning chat shows: questions (words, layouts, palettes), an image request, the brand, the plan outline, build progress, images and notes. Answered cards shrink to one line.",
+    about: "What the planning chat shows: questions (words, layouts, palettes, pictures), an image request, the brand, the pinned brief, the plan (preview, storyboard, made from, outline), the build with each video made in place, images and notes. Answered cards shrink to one line.",
     render: () => <ChatCardsDemo />,
   },
   {
@@ -1008,6 +1009,7 @@ function PopupDemo({ kind }: { kind: "intro" | "gift" }) {
 // start using can't be missing here without the build failing
 const fakeAgent: Parameters<typeof AgentItemView>[0]["agent"] = {
   imageUrl: () => undefined,
+  media: (id) => (id ? { url: GENERATED_VIDEOS[Number(id.slice(-1)) || 0].poster, video: false, name: id } : undefined),
   ownImages: () => [],
   items: [],
   busy: false,
@@ -1025,10 +1027,27 @@ const fakeAgent: Parameters<typeof AgentItemView>[0]["agent"] = {
   plan: undefined,
   step: "idea",
 }
-const chatCtx = { videoCost: 48, credits: 1000, addToCanvas: () => {}, focusComposer: () => {}, ratio: 9 / 16, posters: [1, 2, 3].map((i) => GENERATED_VIDEOS[i].poster), progress: () => [{ label: "Reference video", state: "done" as const }, { label: "3 variations", state: "working" as const }, { label: "Thumbnail images", state: "waiting" as const }] }
+const chatCtx = { size: "1080×1920", seconds: 8, videoCost: 48, credits: 1000, addToCanvas: () => {}, focusComposer: () => {}, ratio: 9 / 16, posters: [1, 2, 3].map((i) => GENERATED_VIDEOS[i].poster), progress: () => [{ label: "Variation 1", state: "done" as const }, { label: "2 variations", state: "working" as const }, { label: "Headline, button and thumbnail strip", state: "done" as const }, { label: "Thumbnail images", state: "waiting" as const }] }
+// the build with its videos made in place: one ready, one making, one waiting
+const buildCtx = {
+  ...chatCtx,
+  videos: () => [
+    { name: "Gold", state: "done" as const, src: GENERATED_VIDEOS[1].mp4, poster: GENERATED_VIDEOS[1].poster },
+    { name: "Sapphire", state: "generating" as const, since: Date.now() - 9000, ms: 30000 },
+    { name: "Ember", state: "empty" as const },
+  ],
+}
 const demoPlan: Plan = {
   title: "Sport lens drop",
-  reference: { prompt: "Athlete against a sunlit concrete wall, slow push-in, golden hour." },
+  reference: {
+    prompt: "Subject: the athlete from [Image 1] wearing the sunglasses from [Image 2]. Action: he turns to camera. Camera: slow push-in. Setting and light: sunlit concrete wall, golden hour.",
+    image_ids: ["img-1", "img-2"],
+    storyboard: [
+      { action: "Runner pauses against the wall", camera: "Wide, static" },
+      { action: "He turns toward the light", camera: "Slow push-in" },
+      { action: "Lenses catch the sun", camera: "Close-up" },
+    ],
+  },
   variations: [
     { name: "Gold", prompt: "Same scene, gold mirrored lenses.", price: "$189", link: "https://example.com/gold" },
     { name: "Sapphire", prompt: "Same scene, sapphire lenses.", price: "$199" },
@@ -1053,9 +1072,19 @@ function ChatCardsDemo() {
     { label: "Images request", node: <AgentItemView item={it({ kind: "assets", toolId: "a", message: "Add product photos or your logo.", kinds: ["product", "logo"] })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Look: layouts (visual answers)", node: <AgentItemView item={it({ kind: "question", toolId: "l", question: "Which layout fits?", display: "layouts", step: "look", multi: false, custom: false, options: [{ label: "Bold bottom", design: { layout: "bottom", thumbnails: { position: "bottom" } } }, { label: "Editorial", design: { layout: "bottom", align: "left", button_style: "sharp", thumbnails: { position: "right", shape: "square", size: "small" } } }, { label: "Clean top", design: { layout: "top", button_style: "light", thumbnails: { shape: "circle" } } }] })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Look: palettes", node: <AgentItemView item={it({ kind: "question", toolId: "c", question: "And the colours?", display: "palettes", step: "look", multi: false, custom: false, options: [{ label: "Ink", colors: ["#09090b", "#a1a1aa", "#ffffff"] }, { label: "Sunset", colors: ["#ea580c", "#fdba74", "#ffffff"] }, { label: "Ocean", colors: ["#2563eb", "#93c5fd", "#ffffff"] }] })} agent={fakeAgent} ctx={chatCtx} /> },
-    { label: "Build progress", node: <AgentItemView item={it({ kind: "build", count: 3 })} agent={fakeAgent} ctx={chatCtx} /> },
+    { label: "Build, videos made in place", node: <AgentItemView item={it({ kind: "build", count: 3 })} agent={fakeAgent} ctx={buildCtx} /> },
     { label: "Brand", node: <AgentItemView item={it({ kind: "brand", brand: { name: "Lumen", primary_color: "#ea580c", text_color: "#ffffff", font: "Montserrat", tone: "Bold" } })} agent={fakeAgent} ctx={chatCtx} /> },
-    { label: "Plan", node: <AgentItemView item={it({ kind: "plan", toolId: "p", plan: demoPlan, state: "open" })} agent={fakeAgent} ctx={chatCtx} /> },
+    { label: "Plan (storyboard, made from)", node: <AgentItemView item={it({ kind: "plan", toolId: "p", plan: demoPlan, state: "open", frames: [4, 5, 6].map((i) => GENERATED_VIDEOS[i].poster) })} agent={fakeAgent} ctx={chatCtx} /> },
+    { label: "Question: pictures", node: <AgentItemView item={it({ kind: "question", toolId: "pq", question: "Where should it be set?", display: "pictures", step: "look", multi: false, custom: true, options: [{ label: "City dawn", image: GENERATED_VIDEOS[0].poster }, { label: "Beach", image: GENERATED_VIDEOS[2].poster }, { label: "Studio", image: GENERATED_VIDEOS[3].poster }, { label: "Desert" }] })} agent={fakeAgent} ctx={chatCtx} /> },
+    {
+      label: "Brief (pinned above the chat)",
+      node: (
+        <BriefCard
+          agent={{ ...fakeAgent, ownImages: () => [GENERATED_VIDEOS[0].poster, GENERATED_VIDEOS[1].poster], items: [it({ kind: "question", toolId: "b1", question: "Pick a concept", display: "concepts", multi: false, custom: true, options: [{ label: "Golden hour run", image: GENERATED_VIDEOS[2].poster }], answer: "Golden hour run" }), it({ kind: "question", toolId: "b2", question: "What mood should it have?", display: "chips", multi: false, custom: true, options: [{ label: "Energetic" }], answer: "Energetic" })] } as typeof fakeAgent}
+          ctx={{ ...chatCtx, brand: { name: "Lumen", primary_color: "#ea580c", text_color: "#ffffff", font: "Montserrat" } }}
+        />
+      ),
+    },
     { label: "Image, making", node: <AgentItemView item={it({ kind: "image", prompt: "Gold lens close-up", purpose: "thumbnail", target: "Gold", state: "working" })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Image, added", node: <AgentItemView item={it({ kind: "image", prompt: "Gold lens close-up", purpose: "thumbnail", target: "Gold", state: "done", url: GENERATED_VIDEOS[1].poster, placed: true })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Following guides", node: <AgentItemView item={it({ kind: "skill", names: ["flicks", "brief"] })} agent={fakeAgent} ctx={chatCtx} /> },
