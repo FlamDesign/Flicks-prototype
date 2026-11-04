@@ -79,10 +79,25 @@ export default {
     try {
       // images made here: public, so <img> and the video model can load them
       const file = new URL(req.url).pathname.match(/^\/file\/([\w-]{20,64})$/)
-      if (req.method === "GET" && file) {
+      if ((req.method === "GET" || req.method === "HEAD") && file) {
         const got = await env.USAGE?.getWithMetadata<{ type?: string }>(`file:${file[1]}`, "arrayBuffer")
         if (!got?.value) return json({ error: "not_found" }, 404, cors)
-        return new Response(got.value, { headers: { ...cors, "access-control-allow-origin": "*", "content-type": got.metadata?.type ?? "image/png", "cache-control": "public, max-age=604800, immutable" } })
+        const all = got.value
+        const head = { ...cors, "access-control-allow-origin": "*", "access-control-expose-headers": "content-range, content-length, accept-ranges", "content-type": got.metadata?.type ?? "image/png", "cache-control": "public, max-age=604800, immutable", "accept-ranges": "bytes" }
+        // byte ranges, so videos start playing (and show their length) without downloading the whole
+        // file first: browsers fetch the index at the end of the file, then only what they play
+        const range = req.headers.get("range")?.match(/^bytes=(\d*)-(\d*)$/)
+        if (range && (range[1] || range[2])) {
+          const size = all.byteLength
+          let start = range[1] ? Number(range[1]) : Math.max(0, size - Number(range[2]))
+          let end = range[1] && range[2] ? Math.min(Number(range[2]), size - 1) : size - 1
+          if (start >= size || start > end) return new Response(null, { status: 416, headers: { ...head, "content-range": `bytes */${size}` } })
+          start = Math.max(0, start)
+          end = Math.max(start, end)
+          const part = all.slice(start, end + 1)
+          return new Response(req.method === "HEAD" ? null : part, { status: 206, headers: { ...head, "content-range": `bytes ${start}-${end}/${size}`, "content-length": String(part.byteLength) } })
+        }
+        return new Response(req.method === "HEAD" ? null : all, { headers: { ...head, "content-length": String(all.byteLength) } })
       }
       if (!env.PASSCODE) return json({ error: "server_not_set_up", message: "PASSCODE is not set" }, 500, cors)
       if (!same(req.headers.get("x-flicks-pass") ?? "", env.PASSCODE)) return json({ error: "wrong_passcode" }, 401, cors)
