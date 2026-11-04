@@ -63,7 +63,7 @@ export const GENERATED_VIDEOS: SampleVideo[] = [
  * remembered on this device, so a project that uses one still finds it after a reload.
  */
 /** A plain grey frame for a video this device no longer has (see videoAt). */
-const MISSING_POSTER = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="16" height="16" fill="#d6d3d1"/></svg>')
+export const MISSING_POSTER = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="16" height="16" fill="#d6d3d1"/></svg>')
 const MADE_KEY = "flam.videos"
 try {
   const saved = JSON.parse(localStorage.getItem(MADE_KEY) ?? "[]") as SampleVideo[]

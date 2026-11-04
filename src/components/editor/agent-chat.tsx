@@ -643,8 +643,8 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
   const [active, setActive] = useState(0)
   // the plan's prompts can @mention elements, variations and the brand
   const planMentions = useMentionOptions({ variations: plan.variations.map((v) => ({ name: v.name })), brand: !!ctx.brand })
-  // the reference video is Variation 1, so one video per variation
-  const videos = plan.variations.length
+  // the reference video is Variation 1, so one video per variation, except the ones the user gave
+  const videos = plan.variations.filter((v) => !v.video_id).length
   const total = videos * ctx.videoCost
   // fields some variation sets for itself: every variation gets a box for them
   const perVar = (["label", "headline", "subheading", "cta"] as const).filter((f) => plan.variations.some((v) => v[f] !== undefined))
@@ -666,7 +666,7 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
             {plan.variations.map((v, i) => (
               <li key={i}>
                 <span className="font-medium text-foreground">{v.name}</span>
-                {v.price ? ` · ${v.price}` : ""}: {i === 0 ? plan.reference.prompt : v.prompt}
+                {v.price ? ` · ${v.price}` : ""}: {v.video_id ? "your video" : i === 0 ? plan.reference.prompt : v.prompt}
               </li>
             ))}
           </ol>
@@ -718,7 +718,7 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
               </button>
             ))}
           </div>
-          <p className="text-center text-xs text-muted-foreground">{making ? "Making a still for each variation…" : "Stills stand in for the videos until they’re made."}</p>
+          <p className="text-center text-xs text-muted-foreground">{videos === 0 ? "Your videos, used as they are." : making ? "Making a still for each variation…" : "Stills stand in for the videos until they’re made."}</p>
         </div>
         {/* the reference video as frames, then exactly what it's made from */}
         {!!plan.reference.storyboard?.length && <Storyboard frames={plan.reference.storyboard} stills={item.frames ?? []} ratio={ctx.ratio} />}
@@ -737,8 +737,14 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
                   <Input value={v.name} onChange={(e) => setVar(i, { name: e.target.value })} aria-label={`Variation ${i + 1} name`} className={cn(quiet, "h-6 min-w-0 flex-1 text-sm font-medium")} />
                   <Input value={v.price ?? ""} onChange={(e) => setVar(i, { price: e.target.value || undefined })} placeholder="Price" aria-label={`${v.name} price`} className={cn(quiet, "h-6 w-16 text-right text-sm tabular-nums placeholder:text-muted-foreground/60")} />
                 </div>
-                {/* Variation 1 is the reference video: its prompt is the reference prompt; the others say what changes */}
-                {i === 0 ? (
+                {/* the user's own video: used as it is, so no prompt */}
+                {v.video_id ? (
+                  <span className="flex items-center gap-1.5 px-1.5 text-xs text-muted-foreground">
+                    <HugeiconsIcon icon={PlayIcon} className="size-3" />
+                    Your video, used as it is{agent.media(v.video_id)?.name ? ` · ${agent.media(v.video_id)!.name}` : ""}
+                  </span>
+                ) : /* Variation 1 is the reference video: its prompt is the reference prompt; the others say what changes */
+                i === 0 ? (
                   <>
                     <span className="px-1.5 text-xs text-muted-foreground">Made first; the others are made from it</span>
                     <MentionTextarea options={planMentions} value={plan.reference.prompt} onChange={(prompt) => set({ reference: { ...plan.reference, prompt } })} aria-label={`${v.name} prompt (reference video)`} rows={1} className={cn(quiet, "field-sizing-content min-h-0 resize-none py-0.5 text-sm leading-relaxed text-foreground/80")} />
@@ -756,6 +762,12 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
                       </label>
                     ))}
                   </div>
+                )}
+                {v.thumbnail_id && (
+                  <span className="flex items-center gap-1.5 px-1.5 text-xs text-muted-foreground">
+                    {agent.imageUrl(v.thumbnail_id) && <img src={agent.imageUrl(v.thumbnail_id)} alt="" decoding="async" className="size-4 rounded object-cover ring-1 ring-foreground/10" />}
+                    Your thumbnail
+                  </span>
                 )}
                 <Input value={v.link ?? ""} onChange={(e) => setVar(i, { link: e.target.value || undefined })} placeholder="Add a link for the button" aria-label={`${v.name} link`} className={cn(quiet, "h-6 text-xs text-muted-foreground placeholder:text-muted-foreground/60")} />
               </div>
@@ -788,12 +800,12 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
       {/* like Gamma: the count and the one action, always at the bottom */}
       <div className="flex items-center gap-3 border-t bg-muted/40 px-3 py-2.5">
         <span className="text-xs text-muted-foreground">
-          {videos} videos · {total.toLocaleString("en-US")} credits
+          {videos === 0 ? "Your videos · nothing to generate" : `${videos} video${videos === 1 ? "" : "s"} · ${total.toLocaleString("en-US")} credits`}
           {short && <span className="text-destructive"> · you have {ctx.credits.toLocaleString("en-US")}</span>}
         </span>
         <Button size="sm" className="ml-auto gap-1.5" disabled={agent.busy} onClick={() => agent.decidePlan(item.id, plan)}>
           <HugeiconsIcon icon={SparklesIcon} className="size-4" />
-          Generate all
+          {videos === 0 ? "Build the Flick" : "Generate all"}
         </Button>
       </div>
     </Card>

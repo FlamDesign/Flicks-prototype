@@ -25,7 +25,19 @@ export const FIELD_FEED: Record<Field, { name: string; type: "text" | "link" }> 
 export type VideoMode = "reference" | "edit" | "animate"
 export type VideoMedia = { mode?: VideoMode; first_frame?: string; last_frame?: string; images?: string[]; videos?: string[]; source?: string; method?: "edit" | "regenerate" }
 /** variations are always edits of the approved reference video; `method` is kept only so older plans load */
-export type PlanVariation = { name: string; prompt: string; image_ids?: string[]; method?: "edit" | "regenerate"; media?: VideoMedia } & Partial<Record<Field, string>>
+export type PlanVariation = {
+  name: string
+  prompt: string
+  image_ids?: string[]
+  method?: "edit" | "regenerate"
+  media?: VideoMedia
+  /** the user's own finished video for this variation: used as it is, nothing generated */
+  video_id?: string
+  /** the user's own thumbnail for this variation */
+  thumbnail_id?: string
+  /** filled in on approval: where the user's video and thumbnail are */
+  own?: { video?: string; poster?: string; thumb?: string }
+} & Partial<Record<Field, string>>
 /** a video prompt in parts; the app joins them in this order */
 export type Shot = { subject?: string; action?: string; camera?: string; setting?: string; keep?: string }
 /** the thumbnail strip viewers tap to switch: where it sits and how it looks */

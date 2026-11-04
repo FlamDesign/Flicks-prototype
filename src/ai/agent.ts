@@ -15,7 +15,7 @@ const elementsList = () => elementStore.get()
 
 /* ---------- what the editor offers the chat ---------- */
 
-export type ProjectImage = { id: string; name: string; url: string; from: "upload" | "generated" | "website" | "library"; kind?: string }
+export type ProjectImage = { id: string; name: string; url: string; from: "upload" | "generated" | "website" | "library"; kind?: string; /** videos: a still, the frame size and the length */ poster?: string; width?: number; height?: number; duration?: number }
 export type ProjectState = {
   flick_size: string
   video_seconds: number
@@ -143,6 +143,8 @@ const variationSchema = {
     name: { type: "string", description: "Short name shown to viewers on its thumbnail, e.g. 'Gold' or 'Rain'" },
     image_ids: { type: "array", items: { type: "string" }, description: "Project image ids (or a product sheet) showing exactly how this variation's changed thing looks; in its prompt they are [Image 1], [Image 2]… in this order" },
     prompt: { type: "string", description: "Only what changes from the reference video, naming its inputs: e.g. 'Replace the boot with the black boot from [Image 1].' Every variation is an edit of the approved reference video (same shot, camera, people and timing), so describe the change only. One or two sentences." },
+    video_id: { type: "string", description: "Only when the user gave a finished video for this variation: its project video id. It's used as it is: nothing is generated for it, and its prompt can be empty." },
+    thumbnail_id: { type: "string", description: "Only when the user gave a thumbnail image for this variation: its project image id. It's placed as the thumbnail; don't make one." },
     label: { type: "string", description: "Optional on-screen label for this variation, e.g. 'Gold lenses'" },
     price: { type: "string", description: "Optional price with currency, e.g. '$189'" },
     link: { type: "string", description: "Optional URL the button opens for this variation" },
@@ -150,7 +152,7 @@ const variationSchema = {
     subheading: { type: "string", description: "Only if it should differ per variation" },
     cta: { type: "string", description: "Only if this variation's button text should differ" },
   },
-  required: ["name", "prompt"],
+  required: ["name"],
 }
 const fieldEnum = { type: "string", enum: ["headline", "subheading", "label", "price", "cta", "link"], description: "cta is the button text, link the button's link" }
 const designSchema = {
@@ -330,6 +332,7 @@ export const TOOLS: Tool[] = [
         source_video_id: { type: "string", description: "'edit' only: the user's video to change" },
         first_frame_id: { type: "string", description: "'animate' only: the user's image (or your edit of it) that the video opens on exactly" },
         last_frame_id: { type: "string", description: "'animate' only, optional: an image the video ends on" },
+        videos_mismatch_ok: { type: "boolean", description: "Only after the user said to go on with their videos even though their sizes or lengths differ" },
         ...variationsFrom,
         variations: { type: "array", items: variationSchema, minItems: 2, maxItems: 5, description: "Every variation in the Flick, in order. The first is the reference video itself (Variation 1): give its name, label, price and link; its prompt can repeat reference_prompt. The others say only what changes from it." },
         design: designSchema,
@@ -557,6 +560,7 @@ The order of work (always):
 4. Ask anything else still missing (brief skill), then show concepts built on what you found (propose_concepts), then the plan.
 
 How the app works (the mechanics, not what to ask):
+- The user's own variation videos: when the user gives a finished video for each variation (e.g. 'here are my 3 videos'), nothing needs generating. Skip concepts, looks, sheets, shots and storyboards: settle only what's missing for the design (names, copy, prices, links), then propose_plan with each variation's video_id (and thumbnail_id when they gave thumbnails); no shot or reference fields. The app checks the videos match each other and the Flick in frame shape and length, and tells you if they don't. After approval, make thumbnails only for variations without one; if every variation has a thumbnail, make none. If only some variations have a video, the rest are made as usual (from Variation 1).
 - Pictures over words: when a question is about something the user judges by eye (setting, mood, light, styling, people, props), ask with display 'pictures' and an image_prompt per answer (up to 4); the app draws each with their product.
 - Storyboard: every plan gives storyboard, the reference video as 3 or 4 frames (what happens, how it's framed); the app draws a quick still per frame.
 - Concepts: propose_concepts shows up to 3 concepts as cards with preview images; use it before every plan unless the user already gave a full concept or asked to skip ideas.
@@ -773,14 +777,14 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         continue
       }
       try {
-        const { duration } = await probeVideo(url)
+        const { duration, width, height } = await probeVideo(url)
         const stills = await stillsAt(url, [0.1, 0.5, 0.9].map((k) => k * duration), 768)
-        const it = { id: `vid-${images.current.filter((x) => x.kind === "video").length + 1}`, name: f.name, url, from: "upload" as const, kind: "video" }
+        const it: ProjectImage = { id: `vid-${images.current.filter((x) => x.kind === "video").length + 1}`, name: f.name, url, from: "upload", kind: "video", poster: URL.createObjectURL(stills[0]), width, height, duration }
         images.current.push(it)
         if (live.current) shareable(url, { name: f.name, project: apiRef.current.state().title, purpose: "upload" }).catch(() => {})
         for (const b of stills) blocks.push(await imageBlock(b))
-        names.push(`${it.id} (${f.name}, a ${duration.toFixed(1)} s video; the 3 stills above are its start, middle and end)`)
-        shows.push(URL.createObjectURL(stills[0]))
+        names.push(`${it.id} (${f.name}, a ${duration.toFixed(1)} s video, ${width}×${height}; the 3 stills above are its start, middle and end)`)
+        shows.push(it.poster!)
         videoIds.push(it.id)
       } catch {
         names.push(`${f.name} (a video that couldn't be read)`)
@@ -1035,7 +1039,10 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     const refIds = [plan.reference.first_frame_id, ...(plan.reference.image_ids ?? [])].filter((x): x is string => !!x)
     const refs = (refIds.length ? refIds.map((r) => images.current.find((x) => x.id === r)).filter((x): x is ProjectImage => !!x) : own).slice(0, 3)
     plan.variations.forEach((v, i) => {
-      if (v.image_ids?.length) return
+      // the user's own video: its first frame
+      const mine = v.video_id ? images.current.find((x) => x.id === v.video_id)?.poster : undefined
+      if (mine) return fill(i, mine)
+      if (v.image_ids?.length || v.video_id) return
       if (!live.current) return void setTimeout(() => fill(i, apiRef.current.sampleImage("variation", String(i))), 900 + i * 500)
       Promise.all(refs.map((r) => shareable(r.url).catch(() => null)))
         .then((urls) =>
@@ -1046,13 +1053,40 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   }
 
   /**
+   * The user's own videos, checked against each other and the Flick: same frame shape and the same
+   * length (half a second either way). Returns what doesn't match, in plain words, or nothing.
+   */
+  const videoMismatch = async (list: { name: string; it: ProjectImage }[]) => {
+    const got = await Promise.all(
+      list.map(async ({ name, it }) => {
+        if (!it.width || !it.duration) {
+          const p = await probeVideo(it.url).catch(() => undefined)
+          if (p) Object.assign(it, { width: p.width, height: p.height, duration: p.duration })
+        }
+        return { name, w: it.width ?? 0, h: it.height ?? 0, s: it.duration ?? 0 }
+      }),
+    )
+    const say = (x: (typeof got)[number]) => `${x.name} is ${x.w}×${x.h}, ${x.s.toFixed(1)} s`
+    const shape = (x: (typeof got)[number]) => (x.h ? x.w / x.h : 0)
+    const problems: string[] = []
+    const [fw, fh] = state().flick_size.split(/[×x]/).map(Number)
+    const flick = fw && fh ? fw / fh : 0
+    if (got.some((x) => Math.abs(shape(x) - shape(got[0])) > 0.02 * shape(got[0]))) problems.push("their frame shapes differ")
+    else if (flick && Math.abs(shape(got[0]) - flick) > 0.02 * flick) problems.push(`they're ${got[0].w}×${got[0].h} but the Flick is ${state().flick_size}`)
+    const lens = got.map((x) => x.s)
+    if (Math.max(...lens) - Math.min(...lens) > 0.5) problems.push("their lengths differ")
+    const text = problems.join("; ")
+    return problems.length ? `${text.charAt(0).toUpperCase()}${text.slice(1)} (${got.map(say).join("; ")}).` : ""
+  }
+
+  /**
    * The storyboard's pictures: one quick draft still per frame of the reference video, with the
    * shot's subject and setting so the frames read as one scene, and the plan's references so it's
    * their product.
    */
   const planFrames = (itemId: string, plan: Plan) => {
     const frames = plan.reference.storyboard ?? []
-    if (!frames.length) return
+    if (!frames.length || plan.variations[0]?.video_id) return
     const fill = (i: number, url: string) =>
       setItems((list) => list.map((x) => (x.id === itemId && x.kind === "plan" ? { ...x, frames: Object.assign([...(x.frames ?? [])], { [i]: url }) } : x)))
     const shot = plan.reference.shot
@@ -1124,21 +1158,39 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         case "propose_plan": {
           // a newer plan replaces any open one
           setItems((list) => list.map((x) => (x.kind === "plan" && x.state === "open" ? { ...x, state: "skipped" } : x)))
-          if (live.current && !variationsSettled(fromOf(input), true)) return NOT_SETTLED
           const raw = { ...(input as unknown as Plan), reference: referenceOf(input) }
-          if (!raw.reference.prompt) return "Error: give the reference video's prompt (shot)."
-          const ref = raw.reference
-          const known = (x?: string) => !!x && images.current.some((i) => i.id === x)
-          if (ref.mode === "edit" && !known(ref.source_video_id)) return "Error: 'edit' needs source_video_id: the user's video to change (a project video id)."
-          if (ref.mode === "animate" && !known(ref.first_frame_id)) return "Error: 'animate' needs first_frame_id: the user's image (or your edit of it) to open on."
-          // nothing to work from: suggest looks first, then make the video from the one the user approves
-          if (live.current && ref.mode === "reference" && !ref.image_ids?.length && !ref.video_ids?.length)
-            return "Not shown: the reference video has nothing to work from. Suggest looks first (propose_concepts makes a preview image per concept; or generate_image purpose 'look'), let the user pick or approve one, then propose the plan with it in reference_image_ids."
           if (!raw.variations?.length) return "Error: a plan needs at least two variations."
-          // the user's own product or people images must shape the reference video
-          const theirs = images.current.filter((x) => x.kind !== "video" && (x.from === "upload" || x.from === "website" || x.from === "library"))
-          if (live.current && theirs.length && ref.mode === "reference" && !ref.image_ids?.some((x) => theirs.some((t) => t.id === x)) && !ref.video_ids?.length)
-            return `Not shown: the reference video doesn't use the user's images, so the product wouldn't match. Put the product or person to keep in reference_image_ids (${theirs.slice(0, 8).map((x) => `${x.id} ${x.name}`).join(", ")}), or their sheet, then propose the plan again.`
+          raw.variations = raw.variations.map((v) => ({ ...v, prompt: String(v.prompt ?? "") }))
+          // the user's own finished videos and thumbnails: used as they are
+          const byId = (x?: string) => (x ? images.current.find((i) => i.id === x) : undefined)
+          for (const v of raw.variations) {
+            if (v.video_id && byId(v.video_id)?.kind !== "video") return `Error: ${v.name}: video_id ${v.video_id} isn't one of the user's videos.`
+            if (v.thumbnail_id && (!byId(v.thumbnail_id) || byId(v.thumbnail_id)?.kind === "video")) return `Error: ${v.name}: thumbnail_id ${v.thumbnail_id} isn't one of the project's images.`
+          }
+          const given = raw.variations.filter((v) => v.video_id)
+          if (given.length) {
+            const mismatch = await videoMismatch(given.map((v) => ({ name: v.name, it: byId(v.video_id)! })))
+            if (mismatch && !input.videos_mismatch_ok)
+              return `Not shown: the user's videos don't match. ${mismatch} Tell the user this plainly and ask how to go on (ask_user): replace the odd one(s) with a matching video, or go on anyway (videos are cropped to fill the Flick's frame; a shorter one ends sooner). If they go on, propose the plan again with videos_mismatch_ok true.`
+          }
+          // the reference video and what it's made from matter only when Variation 1 is generated
+          if (raw.variations[0].video_id) {
+            if (!raw.reference.prompt) raw.reference = { ...raw.reference, prompt: "The user's own video." }
+          } else {
+            if (live.current && !variationsSettled(fromOf(input), true)) return NOT_SETTLED
+            if (!raw.reference.prompt) return "Error: give the reference video's prompt (shot)."
+            const ref = raw.reference
+            const known = (x?: string) => !!x && images.current.some((i) => i.id === x)
+            if (ref.mode === "edit" && !known(ref.source_video_id)) return "Error: 'edit' needs source_video_id: the user's video to change (a project video id)."
+            if (ref.mode === "animate" && !known(ref.first_frame_id)) return "Error: 'animate' needs first_frame_id: the user's image (or your edit of it) to open on."
+            // nothing to work from: suggest looks first, then make the video from the one the user approves
+            if (live.current && ref.mode === "reference" && !ref.image_ids?.length && !ref.video_ids?.length)
+              return "Not shown: the reference video has nothing to work from. Suggest looks first (propose_concepts makes a preview image per concept; or generate_image purpose 'look'), let the user pick or approve one, then propose the plan with it in reference_image_ids."
+            // the user's own product or people images must shape the reference video
+            const theirs = images.current.filter((x) => x.kind !== "video" && (x.from === "upload" || x.from === "website" || x.from === "library"))
+            if (live.current && theirs.length && ref.mode === "reference" && !ref.image_ids?.some((x) => theirs.some((t) => t.id === x)) && !ref.video_ids?.length)
+              return `Not shown: the reference video doesn't use the user's images, so the product wouldn't match. Put the product or person to keep in reference_image_ids (${theirs.slice(0, 8).map((x) => `${x.id} ${x.name}`).join(", ")}), or their sheet, then propose the plan again.`
+          }
           // the look the user picked carries into the plan's design
           const plan = { ...raw, design: { ...draft.current, ...(raw.design ?? {}), thumbnails: { ...draft.current.thumbnails, ...(raw.design?.thumbnails ?? {}) } } }
           const vars = plan.variations.slice(0, 5)
@@ -1482,6 +1534,15 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       const elementIds = (text: string) =>
         elementsIn(text).flatMap((el) => el.images.slice(0, 3).map((im, i) => (images.current.find((x) => x.url === im.url) ?? keep(im.url, `${el.name} ${i + 1}`, "library", el.kind)).id))
       const withEls = (text: string, ids?: string[]) => [...new Set([...elementIds(text), ...(ids ?? [])])]
+      // the user's own videos and thumbnails go in as they are (kept on the server, so they last)
+      const lasting = async (u?: string) => (u && live.current ? await shareable(u).catch(() => u) : u)
+      const own = await Promise.all(
+        plan.variations.map(async (v) => {
+          const vid = images.current.find((x) => x.id === v.video_id)
+          const th = images.current.find((x) => x.id === v.thumbnail_id)
+          return vid || th ? { video: await lasting(vid?.url), poster: await lasting(vid?.poster), thumb: await lasting(th?.url) } : undefined
+        }),
+      )
       const r = apiRef.current.approvePlan({
         ...plan,
         reference: {
@@ -1498,7 +1559,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           },
         },
         // every other variation edits the approved reference video
-        variations: plan.variations.map((v, i) => ({ ...v, method: undefined, prompt: plainMentions(v.prompt), media: { images: urls(i === 0 ? [] : [...new Set([...(v.image_ids ?? []), ...withEls(v.prompt)])]) } })),
+        variations: plan.variations.map((v, i) => ({ ...v, own: own[i], method: undefined, prompt: plainMentions(v.prompt), media: { images: urls(i === 0 ? [] : [...new Set([...(v.image_ids ?? []), ...withEls(v.prompt)])]) } })),
       })
       if (r.startsWith("Error")) {
         add({ kind: "error", text: r.replace(/^Error: /, "") })

@@ -38,7 +38,7 @@ import { isTyping } from "@/lib/keys"
 import { GeneratingGradient } from "@/components/editor/generation-progress"
 import { AgentComposer, isDocked, QuestionDeck, threadGroups, type AgentCtx } from "@/components/editor/agent-chat"
 import { PlanningView, PlanSteps } from "@/components/editor/planning-view"
-import { addMadeVideo, isMadeVideo, BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, defaultFill, defaultInk, SAMPLE_UPLOADS, inSet, clampStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload, videoAt, wrapVideo } from "@/components/editor/elements"
+import { addMadeVideo, isMadeVideo, MISSING_POSTER, BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, defaultFill, defaultInk, SAMPLE_UPLOADS, inSet, clampStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload, videoAt, wrapVideo } from "@/components/editor/elements"
 
 export type Generation = {
   id: string
@@ -762,8 +762,11 @@ export function GenerationCanvas({
     approvePlan(plan) {
       const vars = plan.variations.filter((v) => v.name?.trim()).slice(0, 5)
       if (vars.length < 2) return "Error: The plan needs at least two variations."
-      // the reference video is Variation 1 (the plan's first variation); the rest are made from it
-      const cost = VIDEO_COST * vars.length
+      // the reference video is Variation 1 (the plan's first variation); the rest are made from it.
+      // A variation the user gave a finished video for is used as it is: nothing made, nothing charged
+      const made = (v: (typeof vars)[number]) => !v.own?.video
+      const toMake = vars.filter(made).length
+      const cost = VIDEO_COST * toMake
       if (dev.credits < cost) {
         onGetCredits()
         return `Error: This needs ${cost.toLocaleString("en-US")} credits and you have ${dev.credits.toLocaleString("en-US")}. Get credits, then press Generate all again.`
@@ -774,7 +777,7 @@ export function GenerationCanvas({
       const design = { ...(plan.design ?? {}) }
       // a field becomes a feed when variations give it values: label, price and link whenever set;
       // headline, subheading and button text only when they actually differ
-      const made: Feed[] = []
+      const feedsMade: Feed[] = []
       const ids: Partial<Record<Field, string>> = {}
       const valueOf = (v: (typeof vars)[number], f: Field) => v[f]?.trim() || (f === "headline" ? design.headline : f === "subheading" ? design.subheading : f === "cta" ? design.cta : "") || ""
       for (const f of FIELDS) {
@@ -787,28 +790,46 @@ export function GenerationCanvas({
           continue
         }
         const id = crypto.randomUUID()
-        made.push({ id, name: FIELD_FEED[f].name, type: FIELD_FEED[f].type })
+        feedsMade.push({ id, name: FIELD_FEED[f].name, type: FIELD_FEED[f].type })
         ids[f] = id
         if ((f === "headline" || f === "subheading" || f === "cta") && !design[f]) design[f] = vals[0]
       }
       const valuesFor = (v: (typeof vars)[number]) => Object.fromEntries(FIELDS.flatMap((f) => (ids[f] ? [[ids[f]!, valueOf(v, f)]] : [])))
-      const main: Slide = { id: "main", name: vars[0].name.trim() || undefined, prompt: "", refs: [], video: base, startedAt: now, used: { prompt: plan.reference.prompt, refs: generation.refs ?? [], fromReference: false, media: plan.reference.media }, feeds: valuesFor(vars[0]) }
-      const vs: Slide[] = vars.slice(1).map((v, i) => ({
-        id: crypto.randomUUID(),
-        n: i + 1,
-        name: v.name.trim(),
-        prompt: "",
-        refs: [],
-        video: inSet(base, i + 1),
-        // made from the reference video, so they start once it's ready
-        startedAt: now + ms + 1,
-        used: { prompt: v.prompt, refs: [], fromReference: true, media: v.media },
-        feeds: valuesFor(v),
-      }))
+      // the user's own video: in the Flick straight away, ready (and, as Variation 1, already approved)
+      const given = (v: (typeof vars)[number], name: string) => {
+        const video = addMadeVideo({ name: `${name}-${now}`, size: generation.size, mp4: v.own!.video!, poster: v.own?.poster ?? MISSING_POSTER })
+        return { video, startedAt: now - ms - 1, used: { prompt: "The user's own video", refs: [], fromReference: false } }
+      }
+      const thumbOf = (v: (typeof vars)[number]) => (v.own?.thumb ? { thumb: v.own.thumb } : {})
+      const mainName = vars[0].name.trim() || "Variation 1"
+      const main: Slide = made(vars[0])
+        ? { id: "main", name: vars[0].name.trim() || undefined, prompt: "", refs: [], video: base, startedAt: now, used: { prompt: plan.reference.prompt, refs: generation.refs ?? [], fromReference: false, media: plan.reference.media }, feeds: valuesFor(vars[0]), ...thumbOf(vars[0]) }
+        : (() => {
+            const g = given(vars[0], mainName)
+            return { id: "main", name: vars[0].name.trim() || undefined, prompt: "", refs: [], ...g, approvedRef: g.startedAt, feeds: valuesFor(vars[0]), ...thumbOf(vars[0]) }
+          })()
+      const vs: Slide[] = vars.slice(1).map((v, i) =>
+        made(v)
+          ? {
+              id: crypto.randomUUID(),
+              n: i + 1,
+              name: v.name.trim(),
+              prompt: "",
+              refs: [],
+              video: inSet(base, i + 1),
+              // made from the reference video, so they start once it's ready
+              startedAt: made(vars[0]) ? now + ms + 1 : now,
+              used: { prompt: v.prompt, refs: [], fromReference: true, media: v.media },
+              feeds: valuesFor(v),
+              ...thumbOf(v),
+            }
+          : { id: crypto.randomUUID(), n: i + 1, name: v.name.trim(), prompt: "", refs: [], ...given(v, v.name.trim()), feeds: valuesFor(v), ...thumbOf(v) },
+      )
       nextN.current = vs.length + 1
       commitSlides([main, ...vs])
-      setHistory([main, ...vs].map((x) => ({ id: crypto.randomUUID(), slideId: x.id, prompt: x.used!.prompt, refs: refsOf(x.used!.refs), fromReference: x.id !== "main", video: x.video!, startedAt: x.startedAt!, batch: x.id !== "main", at: now })))
-      commitFeeds(made)
+      // the prompts history lists only videos being made, not the user's own
+      setHistory([main, ...vs].filter((x) => x.used?.prompt !== "The user's own video").map((x) => ({ id: crypto.randomUUID(), slideId: x.id, prompt: x.used!.prompt, refs: refsOf(x.used!.refs), fromReference: x.id !== "main", video: x.video!, startedAt: x.startedAt!, batch: x.id !== "main", at: now })))
+      commitFeeds(feedsMade)
       stripAdded.current = true
       const els = buildDesign(design, { ratio, count: vars.length, feeds: ids, brand })
       elementsNow.current = els
@@ -817,8 +838,15 @@ export function GenerationCanvas({
       setActive("main")
       setSelected([])
       if (plan.title?.trim()) setTitle(plan.title.trim())
-      const per = made.map((f) => f.name)
-      return withIssues(`Generating ${vars.length} videos (${cost.toLocaleString("en-US")} credits): ${main.name ?? "Variation 1"} (the reference video) first, then the other ${vs.length}; ${liveRef.current ? "Variation 1 comes first (a few minutes); the user reviews it, and the others are made from it once they approve (or after you regenerate it with their changes)" : `they take about ${dev.generationSeconds * 2} seconds`}. The design is on the canvas${per.length ? `, with ${per.join(", ")} set per variation (feeds)` : ""}. Thumbnails are empty until set.`)
+      const per = feedsMade.map((f) => f.name)
+      const theirs = vars.filter((v) => !made(v)).map((v) => v.name)
+      const needThumbs = vars.filter((v) => !v.own?.thumb).map((v) => v.name)
+      const thumbsLine = needThumbs.length ? `Thumbnails still needed for: ${needThumbs.join(", ")}.` : "Every variation has the user's own thumbnail: don't make any."
+      const designLine = `The design is on the canvas${per.length ? `, with ${per.join(", ")} set per variation (feeds)` : ""}.`
+      if (!toMake) return withIssues(`Nothing to generate and no credits used: all ${vars.length} variations use the user's own videos, ready in the Flick now. ${designLine} ${thumbsLine}`)
+      const mine = theirs.length ? ` ${theirs.join(", ")} use${theirs.length === 1 ? "s" : ""} the user's own video${theirs.length === 1 ? "" : "s"} (ready now, not charged).` : ""
+      if (!made(vars[0])) return withIssues(`Generating ${toMake} video${toMake === 1 ? "" : "s"} (${cost.toLocaleString("en-US")} credits), each made from the user's own Variation 1 video, starting now.${mine} ${designLine} ${thumbsLine}`)
+      return withIssues(`Generating ${toMake} videos (${cost.toLocaleString("en-US")} credits): ${main.name ?? "Variation 1"} (the reference video) first, then the other ${toMake - 1}; ${liveRef.current ? "Variation 1 comes first (a few minutes); the user reviews it, and the others are made from it once they approve (or after you regenerate it with their changes)" : `they take about ${dev.generationSeconds * 2} seconds`}.${mine} ${designLine} ${thumbsLine}`)
     },
     updateDesign(d) {
       if (!slidesNow.current[0].startedAt) return "Error: Approve the plan first."
