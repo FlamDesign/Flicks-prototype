@@ -83,6 +83,8 @@ export type ElementSpec = {
   height?: number
   points?: number
   opacity?: number
+  /** degrees, clockwise (text, images, shapes) */
+  rotation?: number
   /** "back" puts it behind everything else (a backdrop), "front" on top */
   layer?: "front" | "back"
   text?: string
@@ -486,12 +488,12 @@ export const TOOLS: Tool[] = [
   {
     name: "add_element",
     description:
-      "Add any text, button, image or shape to the canvas (on every variation). Shapes (rect with radius, ellipse, triangle, star, polygon, line, arrow, heart) take fill and stroke as a colour or a gradient, stroke_width, points, opacity, width and height: use them for badges, backdrops behind text, dividers, frames and pointers, under the text they support (add them first or say so). Text styles: heading, subheading, body, caption, label. Button styles: pill, rounded, sharp, light, outline, glass, link. Images: image_id of a project image (uploaded, from a website or generated; a logo, a product shot). Place it with position (top, upper, center, lower, bottom) and align (left, center, right), or exact x and y (% of the frame; x is the left edge, centre or right edge by align, y the middle). width: % of the frame (images, or a text box that wraps). size: font size in % of frame width (heading is 8, body 3.4). Keep clear of other elements and the thumbnail strip (see design). Returns the new element's id.",
+      "Add any text, button, image or shape to the canvas (on every variation). Shapes (rect with radius, ellipse, triangle, star with 4 to 8 points, polygon, line, arrow, heart, play button) take fill and stroke as a colour or a gradient, stroke_width, points, opacity, width and height: use them for badges, backdrops behind text, dividers, frames and pointers, under the text they support (add them first or say so). Text styles: heading, subheading, body, caption, label. Button styles: pill, rounded, sharp, light, outline, glass, link. Images: image_id of a project image (uploaded, from a website or generated; a logo, a product shot). Place it with position (top, upper, center, lower, bottom) and align (left, center, right), or exact x and y (% of the frame; x is the left edge, centre or right edge by align, y the middle). width: % of the frame (images, or a text box that wraps). size: font size in % of frame width (heading is 8, body 3.4). Keep clear of other elements and the thumbnail strip (see design). Returns the new element's id.",
     input_schema: {
       type: "object",
       properties: {
         type: { type: "string", enum: ["text", "button", "image", "shape"] },
-        shape: { type: "string", enum: ["rect", "ellipse", "triangle", "star", "polygon", "line", "arrow", "heart"], description: "Shapes: which one" },
+        shape: { type: "string", enum: ["rect", "ellipse", "triangle", "star", "polygon", "line", "arrow", "heart", "play"], description: "Shapes: which one (play is a round play button). image_id fills a shape with a picture" },
         fill: { description: "A hex colour, 'transparent', or a gradient: {type: 'linear' or 'radial', angle (degrees, CSS style: 90 = left to right), stops: [{color, at (0 to 100)}]}", anyOf: [{ type: "string" }, { type: "object", properties: { type: { type: "string", enum: ["linear", "radial"] }, angle: { type: "number" }, stops: { type: "array", items: { type: "object", properties: { color: { type: "string" }, at: { type: "number" } }, required: ["color", "at"] } } }, required: ["type", "stops"] }] },
         stroke: { description: "A hex colour, 'transparent', or a gradient: {type: 'linear' or 'radial', angle (degrees, CSS style: 90 = left to right), stops: [{color, at (0 to 100)}]}", anyOf: [{ type: "string" }, { type: "object", properties: { type: { type: "string", enum: ["linear", "radial"] }, angle: { type: "number" }, stops: { type: "array", items: { type: "object", properties: { color: { type: "string" }, at: { type: "number" } }, required: ["color", "at"] } } }, required: ["type", "stops"] }] },
         stroke_width: { type: "number", description: "Shapes: outline or line width in px at 1080 wide (0 = none)" },
@@ -499,6 +501,7 @@ export const TOOLS: Tool[] = [
         points: { type: "number", description: "Stars: points; polygons: sides (3 to 12)" },
         opacity: { type: "number", description: "Shapes: 0 to 1" },
         layer: { type: "string", enum: ["front", "back"], description: "'back' puts it behind every other element (backdrops behind text); default front" },
+        rotation: { type: "number", description: "Degrees clockwise, for text, images and shapes (e.g. -8 for a tilted badge)" },
         text: str,
         style: str,
         image_id: str,
@@ -537,6 +540,7 @@ export const TOOLS: Tool[] = [
         points: { type: "number" },
         opacity: { type: "number" },
         layer: { type: "string", enum: ["front", "back"] },
+        rotation: { type: "number" },
         position: { type: "string", enum: ["top", "upper", "center", "lower", "bottom"] },
         align: { type: "string", enum: ["left", "center", "right"] },
         x: { type: "number" },

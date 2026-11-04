@@ -27,8 +27,6 @@ import {
   ArrowDown01Icon,
   SquareLock02Icon,
   SquareUnlock02Icon,
-  StrokeInsideIcon,
-  TransparencyIcon,
 } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
@@ -49,6 +47,7 @@ import {
   defaultRadius,
   defaultInk,
   isGradient,
+  SHAPE_GREY,
   type Paint,
   type Align,
   type CanvasElement,
@@ -132,7 +131,7 @@ export function ElementToolbar({
           
         </>
       ) : el.kind === "shape" ? (
-        <ShapeControls el={el} onChange={onChange} />
+        <ShapeControls el={el} onChange={onChange} onChooseImage={onPickImage} />
       ) : el.kind === "image" ? (
         <ImageControls el={el} onChange={onChange} onReplace={onPickImage} />
       ) : el.kind === "strip" ? (
@@ -382,53 +381,53 @@ function ButtonControls({
       <BorderPopover el={el} onChange={onChange} />
       <RadiusPopover id={el.id} value={el.radius ?? defaultRadius(el)} onChange={(radius) => onChange({ radius } as Partial<CanvasElement>)} />
 
-      {el.bgImage ? (
-        <Popover>
-          <IconTip label="Background image">
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label="Background image" className="size-8 p-1">
-                <img loading="lazy" decoding="async" src={el.bgImage} alt="" className="size-full rounded-[5px] object-cover ring-1 ring-foreground/20" />
-              </Button>
-            </PopoverTrigger>
-          </IconTip>
-          <PopoverContent align="center" className="w-60 gap-3 p-3">
-            <p className="text-xs font-medium text-muted-foreground">Background image</p>
-            <img loading="lazy" decoding="async" src={el.bgImage} alt="" className="aspect-video w-full rounded-lg object-cover ring-1 ring-foreground/10" />
-            <div className="flex rounded-lg bg-muted p-0.5">
-              {(
-                [
-                  ["cover", "Fill"],
-                  ["contain", "Fit"],
-                ] as const
-              ).map(([f, name]) => (
-                <Button
-                  key={f}
-                  size="xs"
-                  variant="ghost"
-                  aria-pressed={fit === f}
-                  onClick={() => onChange({ bgFit: f } as Partial<CanvasElement>)}
-                  className={cn("flex-1 rounded-md", fit === f && "bg-background shadow-sm hover:bg-background")}
-                >
-                  {name}
-                </Button>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <Button size="sm" variant="secondary" className="flex-1" onClick={onChooseImage}>
-                Replace
-              </Button>
-              <Button size="sm" variant="ghost" className="flex-1" onClick={() => onChange({ bgImage: undefined, bgFit: undefined } as Partial<CanvasElement>)}>
-                Remove
-              </Button>
-            </div>
-          </PopoverContent>
-        </Popover>
-      ) : (
-        <Tool label="Add background image" onClick={onChooseImage}>
-          <HugeiconsIcon icon={Image01Icon} className="size-4" />
-        </Tool>
-      )}
+      <ImageFill label="Background image" src={el.bgImage} fit={fit} onFit={(bgFit) => onChange({ bgFit } as Partial<CanvasElement>)} onChoose={onChooseImage} onRemove={() => onChange({ bgImage: undefined, bgFit: undefined } as Partial<CanvasElement>)} />
     </>
+  )
+}
+
+/** A picture filling an element (button background, shape fill): add, fill or fit, replace, remove. */
+function ImageFill({ label, src, fit, onFit, onChoose, onRemove }: { label: string; src?: string; fit: "cover" | "contain"; onFit: (f: "cover" | "contain") => void; onChoose: () => void; onRemove: () => void }) {
+  if (!src)
+    return (
+      <Tool label={`Add ${label.toLowerCase()}`} onClick={onChoose}>
+        <HugeiconsIcon icon={Image01Icon} className="size-4" />
+      </Tool>
+    )
+  return (
+    <Popover>
+      <IconTip label={label}>
+        <PopoverTrigger asChild>
+          <Button variant="ghost" size="icon-sm" aria-label={label} className="size-8 p-1">
+            <img loading="lazy" decoding="async" src={src} alt="" className="size-full rounded-[5px] object-cover ring-1 ring-foreground/20" />
+          </Button>
+        </PopoverTrigger>
+      </IconTip>
+      <PopoverContent align="center" className="w-60 gap-3 p-3">
+        <p className="text-xs font-medium text-muted-foreground">{label}</p>
+        <img loading="lazy" decoding="async" src={src} alt="" className="aspect-video w-full rounded-lg object-cover ring-1 ring-foreground/10" />
+        <div className="flex rounded-lg bg-muted p-0.5">
+          {(
+            [
+              ["cover", "Fill"],
+              ["contain", "Fit"],
+            ] as const
+          ).map(([f, name]) => (
+            <Button key={f} size="xs" variant="ghost" aria-pressed={fit === f} onClick={() => onFit(f)} className={cn("flex-1 rounded-md", fit === f && "bg-background shadow-sm hover:bg-background")}>
+              {name}
+            </Button>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" variant="secondary" className="flex-1" onClick={onChoose}>
+            Replace
+          </Button>
+          <Button size="sm" variant="ghost" className="flex-1" onClick={onRemove}>
+            Remove
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -536,40 +535,22 @@ const paintCss = (p: Paint) =>
     ? `${p.type === "radial" ? "radial-gradient(circle" : `linear-gradient(${p.angle ?? 180}deg`}, ${[...p.stops].sort((a, b) => a.at - b.at).map((x) => `${x.color} ${x.at}%`).join(", ")})`
     : swatchBg(p || "transparent")
 
-/** Shapes: fill and outline colours (solid here; the chat can set gradients), outline width, corners, points, opacity, shape lock. */
-function ShapeControls({ el, onChange }: { el: ShapeEl; onChange: (p: Partial<CanvasElement>) => void }) {
+/** Shapes, with the same controls as buttons: fill colour (solid here; the chat can set gradients), border, corners, a picture fill and the proportions lock. */
+function ShapeControls({ el, onChange, onChooseImage }: { el: ShapeEl; onChange: (p: Partial<CanvasElement>) => void; onChooseImage: () => void }) {
   const set = (p: Partial<ShapeEl>) => onChange(p as Partial<CanvasElement>)
   const open = el.shape === "line" || el.shape === "arrow"
   const solid = (p: Paint, fallback: string) => (isGradient(p) ? (p.stops[0]?.color ?? fallback) : p || fallback)
   return (
     <>
       {!open && (
-        <ColorPicker label={isGradient(el.fill) ? "Fill (a gradient: pick a colour to replace it)" : "Fill colour"} value={solid(el.fill, "#ffffff")} onChange={(fill) => set({ fill })} allowTransparent>
-          <span className="size-5 rounded-full ring-1 ring-foreground/20" style={{ background: paintCss(el.fill) }} />
+        <ColorPicker label={isGradient(el.fill) ? "Shape colour (a gradient: pick a colour to replace it)" : "Shape colour"} allowTransparent value={solid(el.fill, SHAPE_GREY)} onChange={(fill) => set({ fill })}>
+          <span className="size-4 rounded-[5px] ring-1 ring-foreground/20" style={{ background: paintCss(el.fill) }} />
         </ColorPicker>
       )}
-      <ColorPicker label={isGradient(el.stroke) ? "Outline (a gradient: pick a colour to replace it)" : open ? "Line colour" : "Outline colour"} value={solid(el.stroke, "#000000")} onChange={(stroke) => set({ stroke, ...(el.strokeWidth ? {} : { strokeWidth: 6 }) })} allowTransparent={!open}>
-        <span className="grid size-5 place-items-center rounded-full ring-1 ring-foreground/20" style={{ background: paintCss(el.stroke) }}>
-          {!open && <span className="size-2.5 rounded-full bg-popover" />}
-        </span>
-      </ColorPicker>
-      <NumberPopover label={open ? "Line width" : "Outline width"} icon={StrokeInsideIcon} value={el.strokeWidth} min={0} max={60} unit="px" onChange={(strokeWidth) => set({ strokeWidth })} />
+      <StrokePopover label={open ? "Line" : "Border"} width={el.strokeWidth} color={solid(el.stroke, SHAPE_GREY)} onChange={(strokeWidth, stroke) => set({ strokeWidth: open ? Math.max(1, strokeWidth) : strokeWidth, stroke })} />
       {el.shape === "rect" && <RadiusPopover id={el.id} value={el.radius} onChange={(radius) => set({ radius })} />}
-      {(el.shape === "star" || el.shape === "polygon") && (
-        <div className="flex shrink-0 items-center">
-          <Tool label={el.shape === "star" ? "Fewer points" : "Fewer sides"} disabled={(el.points ?? 5) <= 3} onClick={() => set({ points: Math.max(3, (el.points ?? (el.shape === "star" ? 5 : 6)) - 1) })}>
-            <HugeiconsIcon icon={MinusSignIcon} className="size-4" />
-          </Tool>
-          <span className="w-12 text-center text-xs tabular-nums text-muted-foreground">
-            {el.points ?? (el.shape === "star" ? 5 : 6)} {el.shape === "star" ? "points" : "sides"}
-          </span>
-          <Tool label={el.shape === "star" ? "More points" : "More sides"} disabled={(el.points ?? 5) >= 12} onClick={() => set({ points: Math.min(12, (el.points ?? (el.shape === "star" ? 5 : 6)) + 1) })}>
-            <HugeiconsIcon icon={PlusSignIcon} className="size-4" />
-          </Tool>
-        </div>
-      )}
-      <NumberPopover label="Opacity" icon={TransparencyIcon} value={Math.round((el.opacity ?? 1) * 100)} min={0} max={100} unit="%" onChange={(v) => set({ opacity: v / 100 })} />
-      <Tool label={el.lock ? "Unlock shape" : "Lock shape (keep its proportions)"} pressed={el.lock} onClick={() => set({ lock: !el.lock })}>
+      {!open && <ImageFill label="Shape image" src={el.fillImage} fit={el.fillFit ?? "cover"} onFit={(fillFit) => set({ fillFit })} onChoose={onChooseImage} onRemove={() => set({ fillImage: undefined, fillFit: undefined })} />}
+      <Tool label={el.lock ? "Unlock aspect ratio" : "Lock aspect ratio"} pressed={el.lock} onClick={() => set({ lock: !el.lock })}>
         <HugeiconsIcon icon={el.lock ? SquareLock02Icon : SquareUnlock02Icon} className="size-4" />
       </Tool>
     </>

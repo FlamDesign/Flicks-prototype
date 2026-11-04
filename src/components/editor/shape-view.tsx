@@ -27,8 +27,12 @@ function outline(el: ShapeEl, w: number, h: number, sw: number) {
       return <ellipse cx={w / 2} cy={h / 2} rx={W / 2} ry={H / 2} />
     case "triangle":
       return <polygon points={`${w / 2},${i} ${w - i},${h - i} ${i},${h - i}`} />
-    case "star":
-      return <polygon points={at(ring(W, H, Math.max(3, el.points ?? 5), 0.45))} />
+    case "star": {
+      const n = Math.max(3, el.points ?? 5)
+      return <polygon points={at(ring(W, H, n, n <= 4 ? 0.4 : n === 5 ? 0.45 : n === 6 ? 0.55 : 0.62))} />
+    }
+    case "play":
+      return <ellipse cx={w / 2} cy={h / 2} rx={W / 2} ry={H / 2} />
     case "polygon":
       return <polygon points={at(ring(W, H, Math.max(3, el.points ?? 6)))} />
     case "heart": {
@@ -106,9 +110,33 @@ export function ShapeView({ el }: { el: ShapeEl }) {
               {stroke.def}
             </defs>
           )}
-          <g fill={fill.url} stroke={stroke.url} strokeWidth={sw} strokeLinejoin="round" strokeLinecap="round">
+          {/* a picture fills the shape over its colour (cover or fit, centred) */}
+          {el.fillImage && !open && (
+            <defs>
+              <pattern id={`${uid}-img`} patternUnits="userSpaceOnUse" width={size.w} height={size.h}>
+                <rect width={size.w} height={size.h} fill={isGradient(el.fill) ? `url(#${uid}-f)` : el.fill && el.fill !== "transparent" ? el.fill : "none"} />
+                <image href={el.fillImage} width={size.w} height={size.h} preserveAspectRatio={el.fillFit === "contain" ? "xMidYMid meet" : "xMidYMid slice"} />
+              </pattern>
+            </defs>
+          )}
+          <g fill={el.fillImage && !open ? `url(#${uid}-img)` : fill.url} stroke={stroke.url} strokeWidth={sw} strokeLinejoin="round" strokeLinecap="round">
             {outline(el, size.w, size.h, open ? 0 : sw)}
           </g>
+          {/* the play button's triangle, white on the circle */}
+          {el.shape === "play" && (
+            <polygon
+              fill="#ffffff"
+              points={(() => {
+                const r = Math.min(size.w, size.h) * 0.22
+                const cx = size.w / 2 + r * 0.18
+                const cy = size.h / 2
+                return `${cx - r * 0.75},${cy - r} ${cx + r},${cy} ${cx - r * 0.75},${cy + r}`
+              })()}
+              strokeLinejoin="round"
+              stroke="#ffffff"
+              strokeWidth={Math.min(size.w, size.h) * 0.03}
+            />
+          )}
         </svg>
       )}
     </span>

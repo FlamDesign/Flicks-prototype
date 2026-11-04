@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { InputGroupInput } from "@/components/ui/input-group"
 import { ensureFont } from "@/lib/fonts"
-import { BUTTON_SIZE, BUTTON_STYLES, defaultBorder, DEFAULT_BOLD, FONTS, isBox, TEXT_STYLES, type CanvasElement, type Feed } from "@/components/editor/elements"
+import { BUTTON_SIZE, BUTTON_STYLES, canRotate, defaultBorder, DEFAULT_BOLD, FONTS, isBox, TEXT_STYLES, type CanvasElement, type Feed } from "@/components/editor/elements"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { parse, toHex } from "@/components/editor/color-picker"
 import { cn } from "@/lib/utils"
@@ -24,6 +24,21 @@ const sidePos = (c: Corner) =>
     c === "w" && "-left-[4px]",
   )
 const CORNERS: Corner[] = ["nw", "ne", "sw", "se"]
+/** an element's rotation in degrees (text, images and shapes turn) */
+const turnOf = (el: CanvasElement) => (canRotate(el) ? ((el as { rotation?: number }).rotation ?? 0) : 0)
+function Turned({ deg, children }: { deg: number; children: React.ReactNode }) {
+  return deg ? (
+    <div className="h-full w-full" style={{ transform: `rotate(${deg}deg)` }}>
+      {children}
+    </div>
+  ) : (
+    <>{children}</>
+  )
+}
+/** the rotate cursor: a curved arrow */
+const ROTATE_CURSOR = `url("data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M19 12a7 7 0 1 1-2.05-4.95" fill="none" stroke="white" stroke-width="4" stroke-linecap="round"/><path d="M19 12a7 7 0 1 1-2.05-4.95" fill="none" stroke="black" stroke-width="1.6" stroke-linecap="round"/><path d="M17.5 3.5v4h-4" fill="none" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M17.5 3.5v4h-4" fill="none" stroke="black" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>')}") 12 12, crosshair`
+/** where each corner's rotate zone sits: just outside the corner handle */
+const rotPos = (c: Corner) => cn("absolute size-5", c.includes("n") ? "-top-5" : "-bottom-5", c.includes("w") ? "-left-5" : "-right-5")
 
 const HANDLE = "absolute z-10 size-2.5 rounded-full border border-brand bg-white shadow-md transition-colors hover:bg-brand"
 const handlePos = (c: Corner) => // corners only
@@ -258,6 +273,37 @@ export function CanvasStage({
     window.addEventListener("pointerup", up)
   }
 
+  // turning by a corner: the angle follows the pointer around the element's centre, catching every 45°
+  const [turning, setTurning] = useState(false)
+  const onRotate = (e: React.PointerEvent, el: CanvasElement, box: { l: number; t: number; w: number; h: number }) => {
+    e.stopPropagation()
+    e.preventDefault()
+    const sr = stage.current!.getBoundingClientRect()
+    const cx = sr.left + box.l + box.w / 2
+    const cy = sr.top + box.t + box.h / 2
+    const angle = (x: number, y: number) => (Math.atan2(y - cy, x - cx) * 180) / Math.PI
+    const from = angle(e.clientX, e.clientY)
+    const base = turnOf(el)
+    setTurning(true)
+    const move = (ev: PointerEvent) => {
+      let deg = base + angle(ev.clientX, ev.clientY) - from
+      deg = ((deg % 360) + 360) % 360
+      // Shift turns in 15° steps; otherwise it catches multiples of 45° within 5° (Alt turns freely)
+      const near = Math.round(deg / 45) * 45
+      if (ev.shiftKey) deg = Math.round(deg / 15) * 15
+      else if (!ev.altKey && Math.abs(deg - near) <= 5) deg = near
+      deg = Math.round(deg * 10) / 10
+      update(el.id, { rotation: deg % 360 } as Partial<CanvasElement>)
+    }
+    const up = () => {
+      setTurning(false)
+      window.removeEventListener("pointermove", move)
+      window.removeEventListener("pointerup", up)
+    }
+    window.addEventListener("pointermove", move)
+    window.addEventListener("pointerup", up)
+  }
+
   const onResize = (e: React.PointerEvent, el: CanvasElement, corner: Corner, box: HTMLElement) => {
     e.stopPropagation()
     e.preventDefault()
@@ -306,11 +352,15 @@ export function CanvasStage({
     }
     const move = (ev: PointerEvent) => {
       // pulling a corner mostly sideways (or mostly up/down) changes just that side
-      let [ax, ay] = side ? [ev.clientX - start.x, ev.clientY - start.y] : lockResize(ev.clientX - start.x, ev.clientY - start.y, false)
+      // a turned element resizes along its own sides: the pointer's move is turned back into them
+      const turn = (turnOf(snapshot) * Math.PI) / 180
+      const raw = [ev.clientX - start.x, ev.clientY - start.y]
+      const [rx, ry] = turn ? [raw[0] * Math.cos(turn) + raw[1] * Math.sin(turn), -raw[0] * Math.sin(turn) + raw[1] * Math.cos(turn)] : raw
+      let [ax, ay] = side ? [rx, ry] : lockResize(rx, ry, false)
       // Alt places freely; the strip and an axis that isn't moving don't snap
       const guideV: number[] = []
       const guideH: number[] = []
-      if (!ev.altKey && snapshot.kind !== "strip") {
+      if (!ev.altKey && snapshot.kind !== "strip" && !turn) {
         if (!onlyY && ax !== 0) {
           const sxr = snapEdge(ax, edgeX, tx)
           ax = sxr.d
@@ -415,7 +465,7 @@ export function CanvasStage({
 
   // Selection outlines and handles live in an unclipped layer above the clipped content,
   // so an element hanging off the frame is hidden but its outline and corners stay visible.
-  type Box = { id: string; l: number; t: number; w: number; h: number }
+  type Box = { id: string; l: number; t: number; w: number; h: number; rot: number }
   const [boxes, setBoxes] = useState<Box[]>([])
   // the element under the pointer, and whether a side handle is hovered (side handles show on hover)
   const [hoverEl, setHoverEl] = useState<string | null>(null)
@@ -427,11 +477,12 @@ export function CanvasStage({
     const next = selected
       .map((id) => {
         const r = st.querySelector(`[data-el="${id}"]`)?.getBoundingClientRect()
-        return r && { id, l: r.left - sr.left, t: r.top - sr.top, w: r.width, h: r.height }
+        const e = elements.find((x) => x.id === id)
+        return r && { id, l: r.left - sr.left, t: r.top - sr.top, w: r.width, h: r.height, rot: e ? turnOf(e) : 0 }
       })
       .filter(Boolean) as Box[]
     setBoxes((prev) => {
-      const same = next.length === prev.length && next.every((n, i) => n.id === prev[i].id && Math.abs(n.l - prev[i].l) + Math.abs(n.t - prev[i].t) + Math.abs(n.w - prev[i].w) + Math.abs(n.h - prev[i].h) < 0.5)
+      const same = next.length === prev.length && next.every((n, i) => n.id === prev[i].id && Math.abs(n.l - prev[i].l) + Math.abs(n.t - prev[i].t) + Math.abs(n.w - prev[i].w) + Math.abs(n.h - prev[i].h) < 0.5 && n.rot === prev[i].rot)
       return same ? prev : next
     })
   }
@@ -556,7 +607,15 @@ export function CanvasStage({
         <span key={`h${y}`} className="absolute inset-x-0 h-px -translate-y-1/2 bg-rose-500" style={{ top: y }} />
       ))}
       {boxes.map((x) => (
-        <div key={x.id} className="absolute outline-1 outline-solid outline-brand" style={{ left: x.l, top: x.t, width: x.w, height: x.h }}>
+        <div key={x.id} className="absolute outline-1 outline-solid outline-brand" style={{ left: x.l, top: x.t, width: x.w, height: x.h, transform: x.rot ? `rotate(${x.rot}deg)` : undefined }}>
+          {/* rotate: just outside each corner (text, images and shapes) */}
+          {single && single.id === x.id && editing !== x.id && canRotate(single) &&
+            CORNERS.map((c) => <span key={`r${c}`} onPointerDown={(e) => onRotate(e, single, x)} className={cn(rotPos(c), "pointer-events-auto")} style={{ cursor: ROTATE_CURSOR }} />)}
+          {turning && single && single.id === x.id && (
+            <span className="absolute left-1/2 top-full mt-2 -translate-x-1/2 rounded-md bg-foreground px-1.5 py-0.5 text-xs tabular-nums text-background" style={{ transform: `translateX(-50%) rotate(${-x.rot}deg)` }}>
+              {Math.round(x.rot)}°
+            </span>
+          )}
           {single && single.id === x.id && editing !== x.id &&
             CORNERS.map((c) => (
               <span
@@ -680,16 +739,19 @@ function ElementBox({
       {el.kind === "strip" ? (
         <StripView el={el} {...strip} />
       ) : (
-        <ElementView
-          el={el}
-          editing={editing}
-          onText={onText}
-          onEndEdit={onEndEdit}
-          radiusPx={radiusPx(el, size)}
-          sized={sized}
-          // linked text shows this video's feed value (or the feed name until one is set)
-          display={feed ? feed.value || `{${feed.name}}` : undefined}
-        />
+        // turned elements turn their content; the box itself stays square to the frame for moving and sizing
+        <Turned deg={turnOf(el)}>
+          <ElementView
+            el={el}
+            editing={editing}
+            onText={onText}
+            onEndEdit={onEndEdit}
+            radiusPx={radiusPx(el, size)}
+            sized={sized}
+            // linked text shows this video's feed value (or the feed name until one is set)
+            display={feed ? feed.value || `{${feed.name}}` : undefined}
+          />
+        </Turned>
       )}
       {(feed || linkFeed) && !readOnly && (
         // feed badges only while the element is hovered or selected

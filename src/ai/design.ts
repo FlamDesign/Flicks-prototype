@@ -244,12 +244,12 @@ export function describeDesign(els: CanvasElement[], feedName: (id?: string) => 
     .map((e) => {
       const id = e.id.slice(0, 6)
       if (e.kind === "text")
-        return { id, type: "text", role: roleOf(e), style: e.variant, text: e.feed ? `{${feedName(e.feed)}}` : e.text, x: r(e.x), y: r(e.y), align: e.align, size: e.size, color: e.color, font: e.font, width: e.w }
+        return { id, type: "text", role: roleOf(e), style: e.variant, text: e.feed ? `{${feedName(e.feed)}}` : e.text, x: r(e.x), y: r(e.y), align: e.align, size: e.size, color: e.color, font: e.font, width: e.w, rotation: e.rotation || undefined }
       if (e.kind === "button")
         return { id, type: "button", role: roleOf(e), style: e.variant, text: e.feed ? `{${feedName(e.feed)}}` : e.text, link: e.linkFeed ? `{${feedName(e.linkFeed)}}` : e.link, x: r(e.x), y: r(e.y), bg: e.bg, color: e.color }
       if (e.kind === "strip") return { id, type: "thumbnail strip", layout: e.layout, x: r(e.x), y: r(e.y), size: r(e.size) }
-      if (e.kind === "shape") return { id, type: "shape", shape: e.shape, x: r(e.x), y: r(e.y), width: r(e.w), height: r(e.h), fill: e.fill, stroke: e.strokeWidth ? e.stroke : undefined, stroke_width: e.strokeWidth || undefined, radius: e.shape === "rect" ? e.radius : undefined, points: e.points, opacity: e.opacity !== undefined && e.opacity < 1 ? e.opacity : undefined }
-      return { id, type: "image", x: r(e.x), y: r(e.y), width: r(e.w), height: r(e.h), radius: e.radius }
+      if (e.kind === "shape") return { id, type: "shape", shape: e.shape, x: r(e.x), y: r(e.y), width: r(e.w), height: r(e.h), fill: e.fill, stroke: e.strokeWidth ? e.stroke : undefined, stroke_width: e.strokeWidth || undefined, radius: e.shape === "rect" ? e.radius : undefined, points: e.points, opacity: e.opacity !== undefined && e.opacity < 1 ? e.opacity : undefined, image: e.fillImage ? "yes" : undefined, rotation: e.rotation || undefined }
+      return { id, type: "image", x: r(e.x), y: r(e.y), width: r(e.w), height: r(e.h), radius: e.radius, rotation: e.rotation || undefined }
     })
 }
 

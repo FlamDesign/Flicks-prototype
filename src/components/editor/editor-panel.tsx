@@ -33,7 +33,6 @@ import {
   type TextVariant,
   type Upload,
   SHAPES,
-  type ShapeKind,
 } from "@/components/editor/elements"
 import { ShapeView } from "@/components/editor/shape-view"
 import { cn } from "@/lib/utils"
@@ -92,7 +91,7 @@ export function EditorPanel({
   onAddText: (v: TextVariant) => void
   onAddButton: (v: ButtonVariant) => void
   onAddImage: (src: string) => void
-  onAddShape: (s: ShapeKind) => void
+  onAddShape: (id: string) => void
   onAddLayout: (els: CanvasElement[]) => void
   uploads: Upload[]
   setUploads: React.Dispatch<React.SetStateAction<Upload[]>>
@@ -208,25 +207,26 @@ export function EditorPanel({
 const row = "h-auto w-full whitespace-normal rounded-xl border-foreground/10 px-3 font-normal hover:border-foreground/20"
 
 /** every shape as a tile drawn in the text colour; a tap adds it */
-function ShapeList({ disabled, onAdd }: { disabled: boolean; onAdd: (s: ShapeKind) => void }) {
+function ShapeList({ disabled, onAdd }: { disabled: boolean; onAdd: (id: string) => void }) {
   return (
-    <ul className="grid grid-cols-3 gap-2">
+    // a little padding so the tiles' outlines aren't cut by the scrolling panel's edge
+    <ul className="grid grid-cols-3 gap-2 p-0.5">
       {SHAPES.map((x) => {
         const open = x.shape === "line" || x.shape === "arrow"
         return (
-          <li key={x.shape}>
+          <li key={x.id}>
             <button
               type="button"
               disabled={disabled}
-              onClick={() => onAdd(x.shape)}
+              onClick={() => onAdd(x.id)}
               className="flex w-full flex-col items-center gap-1.5 rounded-xl p-2 text-xs text-muted-foreground outline-none ring-1 ring-foreground/10 transition-colors hover:bg-muted/50 hover:text-foreground hover:ring-foreground/20 focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
             >
               <span className="grid size-12 place-items-center text-foreground">
                 <span className="block" style={{ width: x.ar >= 1 ? 40 : 40 * x.ar, height: x.ar >= 1 ? 40 / Math.min(x.ar, 4) : 40 }}>
-                  <ShapeView el={{ id: x.shape, kind: "shape", shape: x.shape, x: 0, y: 0, w: 0, h: 0, ar: x.ar, lock: false, fill: open ? "transparent" : "currentColor", stroke: "currentColor", strokeWidth: open ? 3 : 0, radius: 12, points: x.points }} />
+                  <ShapeView el={{ id: x.id, kind: "shape", shape: x.shape, x: 0, y: 0, w: 0, h: 0, ar: x.ar, lock: false, fill: open ? "transparent" : "currentColor", stroke: "currentColor", strokeWidth: open ? 3 : 0, radius: 12, points: x.points }} />
                 </span>
               </span>
-              {x.label}
+              <span className="truncate">{x.label}</span>
             </button>
           </li>
         )

@@ -162,6 +162,7 @@ type BaseElement =
       feed?: string // text feed id
       /** box width, % of frame width, once a side handle sets it; text wraps inside (unset = fits the text) */
       w?: number
+      rotation?: number // degrees, clockwise
     } & FontProps)
   | ({
       id: string
@@ -195,6 +196,7 @@ type BaseElement =
       fit: "cover" | "contain"
       radius: number // % of the largest possible radius (100 = fully round)
       crop: Crop
+      rotation?: number // degrees, clockwise
     }
   | {
       /** A shape: rectangle, circle, triangle, star, polygon, line, arrow or heart. */
@@ -213,6 +215,9 @@ type BaseElement =
       radius: number // rectangles: % of the largest possible corner radius
       points?: number // stars: points; polygons: sides
       opacity?: number // 0 to 1
+      fillImage?: string // a picture filling the shape (over the fill colour)
+      fillFit?: "cover" | "contain"
+      rotation?: number // degrees, clockwise
     }
   | {
       /** One thumbnail per video (main + variations); viewers tap one to switch videos. */
@@ -232,24 +237,33 @@ type BaseElement =
       savedFree?: { x: number; y: number; size: number; free: { x: number; y: number }[] }
     }
 
-export type ShapeKind = "rect" | "ellipse" | "triangle" | "star" | "polygon" | "line" | "arrow" | "heart"
+export type ShapeKind = "rect" | "ellipse" | "triangle" | "star" | "polygon" | "line" | "arrow" | "heart" | "play"
 /** a solid colour (hex, or "transparent"), or a gradient (the chat can set these; the editor offers solid colours) */
 export type Paint = string | { type: "linear" | "radial"; angle?: number; stops: { color: string; at: number }[] }
 export const isGradient = (p: Paint | undefined): p is Exclude<Paint, string> => !!p && typeof p === "object"
 /** elements sized as a box (width and height), not by their content */
 export const isBox = (e: CanvasElement): e is Extract<CanvasElement, { kind: "image" | "shape" }> => e.kind === "image" || e.kind === "shape"
 /** the shapes the editor offers, with their natural shape and look */
-export const SHAPES: { shape: ShapeKind; label: string; ar: number; filled: boolean; points?: number }[] = [
-  { shape: "rect", label: "Square", ar: 1, filled: true },
-  { shape: "ellipse", label: "Circle", ar: 1, filled: true },
-  { shape: "triangle", label: "Triangle", ar: 1.15, filled: true },
-  { shape: "star", label: "Star", ar: 1, filled: true, points: 5 },
-  { shape: "polygon", label: "Hexagon", ar: 1.15, filled: true, points: 6 },
-  { shape: "heart", label: "Heart", ar: 1.1, filled: true },
-  { shape: "line", label: "Line", ar: 12, filled: false },
-  { shape: "arrow", label: "Arrow", ar: 6, filled: false },
+export const SHAPES: { id: string; shape: ShapeKind; label: string; ar: number; filled: boolean; points?: number }[] = [
+  { id: "rect", shape: "rect", label: "Rectangle", ar: 1, filled: true },
+  { id: "ellipse", shape: "ellipse", label: "Circle", ar: 1, filled: true },
+  { id: "triangle", shape: "triangle", label: "Triangle", ar: 1.15, filled: true },
+  { id: "hexagon", shape: "polygon", label: "Hexagon", ar: 1.15, filled: true, points: 6 },
+  { id: "star4", shape: "star", label: "4-point star", ar: 1, filled: true, points: 4 },
+  { id: "star5", shape: "star", label: "5-point star", ar: 1, filled: true, points: 5 },
+  { id: "star6", shape: "star", label: "6-point star", ar: 1, filled: true, points: 6 },
+  { id: "star8", shape: "star", label: "8-point star", ar: 1, filled: true, points: 8 },
+  { id: "heart", shape: "heart", label: "Heart", ar: 1.1, filled: true },
+  { id: "play", shape: "play", label: "Play button", ar: 1, filled: true },
+  { id: "line", shape: "line", label: "Line", ar: 12, filled: false },
+  { id: "arrow", shape: "arrow", label: "Arrow", ar: 6, filled: false },
 ]
-export const shapeLabel = (s: ShapeKind, points?: number) => (s === "polygon" ? ({ 3: "Triangle", 4: "Diamond", 5: "Pentagon", 6: "Hexagon", 8: "Octagon" } as Record<number, string>)[points ?? 6] ?? `${points}-sided` : (SHAPES.find((x) => x.shape === s)?.label ?? "Shape"))
+/** the colour new shapes start in */
+export const SHAPE_GREY = "#a8a29e"
+export const shapeLabel = (s: ShapeKind, points?: number) =>
+  s === "star" ? `${points ?? 5}-point star` : s === "polygon" ? (({ 3: "Triangle", 4: "Diamond", 5: "Pentagon", 6: "Hexagon", 8: "Octagon" }) as Record<number, string>)[points ?? 6] ?? `${points}-sided shape` : (SHAPES.find((x) => x.shape === s)?.label ?? "Shape")
+/** elements that turn by the rotation handles */
+export const canRotate = (e: CanvasElement) => e.kind === "text" || e.kind === "image" || e.kind === "shape"
 
 /** Fonts offered in the editor, grouped for the picker. Google fonts load on demand (src/lib/fonts.ts); system fonts need no download. */
 export type FontOption = { name: string; stack: string; google?: boolean }
