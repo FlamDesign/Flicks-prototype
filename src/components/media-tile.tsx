@@ -65,18 +65,19 @@ export function MediaTile({
         />
       )}
       {video && hover && (
-        <video autoPlay muted loop playsInline poster={src} className="absolute inset-0 size-full object-cover animate-in fade-in-0 duration-200">
+        // above anything passed in (a still frame of a video with no poster sits there), under the badges and actions
+        <video autoPlay muted loop playsInline poster={src} className="pointer-events-none absolute inset-0 z-[1] size-full object-cover animate-in fade-in-0 duration-200">
           {video.webm && <source src={video.webm} type="video/webm" />}
           <source src={video.mp4} type="video/mp4" />
         </video>
       )}
       {details && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 translate-y-2 bg-gradient-to-t from-black/70 via-black/30 to-transparent p-2.5 pt-8 text-xs leading-snug text-white opacity-0 transition duration-200 group-hover/tile:translate-y-0 group-hover/tile:opacity-100 group-focus-within/tile:translate-y-0 group-focus-within/tile:opacity-100">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] translate-y-2 bg-gradient-to-t from-black/70 via-black/30 to-transparent p-2.5 pt-8 text-xs leading-snug text-white opacity-0 transition duration-200 group-hover/tile:translate-y-0 group-hover/tile:opacity-100 group-focus-within/tile:translate-y-0 group-focus-within/tile:opacity-100">
           {details}
         </div>
       )}
       {/* badges make way for details on hover; without details they stay (a video keeps its length while it plays) */}
-      {badges && <div className={cn("pointer-events-none absolute bottom-2 left-2 z-[1] flex gap-1 transition-opacity duration-200", details && "group-hover/tile:opacity-0")}>{badges}</div>}
+      {badges && <div className={cn("pointer-events-none absolute bottom-2 left-2 z-[2] flex gap-1 transition-opacity duration-200", details && "group-hover/tile:opacity-0")}>{badges}</div>}
       {children}
       {actions && <div className="absolute right-2 top-2 z-10 flex gap-1">{actions}</div>}
     </div>
