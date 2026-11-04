@@ -15,6 +15,7 @@ import {
   LayerIcon,
   BracesIcon,
   RefreshIcon,
+  ShapesIcon,
 } from "@hugeicons/core-free-icons"
 import { LayersPanel } from "@/components/editor/layers-panel"
 import { Button } from "@/components/ui/button"
@@ -31,7 +32,10 @@ import {
   type CanvasElement,
   type TextVariant,
   type Upload,
+  SHAPES,
+  type ShapeKind,
 } from "@/components/editor/elements"
+import { ShapeView } from "@/components/editor/shape-view"
 import { cn } from "@/lib/utils"
 import { MediaViewer, type ViewerItem } from "@/components/media-viewer"
 import { useImageUploads, type UploadItem } from "@/lib/uploads"
@@ -39,7 +43,7 @@ import { useImageUploads, type UploadItem } from "@/lib/uploads"
 /** Regular tooltip: hides the pointer arrow the default tooltip draws. */
 const PLAIN_TIP = "[&>span:last-child]:hidden"
 
-export type Section = "text" | "images" | "buttons" | "layouts" | "layers" | "feeds"
+export type Section = "text" | "images" | "buttons" | "shapes" | "layouts" | "layers" | "feeds"
 
 /** A panel that picks one of the uploads for the selected element (replace image, button background). */
 export type Picker = { title: string; selected?: string; onPick: (src: string) => void; onClose: () => void }
@@ -48,6 +52,7 @@ const SECTIONS: { id: Section; label: string; icon: typeof TextFontIcon }[] = [
   { id: "text", label: "Text", icon: TextFontIcon },
   { id: "images", label: "Images", icon: Image02Icon },
   { id: "buttons", label: "Buttons", icon: TouchInteraction01Icon },
+  { id: "shapes", label: "Shapes", icon: ShapesIcon },
   { id: "layouts", label: "Layouts", icon: DashboardSquare02Icon },
 ]
 /** kept apart from the add sections in the rail */
@@ -61,6 +66,7 @@ export function EditorPanel({
   onAddText,
   onAddButton,
   onAddImage,
+  onAddShape,
   onAddLayout,
   uploads,
   setUploads,
@@ -86,6 +92,7 @@ export function EditorPanel({
   onAddText: (v: TextVariant) => void
   onAddButton: (v: ButtonVariant) => void
   onAddImage: (src: string) => void
+  onAddShape: (s: ShapeKind) => void
   onAddLayout: (els: CanvasElement[]) => void
   uploads: Upload[]
   setUploads: React.Dispatch<React.SetStateAction<Upload[]>>
@@ -175,6 +182,7 @@ export function EditorPanel({
             {/* adding something closes the panel so the canvas has room */}
             {open === "text" && <TextList disabled={disabled} onAdd={(v) => (onAddText(v), setOpen(null))} />}
             {open === "buttons" && <ButtonList disabled={disabled} onAdd={(v) => (onAddButton(v), setOpen(null))} />}
+            {open === "shapes" && <ShapeList disabled={disabled} onAdd={(v) => (onAddShape(v), setOpen(null))} />}
             {open === "images" && (
               <Loading k="images" skeleton={<CardsSkeleton count={6} cols="grid-cols-2" aspect="aspect-square" lines={0} />}>
                 <ImageList disabled={disabled} onAdd={(src) => (onAddImage(src), setOpen(null))} uploads={uploads} setUploads={setUploads} />
@@ -198,6 +206,34 @@ export function EditorPanel({
 
 // Plain outlined rows, Canva-style: each row is the style itself
 const row = "h-auto w-full whitespace-normal rounded-xl border-foreground/10 px-3 font-normal hover:border-foreground/20"
+
+/** every shape as a tile drawn in the text colour; a tap adds it */
+function ShapeList({ disabled, onAdd }: { disabled: boolean; onAdd: (s: ShapeKind) => void }) {
+  return (
+    <ul className="grid grid-cols-3 gap-2">
+      {SHAPES.map((x) => {
+        const open = x.shape === "line" || x.shape === "arrow"
+        return (
+          <li key={x.shape}>
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => onAdd(x.shape)}
+              className="flex w-full flex-col items-center gap-1.5 rounded-xl p-2 text-xs text-muted-foreground outline-none ring-1 ring-foreground/10 transition-colors hover:bg-muted/50 hover:text-foreground hover:ring-foreground/20 focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+            >
+              <span className="grid size-12 place-items-center text-foreground">
+                <span className="block" style={{ width: x.ar >= 1 ? 40 : 40 * x.ar, height: x.ar >= 1 ? 40 / Math.min(x.ar, 4) : 40 }}>
+                  <ShapeView el={{ id: x.shape, kind: "shape", shape: x.shape, x: 0, y: 0, w: 0, h: 0, ar: x.ar, lock: false, fill: open ? "transparent" : "currentColor", stroke: "currentColor", strokeWidth: open ? 3 : 0, radius: 12, points: x.points }} />
+                </span>
+              </span>
+              {x.label}
+            </button>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
 
 function TextList({ disabled, onAdd }: { disabled: boolean; onAdd: (v: TextVariant) => void }) {
   return (

@@ -2,7 +2,7 @@
  * What the chat plans and designs, and how a design becomes canvas elements. Pure functions: the
  * editor applies the results.
  */
-import { BUTTON_SIZE, BUTTON_TEXT, FONTS, TEXT_STYLES, type Align, type CanvasElement, type ButtonVariant } from "@/components/editor/elements"
+import { BUTTON_SIZE, BUTTON_TEXT, FONTS, isBox, TEXT_STYLES, type Align, type CanvasElement, type ButtonVariant } from "@/components/editor/elements"
 
 /** on-screen text that can differ per variation (each becomes a feed when it does) */
 export const FIELDS = ["headline", "subheading", "label", "price", "cta", "link"] as const
@@ -248,6 +248,7 @@ export function describeDesign(els: CanvasElement[], feedName: (id?: string) => 
       if (e.kind === "button")
         return { id, type: "button", role: roleOf(e), style: e.variant, text: e.feed ? `{${feedName(e.feed)}}` : e.text, link: e.linkFeed ? `{${feedName(e.linkFeed)}}` : e.link, x: r(e.x), y: r(e.y), bg: e.bg, color: e.color }
       if (e.kind === "strip") return { id, type: "thumbnail strip", layout: e.layout, x: r(e.x), y: r(e.y), size: r(e.size) }
+      if (e.kind === "shape") return { id, type: "shape", shape: e.shape, x: r(e.x), y: r(e.y), width: r(e.w), height: r(e.h), fill: e.fill, stroke: e.strokeWidth ? e.stroke : undefined, stroke_width: e.strokeWidth || undefined, radius: e.shape === "rect" ? e.radius : undefined, points: e.points, opacity: e.opacity !== undefined && e.opacity < 1 ? e.opacity : undefined }
       return { id, type: "image", x: r(e.x), y: r(e.y), width: r(e.w), height: r(e.h), radius: e.radius }
     })
 }
@@ -298,10 +299,10 @@ export function boxOf(e: CanvasElement, ratio: number, text?: string) {
     const span = 0 // the strip's length is set by its count; a generous box is enough here
     return e.layout === "horizontal" ? { l: 0, r: 100, t: e.y, b: e.y + e.size * ratio + 1 + span } : { l: e.x, r: e.x + e.size, t: 0, b: 100 }
   }
-  const align = e.kind === "image" ? "center" : (e.align ?? "center")
+  const align = isBox(e) ? "center" : (e.align ?? "center")
   let w: number
   let h: number
-  if (e.kind === "image") (w = e.w), (h = e.h)
+  if (isBox(e)) (w = e.w), (h = e.h)
   else {
     const size = e.size ?? (e.kind === "text" ? TEXT_STYLES.find((t) => t.variant === e.variant)!.size : BUTTON_SIZE)
     const chars = Math.max(1, (text ?? e.text ?? "").length)

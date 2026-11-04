@@ -39,7 +39,7 @@ import { GeneratingGradient } from "@/components/editor/generation-progress"
 import { AgentComposer, isDocked, QuestionDeck, threadGroups, type AgentCtx } from "@/components/editor/agent-chat"
 import { PlanningView, PlanSteps } from "@/components/editor/planning-view"
 import { renderFlickShot } from "@/components/editor/flick-shot"
-import { addMadeVideo, isMadeVideo, MISSING_POSTER, BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, defaultFill, defaultInk, SAMPLE_UPLOADS, inSet, clampStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload, videoAt, wrapVideo } from "@/components/editor/elements"
+import { addMadeVideo, SHAPES, isBox, isMadeVideo, MISSING_POSTER, BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, defaultFill, defaultInk, SAMPLE_UPLOADS, inSet, clampStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload, videoAt, wrapVideo } from "@/components/editor/elements"
 
 export type Generation = {
   id: string
@@ -709,7 +709,7 @@ export function GenerationCanvas({
   const findEl = (short: string) => elementsNow.current.find((e) => e.id === short || e.id.startsWith(short.trim()))
   const POS_Y = { top: 12, upper: 30, center: 50, lower: 70, bottom: 84 }
   const placeOf = (spec: ElementSpec, el?: CanvasElement) => {
-    const align = spec.align ?? (el && el.kind !== "strip" && el.kind !== "image" ? el.align : undefined) ?? "center"
+    const align = spec.align ?? (el && el.kind !== "strip" && !isBox(el) ? el.align : undefined) ?? "center"
     const x = spec.x ?? (spec.align || !el ? (align === "left" ? 8 : align === "right" ? 92 : 50) : el.x)
     const y = spec.y ?? (spec.position ? POS_Y[spec.position] : (el?.y ?? 50))
     return { x: Math.min(100, Math.max(0, x)), y: Math.min(100, Math.max(0, y)), ...(el?.kind === "image" ? {} : { align }) }
@@ -1011,7 +1011,12 @@ export function GenerationCanvas({
       const id = crypto.randomUUID()
       const at = placeOf(spec)
       let el: CanvasElement
-      if (type === "image") {
+      if (type === "shape") {
+        const def = SHAPES.find((x) => x.shape === spec.shape) ?? SHAPES[0]
+        const w = Math.min(100, Math.max(1, spec.width ?? (def.ar >= 4 ? 40 : 30)))
+        const h = Math.min(100, Math.max(0.5, spec.height ?? (w * ratio) / def.ar))
+        el = { id, kind: "shape", shape: def.shape, x: at.x, y: at.y, w, h, ar: def.ar, lock: false, fill: spec.fill ?? (def.filled ? "#ffffff" : "transparent"), stroke: spec.stroke ?? "#ffffff", strokeWidth: spec.stroke_width ?? (def.filled ? 0 : 8), radius: spec.radius ?? 0, ...(spec.points ? { points: Math.min(12, Math.max(3, Math.round(spec.points))) } : def.points ? { points: def.points } : {}), opacity: spec.opacity ?? 1 }
+      } else if (type === "image") {
         if (!spec.url) return "Error: Give image_id for an image."
         const w = Math.min(100, Math.max(4, spec.width ?? 30))
         el = { id, kind: "image", src: spec.url, x: at.x, y: at.y, w, h: w * ratio, ar: 1, lock: true, fit: "contain", radius: spec.radius ?? 0, crop: { t: 0, r: 0, b: 0, l: 0 } }
@@ -1025,10 +1030,11 @@ export function GenerationCanvas({
       }
       // keep clear of what's already there (an exact x/y from the chat is still nudged if it lands on something)
       const shownText = (e: CanvasElement) => (e.kind === "text" || e.kind === "button" ? (e.feed ? (slidesNow.current[1]?.feeds?.[e.feed] ?? e.text) : e.text) : undefined)
-      const spot = freeY(elementsNow.current, el, ratio, shownText)
+      // shapes go exactly where asked (a backdrop sits behind its text on purpose); the rest keep clear
+      const spot = el.kind === "shape" ? { y: el.y, moved: false, overlaps: false } : freeY(elementsNow.current.filter((o) => o.kind !== "shape"), el, ratio, shownText)
       el = { ...el, y: spot.y } as CanvasElement
-      commitElements([...elementsNow.current, el])
-      const what = type === "image" ? "an image" : type === "button" ? `a button “${spec.text ?? BUTTON_TEXT}”` : `“${spec.text}”`
+      commitElements(spec.layer === "back" ? [el, ...elementsNow.current] : [...elementsNow.current, el])
+      const what = type === "shape" ? `a ${spec.shape ?? "rect"}` : type === "image" ? "an image" : type === "button" ? `a button “${spec.text ?? BUTTON_TEXT}”` : `“${spec.text}”`
       return `Added ${what} (id ${id.slice(0, 6)})${spot.moved ? `, moved to y ${Math.round(spot.y)} to stay clear of other elements` : ""}${spot.overlaps ? "; there was no free space, so it overlaps something: move or shrink it" : ""}.`
     },
     editElement(short, spec) {
@@ -1038,7 +1044,19 @@ export function GenerationCanvas({
       const notes: string[] = []
       const moved = spec.x !== undefined || spec.y !== undefined || spec.position || spec.align ? placeOf(spec, el) : {}
       let next: CanvasElement = { ...el, ...moved, ...(spec.hidden !== undefined ? { hidden: spec.hidden } : {}) } as CanvasElement
-      if (next.kind === "image") {
+      if (next.kind === "shape") {
+        const sh: typeof next = next
+        if (spec.width || spec.height) next = { ...sh, w: spec.width ?? sh.w, h: spec.height ?? (spec.width && sh.lock ? (spec.width * sh.h) / sh.w : sh.h) }
+        next = {
+          ...next,
+          ...(spec.fill !== undefined ? { fill: spec.fill } : {}),
+          ...(spec.stroke !== undefined ? { stroke: spec.stroke } : {}),
+          ...(spec.stroke_width !== undefined ? { strokeWidth: Math.max(0, spec.stroke_width) } : {}),
+          ...(spec.radius !== undefined ? { radius: spec.radius } : {}),
+          ...(spec.points !== undefined ? { points: Math.min(12, Math.max(3, Math.round(spec.points))) } : {}),
+          ...(spec.opacity !== undefined ? { opacity: Math.min(1, Math.max(0, spec.opacity)) } : {}),
+        } as CanvasElement
+      } else if (next.kind === "image") {
         if (spec.width) next = { ...next, w: spec.width, h: (spec.width * ratio) / next.ar }
         if (spec.radius !== undefined) next = { ...next, radius: spec.radius }
         if (spec.url) (next = { ...next, src: spec.url }), fitImage(el.id, spec.url), keepImage(spec.url, "image")
@@ -1058,7 +1076,8 @@ export function GenerationCanvas({
         }
         next = { ...next, ...styleOf(spec) } as CanvasElement
       }
-      commitElements(elementsNow.current.map((e) => (e.id === el.id ? next : e)))
+      const others = elementsNow.current.filter((e) => e.id !== el.id)
+      commitElements(spec.layer === "back" ? [next, ...others] : spec.layer === "front" ? [...others, next] : elementsNow.current.map((e) => (e.id === el.id ? next : e)))
       return `Changed the ${el.kind === "text" ? `text “${el.text || el.role || "text"}”` : el.kind}.${notes.length ? ` Note: ${notes.join("; ")}.` : ""}`
     },
     removeElement(short) {
@@ -1092,7 +1111,8 @@ export function GenerationCanvas({
         check(words <= limit, `Headline fits ${generation.size}`, `Headline is ${words} words; ${generation.size} holds ${limit}. Shorten it (id ${head.id.slice(0, 6)}).`)
       } else fail.push("No headline on the canvas.")
       // overlaps and the frame's edges
-      const boxes = els.map((e) => ({ e, b: boxOf(e, ratio, longestOf(e)) }))
+      // shapes are meant to sit behind or around other elements (backdrops, frames), so they don't count as overlaps
+      const boxes = els.filter((e) => e.kind !== "shape").map((e) => ({ e, b: boxOf(e, ratio, longestOf(e)) }))
       const label = (e: CanvasElement) => (e.kind === "text" ? `“${(longestOf(e) || e.role || "text").slice(0, 24)}”` : e.kind === "strip" ? "the thumbnail strip" : e.kind) + ` (id ${e.id.slice(0, 6)})`
       const hits: string[] = []
       for (let i = 0; i < boxes.length; i++)
@@ -1587,6 +1607,13 @@ export function GenerationCanvas({
           onAddText={(variant) => add({ kind: "text", variant, text: TEXT_STYLES.find((t) => t.variant === variant)!.sample })}
           onAddButton={(variant) => add(variant === "icon" ? { kind: "button", variant, text: "", bgImage: DEFAULT_ICON, bgFit: "cover" } : { kind: "button", variant, text: BUTTON_TEXT })}
           onAddImage={addImage}
+          onAddShape={(shape) => {
+            const def = SHAPES.find((x) => x.shape === shape)!
+            const w = def.ar >= 4 ? 40 : 30
+            // filled shapes in the brand colour (or white); lines drawn in white with a solid width
+            const color = brand?.primary_color && /^#/.test(brand.primary_color) ? brand.primary_color : "#ffffff"
+            add({ kind: "shape", shape, w, h: (w * ratio) / def.ar, ar: def.ar, lock: def.ar < 4, fill: def.filled ? color : "transparent", stroke: def.filled ? "#ffffff" : color, strokeWidth: def.filled ? 0 : 8, radius: shape === "rect" ? 12 : 0, ...(def.points ? { points: def.points } : {}), opacity: 1 })
+          }}
           onAddLayout={(els) => (setElements((e) => [...e, ...els]), setSelected(els.map((e) => e.id)))}
         />
         )}

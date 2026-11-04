@@ -1,8 +1,9 @@
+import { ShapeView } from "@/components/editor/shape-view"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { InputGroupInput } from "@/components/ui/input-group"
 import { ensureFont } from "@/lib/fonts"
-import { BUTTON_SIZE, BUTTON_STYLES, defaultBorder, DEFAULT_BOLD, FONTS, TEXT_STYLES, type CanvasElement, type Feed } from "@/components/editor/elements"
+import { BUTTON_SIZE, BUTTON_STYLES, defaultBorder, DEFAULT_BOLD, FONTS, isBox, TEXT_STYLES, type CanvasElement, type Feed } from "@/components/editor/elements"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { parse, toHex } from "@/components/editor/color-picker"
 import { cn } from "@/lib/utils"
@@ -331,13 +332,13 @@ export function CanvasStage({
         const dirX = corner === "e" ? 1 : -1
         const shiftX = align === "center" ? (dirX * gw) / 2 : align === "left" ? (dirX < 0 ? -gw : 0) : dirX > 0 ? gw : 0
         update(el.id, { x: snapshot.x + (shiftX / rect.width) * 100, w: Math.min(100, (W / rect.width) * 100) } as Partial<CanvasElement>)
-      } else if (side && (snapshot.kind === "image" || snapshot.kind === "button")) {
+      } else if (side && (isBox(snapshot) || snapshot.kind === "button")) {
         // side handle: only that edge moves; the opposite edge stays where it is
-        const minW = snapshot.kind === "image" ? rect.width * 0.05 : min.w
-        const minH = snapshot.kind === "image" ? rect.height * 0.05 : min.h
+        const minW = isBox(snapshot) ? rect.width * 0.02 : min.w
+        const minH = isBox(snapshot) ? rect.height * 0.02 : min.h
         let W = onlyX ? Math.max(minW, b.width + dx) : b.width
         let H = onlyY ? Math.max(minH, b.height + dy) : b.height
-        if (snapshot.kind === "image") {
+        if (isBox(snapshot)) {
           if (snapshot.lock) {
             // a locked image keeps its shape
             if (onlyX) H = (b.height * W) / b.width
@@ -357,7 +358,7 @@ export function CanvasStage({
           w: (W / rect.width) * 100,
           h: (H / rect.height) * 100,
         } as Partial<CanvasElement>)
-      } else if (snapshot.kind === "image" && onlyY) {
+      } else if (isBox(snapshot) && onlyY) {
         // top/bottom: height leads (a locked image keeps its shape)
         let h = clamp(snapshot.h + ((dy * 2) / rect.height) * 100, 5, 200)
         if (!snapshot.lock && !ev.altKey) {
@@ -366,7 +367,7 @@ export function CanvasStage({
           h = (shapeSnap((h / 100) * rect.height, (natural / 100) * rect.height) / rect.height) * 100
         }
         update(el.id, { h, w: snapshot.lock ? (snapshot.w * h) / snapshot.h : snapshot.w })
-      } else if (snapshot.kind === "image") {
+      } else if (isBox(snapshot)) {
         // Shift keeps the aspect ratio even when it's unlocked
         const w = clamp(snapshot.w + ((dx * 2) / rect.width) * 100, 5, 200)
         let h = snapshot.lock || ev.shiftKey ? (snapshot.h * w) / snapshot.w : onlyX ? snapshot.h : clamp(snapshot.h + ((dy * 2) / rect.height) * 100, 5, 200)
@@ -482,7 +483,7 @@ export function CanvasStage({
           const o = snap.find((s) => s.id === x.id)
           if (!o) return x
           const pos = { x: ((ax + ((o.x / 100) * W - ax) * k) / W) * 100, y: ((ay + ((o.y / 100) * H - ay) * k) / H) * 100 }
-          if (o.kind === "image") return { ...o, ...pos, w: o.w * k, h: o.h * k }
+          if (isBox(o)) return { ...o, ...pos, w: o.w * k, h: o.h * k }
           if (o.kind === "strip") return { ...o, ...pos, size: o.size * k, gap: o.gap * k, free: o.free?.map((f) => ({ x: f.x * k, y: f.y * k })) }
           const base = o.size ?? (o.kind === "text" ? TEXT_STYLES.find((t) => t.variant === o.variant)!.size : BUTTON_SIZE)
           if (o.kind === "button")
@@ -565,7 +566,7 @@ export function CanvasStage({
               />
             ))}
           {/* images and buttons: side handles appear on hover and stretch one way */}
-          {single && single.id === x.id && editing !== x.id && (single.kind === "image" || single.kind === "button" || single.kind === "text") &&
+          {single && single.id === x.id && editing !== x.id && (isBox(single) || single.kind === "button" || single.kind === "text") &&
             (single.kind === "text" ? (["e", "w"] as Corner[]) : SIDES).map((c) => (
               <span
                 key={c}
@@ -647,7 +648,7 @@ function ElementBox({
   const box = useRef<HTMLDivElement>(null)
   const align = alignOf(el)
   const size = useSize(box)
-  const sized = el.kind === "image" || (el.kind === "button" && el.w !== undefined)
+  const sized = isBox(el) || (el.kind === "button" && el.w !== undefined)
   return (
     <div
       ref={box}
@@ -879,7 +880,7 @@ function ElementView({
   }, [editing])
 
   // remount after editing so React's text replaces whatever the browser inserted
-  const editKey = editing ? "editing" : el.kind === "image" ? "" : (display ?? el.text)
+  const editKey = editing ? "editing" : isBox(el) ? "" : (display ?? el.text)
   const editable = {
     ref,
     contentEditable: editing,
@@ -901,6 +902,8 @@ function ElementView({
     style: { textDecoration: "inherit" } as React.CSSProperties,
     "data-text": "",
   }
+
+  if (el.kind === "shape") return <ShapeView el={el} />
 
   if (el.kind === "image") {
     const { t, r, b, l } = el.crop

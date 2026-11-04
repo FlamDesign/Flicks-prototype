@@ -1,15 +1,15 @@
 import { useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { CarouselHorizontalIcon, TouchInteraction01Icon, Delete02Icon, DragDropVerticalIcon, Image02Icon, TextFontIcon, ViewIcon, ViewOffSlashIcon } from "@hugeicons/core-free-icons"
+import { CarouselHorizontalIcon, ShapesIcon, TouchInteraction01Icon, Delete02Icon, DragDropVerticalIcon, Image02Icon, TextFontIcon, ViewIcon, ViewOffSlashIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import type { CanvasElement } from "@/components/editor/elements"
+import { shapeLabel, type CanvasElement } from "@/components/editor/elements"
 import { cn } from "@/lib/utils"
 
-const ICON = { text: TextFontIcon, button: TouchInteraction01Icon, image: Image02Icon, strip: CarouselHorizontalIcon } as const
+const ICON = { text: TextFontIcon, button: TouchInteraction01Icon, image: Image02Icon, strip: CarouselHorizontalIcon, shape: ShapesIcon } as const
 
 const labelOf = (el: CanvasElement) =>
-  el.kind === "button" && el.variant === "icon" ? "Icon button" : el.kind === "text" || el.kind === "button" ? el.text.replace(/\s+/g, " ").trim() || (el.kind === "text" ? "Text" : "Button") : el.kind === "image" ? "Image" : "Thumbnails"
+  el.kind === "button" && el.variant === "icon" ? "Icon button" : el.kind === "text" || el.kind === "button" ? el.text.replace(/\s+/g, " ").trim() || (el.kind === "text" ? "Text" : "Button") : el.kind === "image" ? "Image" : el.kind === "shape" ? shapeLabel(el.shape, el.points) : "Thumbnails"
 
 /**
  * Layers: every element, front to back. Only for hiding and reordering;

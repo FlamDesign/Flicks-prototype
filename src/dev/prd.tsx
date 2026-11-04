@@ -288,7 +288,7 @@ const SECTIONS: Section[] = [
           rows={[
             ["Prompts panel", "Far right, after the canvas: a shade darker with a thicker left edge, resizable from that edge (drag left to widen, double-click resets). Generation history as a chat, with the prompt box at the bottom."],
             ["Top bar", "Back, project name with file menu, size badge; on the right the video play/pause, Design/Preview switch and Export."],
-            ["Left rail", "Text, Images, Buttons (a finger tapping a button), Layouts; a divider; Layers, then Feeds. Each shows its icon with its name underneath, and opens a panel next to the rail."],
+            ["Left rail", "Text, Images, Buttons (a finger tapping a button), Shapes, Layouts; a divider; Layers, then Feeds. Each shows its icon with its name underneath, and opens a panel next to the rail."],
             ["Canvas", "The frame at the Flick's exact size, centred, with pan and zoom. Element toolbars float above it."],
             ["Slides strip", "Reference video, a divider, then the variations and Add. Below the canvas."],
           ]}
@@ -344,6 +344,7 @@ const SECTIONS: Section[] = [
             ["Text", "Heading, subheading, body, caption, label styles."],
             ["Images", "Uploads (drag in or browse), with full screen preview and delete. Delete confirms first (\u201cDelete this image?\u201d with the image; anywhere it\u2019s already used on the canvas keeps it)."],
             ["Buttons", "Pill, rounded, sharp, pill with arrow, light pill, light sharp, outline, outline sharp, glass, block shadow, text link, and Icon (image only)."],
+            ["Shapes", "Square, Circle, Triangle, Star, Hexagon, Heart, Line and Arrow as tiles; a tap adds one in the middle (filled shapes in the brand colour or white, lines and arrows white). On the canvas a shape moves and resizes like an image (corner and side handles; filled shapes keep their proportions until unlocked). Its toolbar: fill colour, outline colour, outline width (0 to 60 px), corner radius (squares), points or sides (stars and polygons, 3 to 12), opacity and the proportions lock. The editor offers solid colours only; the AI chat can also give a shape a linear or radial gradient fill or outline (its swatch shows the gradient, and picking a colour replaces it). The chat uses shapes for badges, backdrops behind text (placed behind everything), dividers, frames and pointers. Shapes don’t count as overlaps in the review, since they’re meant to sit behind or around other elements."],
             ["Layouts", "Stacked text and button combinations placed together."],
           ]}
         />

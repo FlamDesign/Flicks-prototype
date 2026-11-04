@@ -197,6 +197,24 @@ type BaseElement =
       crop: Crop
     }
   | {
+      /** A shape: rectangle, circle, triangle, star, polygon, line, arrow or heart. */
+      id: string
+      kind: "shape"
+      shape: ShapeKind
+      x: number // centre (by align), % of frame width
+      y: number // centre, % of frame height
+      w: number // % of frame width
+      h: number // % of frame height
+      ar: number // the shape's natural width / height
+      lock: boolean
+      fill: Paint
+      stroke: Paint
+      strokeWidth: number // px at 1080 wide; 0 = none
+      radius: number // rectangles: % of the largest possible corner radius
+      points?: number // stars: points; polygons: sides
+      opacity?: number // 0 to 1
+    }
+  | {
       /** One thumbnail per video (main + variations); viewers tap one to switch videos. */
       id: string
       kind: "strip"
@@ -213,6 +231,25 @@ type BaseElement =
       /** the last free arrangement, kept while another layout is on so switching back restores it */
       savedFree?: { x: number; y: number; size: number; free: { x: number; y: number }[] }
     }
+
+export type ShapeKind = "rect" | "ellipse" | "triangle" | "star" | "polygon" | "line" | "arrow" | "heart"
+/** a solid colour (hex, or "transparent"), or a gradient (the chat can set these; the editor offers solid colours) */
+export type Paint = string | { type: "linear" | "radial"; angle?: number; stops: { color: string; at: number }[] }
+export const isGradient = (p: Paint | undefined): p is Exclude<Paint, string> => !!p && typeof p === "object"
+/** elements sized as a box (width and height), not by their content */
+export const isBox = (e: CanvasElement): e is Extract<CanvasElement, { kind: "image" | "shape" }> => e.kind === "image" || e.kind === "shape"
+/** the shapes the editor offers, with their natural shape and look */
+export const SHAPES: { shape: ShapeKind; label: string; ar: number; filled: boolean; points?: number }[] = [
+  { shape: "rect", label: "Square", ar: 1, filled: true },
+  { shape: "ellipse", label: "Circle", ar: 1, filled: true },
+  { shape: "triangle", label: "Triangle", ar: 1.15, filled: true },
+  { shape: "star", label: "Star", ar: 1, filled: true, points: 5 },
+  { shape: "polygon", label: "Hexagon", ar: 1.15, filled: true, points: 6 },
+  { shape: "heart", label: "Heart", ar: 1.1, filled: true },
+  { shape: "line", label: "Line", ar: 12, filled: false },
+  { shape: "arrow", label: "Arrow", ar: 6, filled: false },
+]
+export const shapeLabel = (s: ShapeKind, points?: number) => (s === "polygon" ? ({ 3: "Triangle", 4: "Diamond", 5: "Pentagon", 6: "Hexagon", 8: "Octagon" } as Record<number, string>)[points ?? 6] ?? `${points}-sided` : (SHAPES.find((x) => x.shape === s)?.label ?? "Shape"))
 
 /** Fonts offered in the editor, grouped for the picker. Google fonts load on demand (src/lib/fonts.ts); system fonts need no download. */
 export type FontOption = { name: string; stack: string; google?: boolean }
