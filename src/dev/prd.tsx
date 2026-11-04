@@ -408,6 +408,7 @@ const SECTIONS: Section[] = [
             "When a video arrives, its thumbnail in the strip fades in with one soft glow.",
             "A variation that hasn't been generated shows the reference video faded underneath its elements.",
             "Switching variations swaps the video instantly, with no fade, everywhere: the canvas, previews, templates and the Flick player.",
+            "Wherever a finished Flick or template plays (template pages, the Flick page, campaigns, embeds, the shared viewer), it shows at its exact shape, as large as the space allows by width or height, never stretched; the video fills that shape.",
           ]}
         />
       </>

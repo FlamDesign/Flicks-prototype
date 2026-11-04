@@ -130,20 +130,16 @@ function TryFlick({ t }: { t: Template }) {
   }, [auto, active]);
 
   const [w, h] = t.size.split("×").map(Number);
-  const wide = w >= h;
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex min-h-[420px] items-center justify-center rounded-2xl bg-muted p-6 ring-1 ring-foreground/5 lg:h-[min(72vh,640px)]">
+      <div className="flex h-[clamp(420px,72vh,640px)] items-center justify-center rounded-2xl bg-muted p-6 ring-1 ring-foreground/5" style={{ containerType: "size" }}>
         <div
-          className={cn(
-            "relative overflow-hidden rounded-xl bg-black shadow-xl",
-            wide ? "w-full" : "h-full",
-          )}
-          // sized by its shorter side (cqmin), so wide and tall frames look alike
+          className="relative overflow-hidden rounded-xl bg-black shadow-xl"
+          // the Flick at its exact shape, as large as the pane allows by width or height, whichever runs
+          // out first (never stretched); text inside is sized by its shorter side (cqmin)
           style={{
             aspectRatio: `${w} / ${h}`,
-            maxHeight: "100%",
-            maxWidth: "100%",
+            width: `min(100cqw, calc(100cqh * ${w / h}))`,
             containerType: "size",
           }}
         >

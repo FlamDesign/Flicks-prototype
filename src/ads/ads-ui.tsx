@@ -639,7 +639,8 @@ export function LiveFlick({ flick, tall, fit, videos: given, start = 0 }: { flic
       <div
         className={cn("relative overflow-hidden rounded-xl bg-black shadow-lg", !fit && (w >= h ? "w-full" : "h-full"))}
         // in a stage: as large as fits, by the stage's width or height, whichever runs out first
-        style={{ aspectRatio: `${w} / ${h}`, maxWidth: "100%", maxHeight: "100%", containerType: "size", ...(fit ? { width: `min(100cqw, calc(100cqh * ${w / h}))` } : {}) }}
+        // never stretched: one side sets the size and the shape follows (wide by width, tall by height)
+        style={{ aspectRatio: `${w} / ${h}`, containerType: "size", ...(fit ? { width: `min(100cqw, calc(100cqh * ${w / h}))` } : {}) }}
       >
         {videos.map((v, k) => {
           const m = videoAt(v)
