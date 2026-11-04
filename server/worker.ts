@@ -110,7 +110,8 @@ export default {
       // (Higgsfield deletes its copies after 7 days and can't list past requests)
       type Meta = { project?: string; variation?: string; purpose?: string }
       const started = async (kind: "image" | "video", id: string, prompt: string, model: string, meta: Meta = {}, refs: string[] = []) => {
-        await env.USAGE?.put(`lib:${id}`, JSON.stringify({ id, kind, prompt, model, refs, ...pick(meta), created: Date.now(), saved: false }))
+        // the library entry is a record, not the job: a full storage quota mustn't stop the job
+        await put(env, `lib:${id}`, JSON.stringify({ id, kind, prompt, model, refs, ...pick(meta), created: Date.now(), saved: false }))
         return json({ id }, 200, cors)
       }
       const finished = (id: string, media?: string) => {
@@ -169,9 +170,9 @@ export default {
         if (bytes.byteLength > (video ? 24_000_000 : 8_000_000)) return json({ error: "too_large" }, 413, cors)
         const id = `up-${crypto.randomUUID()}`
         // kept for good and listed in the library, like everything made here
-        await env.USAGE?.put(`file:${id}`, bytes, { metadata: { type } })
+        if (!(await put(env, `file:${id}`, bytes, { metadata: { type } }))) return json({ error: "storage_full" }, 507, cors)
         const q = url.searchParams
-        await env.USAGE?.put(`lib:${id}`, JSON.stringify({ id, kind: video ? "video" : "image", prompt: (q.get("name") ?? (video ? "Uploaded video" : "Uploaded image")).slice(0, 200), model: "upload", refs: [], ...pick({ project: q.get("project") ?? undefined, purpose: q.get("purpose") === "upload" ? "upload" : "app" }), created: Date.now(), saved: true, bytes: bytes.byteLength, type }))
+        await put(env, `lib:${id}`, JSON.stringify({ id, kind: video ? "video" : "image", prompt: (q.get("name") ?? (video ? "Uploaded video" : "Uploaded image")).slice(0, 200), model: "upload", refs: [], ...pick({ project: q.get("project") ?? undefined, purpose: q.get("purpose") === "upload" ? "upload" : "app" }), created: Date.now(), saved: true, bytes: bytes.byteLength, type }))
         return json({ url: `${url.origin}/file/${id}` }, 200, cors)
       }
 
@@ -371,7 +372,7 @@ export default {
         } catch {
           return json({ error: "not_json" }, 400, cors)
         }
-        await env.USAGE?.put(`store:${st[1]}`, text)
+        if (!(await put(env, `store:${st[1]}`, text))) return json({ error: "storage_full" }, 507, cors)
         return json({ ok: true }, 200, cors)
       }
 
@@ -421,7 +422,7 @@ export default {
           if (!target) continue
           const id = `imp-${(await sha(target)).slice(0, 24)}`
           if (await env.USAGE?.get(`lib:${id}`)) continue
-          await env.USAGE?.put(`lib:${id}`, JSON.stringify({ id, kind: it.kind === "image" ? "image" : "video", prompt: it.prompt ?? it.name ?? "", model: "imported", refs: [], created: it.created || Date.now(), saved: false }))
+          await put(env, `lib:${id}`, JSON.stringify({ id, kind: it.kind === "image" ? "image" : "video", prompt: it.prompt ?? it.name ?? "", model: "imported", refs: [], created: it.created || Date.now(), saved: false }))
           try {
             await keep(env, id, target)
             done.push(id)
@@ -558,7 +559,7 @@ async function logRequest(env: Env, url: string, body: unknown, res: Response, t
   const at = Date.now()
   const entry = { at: t0, ms: at - t0, path: url.replace(hfBase(env), ""), payload, status: res.status, request_id: out.request_id, error: res.ok ? undefined : text.slice(0, 600) }
   // newest first when listed: the key counts down
-  await env.USAGE?.put(`req:${String(9e12 - t0).padStart(13, "0")}:${crypto.randomUUID().slice(0, 6)}`, JSON.stringify(entry), { expirationTtl: 60 * 60 * 24 * 30 })
+  await put(env, `req:${String(9e12 - t0).padStart(13, "0")}:${crypto.randomUUID().slice(0, 6)}`, JSON.stringify(entry), { expirationTtl: 60 * 60 * 24 * 30 })
 }
 
 /** a job's outcome, saved on its library entry the first time it's known */
@@ -568,7 +569,7 @@ async function settle(env: Env, id: string, status: string, raw: string) {
   if (!got) return
   const entry = JSON.parse(got) as Record<string, unknown>
   if (entry.status === status) return
-  await env.USAGE?.put(`lib:${id}`, JSON.stringify({ ...entry, status, finished: Date.now(), ...(status !== "completed" ? { error: raw.slice(0, 600) } : {}) }))
+  await put(env, `lib:${id}`, JSON.stringify({ ...entry, status, finished: Date.now(), ...(status !== "completed" ? { error: raw.slice(0, 600) } : {}) }))
 }
 const num = (v: string | undefined, d: number) => (v && Number.isFinite(Number(v)) ? Number(v) : d)
 
@@ -587,8 +588,23 @@ async function take(env: Env, key: string, cap: number) {
   if (!env.USAGE) return true
   const n = await count(env, key)
   if (n >= cap) return false
-  await env.USAGE.put(key, String(n + 1), { expirationTtl: 60 * 60 * 48 })
+  await put(env, key, String(n + 1), { expirationTtl: 60 * 60 * 48 })
   return true
+}
+
+/**
+ * A storage write that never throws: false when it didn't happen (on the free plan, KV allows
+ * 1,000 writes a day; past that every write fails until the day resets at 00:00 UTC).
+ */
+async function put(env: Env, key: string, value: string | ArrayBuffer, opts?: KVNamespacePutOptions) {
+  if (!env.USAGE) return true
+  try {
+    await env.USAGE.put(key, value, opts)
+    return true
+  } catch (e) {
+    console.log("storage write failed", key.split(":")[0], e instanceof Error ? e.message : String(e))
+    return false
+  }
 }
 
 /* ---------- reading a website ---------- */
@@ -748,6 +764,7 @@ async function keep(env: Env, id: string, media: string) {
   // a stored value can be at most 25 MB
   if (bytes.byteLength > 24_000_000) throw new Error("too large to keep")
   const type = res.headers.get("content-type") ?? (entry.kind === "video" ? "video/mp4" : "image/png")
-  await env.USAGE?.put(`file:${id}`, bytes, { metadata: { type } })
-  await env.USAGE?.put(`lib:${id}`, JSON.stringify({ ...entry, saved: true, bytes: bytes.byteLength, type, source: media }))
+  // no room today: the original stays where it is, and a later look tries again
+  if (!(await put(env, `file:${id}`, bytes, { metadata: { type } }))) return
+  await put(env, `lib:${id}`, JSON.stringify({ ...entry, saved: true, bytes: bytes.byteLength, type, source: media }))
 }

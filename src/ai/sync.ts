@@ -18,11 +18,14 @@ export async function loadSaved<T>(key: string): Promise<T | null> {
   return (await res.json()) as T | null
 }
 
+/** what each key last saved, so an unchanged value is never written again (the server's storage counts every write) */
+const lastSaved = new Map<string, string>()
+
 /**
  * Saves a value. Images that live only in this page (blob: links from uploads) are uploaded first
  * and their links swapped for lasting ones, so they still show after a reload or on another device.
  */
-export async function save(key: string, value: unknown) {
+export async function save(key: string, value: unknown, keepalive = false) {
   let text = JSON.stringify(value)
   const blobs = [...new Set(text.match(/blob:[^"\\\s)]+/g) ?? [])]
   for (const b of blobs) {
@@ -32,18 +35,45 @@ export async function save(key: string, value: unknown) {
       /* gone already: left as it is */
     }
   }
-  const res = await fetch(`${base()}/store/${key}`, { method: "PUT", headers: headers(), body: text })
+  if (lastSaved.get(key) === text) return
+  // a page being closed can still send a small save (browsers cap keepalive bodies at 64 KB)
+  const res = await fetch(`${base()}/store/${key}`, { method: "PUT", headers: headers(), body: text, keepalive: keepalive && text.length < 60_000 })
   if (!res.ok) throw new Error(`save ${res.status}`)
+  lastSaved.set(key, text)
 }
 
-/** a value saved at most once per `ms`, the latest one winning */
-export function saver(key: string, ms = 1500) {
+const flushers = new Set<() => void>()
+if (typeof window !== "undefined") {
+  // leaving or hiding the page saves what's waiting
+  const flushAll = () => flushers.forEach((f) => f())
+  window.addEventListener("pagehide", flushAll)
+  document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" && flushAll())
+}
+
+/**
+ * A value saved once changes settle: `ms` after the last change, and at least every `maxMs` while
+ * changes keep coming (dragging, typing), the latest one winning. Unchanged values aren't sent, and
+ * hiding or closing the page saves at once. Keeps the server's writes to a few a minute at most.
+ */
+export function saver(key: string, ms = 8000, maxMs = 45000) {
   let timer: ReturnType<typeof setTimeout> | undefined
+  let first: number | undefined
   let latest: unknown
+  let waiting = false
+  const run = (keepalive = false) => {
+    clearTimeout(timer)
+    if (!waiting) return
+    waiting = false
+    first = undefined
+    void save(key, latest, keepalive).catch((e) => console.warn("Couldn't save", key, e))
+  }
+  flushers.add(() => run(true))
   return (value: unknown) => {
     latest = value
+    waiting = true
+    first ??= Date.now()
     clearTimeout(timer)
-    timer = setTimeout(() => void save(key, latest).catch((e) => console.warn("Couldn't save", key, e)), ms)
+    timer = setTimeout(run, Math.max(0, Math.min(ms, first + maxMs - Date.now())))
   }
 }
 
@@ -64,13 +94,13 @@ export function startSync() {
     if (started || !isLive()) return
     started = true
     let ready = false
-    const put = saver("state", 2000)
+    const put = saver("state")
     watchLibrary((s, silent) => {
       if (ready && !silent) put({ projects: s.projects, flicks: s.flicks, made: GENERATED_VIDEOS.filter((v) => v.set === "made") } satisfies Saved)
     })
     // elements (named products, characters, logos) follow the user too
     let elementsReady = false
-    const putElements = saver("elements", 1500)
+    const putElements = saver("elements")
     elements.watch((all, quiet) => elementsReady && !quiet && putElements(all))
     loadSaved<FlickElement[]>("elements")
       .then((saved) => Array.isArray(saved) && elements.load(saved))

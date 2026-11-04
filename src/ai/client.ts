@@ -77,6 +77,7 @@ const MESSAGES: Record<string, string> = {
   wrong_passcode: "The passcode isn't right. Check it in dev tools.",
   origin_not_allowed: "The AI server doesn't accept requests from this site.",
   daily_limit: "Today's AI limit is reached. Try again tomorrow.",
+  storage_full: "Today's storage writes are used up, so uploads can't be kept until 4 pm Pacific (midnight UTC). Chat and generation still work.",
   claude_not_set_up: "The AI server has no Claude key yet.",
   images_not_set_up: "The AI server has no image key yet.",
   server_not_set_up: "The AI server isn't set up yet (no passcode).",
