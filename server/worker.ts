@@ -10,6 +10,7 @@
  *   GET  /video/:id       that video's status; { status, url?, poster? }
  *   POST /upload          keeps a photo or video the user added (in the library too) and returns a public address for it, so Higgsfield can use it
  *   GET  /file/:id        a kept image or video (public: the address is unguessable)
+ *   GET  /requests        the log of jobs sent to Higgsfield, newest first, with their outcomes
  *   GET  /media?u=        a generated video, passed through (Higgsfield's hosts only), for poster frames
  *   GET  /store/:key      saved app data: "state" (projects, Flicks, made videos), "elements" (named products, characters, logos) or "chat-<project id>"
  *   PUT  /store/:key      saves it (JSON, whole value replaced)
@@ -354,6 +355,7 @@ export default {
         const video = urls.find((u) => /\.(mp4|mov|webm)(\?|$)/i.test(u)) ?? urlsIn(out.video)[0]
         const poster = urls.find((u) => /\.(jpe?g|png|webp)(\?|$)/i.test(u))
         if (out.status === "completed" && !video) console.log("higgsfield video completed without a url", text.slice(0, 400))
+        if (out.status) await settle(env, v[1], String(out.status), text).catch(() => {})
         if (out.status === "completed") finished(v[1], video)
         return json({ status: out.status ?? "unknown", url: video, poster }, 200, cors)
       }
@@ -371,6 +373,19 @@ export default {
         }
         await env.USAGE?.put(`store:${st[1]}`, text)
         return json({ ok: true }, 200, cors)
+      }
+
+      // the request log for the dev tools: each job sent to Higgsfield with its outcome
+      if (req.method === "GET" && url.pathname === "/requests") {
+        const limit = Math.min(300, Number(url.searchParams.get("limit")) || 100)
+        const page = await env.USAGE!.list({ prefix: "req:", limit })
+        const rows = (await Promise.all(page.keys.map((k) => env.USAGE!.get(k.name)))).flatMap((x) => (x ? [JSON.parse(x) as { request_id?: string }] : []))
+        const libs = await Promise.all(rows.map((r) => (r.request_id ? env.USAGE!.get(`lib:${r.request_id}`) : Promise.resolve(null))))
+        const items = rows.map((r, i) => {
+          const lib = libs[i] ? (JSON.parse(libs[i]!) as Record<string, unknown>) : undefined
+          return { ...r, job: lib ? { kind: lib.kind, project: lib.project, variation: lib.variation, purpose: lib.purpose, status: lib.status ?? (lib.saved ? "completed" : undefined), finished: lib.finished, error: lib.error, saved: lib.saved, file: lib.saved ? `${url.origin}/file/${lib.id}` : undefined, source: lib.source } : undefined }
+        })
+        return json({ items }, 200, cors)
       }
 
       if (req.method === "GET" && url.pathname === "/library") {
@@ -431,6 +446,7 @@ export default {
         }
         const url = out.images?.[0]?.url ?? out.image?.url ?? out.output?.[0]?.url ?? urlsIn(out).find((u) => /\.(png|jpe?g|webp)(\?|$)/i.test(u))
         if (out.status === "completed" && !url) console.log("higgsfield completed without an image url", text.slice(0, 300))
+        if (out.status) await settle(env, m[1], String(out.status), text).catch(() => {})
         if (out.status === "completed") finished(m[1], url)
         return json({ status: out.status ?? "unknown", url }, 200, cors)
       }
@@ -501,10 +517,46 @@ const hfAuth = (env: Env, scheme: "Key" | "Bearer" = "Key") => ({ authorization:
 const hasHf = (env: Env) => !!hfKey(env)
 /** a Higgsfield call; a key the documented "Key" scheme refuses is tried once as a Bearer token */
 async function hf(env: Env, url: string, init: RequestInit = {}) {
-  const res = await fetch(url, { ...init, headers: { ...(init.headers as Record<string, string>), ...hfAuth(env) } })
-  if (res.status !== 401) return res
-  const again = await fetch(url, { ...init, headers: { ...(init.headers as Record<string, string>), ...hfAuth(env, "Bearer") } })
-  return again.status === 401 ? res : again
+  const t0 = Date.now()
+  let res = await fetch(url, { ...init, headers: { ...(init.headers as Record<string, string>), ...hfAuth(env) } })
+  if (res.status === 401) {
+    const again = await fetch(url, { ...init, headers: { ...(init.headers as Record<string, string>), ...hfAuth(env, "Bearer") } })
+    if (again.status !== 401) res = again
+  }
+  // every job sent to Higgsfield is logged (for the dev tools' request log), accepted or not
+  if (init.method === "POST") await logRequest(env, url, init.body, res.clone(), t0).catch(() => {})
+  return res
+}
+
+/** one line of the request log: what was sent where, what came back, how long it took (kept 30 days) */
+async function logRequest(env: Env, url: string, body: unknown, res: Response, t0: number) {
+  const text = await res.text()
+  let out: { request_id?: string } = {}
+  try {
+    out = JSON.parse(text)
+  } catch {
+    /* not JSON */
+  }
+  let payload: unknown = body
+  try {
+    payload = typeof body === "string" ? JSON.parse(body) : body
+  } catch {
+    /* kept as sent */
+  }
+  const at = Date.now()
+  const entry = { at: t0, ms: at - t0, path: url.replace(hfBase(env), ""), payload, status: res.status, request_id: out.request_id, error: res.ok ? undefined : text.slice(0, 600) }
+  // newest first when listed: the key counts down
+  await env.USAGE?.put(`req:${String(9e12 - t0).padStart(13, "0")}:${crypto.randomUUID().slice(0, 6)}`, JSON.stringify(entry), { expirationTtl: 60 * 60 * 24 * 30 })
+}
+
+/** a job's outcome, saved on its library entry the first time it's known */
+async function settle(env: Env, id: string, status: string, raw: string) {
+  if (!["completed", "failed", "nsfw", "cancelled", "canceled"].includes(status)) return
+  const got = await env.USAGE?.get(`lib:${id}`)
+  if (!got) return
+  const entry = JSON.parse(got) as Record<string, unknown>
+  if (entry.status === status) return
+  await env.USAGE?.put(`lib:${id}`, JSON.stringify({ ...entry, status, finished: Date.now(), ...(status !== "completed" ? { error: raw.slice(0, 600) } : {}) }))
 }
 const num = (v: string | undefined, d: number) => (v && Number.isFinite(Number(v)) ? Number(v) : d)
 
