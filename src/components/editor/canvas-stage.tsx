@@ -77,7 +77,8 @@ const rotateCursor = (corner: Corner, deg: number) => svgCursor(ROTATE_ARC, (COR
 /** the resize cursor, a two-headed arrow, turned with the element so it stays square to its side */
 const RESIZE_ARROW = "M4.5 12H19.5M7.5 9L4.5 12L7.5 15M16.5 9L19.5 12L16.5 15"
 const HANDLE_TURN: Record<string, number> = { e: 0, w: 0, n: 90, s: 90, nw: 45, se: 45, ne: 135, sw: 135 }
-const resizeCursor = (c: Corner, deg: number) => (deg ? svgCursor(RESIZE_ARROW, HANDLE_TURN[c] + deg, "move") : undefined)
+// every handle uses these drawn cursors (turned or not), so the controls look the same on every element
+const resizeCursor = (c: Corner, deg = 0) => svgCursor(RESIZE_ARROW, HANDLE_TURN[c] + deg, c === "n" || c === "s" ? "ns-resize" : c === "e" || c === "w" ? "ew-resize" : c === "nw" || c === "se" ? "nwse-resize" : "nesw-resize")
 /** where each corner's rotate zone sits: just outside the corner handle */
 const rotPos = (c: Corner) => cn("absolute size-5", c.includes("n") ? "-top-5" : "-bottom-5", c.includes("w") ? "-left-5" : "-right-5")
 
@@ -362,6 +363,9 @@ export function CanvasStage({
     const onlyY = corner === "n" || corner === "s"
     const onlyX = corner === "e" || corner === "w"
     if (side) setResizingSide(true)
+    // the handle's cursor stays on wherever the pointer goes while resizing
+    document.body.style.setProperty("--turn-cursor", resizeCursor(corner, turnOf(el)))
+    document.body.classList.add("turning")
     const start = { x: e.clientX, y: e.clientY }
     const align = alignOf(el)
     // centre-anchored elements grow on both sides, so a corner drag counts double
@@ -499,6 +503,8 @@ export function CanvasStage({
       }
     }
     const up = () => {
+      document.body.classList.remove("turning")
+      document.body.style.removeProperty("--turn-cursor")
       window.removeEventListener("pointermove", move)
       window.removeEventListener("pointerup", up)
       setResizingSide(false)
@@ -691,7 +697,7 @@ export function CanvasStage({
           style={{ left: groupBox.l, top: groupBox.t, width: groupBox.r - groupBox.l, height: groupBox.b - groupBox.t }}
         >
           {CORNERS.map((c) => (
-            <span key={c} onPointerDown={(e) => onGroupResize(e, c)} className={cn(HANDLE, "pointer-events-auto", handlePos(c))} />
+            <span key={c} onPointerDown={(e) => onGroupResize(e, c)} className={cn(HANDLE, "pointer-events-auto", handlePos(c))} style={{ cursor: resizeCursor(c) }} />
           ))}
         </div>
       )}
