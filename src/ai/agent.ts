@@ -4,7 +4,7 @@
  * scripted stand-in calls the same tools, so the flow can always be demoed.
  */
 import { useCallback, useEffect, useRef, useState } from "react"
-import { AiError, aspectOf, keepable, generateImage, imageBlock, library, shareable, type LibraryItem, isLive, readWebsite, siteImage, streamChat, type Block, type Message, type SiteRead, type Tool } from "@/ai/client"
+import { AiError, aspectOf, keepable, generateImage, imageBlock, library, shareable, sharedNow, type LibraryItem, isLive, readWebsite, siteImage, streamChat, type Block, type Message, type SiteRead, type Tool } from "@/ai/client"
 import { shotPrompt, type Brand, type Design, type Plan, type PlanVariation, type Shot, type VideoMode } from "@/ai/design"
 import { mockReply } from "@/ai/mock"
 import { findSkill, SKILLS } from "@/ai/skills"
@@ -781,7 +781,10 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         const stills = await stillsAt(url, [0.1, 0.5, 0.9].map((k) => k * duration), 768)
         const it: ProjectImage = { id: `vid-${images.current.filter((x) => x.kind === "video").length + 1}`, name: f.name, url, from: "upload", kind: "video", poster: URL.createObjectURL(stills[0]), width, height, duration }
         images.current.push(it)
-        if (live.current) shareable(url, { name: f.name, project: apiRef.current.state().title, purpose: "upload" }).catch(() => {})
+        if (live.current) {
+          shareable(url, { name: f.name, project: apiRef.current.state().title, purpose: "upload" }).catch(() => {})
+          shareable(it.poster!).catch(() => {})
+        }
         for (const b of stills) blocks.push(await imageBlock(b))
         names.push(`${it.id} (${f.name}, a ${duration.toFixed(1)} s video, ${width}×${height}; the 3 stills above are its start, middle and end)`)
         shows.push(it.poster!)
@@ -850,7 +853,14 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     const refImages = refIds.map((r) => images.current.find((i) => i.id === r)).filter((i): i is ProjectImage => !!i)
     // the images to keep, at addresses Higgsfield can open (uploads go to the server first)
     // a video given as a reference goes as a still from it: the image models take pictures only
-    const refs = () => Promise.all(refImages.map((i) => pictureOf(i).then((u) => shareable(u)).catch(() => null))).then((u) => u.filter((x): x is string => !!x))
+    // a reference that can't be opened (a file from an earlier visit that only lived in that browser) stops
+    // the image rather than making it without the product
+    const refs = () =>
+      Promise.all(refImages.map((i) => pictureOf(i).then((u) => shareable(u)).catch(() => null))).then((u) => {
+        const lost = refImages.filter((_, k) => !u[k]).map((i) => i.name)
+        if (lost.length) throw new Error(`Couldn't open ${lost.join(", ")} (added in an earlier visit and no longer in this browser). Add ${lost.length === 1 ? "it" : "them"} again.`)
+        return u.filter((x): x is string => !!x)
+      })
     const made: Promise<ProjectImage> = live.current
       ? refs()
           .then((urls) => generateImage(prompt, aspect, undefined, (status) => patch(itemId, { status } as Partial<Item>), urls, { project: apiRef.current.state().title, variation: target, purpose }, { text: !!input.has_text, quality: purpose === "idea" ? "draft" : "final" }))
@@ -1609,6 +1619,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
 
   // the chat is saved with its project (with the AI server connected): reopening it picks up here
   type SavedChat = { items: Item[]; msgs: Message[]; pending: typeof pending.current; ready: Block[]; held: Record<string, string | Block[]>; images: ProjectImage[]; read: string[]; draft: Design }
+  // files that only live in this browser are saved by their server address, so they still open after a reload
+  const lasting = (i: ProjectImage): ProjectImage => ({ ...i, url: /^blob:/.test(i.url) ? (sharedNow(i.url) ?? i.url) : i.url, ...(i.poster && /^blob:/.test(i.poster) ? { poster: sharedNow(i.poster) ?? i.poster } : {}) })
   const restored = useRef<"no" | "loading" | "done">("no")
   const saveChat = useRef<((v: unknown) => void) | null>(null)
   useEffect(() => {
@@ -1618,7 +1630,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   useEffect(() => {
     // save once the chat settles (not mid-reply), and only after loading what was saved
     if (!saveChat.current || busy || restored.current === "loading" || !items.length) return
-    saveChat.current({ items: items.map((x) => (x.kind === "assistant" ? { ...x, streaming: false } : x)), msgs: msgs.current, pending: pending.current, ready: ready.current, held: held.current, images: images.current, read: [...read.current], draft: draft.current } satisfies SavedChat)
+    saveChat.current({ items: items.map((x) => (x.kind === "assistant" ? { ...x, streaming: false } : x)), msgs: msgs.current, pending: pending.current, ready: ready.current, held: held.current, images: images.current.map(lasting), read: [...read.current], draft: draft.current } satisfies SavedChat)
   }, [items, busy])
 
   // the first message: what the user typed on Create (unless this chat was saved before)

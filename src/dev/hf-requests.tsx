@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Alert02Icon, Copy01Icon, Image01Icon, RefreshIcon, Search01Icon, Tick02Icon, Video01Icon } from "@hugeicons/core-free-icons"
 import { Badge } from "@/components/ui/badge"
@@ -32,7 +32,16 @@ const modelName = (path: string) => {
 }
 const time = (t: number) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" })
 const day = (t: number) => new Date(t).toLocaleDateString([], { month: "short", day: "numeric" })
-const span = (ms: number) => (ms < 1000 ? `${ms} ms` : ms < 60_000 ? `${(ms / 1000).toFixed(1)} s` : `${Math.floor(ms / 60_000)}m ${Math.round((ms % 60_000) / 1000)}s`)
+const span = (ms: number) =>
+  ms < 1000
+    ? `${ms} ms`
+    : ms < 60_000
+      ? `${(ms / 1000).toFixed(1)} s`
+      : ms < 3_600_000
+        ? `${Math.floor(ms / 60_000)}m ${Math.round((ms % 60_000) / 1000)}s`
+        : ms < 86_400_000
+          ? `${Math.floor(ms / 3_600_000)}h ${Math.round((ms % 3_600_000) / 60_000)}m`
+          : `${Math.floor(ms / 86_400_000)}d ${Math.round((ms % 86_400_000) / 3_600_000)}h`
 const ago = (t: number) => {
   const s = Math.round((Date.now() - t) / 1000)
   return s < 60 ? `${s}s ago` : s < 3600 ? `${Math.floor(s / 60)}m ago` : s < 86400 ? `${Math.floor(s / 3600)}h ago` : day(t)
@@ -52,10 +61,21 @@ export function HfRequests({ open, onOpenChange }: { open: boolean; onOpenChange
   const [only, setOnly] = useState<"all" | State>("all")
   const [q, setQ] = useState("")
   const [sel, setSel] = useState<string | null>(null)
+  // jobs with no outcome yet are asked about once each, so the list shows what really happened
+  const asked = useRef(new Set<string>())
+  const settleWaiting = async (list: HfRequest[]) => {
+    const waiting = list.filter((r) => stateOf(r) === "waiting" && r.request_id && !asked.current.has(r.request_id)).slice(0, 40)
+    if (!waiting.length) return
+    waiting.forEach((r) => asked.current.add(r.request_id!))
+    await Promise.all(waiting.map((r) => jobStatus(kindOf(r), r.request_id!).catch(() => null)))
+    setItems(await requestLog(200))
+  }
   const load = async () => {
     setLoading(true)
     try {
-      setItems(await requestLog(200))
+      const list = await requestLog(200)
+      setItems(list)
+      void settleWaiting(list).catch(() => {})
       setError("")
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't load the requests.")
