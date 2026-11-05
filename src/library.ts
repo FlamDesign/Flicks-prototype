@@ -1,6 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { FLICKS, PROJECTS, type Flick } from "@/data"
-import { inSet, videoAt } from "@/components/editor/elements"
+import { GENERATED_VIDEOS, inSet, videoAt } from "@/components/editor/elements"
 
 /**
  * Projects and Flicks. A project is an editable draft; exporting it makes a Flick, which is fixed:
@@ -105,6 +105,11 @@ export const useLibrary = () =>
 /** for code outside React (the ads picker, the editor's save) */
 export const getLibrary = () => state
 
+/** the built-in sample videos' stills: stand-ins, never a chat project's own picture */
+const SAMPLE_POSTERS = new Set(GENERATED_VIDEOS.filter((v) => v.set !== "made").map((v) => v.poster))
+/** a project made with the AI chat that saved a sample still as its picture (before it had a video of its own) shows the placeholder instead */
+const realCover = (p: Project): Project => ((p.base as { agent?: unknown } | undefined)?.agent && SAMPLE_POSTERS.has(p.image) ? { ...p, image: "" } : p)
+
 const uid = (p: string) => `${p}_${Math.random().toString(36).slice(2, 8)}`
 
 export const library = {
@@ -114,7 +119,7 @@ export const library = {
   },
   /** what the server saved replaces what's here */
   load(saved: { projects: Project[]; flicks: FlickRecord[] }) {
-    set(() => ({ projects: saved.projects, flicks: saved.flicks }), true)
+    set(() => ({ projects: saved.projects.map(realCover), flicks: saved.flicks }), true)
   },
   /** create or update a project (the editor saves as you work) */
   saveProject(p: Partial<Project> & { id: string }) {

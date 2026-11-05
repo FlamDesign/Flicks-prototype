@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { CoverPlaceholder } from "@/components/media-tile"
 import { Shortcut } from "@/components/shortcut"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Add01Icon, HelpCircleIcon, Moon02Icon, Sun03Icon, BookOpen01Icon } from "@hugeicons/core-free-icons"
@@ -91,7 +92,7 @@ export function CommandPalette({
             <CommandGroup heading="Projects">
               {recent.map((p) => (
                 <CommandItem key={p.id} value={`project ${p.name} ${p.id}`} onSelect={run(() => onOpenProject(p))}>
-                  {p.image ? <img src={p.image} alt="" className="size-6 rounded-md object-cover" /> : <span className="size-6 rounded-md bg-muted" />}
+                  {p.image ? <img src={p.image} alt="" className="size-6 rounded-md object-cover" /> : <span className="relative size-6 overflow-hidden rounded-md"><CoverPlaceholder small /></span>}
                   <span className="min-w-0 flex-1 truncate">{p.name}</span>
                   <span className="ml-auto text-xs text-muted-foreground tabular-nums">{p.size}</span>
                 </CommandItem>
@@ -105,7 +106,7 @@ export function CommandPalette({
             <CommandGroup heading="Flicks">
               {recentFlicks.map((f) => (
                 <CommandItem key={f.id} value={`flick ${f.name} ${f.id}`} onSelect={run(() => onOpenFlick(f.id))}>
-                  {f.image ? <img src={f.image} alt="" className="size-6 rounded-md object-cover" /> : <span className="size-6 rounded-md bg-muted" />}
+                  {f.image ? <img src={f.image} alt="" className="size-6 rounded-md object-cover" /> : <span className="relative size-6 overflow-hidden rounded-md"><CoverPlaceholder small /></span>}
                   <span className="min-w-0 flex-1 truncate">{f.name}</span>
                   <span className="ml-auto text-xs text-muted-foreground tabular-nums">{f.size}</span>
                 </CommandItem>

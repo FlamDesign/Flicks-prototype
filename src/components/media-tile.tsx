@@ -1,5 +1,27 @@
 import { useState } from "react"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { Video01Icon } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
+
+/** in place of a picture a project doesn't have yet: the theme's colours, softly, with a small video mark */
+export function CoverPlaceholder({ small, className }: { small?: boolean; className?: string }) {
+  return (
+    <span
+      aria-hidden
+      className={cn("absolute inset-0 grid place-items-center bg-muted", className)}
+      style={{
+        backgroundImage:
+          "radial-gradient(circle at 25% 20%, color-mix(in oklch, var(--brand) 30%, transparent), transparent 60%), radial-gradient(circle at 85% 90%, color-mix(in oklch, var(--chart-2) 28%, transparent), transparent 55%), radial-gradient(circle at 80% 15%, color-mix(in oklch, var(--chart-4) 18%, transparent), transparent 45%)",
+      }}
+    >
+      {small ? null : (
+        <span className="grid size-10 place-items-center rounded-xl bg-background/70 text-muted-foreground shadow-sm ring-1 ring-foreground/10 backdrop-blur-sm">
+          <HugeiconsIcon icon={Video01Icon} className="size-5" />
+        </span>
+      )}
+    </span>
+  )
+}
 
 /**
  * The one media tile: a framed picture (or a video that plays on hover) used by Assets, Projects,
@@ -48,6 +70,7 @@ export function MediaTile({
         className,
       )}
     >
+      {!src && !video && <CoverPlaceholder />}
       {src && (
         <img
           src={src}

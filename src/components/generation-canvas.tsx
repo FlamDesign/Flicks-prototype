@@ -1606,7 +1606,11 @@ export function GenerationCanvas({
   // the project saves as you work, so it's in Projects with everything as you left it
   const { copy: _copy, resume: _resume, sample: _sample, back: _back, remixOf: _remixOf, ...base } = generation
   const startSlide = slides.find((x) => x.id === start) ?? slides[1] ?? slides[0]
-  const poster = startSlide.thumb ?? videoAt(startSlide.video ?? generation.video)?.poster ?? videoAt(generation.video).poster
+  // a chat project's picture is only ever its own: a thumbnail or a finished video's still; until then, none (the card shows a placeholder)
+  const ownPoster = (x?: Slide) => x?.thumb ?? (isMadeVideo(x?.video) ? videoAt(x!.video!).poster : undefined)
+  const poster = agentMode
+    ? (ownPoster(startSlide) ?? slides.map(ownPoster).find(Boolean) ?? "")
+    : (startSlide.thumb ?? videoAt(startSlide.video ?? generation.video)?.poster ?? videoAt(generation.video).poster)
   const saveProject = (extra?: { versions?: Checkpoint<Snap>[] }) =>
     library.saveProject({ id: generation.id, name: title, size: generation.size, image: poster, video: generation.video, base, snap: snapNow(), versions: extra?.versions ?? versions, sample: generation.sample })
   const deleted = useRef(false)
