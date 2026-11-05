@@ -86,6 +86,11 @@ const MESSAGES: Record<string, string> = {
 async function fail(res: Response): Promise<never> {
   const body = (await res.json().catch(() => ({}))) as { error?: string; message?: string; what?: string }
   const code = body.error ?? `http_${res.status}`
+  // which daily limit: images, videos or the chat itself (they reset at midnight UTC)
+  if (code === "daily_limit" && body.what) {
+    const what = body.what === "images" ? "image" : body.what === "videos" ? "video" : body.what === "chat" ? "chat" : body.what
+    throw new AiError(`daily_limit_${body.what}`, `Today's ${what} limit is reached. It resets at midnight UTC.`)
+  }
   throw new AiError(code, MESSAGES[code] ?? body.message ?? `The AI server answered ${res.status}.`)
 }
 async function call(path: string, init?: RequestInit) {

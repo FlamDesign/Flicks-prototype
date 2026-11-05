@@ -35,6 +35,8 @@ Run review_flick and fix every failure, then check:
 - [ ] the layout is good: nothing overlapping, cropped or hard to read, on every variation;
 - [ ] every button has a link, and each link goes to the right page for its variation;
 - [ ] prices and names are right for each variation.
-Missing variations or broken links block export: tell the user what's left. Anything else, fix it
+Missing videos block export. A button without a link doesn't (it's a warning in Export): ask for
+links once, with the brand or product question, and if any are still missing, say so once, in the
+hand-over, never in progress updates. Anything else, fix it
 or mention it in one line. The hand-over itself is two short lines: what's ready, and one thing they
 might try next.

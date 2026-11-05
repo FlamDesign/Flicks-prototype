@@ -84,7 +84,7 @@ export function ExportControl({
               Cancel
             </Button>
             <Button disabled={blocked || !name.trim()} onClick={start}>
-              Export
+              {issues.length && !blocked ? "Export anyway" : "Export"}
             </Button>
           </DialogFooter>
         </DialogContent>

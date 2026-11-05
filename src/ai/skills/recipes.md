@@ -14,7 +14,7 @@ Trust the form: never ask again for what it gave.
 - **Size and length are fixed by the uploads** (the project state already has them). Never ask where it
   runs or the size, and never call set_format.
 - Ask the goal only when it changes the copy (a sale vs awareness); one batch, with any other question.
-- Open with a short read-out of what you see in the files, then suggest, then the storyboard.
+- Open with one or two sentences on what the files show (no lists, no ids), then suggest, then the storyboard.
 - Variation 1 is the user's own video whenever there is one: propose_plan with variations[0].video_id
   set to it (nothing is made for it, it costs nothing). Every other variation is an edit of it: its
   prompt says only the change, naming its own image_ids as [Image 1]… Before approval the app draws a

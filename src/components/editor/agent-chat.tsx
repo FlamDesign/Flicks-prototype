@@ -160,10 +160,13 @@ export function AgentItemView({ item, agent, ctx }: { item: Item; agent: Agent; 
         <div role="alert" className="flex items-start gap-2 rounded-xl bg-destructive/5 p-3 text-sm ring-1 ring-destructive/20">
           <HugeiconsIcon icon={Alert02Icon} className="mt-0.5 size-4 shrink-0 text-destructive" />
           <ErrorText text={item.text} />
-          <Button size="xs" variant="outline" onClick={agent.retry} className="gap-1">
-            <HugeiconsIcon icon={RefreshIcon} className="size-3" />
-            Retry
-          </Button>
+          {/* a daily limit can't be retried today */}
+          {!/limit is reached/.test(item.text) && (
+            <Button size="xs" variant="outline" onClick={agent.retry} className="gap-1">
+              <HugeiconsIcon icon={RefreshIcon} className="size-3" />
+              Retry
+            </Button>
+          )}
         </div>
       )
   }
@@ -558,8 +561,12 @@ function ImageTile({ item, agent, ctx }: { item: Extract<Item, { kind: "image" }
 
 /** the chat's own words: paragraphs, bullets and **bold** */
 function Said({ text: said, streaming }: { text: string; streaming?: boolean }) {
-  // never a service or model name, even if the chat writes one
+  // never a service or model name, and never an internal id ("img-1", "(id 24f07b)"), even if the chat writes one
   const text = noNames(said)
+    .replace(/\s*\((?:id|ids)\s+[\w-]+(?:,\s*[\w-]+)*\)/gi, "")
+    .replace(/\*\*(?:img|vid)-\d+:?\*\*:?\s*/gi, "")
+    .replace(/\bimg-(\d+)\b/gi, "image $1")
+    .replace(/\bvid-(\d+)\b/gi, "video $1")
   if (!text && streaming)
     return (
       <span className="flex h-6 items-center px-1 text-sm">
@@ -1199,8 +1206,8 @@ function BuildTile({ video: v, still, ratio, waiting }: { video: BuildVideo; sti
             {v.state === "generating" && <GeneratingGradient sweep className="bg-transparent opacity-70" />}
             {v.retry && (
               <span className="absolute inset-x-1.5 bottom-1.5 flex flex-col items-stretch gap-1">
-                <span className="truncate text-center text-xs font-medium text-destructive" title={v.failed}>
-                  Didn't generate
+                <span className="truncate text-center text-xs font-medium text-destructive" title={`${v.failed} Credits refunded.`}>
+                  Failed
                 </span>
                 <Button size="xs" variant="secondary" onClick={v.retry}>
                   Try again

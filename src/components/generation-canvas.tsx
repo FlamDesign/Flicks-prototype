@@ -1504,7 +1504,8 @@ export function GenerationCanvas({
           const reason = e instanceof Error ? e.message : "The video failed."
           const tries = (sl.failed?.tries ?? 0) + 1
           patchJob({ job: undefined, startedAt: undefined, video: undefined, prompt: sl.used?.prompt, used: undefined, failed: { reason, tries } })
-          toast({ title: `${name} didn’t generate`, description: `${reason} Credits refunded.` })
+          // in the chat the build card's tile says it (with Try again); a toast would say it twice
+          if (!agentMode) toast({ title: `${name} didn’t generate`, description: `${reason} Credits refunded.` })
           // the chat hears about it: a variation's first failure, it retries once with a gentler change; after that it asks
           if (agentMode && live)
             agent.notify(
@@ -1630,6 +1631,10 @@ export function GenerationCanvas({
     ...feeds
       .filter((f) => included.some((s) => !s.feeds?.[f.id]?.trim()))
       .map((f) => ({ text: `Feed ${f.name} is empty on some variations` })),
+    // a button that goes nowhere: a warning (the Flick still works), the same rule the chat states
+    ...elements
+      .filter((e) => e.kind === "button" && e.variant !== "icon" && !(e.linkFeed ? included.every((x) => x.feeds?.[e.linkFeed!]?.trim()) : e.link?.trim()))
+      .map((e) => ({ text: `The “${(e as { text?: string }).text?.trim() || "button"}” button has no link${(e as { linkFeed?: string }).linkFeed ? " on some variations" : ""}, so tapping it goes nowhere.` })),
   ]
   // everything viewers see; the name isn't part of it
   const sig = JSON.stringify({ elements, feeds, start, includeRef, slides: slides.map(({ refs, ...s }) => ({ ...s, refs: refs?.map((r) => r.id) })) })
