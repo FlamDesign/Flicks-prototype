@@ -361,6 +361,18 @@ export default {
         return json({ status: out.status ?? "unknown", url: video, poster }, 200, cors)
       }
 
+      // the saved chats' project ids: to find a chat whose project dropped out of the list
+      if (req.method === "GET" && url.pathname === "/store") {
+        const ids: string[] = []
+        let cursor: string | undefined
+        do {
+          const page = await env.USAGE!.list({ prefix: "store:chat-", cursor })
+          ids.push(...page.keys.map((k) => k.name.slice("store:chat-".length)))
+          cursor = page.list_complete ? undefined : page.cursor
+        } while (cursor && ids.length < 5000)
+        return json({ chats: ids }, 200, cors)
+      }
+
       // saved app data, so projects and chats survive a reload and follow you to other devices
       const st = url.pathname.match(/^\/store\/(state|elements|chat-[\w-]{4,80})$/)
       if (st && req.method === "GET") return new Response((await env.USAGE?.get(`store:${st[1]}`)) ?? "null", { headers: { ...cors, "content-type": "application/json", "cache-control": "no-store" } })
