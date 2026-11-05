@@ -30,36 +30,71 @@ function useTick(ms: number, on = true) {
 }
 
 /**
- * A recipe's clips as a tiny Flick: the original, then each swap, switching every couple of seconds,
- * cutting straight from one to the next, so the card shows what the recipe makes. Only the visible
- * clip plays.
+ * A recipe's clips on one shared timeline, like a Flick being tapped through: every clip plays in
+ * step from 0, and the one that owns the moment shows (three clips over 5 s: 0 to 1.6, 1.6 to 3.2,
+ * 3.2 to 5), then all start again together. The clips are the same shot, so the motion carries
+ * straight through each swap. The switch follows the first clip's own clock, so it lands on the
+ * right frame. Starts once every clip can play, after `delay` (so cards don't cut together).
  */
-function Reel({ r, active, className }: { r: Recipe; active: boolean; className?: string }) {
-  const { clips, posters } = r.media
-  const n = useTick(2400, active && clips.length > 1 && !reduced())
-  const at = n % clips.length
+function useSyncedClips(count: number, on: boolean, delay = 0) {
   const vids = useRef<(HTMLVideoElement | null)[]>([])
+  const [at, setAt] = useState(0)
   useEffect(() => {
-    vids.current.forEach((v, i) => {
-      if (!v) return
-      if (active && i === at) v.play().catch(() => {})
-      else v.pause()
-    })
-  }, [at, active])
+    const list = () => vids.current.slice(0, count).filter((v): v is HTMLVideoElement => !!v)
+    if (!on || reduced()) return void list().forEach((v) => v.pause())
+    let stop = false
+    let raf = 0
+    const tick = () => {
+      if (stop) return
+      const vs = list()
+      const lead = vs[0]
+      if (lead?.duration) {
+        const t = lead.currentTime
+        for (const v of vs.slice(1)) {
+          if (Math.abs(v.currentTime - t) > 0.12) v.currentTime = t
+          if (v.paused) v.play().catch(() => {})
+        }
+        const k = Math.min(count - 1, Math.floor(t / (lead.duration / count)))
+        setAt((p) => (p === k ? p : k))
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    const since = Date.now()
+    const wait = () => {
+      if (stop) return
+      const vs = list()
+      if (vs.length === count && vs.every((v) => v.readyState >= 3) && Date.now() - since >= delay) {
+        vs.forEach((v) => ((v.currentTime = 0), v.play().catch(() => {})))
+        tick()
+      } else setTimeout(wait, 150)
+    }
+    wait()
+    return () => {
+      stop = true
+      cancelAnimationFrame(raf)
+      list().forEach((v) => v.pause())
+    }
+  }, [count, on, delay])
+  return { at, ref: (i: number) => (el: HTMLVideoElement | null) => void (vids.current[i] = el) }
+}
+
+/** the recipe's clips on their shared timeline; plays only while on screen */
+function Reel({ r, delay = 0, className }: { r: Recipe; delay?: number; className?: string }) {
+  const { clips, posters } = r.media
+  const box = useRef<HTMLSpanElement>(null)
+  const [seen, setSeen] = useState(false)
+  useEffect(() => {
+    const el = box.current
+    if (!el) return
+    const io = new IntersectionObserver(([e]) => setSeen(e.isIntersecting), { threshold: 0.2 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+  const { at, ref } = useSyncedClips(clips.length, seen, delay)
   return (
-    <span className={cn("absolute inset-0 block overflow-hidden bg-muted", className)}>
+    <span ref={box} className={cn("absolute inset-0 block overflow-hidden bg-muted", className)}>
       {clips.map((c, i) => (
-        <video
-          key={c}
-          ref={(el) => void (vids.current[i] = el)}
-          src={c}
-          poster={posters[i]}
-          muted
-          loop
-          playsInline
-          preload={i === 0 ? "auto" : "metadata"}
-          className={cn("absolute inset-0 size-full object-cover", i === at ? "visible" : "invisible")}
-        />
+        <video key={c} ref={ref(i)} src={c} poster={posters[i]} muted loop playsInline preload="auto" className={cn("absolute inset-0 size-full object-cover", i === at ? "visible" : "invisible")} />
       ))}
     </span>
   )
@@ -80,7 +115,6 @@ function FromLogos({ r, className }: { r: Recipe; className?: string }) {
 /** Recipes on Create: big cards that play what each one makes; each opens its form, and Start hands everything to the chat. */
 export function RecipeCards({ onStart }: { onStart: (s: RecipeStart) => void }) {
   const [open, setOpen] = useState<Recipe | null>(null)
-  const [hover, setHover] = useState<RecipeId | null>(null)
   return (
     <section aria-label="Recipes" className="@container flex w-full flex-col">
       <ul className="grid grid-cols-2 gap-3 @xl:grid-cols-4 @3xl:grid-rows-2">
@@ -91,17 +125,13 @@ export function RecipeCards({ onStart }: { onStart: (s: RecipeStart) => void }) 
               <button
                 type="button"
                 onClick={() => setOpen(r)}
-                onPointerEnter={() => setHover(r.id)}
-                onPointerLeave={() => setHover(null)}
-                onFocus={() => setHover(r.id)}
-                onBlur={() => setHover(null)}
                 className={cn(
                   "group/r relative block w-full overflow-hidden rounded-2xl bg-muted text-left shadow-xs ring-1 ring-foreground/10 outline-none transition-[box-shadow,transform] duration-300 hover:-translate-y-0.5 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-ring",
                   big ? "aspect-[16/9] @3xl:aspect-auto @3xl:h-full" : "aspect-[3/4] @3xl:aspect-[4/5]",
                 )}
               >
-                {/* every card plays until one is hovered; then only that one moves on */}
-                <Reel r={r} active={!hover || hover === r.id} className="transition-transform duration-700 group-hover/r:scale-[1.04]" />
+                {/* every card keeps playing; each starts a beat after the one before, so they don't cut together */}
+                <Reel r={r} delay={k * 900} className="transition-transform duration-700 group-hover/r:scale-[1.04]" />
                 {!big && (
                   <span aria-hidden className="absolute right-3.5 top-3.5 grid size-8 place-items-center rounded-full bg-white text-black opacity-0 shadow-sm transition-[opacity,transform] duration-300 group-hover/r:opacity-100 group-focus-visible/r:opacity-100 -translate-y-1 group-hover/r:translate-y-0">
                     <HugeiconsIcon icon={ArrowRight01Icon} className="size-4" />
@@ -110,8 +140,7 @@ export function RecipeCards({ onStart }: { onStart: (s: RecipeStart) => void }) 
                 <span aria-hidden className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
                 <span className={cn("absolute inset-x-0 bottom-0 flex flex-col text-white", big ? "gap-2 p-5 @3xl:p-6" : "gap-1 p-3 @3xl:p-3.5")}>
                   <FromLogos r={r} className="mb-1" />
-                  <span className={cn("flex items-center gap-2 font-semibold leading-tight tracking-tight", big ? "text-2xl @3xl:text-3xl" : "text-base @3xl:text-lg")}>
-                    <HugeiconsIcon icon={ICON[r.id]} className={cn("shrink-0 opacity-90", big ? "size-6" : "size-4")} />
+                  <span className={cn("font-semibold leading-tight tracking-tight", big ? "text-2xl @3xl:text-3xl" : "text-base @3xl:text-lg")}>
                     {r.name}
                   </span>
                   <span className={cn("leading-snug text-white/70", big ? "max-w-sm text-base" : "line-clamp-2 text-xs @3xl:text-sm")}>{r.line}</span>
@@ -139,13 +168,9 @@ export function RecipeCards({ onStart }: { onStart: (s: RecipeStart) => void }) 
 function HowItWorks({ r }: { r: Recipe }) {
   const still = !!r.media.still
   const step = useTick(3600, !reduced()) % 3
-  const fast = useTick(1200, step === 2 && !reduced())
   const { clips, posters } = r.media
-  const at = fast % clips.length
-  const vids = useRef<(HTMLVideoElement | null)[]>([])
-  useEffect(() => {
-    vids.current.forEach((v) => v?.play().catch(() => {}))
-  }, [])
+  // the same timeline as the card, so the swaps match
+  const { at, ref } = useSyncedClips(clips.length, true)
   const layer = (n: number) => cn("absolute inset-0 grid place-items-center p-8 transition-[opacity,transform] duration-500", step === n ? "opacity-100 translate-y-0" : "pointer-events-none translate-y-2 opacity-0")
   const frame = "relative aspect-[3/4] w-[min(72%,300px)] overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10"
   return (
@@ -208,7 +233,7 @@ function HowItWorks({ r }: { r: Recipe }) {
         <div className={layer(2)}>
           <div className={frame}>
             {clips.map((c, i) => (
-              <video key={c} ref={(el) => void (vids.current[i] = el)} src={c} poster={posters[i]} muted loop playsInline autoPlay className={cn("absolute inset-0 size-full object-cover transition-opacity duration-300", i === at ? "opacity-100" : "opacity-0")} />
+              <video key={c} ref={ref(i)} src={c} poster={posters[i]} muted loop playsInline preload="auto" className={cn("absolute inset-0 size-full object-cover", i === at ? "visible" : "invisible")} />
             ))}
             {clips.length > 1 && (
               <span className="absolute inset-x-0 bottom-2 flex justify-center gap-1.5">
