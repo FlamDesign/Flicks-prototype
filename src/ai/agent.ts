@@ -671,6 +671,53 @@ export const TOOLS: Tool[] = [
 ]
 
 
+/** the storyboard sheet: how many panels across and down, and the image shape that fits them best */
+const SHEET_ASPECTS: [string, number][] = [["1:1", 1], ["3:2", 1.5], ["2:3", 2 / 3], ["4:3", 4 / 3], ["3:4", 0.75], ["16:9", 16 / 9], ["9:16", 9 / 16], ["21:9", 21 / 9]]
+export function sheetLayout(n: number, ratio: number) {
+  const grids: [number, number][] = n <= 2 ? [[2, 1], [1, 2]] : n === 3 ? [[3, 1], [1, 3]] : [[2, 2], [4, 1], [1, 4]]
+  let best = { cols: 1, rows: n, aspect: "1:1", off: Infinity }
+  for (const [cols, rows] of grids) {
+    const want = (cols * ratio) / rows
+    for (const [aspect, r] of SHEET_ASPECTS) {
+      const off = Math.abs(Math.log(r / want))
+      if (off < best.off) best = { cols, rows, aspect, off }
+    }
+  }
+  return best
+}
+/** a camera move doesn't show in a still: each panel gets the framing it has at that moment (wide to close for a push-in) */
+function stillOf(camera: string | undefined, i: number, n: number) {
+  const c = (camera ?? "").toLowerCase()
+  const push = /push|dolly in|move in|closer|eases toward|zoom in/.test(c)
+  const pull = /pull|dolly out|move out|zoom out|reveal/.test(c)
+  const sizes = ["Wide shot", "Medium shot", "Close-up", "Tight close-up"]
+  const k = push ? Math.round((i / Math.max(1, n - 1)) * 3) : pull ? 3 - Math.round((i / Math.max(1, n - 1)) * 3) : -1
+  const still = camera?.replace(/\b(slow(ly)?|gentle|smooth(ly)?)\s+/gi, "").replace(/\b(push-?in|pull-?out|dolly (in|out)|zoom (in|out)|eases toward)\b[^,.]*/gi, "").replace(/^[\s,]+|[\s,]+$/g, "")
+  return [k >= 0 ? sizes[k] : "", still].filter(Boolean).join(", ") + (k >= 0 || still ? ":" : "")
+}
+/** cuts the sheet into its panels, each trimmed to the Flick's shape (a sliver off each edge drops any gutter) */
+async function cutPanels(sheet: Blob, layout: { cols: number; rows: number }, n: number, ratio: number): Promise<Blob[]> {
+  const bmp = await createImageBitmap(sheet)
+  const pw = bmp.width / layout.cols
+  const ph = bmp.height / layout.rows
+  const out: Blob[] = []
+  for (let i = 0; i < n; i++) {
+    const x0 = (i % layout.cols) * pw
+    const y0 = Math.floor(i / layout.cols) * ph
+    const inset = 0.02
+    let w = pw * (1 - 2 * inset)
+    let h = ph * (1 - 2 * inset)
+    if (w / h > ratio) w = h * ratio
+    else h = w / ratio
+    const c = document.createElement("canvas")
+    c.width = Math.round(w)
+    c.height = Math.round(h)
+    c.getContext("2d")!.drawImage(bmp, x0 + (pw - w) / 2, y0 + (ph - h) / 2, w, h, 0, 0, c.width, c.height)
+    out.push(await new Promise<Blob>((ok, no) => c.toBlob((b) => (b ? ok(b) : no(new Error("cut"))), "image/jpeg", 0.9)))
+  }
+  return out
+}
+
 /** an option that only says the user will type something ("I'll type the brand name", "I'll paste my website link") */
 const SAYS_TYPE = /^(i('|’)ll|i will|let me|i('|’)d like to)\s+(type|paste|share|enter|write|give|send|tell)\b/i
 /** what the type-in field asks for */
@@ -1387,27 +1434,40 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   }
 
   /**
-   * The storyboard's pictures: one quick draft still per frame of the reference video, with the
-   * shot's subject and setting so the frames read as one scene, and the plan's references so it's
-   * their product.
+   * The storyboard's pictures, drawn as ONE image: a grid of panels (same scene, product and light in
+   * every panel, so they read as one shot), then cut into the frames. One request instead of one per
+   * frame: quicker, cheaper and consistent. Each panel is described as a still (what's visible, how
+   * it's framed), with the shot's subject and setting as the shared scene.
    */
   const planFrames = (itemId: string, plan: Plan) => {
     const frames = plan.reference.storyboard ?? []
     if (!frames.length || plan.variations[0]?.video_id) return
     const fill = (i: number, url: string) =>
       setItems((list) => list.map((x) => (x.id === itemId && x.kind === "plan" ? { ...x, frames: Object.assign([...(x.frames ?? [])], { [i]: url }) } : x)))
+    if (!live.current) return frames.forEach((_, i) => setTimeout(() => fill(i, apiRef.current.sampleImage("variation", String(i % Math.max(2, plan.variations.length)))), 700 + i * 450))
     const shot = plan.reference.shot
     const refIds = [plan.reference.first_frame_id, ...(plan.reference.image_ids ?? [])].filter((x): x is string => !!x)
     const own = images.current.filter((x) => x.kind !== "video" && (x.from === "upload" || x.from === "website" || x.from === "library"))
     const refs = (refIds.length ? refIds.map((r) => images.current.find((x) => x.id === r)).filter((x): x is ProjectImage => !!x) : own).slice(0, 3)
-    const tidy = (t?: string) => (t ?? "").replace(/\[(Image|Video) \d+\]/g, "the reference").trim()
-    frames.forEach((f, i) => {
-      if (!live.current) return void setTimeout(() => fill(i, apiRef.current.sampleImage("variation", String(i % Math.max(2, plan.variations.length)))), 700 + i * 450)
-      const prompt = [tidy(shot?.subject), f.action, f.camera, tidy(shot?.setting)].filter(Boolean).join(". ") || `${plan.reference.prompt} ${f.action}`
-      Promise.all(refs.map((r) => shareable(r.url).catch(() => null)))
-        .then((urls) => generateImage(prompt, aspectOf(state().flick_size), undefined, undefined, urls.filter((x): x is string => !!x), { project: state().title, purpose: "storyboard frame" }, { quality: "draft" }))
-        .then((url) => fill(i, url), () => {})
-    })
+    const tidy = (t?: string) => (t ?? "").replace(/\[(Image|Video) \d+\](?:(?:,\s*|\s+and\s+)\[(?:Image|Video) \d+\])+/g, "the reference images").replace(/\[(Image|Video) \d+\]/g, "the reference").trim()
+    const [fw, fh] = state().flick_size.split(/[×x]/).map(Number)
+    const sheet = sheetLayout(frames.length, fw && fh ? fw / fh : 1)
+    const panels = frames.map((f, i) => `Panel ${i + 1}${sheet.cols > 1 && sheet.rows > 1 ? ` (${["top left", "top right", "bottom left", "bottom right"][i]})` : ""}: ${stillOf(f.camera, i, frames.length)} ${f.action}.`).join(" ")
+    const prompt = [
+      `A film storyboard: ${frames.length} photographic panels in a ${sheet.cols}×${sheet.rows} grid, edge to edge with no borders, gutters, numbers or captions. Every panel is a frame from the same shot: the same product, people, scene and light, only the moment and the framing change.`,
+      panels,
+      tidy(shot?.subject) && `The product and people: ${tidy(shot?.subject)}.`,
+      tidy(shot?.setting) && `The scene: ${tidy(shot?.setting)}.`,
+      refs.length ? "The product must look exactly like the reference images." : "",
+    ].filter(Boolean).join(" ")
+    Promise.all(refs.map((r) => shareable(r.url).catch(() => null)))
+      .then((urls) => generateImage(prompt, sheet.aspect, undefined, undefined, urls.filter((x): x is string => !!x), { project: state().title, purpose: "storyboard frame" }, { quality: "draft" }))
+      .then(async (url) => {
+        const cut = await cutPanels(await siteImage(url), sheet, frames.length, fw && fh ? fw / fh : 1)
+        // kept on the server, so the storyboard survives a reload
+        await Promise.all(cut.map((b, i) => shareable(URL.createObjectURL(b), { project: state().title }).then((u) => fill(i, u), () => fill(i, URL.createObjectURL(b)))))
+      })
+      .catch(() => {})
   }
 
   /** Variation 1 is still being made (the Flick shows a stand-in frame) */
