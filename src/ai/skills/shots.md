@@ -1,19 +1,25 @@
 ---
 name: shots
-description: Planning the camera: shot count, widely understood camera terms with plain meanings, moves to prefer or avoid, editing rules, framing and clear zones by size.
+description: Directing the video: energy, camera, moves, cuts and pacing are your call; what to keep in mind, the hard limits, camera words, and the clear zones for the design.
 when: When planning the video, before writing any video prompt.
 ---
 
-# Shots
+# Shots and motion
 
-Show the user the shot plan (a short list, one line per shot) before writing prompts, and confirm it.
+You're the director. Choose the energy, camera, moves, cuts and pacing that make this idea land for
+this brand and audience: calm or bold, one continuous shot or several. Show the user the plan as the
+storyboard (one line per beat) before any video is made.
 
-## How many shots
-- As few as possible. One shot is usually best for 5 to 8 seconds; two for 8 to 15. More only if
-  the user asks (there's no hard limit).
-- Every cut must be smooth: change the shot size clearly (for example wide to close-up) or the
-  angle (at least a third of a turn). Two similar shots back to back look like a jump cut.
-- Put cuts on whole seconds, and keep each shot at least 3 seconds.
+## Keep in mind
+- Something should be happening from the first frame; a static video rarely makes people tap.
+- The swap is clearly visible for at least 40 to 50% of the video, in the first frame, and in a
+  clear hero moment near the end.
+- Leave room for the design (the clear zones below).
+
+## Hard limits
+- No shaky handheld motion and no accidental jump cuts.
+- Variations are edits of this video, so they follow its camera, motion and timing. Keep what
+  changes between variations to one thing, with the same shape and size, so they still match.
 
 ## Camera words (widely understood; use them in plans and prompts)
 | Group | Term | Means |
@@ -43,21 +49,8 @@ Show the user the shot plan (a short list, one line per shot) before writing pro
 | | deep focus | everything sharp |
 | | rack focus | focus shifts from one thing to another |
 
-## Moves: prefer, use with care, avoid
-| Prefer | Use with care | Avoid unless the user asks |
-|---|---|---|
-| static, slow push-in, slow orbit (up to about a quarter turn), truck, pedestal | pan, tilt, pull-out, tracking, crane, rack focus | whip pan, crash zoom, handheld shake, dolly zoom, fast or spinning moves |
-- **One camera move per shot.** Two moves in one shot make the video drift and jitter.
-- **Slow and smooth,** easing in and out, so every variation stays in step.
-- **Why:** variations must match frame for frame. Fast or complex camera work is where versions
-  drift apart.
-
-## Framing
-- **The swap is big and visible:** a product at least a quarter of the frame and never covered by
-  hands; a person's face visible in every shot; a setting filling at least half the frame.
-- **Visible at least 40 to 50% of the time,** and in the first frame.
-- **Leave room for the design.** Keep the product and faces out of the areas the text, button and
-  thumbnail strip will use:
+## Clear zones for the design
+Keep the swap and faces out of the areas the text, button and thumbnail strip will use:
 
 | Size | Keep clear |
 |---|---|
@@ -68,6 +61,5 @@ Show the user the shot plan (a short list, one line per shot) before writing pro
 | small display sizes | the bottom third; keep the subject in the top two thirds |
 
 ## Before building
-Check the plan: nothing important sits under text or thumbnails, nothing gets cropped, the swap
-reads clearly, and the motion is simple enough to repeat. Fix what's off, keep it on brand, and
-tell the user if something you'd agreed has to change.
+Check the plan: something is happening, the swap reads clearly, nothing important sits under text
+or thumbnails, nothing gets cropped. Tell the user if something you'd agreed has to change.

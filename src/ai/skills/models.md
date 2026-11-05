@@ -46,7 +46,7 @@ variation's image_ids) in order; [Video 1]… are reference_video_ids; in an edi
 setting and light, keep (what must stay exact).
 
 Example: subject "the bottle from [Image 1] on the bar from [Image 2]", action "a hand sets it down,
-condensation runs", camera "slow push-in, eye level", setting "warm bar at night, soft backlight",
+condensation runs", camera "push-in as it lands, eye level", setting "warm bar at night, soft backlight",
 keep "the label and bottle shape exactly as in [Image 1]".
 
 Costs: about 46 cents a second at 720p (an 8 s reference is about $3.70). Variations are edits of the
@@ -62,7 +62,8 @@ Images for videos:
 - Never pass images that contradict the prompt.
 
 What this means for you:
-- **The reference is the master.** Every variation is an edit of it, so its prompt matters most.
+- **The reference is the master.** Every variation is an edit of it and follows its motion, so its
+  prompt matters most: make it count.
 - **Variation lines say only the change** ("replace the can with the lime green one from [Image 1]").
   The app adds "keep everything else exactly the same".
 - **Regenerating the reference** means the variations should be made again too.

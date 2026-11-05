@@ -15,28 +15,15 @@ when: Right before writing the plan's video prompts, and before any regenerate.
   reference; variations always use the latest approved version.
 
 ## The reference prompt
-Write it as the plan's shot, 60 to 100 words in all, most important first (models follow the start
-of a prompt best). Name every input by position: [Image 1], [Image 2]… (reference_image_ids in
+Brief the video the way a director briefs a camera team: what we see, what moves and how, the
+camera, the place and light, and what must stay exact. Use a timeline ("0 to 2 s: … 2 to 5 s: …")
+whenever it helps. Name every input by position: [Image 1], [Image 2]… (reference_image_ids in
 order), [Video 1]… (reference_video_ids); in an edit, the user's video is "the video".
-1. **subject:** what we see and where it comes from, concretely: material, colour, shape, size.
-   "The matte black sport sunglasses from [Image 1], gold mirrored lenses, on the athlete from
-   [Image 2]", not "beautiful sunglasses".
-2. **action:** one simple, physical motion, with its result: "a hand lifts the can; condensation
-   beads run down the side". No lists of actions.
-3. **camera:** shot size, angle and one move from the shot plan: "close-up at eye level, slow
-   push-in, easing in and out".
-4. **setting:** one place and one light, plus style: "sunlit concrete wall at golden hour, clean
-   commercial look, shallow depth of field".
-5. **keep:** what must stay exact, and the avoid list: "the lenses and frame exactly as in
-   [Image 1]; no on-screen text, no logos, no extra people, smooth motion".
-- **Over 8 seconds or more than one shot?** Write a timeline: "0 to 4 s: ... Cut to 4 to 8 s: ...".
-- **Use plain physical words,** not praise ("stunning", "epic"): they give the model nothing to show.
-
-Example: subject "Close-up of the matte black sport sunglasses from [Image 1], gold mirrored
-lenses, on an athlete leaning on a sunlit concrete wall"; action "he turns his head slowly toward
-the camera"; camera "eye level, slow push-in, easing in and out"; setting "golden-hour light, warm
-tones, shallow depth of field, clean commercial look"; keep "the frame and lenses exactly as in
-[Image 1]; no on-screen text, no logos, no extra people, smooth motion, no face or hand distortion".
+- Fill the plan's shot: subject (what appears and from which input), action (what happens and what
+  moves), camera, setting and light, keep (what must stay exact).
+- Use concrete physical words (what it's made of, how it moves, how fast), not praise: "stunning"
+  gives the model nothing to show.
+- The reference sets the motion every variation follows, so make it count.
 
 ## Variation prompts: what they must say, and what they never repeat
 *Why this matters:* a variation is the reference video with one thing changed. The app makes each
@@ -49,21 +36,19 @@ the model treats them as new instructions and the variations stop matching.
 - **Keep the footprint:** the changed thing keeps the same shape, size and position.
 - **Master video from the user:** vary only what they asked, based on their references.
 
-## The avoid list, and why each is on it
-Video models get these wrong, and errors differ between variations, which breaks the Flick.
-| Avoid | Why |
+## What video models get wrong
+Mention the ones that apply, in plain words at the end of the prompt.
+| Watch out for | Why |
 |---|---|
-| on-screen text, logos, watermarks, price tags | they come out garbled; real text goes on the canvas |
-| readable screens and interfaces | same: garbled |
 | extra people, crowds, animals in the background | they appear differently in each variation |
-| fast, jerky or spinning motion | variations drift apart; it looks cheap |
-| more than one camera move in a shot | causes jitter and drift |
-| hands doing fine work (tying, typing) | fingers distort |
-| faces turning fast or talking | faces morph |
-| several locations in one short clip | smeared transitions |
-| real celebrities and other brands | legal and reputation risk |
-End every prompt with the relevant part of the list, in plain words ("no on-screen text, no
-logos, no extra people, smooth motion").
+| close-up fine hand work (tying, typing) | fingers distort |
+| faces talking | mouths and faces morph |
+| shaky, handheld camera | looks cheap and makes variations drift |
+
+**Text, logos and real people** are fine when the idea needs them (the brand's own logo on the
+product, a word on a sign, the brand's ambassador). Small or long text can come out garbled: keep it
+big and short, or put it on the canvas instead. Real people only when the user has the right to
+show them; never other brands' logos unless the user asks.
 
 ## Images and videos as inputs
 - **Default (reference_mode "reference"):** the product, people and style come from
@@ -92,5 +77,6 @@ Show what happened and suggest how to fix it; never regenerate silently.
 | failed or blocked | simplify the subject or wording; remove anything sensitive |
 | swap hard to see | closer shot size, bigger product, fewer moving parts |
 | variations don't match | shorten the variation line to just the change; simpler camera move |
-| motion jerky | one slower move, or static |
+| motion jerky or drifting | one clear camera move, and say how fast |
+| video too static | something moving from the first frame, and a clear payoff moment |
 | product looks wrong | describe its shape and materials more exactly; add a product photo as reference |

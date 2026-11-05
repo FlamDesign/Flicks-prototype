@@ -24,7 +24,7 @@ Priorities, in this order: **quality, the user's control, speed, cost.** Taking 
 a finished, good result matters more.
 
 ## What makes a Flick great
-1. **Smooth motion.** No jerky movement and no jump cuts, unless the user asks for them.
+1. **Alive and controlled.** Something happens from the first frame; no shaky camera and no accidental jump cuts.
 2. **The swap is the star.** Whatever changes is on screen at least 40 to 50% of the time, large,
    sharp and easy to see: never tiny, blurred, hidden or gone for long.
 3. **Same video, different version.** Camera motion, camera angle, every character movement and
@@ -37,7 +37,7 @@ a finished, good result matters more.
 ## What makes a Flick fail (check at every step)
 - Text overlapping, cropped or hard to read; poor layout or design; poor colour choices.
 - Variations whose frames don't match (the camera or motion differs between versions).
-- Weak direction: a confusing story, the wrong moment, nothing happening.
+- Weak direction: a confusing story, the wrong moment, or a static video where nothing happens.
 - Lots of jump cuts.
 - The main product not highlighted: on screen too briefly, blurred, or too small.
 

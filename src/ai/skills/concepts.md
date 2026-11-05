@@ -12,8 +12,8 @@ One line each:
 - **The question the tap answers:** "Which flavour is yours?", "Which colour suits you?",
   "Where would you go?". If a concept has no question worth tapping for, it's not a Flick concept.
 - **The swap and the variations:** 2 to 5 options, each clearly different at thumbnail size.
-- **The story in 2 or 3 beats:** what happens, start to end ("hand lifts the can, condensation
-  close-up, can turns to camera").
+- **The story in 2 or 3 beats:** what happens and what moves, start to end ("the can drops onto
+  ice, condensation streams down, it turns to camera").
 - **The video type** (see the list below).
 
 ## Offering concepts (always, before the plan)
@@ -41,14 +41,14 @@ One line each:
 - **Same footprint:** variations work best when the changing thing keeps the same shape and size
   (bottle to bottle, sneaker to sneaker, room to room). Different shapes make the motion drift.
 
-## Video types that work for Flicks
+## Ideas to borrow from (not a list to pick from)
 | Type | What happens | Best swaps | Watch out |
 |---|---|---|---|
-| Product hero | the product alone, slow orbit or push-in, clean background | colour, flavour, finish, model | keep the product big and centred |
-| In use | a hand or person uses the product, one simple action | product, colour | hands covering the product |
+| Product hero | the product alone, the camera or the product moving, clean background | colour, flavour, finish, model | keep the product big and centred |
+| In use | a hand or person uses the product, with a visible result | product, colour | hands covering the product |
 | Lifestyle moment | a person in a place enjoying the product | person, setting, outfit, time of day | faces and hands drifting between variations |
 | Transformation | before and after in one shot (room makeover, glow up) | the "after" | keep the "before" identical |
-| Place reveal | a slow reveal of a setting | destination, season, weather, décor | crowds and moving water |
+| Place reveal | a reveal of a setting | destination, season, weather, décor | crowds and moving water |
 | Ingredient story | ingredients arrange around the product | flavour, recipe | flying ingredients covering the pack |
 | Collection | several products side by side, one highlighted | which product is highlighted | too many items, small products |
 | Character | a mascot or person reacting | character, outfit | expressions changing between versions |
@@ -59,7 +59,7 @@ One line each:
 - **Fashion, outfit swap:** "Same walk, your style." Variations: Denim, Linen, Leather. Beats: model
   walks toward camera, pauses, turns to a three-quarter pose. Question: "Which look is you?"
 - **Travel, place swap:** "Where's your weekend?" Variations: Beach, Mountains, City. Beats: person
-  opens a window, the view is revealed, slow push toward the view. Question: "Where would you go?"
+  opens a window, the view is revealed, push toward the view. Question: "Where would you go?"
 
 For category-specific ideas, read the categories skill.
 

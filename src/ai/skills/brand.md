@@ -37,7 +37,6 @@ when: When the brand comes up, when there's no brand kit yet, and before setting
 ## Applying it
 - **Design:** the brand colours on the button and highlights, the brand font, the button style.
 - **Copy:** in the brand's voice.
-- **Prompts and images:** the brand palette in the scene's styling and props, without showing
-  logos inside the video.
-- **Logo:** placed on the canvas (never generated into the video), small, in a corner, clear of the
-  text block and the strip.
+- **Prompts and images:** the brand palette in the scene's styling and props. The brand's logo can
+  appear in the video when the idea needs it (on the product, a sign); keep it big and simple.
+- **Logo on the canvas:** small, in a corner, clear of the text block and the strip.
