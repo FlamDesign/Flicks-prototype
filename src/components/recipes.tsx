@@ -82,12 +82,12 @@ export function RecipeCards({ onStart }: { onStart: (s: RecipeStart) => void }) 
   const [open, setOpen] = useState<Recipe | null>(null)
   const [hover, setHover] = useState<RecipeId | null>(null)
   return (
-    <section aria-label="Recipes" className="flex w-full flex-col">
-      <ul className="grid grid-cols-2 gap-3 md:grid-cols-4 md:grid-rows-2">
+    <section aria-label="Recipes" className="@container flex w-full flex-col">
+      <ul className="grid grid-cols-2 gap-3 @xl:grid-cols-4 @3xl:grid-rows-2">
         {RECIPES.map((r, k) => {
           const big = k === 0
           return (
-            <li key={r.id} className={cn(big && "col-span-2 md:row-span-2")}>
+            <li key={r.id} className={cn(big && "col-span-2 @xl:col-span-4 @3xl:col-span-2 @3xl:row-span-2")}>
               <button
                 type="button"
                 onClick={() => setOpen(r)}
@@ -97,7 +97,7 @@ export function RecipeCards({ onStart }: { onStart: (s: RecipeStart) => void }) 
                 onBlur={() => setHover(null)}
                 className={cn(
                   "group/r relative block w-full overflow-hidden rounded-2xl bg-muted text-left shadow-xs ring-1 ring-foreground/10 outline-none transition-[box-shadow,transform] duration-300 hover:-translate-y-0.5 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-ring",
-                  big ? "aspect-[4/5] md:aspect-auto md:h-full" : "aspect-[4/5]",
+                  big ? "aspect-[16/9] @3xl:aspect-auto @3xl:h-full" : "aspect-[3/4] @3xl:aspect-[4/5]",
                 )}
               >
                 {/* every card plays until one is hovered; then only that one moves on */}
@@ -108,13 +108,13 @@ export function RecipeCards({ onStart }: { onStart: (s: RecipeStart) => void }) 
                   </span>
                 )}
                 <span aria-hidden className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
-                <span className={cn("absolute inset-x-0 bottom-0 flex flex-col text-white", big ? "gap-2 p-6" : "gap-1 p-3.5")}>
+                <span className={cn("absolute inset-x-0 bottom-0 flex flex-col text-white", big ? "gap-2 p-5 @3xl:p-6" : "gap-1 p-3 @3xl:p-3.5")}>
                   <FromLogos r={r} className="mb-1" />
-                  <span className={cn("flex items-center gap-2 font-semibold leading-tight tracking-tight", big ? "text-3xl" : "text-lg")}>
+                  <span className={cn("flex items-center gap-2 font-semibold leading-tight tracking-tight", big ? "text-2xl @3xl:text-3xl" : "text-base @3xl:text-lg")}>
                     <HugeiconsIcon icon={ICON[r.id]} className={cn("shrink-0 opacity-90", big ? "size-6" : "size-4")} />
                     {r.name}
                   </span>
-                  <span className={cn("leading-snug text-white/70", big ? "max-w-sm text-base" : "line-clamp-2 text-sm")}>{r.line}</span>
+                  <span className={cn("leading-snug text-white/70", big ? "max-w-sm text-base" : "line-clamp-2 text-xs @3xl:text-sm")}>{r.line}</span>
                   {big && (
                     <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-medium text-black transition-transform group-hover/r:translate-x-0.5">
                       <HugeiconsIcon icon={SparklesIcon} className="size-4" />

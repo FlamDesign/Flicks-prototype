@@ -418,7 +418,7 @@ export default function App() {
             ) : (
             <>
             {/* Hero: calm warm page, the prompt is the one focal point */}
-            <section className="relative px-4 pb-20 pt-16 md:pt-24">
+            <section className="@container relative px-4 pb-20 pt-16 md:pt-24">
               <div className="relative mx-auto flex max-w-[760px] flex-col items-center gap-7">
                 <div className="space-y-3 text-center">
                   <h1 className="text-balance text-4xl font-semibold tracking-tighter md:text-5xl">
@@ -460,7 +460,7 @@ export default function App() {
                   </Button>
                 </div>
                 {/* recipes: start from what you have; the short form hands everything to the AI chat */}
-                <div className="w-[min(1040px,calc(100vw-2rem))]">
+                <div className="w-[min(1040px,calc(100cqw-2rem))]">
                   <RecipeCards
                     onStart={(r) => {
                       setGeneration((prev) => ({
