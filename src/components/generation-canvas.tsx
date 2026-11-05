@@ -67,6 +67,8 @@ export type Generation = {
   remixOf?: string
   /** started from Create with the chat on: nothing is generated until the chat's plan is approved */
   agent?: boolean
+  /** started from a recipe on Create: which one, and its choices (the chat follows that recipe) */
+  recipe?: { id: string; frame?: "start" | "end" }
 }
 type Snap = { elements: CanvasElement[]; slides: Slide[]; feeds: Feed[]; start: string; includeRef: boolean }
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never
@@ -745,6 +747,7 @@ export function GenerationCanvas({
     state: () => ({
       flick_size: generation.size,
       video_seconds: generation.duration ?? 8,
+      ...(generation.recipe ? { recipe: generation.recipe } : {}),
       credits: dev.credits,
       video_cost: VIDEO_COST,
       title,

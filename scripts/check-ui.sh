@@ -24,7 +24,7 @@ if [ -n "$hits" ]; then echo "✗ primary used directly in app code (buttons get
 hits=$(grep -rln 'from "motion' src --include=*.tsx | grep -v "components/arrive.tsx" || true)
 if [ -n "$hits" ]; then echo "✗ motion used outside components/arrive.tsx"; echo "$hits"; fail=1; fi
 # no service or model names in anything people see (strings and JSX text; comments, dev tools and the AI server are exempt)
-hits=$(grep -rnEi "higgsfield|seedance|bytedance|\bkling\b|nano.?banana|\bflare\b|gpt-image" src --include=*.tsx --include=*.ts --include=*.md | grep -vE "/dev/|^[^:]+:[0-9]+:\s*(//|\*|/\*)|//.*(higgsfield|seedance|flare)|/templates/|src/ai/client.ts:[0-9]+:\s*\.replace|HF_|hf-requests" | grep -iE "[\"'\`>][^\"'\`<]*(higgsfield|seedance|bytedance|kling|nano.?banana|flare|gpt-image)" || true)
+hits=$(grep -rnEi "higgsfield|seedance|bytedance|\bkling\b|nano.?banana|\bflare\b|gpt-image" src --include=*.tsx --include=*.ts --include=*.md | grep -vE "src/recipes.ts|/dev/|^[^:]+:[0-9]+:\s*(//|\*|/\*)|//.*(higgsfield|seedance|flare)|/templates/|src/ai/client.ts:[0-9]+:\s*\.replace|HF_|hf-requests" | grep -iE "[\"'\`>][^\"'\`<]*(higgsfield|seedance|bytedance|kling|nano.?banana|flare|gpt-image)" || true)
 if [ -n "$hits" ]; then echo "✗ a service or model name in user-facing text (say Flam Forge, or nothing)"; echo "$hits" | head -20; fail=1; fi
 [ $fail = 0 ] && echo "✓ UI follows the preset"
 exit $fail

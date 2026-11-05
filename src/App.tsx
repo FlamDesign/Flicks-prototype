@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { FlicksLogo } from "@/components/brand"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { RecipeCards } from "@/components/recipes"
 import { withTransition } from "@/lib/transition"
 import { isTyping } from "@/lib/keys"
 import { AppSidebar, type Appearance } from "@/components/app-sidebar"
@@ -453,15 +454,31 @@ export default function App() {
                 />
                 {/* starter ideas: fill the box with an example to edit (hidden once something is typed) */}
                 <div className={cn("flex flex-wrap justify-center gap-2 transition-opacity duration-200", prompt.trim() && "pointer-events-none opacity-0")} aria-hidden={!!prompt.trim()}>
-                  {STARTERS.map((s) => (
-                    <Button key={s.label} variant="secondary" size="sm" className="font-normal" onClick={() => setPrompt(s.prompt)}>
-                      {s.label}
-                    </Button>
-                  ))}
                   <Button variant="ghost" size="sm" onClick={() => setDev({ featureIntro: true })} className="gap-1.5 font-normal text-muted-foreground">
                     <HugeiconsIcon icon={HelpCircleIcon} className="size-4" />
                     How Flicks work
                   </Button>
+                </div>
+                {/* recipes: start from what you have; the short form hands everything to the AI chat */}
+                <div className="w-[min(1040px,calc(100vw-2rem))]">
+                  <RecipeCards
+                    onStart={(r) => {
+                      setGeneration((prev) => ({
+                        id: crypto.randomUUID(),
+                        prompt: r.prompt,
+                        size: r.size,
+                        duration: r.duration,
+                        references: r.refs.length,
+                        refs: r.refs,
+                        startedAt: 0,
+                        video: prev ? REFERENCE_VIDEOS[(Math.max(0, REFERENCE_VIDEOS.indexOf(prev.video)) + 1) % REFERENCE_VIDEOS.length] : 0,
+                        agent: true,
+                        recipe: r.recipe,
+                      }))
+                      setPage("Generate")
+                      setTemplate(null)
+                    }}
+                  />
                 </div>
                 {dev.featureIntro && <Suspense fallback={null}><HowFlicksWork open={dev.featureIntro} onOpenChange={(o) => setDev({ featureIntro: o })} /></Suspense>}
                 {/* the welcome gift follows How Flicks work */}
@@ -560,13 +577,6 @@ const SAMPLE_PROFILE: Profile = {
   industry: "Media & entertainment",
 }
 
-/** Example prompts under the Create box */
-const STARTERS = [
-  { label: "Product launch", prompt: "A launch video for our new running shoe: a slow push-in on the shoe on wet asphalt at dawn, then a runner takes off" },
-  { label: "Colourway variations", prompt: "The same product shot in each colourway: a slow turn on a clean studio set, soft light, one colour per variation" },
-  { label: "Holiday promo", prompt: "A warm holiday promo for our gift set: the box opening on a table with fairy lights, hands lifting each item out" },
-  { label: "Social teaser", prompt: "A punchy 8 second teaser for social: quick cuts of the product in use, bold framing, ending on the product alone" },
-]
 
 /** A page behind its skeleton for a moment; a stable component so re-renders don't reload it. */
 function Loaded({ k, ms, s: skeleton, children }: { k: string; ms: number; s: React.ReactNode; children: React.ReactNode }) {

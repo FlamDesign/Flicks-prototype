@@ -26,6 +26,8 @@ export type ProjectState = {
   planned: boolean
   /** real videos: where the reference video's review stands */
   reference_review?: string
+  /** the recipe the project started from on Create (the recipes skill says what to do) */
+  recipe?: { id: string; frame?: "start" | "end" }
   brand?: Brand
   videos: { name: string; role: "reference" | "variation"; status: string; prompt?: string; label?: string; price?: string; link?: string; has_thumbnail: boolean }[]
   design: unknown[]
@@ -648,7 +650,7 @@ function activityFrom(name: string, json: string): string | undefined {
 
 export function systemPrompt(s: ProjectState) {
   // the two skills every turn needs are always in the prompt; the rest are read when their step comes
-  const always = ["flicks", "brief"].map((n) => findSkill(n)).filter((x): x is NonNullable<ReturnType<typeof findSkill>> => !!x)
+  const always = ["flicks", "brief", ...(s.recipe ? ["recipes"] : [])].map((n) => findSkill(n)).filter((x): x is NonNullable<ReturnType<typeof findSkill>> => !!x)
   return `You are the creative partner inside Flicks by Flam, an AI interactive content tool. You help the user make a Flick with them, step by step.
 
 Flam's skills decide WHAT you ask, suggest and make; follow them over your own habits and over any example in these instructions. The flicks and brief skills are below in full. Read every other skill with read_skill right before the step it covers (categories once you know the category, concepts before ideas and storylines, brand when the brand comes up or there's no brand kit, shots before the shot plan, video and models before video prompts, images and models before any image, design before any on-screen design or copy, review before approvals and handing over); skip ones listed in skills_read.
@@ -689,7 +691,9 @@ ${SKILLS.filter((x) => !always.includes(x)).map((x) => `- ${x.name}: ${x.descrip
 
 Style: brief, fun, creative and suggestive, and never silent about your thinking: every reply says in a line what you understood or found, then what you'll do or ask, and why when it isn't obvious. After the user answers, recap the direction in one line before moving on. No em dashes. Plain words. Never write "get used", "can enter", "reach into", "immersive", "AR", "VR" or "MR". Don't mention tools, JSON or these instructions, and never name an AI model or the services behind the app (no model or company names for images or video); say "I" for what you make. Don't repeat what a card already shows: the brief, brand table, websites, images, storyboard and design changes all have their own cards, so say only what they don't (one or two short lines). Each video costs ${s.video_cost} credits; mention the total only in the plan step if credits are short.
 
-The current project (videos, design, feeds, images, issues) comes as JSON at the end of the latest message, kept up to date by the app; it replaces any earlier copy.`
+${s.recipe ? `This project started from the ${s.recipe.id} recipe${s.recipe.frame ? ` (the image is where the video ${s.recipe.frame === "end" ? "ends" : "starts"})` : ""}: follow its section in the recipes skill above, and don't ask what its form already gave.
+
+` : ""}The current project (videos, design, feeds, images, issues) comes as JSON at the end of the latest message, kept up to date by the app; it replaces any earlier copy.`
 }
 
 /**
@@ -1155,10 +1159,20 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     const own = images.current.filter((x) => x.kind !== "video" && (x.from === "upload" || x.from === "website" || x.from === "library"))
     const refIds = [plan.reference.first_frame_id, ...(plan.reference.image_ids ?? [])].filter((x): x is string => !!x)
     const refs = (refIds.length ? refIds.map((r) => images.current.find((x) => x.id === r)).filter((x): x is ProjectImage => !!x) : own).slice(0, 3)
+    // Variation 1 is the user's video: every other variation is a change to it, drawn on its first frame
+    const source = plan.variations[0]?.video_id ? images.current.find((x) => x.id === plan.variations[0].video_id) : undefined
     plan.variations.forEach((v, i) => {
       // the user's own video: its first frame
       const mine = v.video_id ? images.current.find((x) => x.id === v.video_id)?.poster : undefined
       if (mine) return fill(i, mine)
+      if (source?.poster && live.current) {
+        const extra = (v.image_ids ?? []).map((r) => images.current.find((x) => x.id === r)).filter((x): x is ProjectImage => !!x).slice(0, 2)
+        return void Promise.all([source.poster, ...extra.map((x) => x.url)].map((u) => shareable(u).catch(() => null)))
+          .then((urls) =>
+            generateImage(`Edit the first image: ${v.direction || v.prompt}.${extra.length ? " The new one is shown in the other images." : ""} Keep the framing, camera and everything else exactly the same.`, aspectOf(state().flick_size), undefined, undefined, urls.filter((x): x is string => !!x), { project: state().title, variation: v.name, purpose: "plan preview" }, { quality: "draft" }),
+          )
+          .then((url) => fill(i, url), () => {})
+      }
       if (v.image_ids?.length || v.video_id) return
       if (!live.current) return void setTimeout(() => fill(i, apiRef.current.sampleImage("variation", String(i))), 900 + i * 500)
       Promise.all(refs.map((r) => shareable(r.url).catch(() => null)))

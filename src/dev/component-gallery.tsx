@@ -58,6 +58,7 @@ import { DevBadge } from "@/dev/state-manager"
 import { cn } from "@/lib/utils"
 import { AgentItemView, QuestionDeck, threadGroups } from "@/components/editor/agent-chat"
 import { BriefUpdate } from "@/components/editor/brief-card"
+import { RecipeCards } from "@/components/recipes"
 import { Shortcut } from "@/components/shortcut"
 import type { Item } from "@/ai/agent"
 import type { Plan } from "@/ai/design"
@@ -706,6 +707,12 @@ const ENTRIES: Entry[] = [
     kind: "Editor",
     about: "What the planning chat shows: questions (words, layouts, palettes, pictures), an image request, the brand, the pinned brief, the plan (preview, storyboard, made from, outline), the build with each video made in place, images and notes. Answered cards shrink to one line.",
     render: () => <ChatCardsDemo />,
+  },
+  {
+    name: "Recipes",
+    kind: "UI",
+    about: "Recipes on Create: five cards (Product Swap, Recast, Scene Shift, Make It Move, Clips to Flick). Each opens a short form asking only for what it needs; Start hands it all to the AI chat. Banners are theme placeholders for now.",
+    render: () => <RecipeCards onStart={() => {}} />,
   },
   {
     name: "Layers panel",

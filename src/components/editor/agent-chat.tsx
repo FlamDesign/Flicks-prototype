@@ -935,7 +935,9 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
   // just the storyboard: how the first video plays, and one action that approves it and makes that video
   const first = plan.variations[0]
   const own = !!first?.video_id
-  const cost = own ? 0 : ctx.videoCost
+  // starting from the user's video, the approval makes every change at once (each was previewed); otherwise just the first video
+  const making = own ? plan.variations.filter((v) => !v.video_id).length : 1
+  const cost = making * ctx.videoCost
   const frames = plan.reference.storyboard ?? []
   return (
     <Card className="gap-0 overflow-hidden p-0 animate-in fade-in-0 slide-in-from-bottom-1 duration-300">
@@ -947,30 +949,39 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
         {frames.length ? (
           <Storyboard frames={frames} stills={item.frames ?? []} ratio={ctx.ratio} name={first?.name} />
         ) : (
-          // the user's own videos: nothing to storyboard, just what's in it
-          <ol className="flex flex-col gap-1 px-1.5 text-sm">
+          // starting from the user's video: it, then each change drawn on its first frame
+          <ol className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(4, plan.variations.length)}, minmax(0, 1fr))` }}>
             {plan.variations.map((v, i) => (
-              <li key={i} className="flex items-center gap-2">
-                <span className="grid size-5 shrink-0 place-items-center rounded-md bg-muted text-xs tabular-nums">{i + 1}</span>
-                <span className="font-medium">{v.name}</span>
-                <span className="truncate text-muted-foreground">{v.video_id ? "your video" : directionOf(v, i, plan)}</span>
+              <li key={i} className="flex min-w-0 flex-col gap-1">
+                <span className="relative block overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/10" style={{ aspectRatio: String(Math.min(1.78, Math.max(0.56, ctx.ratio))) }}>
+                  <PictureSlot src={item.previews?.[i]} />
+                  <span className="absolute left-1 top-1 grid size-5 place-items-center rounded-md bg-background/85 text-xs font-medium tabular-nums backdrop-blur">{i + 1}</span>
+                </span>
+                <span className="truncate px-0.5 text-xs font-medium">{v.name}</span>
+                <span className="line-clamp-2 px-0.5 text-xs leading-snug text-muted-foreground">{v.video_id ? "Your video, as it is" : directionOf(v, i, plan)}</span>
               </li>
             ))}
           </ol>
         )}
         <p className="px-1.5 text-xs text-muted-foreground">
-          {plan.variations.length > 1 ? `${plan.variations.length - 1} more variation${plan.variations.length > 2 ? "s" : ""} (${plan.variations.slice(1).map((v) => v.name).join(", ")}) follow once you like the first video. ` : ""}
+          {own
+            ? making
+              ? "Each change is a quick sketch on your video’s first frame; the videos are made when you approve. "
+              : ""
+            : plan.variations.length > 1
+              ? `${plan.variations.length - 1} more variation${plan.variations.length > 2 ? "s" : ""} (${plan.variations.slice(1).map((v) => v.name).join(", ")}) follow once you like the first video. `
+              : ""}
           Want something different? Tell me below.
         </p>
       </div>
       <div className="flex items-center gap-3 border-t bg-muted/40 px-3 py-2.5">
         <span className="text-xs text-muted-foreground">
-          {own ? "Your video, used as it is" : `First video · ${cost.toLocaleString("en-US")} credits`}
+          {!making ? "Your videos, used as they are" : own ? `${making} video${making === 1 ? "" : "s"} · ${cost.toLocaleString("en-US")} credits` : `First video · ${cost.toLocaleString("en-US")} credits`}
           {ctx.credits < cost && <span className="text-destructive"> · you have {ctx.credits.toLocaleString("en-US")}</span>}
         </span>
         <Button size="sm" className="ml-auto gap-1.5" disabled={agent.busy} onClick={() => agent.decidePlan(item.id, plan)}>
           <HugeiconsIcon icon={SparklesIcon} className="size-4" />
-          {own ? "Approve storyboard" : "Approve and make the first video"}
+          {!making ? "Build the Flick" : own ? `Approve and make ${making === 1 ? "it" : `${making} videos`}` : "Approve and make the first video"}
         </Button>
       </div>
     </Card>
