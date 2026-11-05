@@ -361,6 +361,15 @@ export default {
         return json({ status: out.status ?? "unknown", url: video, poster }, 200, cors)
       }
 
+      // cancel a job (image or video) that hasn't started: the provider refuses once it's running
+      const cn = url.pathname.match(/^\/cancel\/([\w-]{8,80})$/)
+      if (cn && req.method === "POST") {
+        const res = await hf(env, `${hfBase(env)}/requests/${cn[1]}/cancel`, { method: "POST" })
+        if (res.status === 202 || res.ok) return json({ cancelled: true }, 200, cors)
+        if (res.status === 400) return json({ cancelled: false, started: true }, 200, cors)
+        return json({ cancelled: false, error: `cancel ${res.status}` }, 200, cors)
+      }
+
       // the saved chats' project ids: to find a chat whose project dropped out of the list
       if (req.method === "GET" && url.pathname === "/store") {
         const ids: string[] = []

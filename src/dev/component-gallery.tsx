@@ -1032,6 +1032,7 @@ const fakeAgent: Parameters<typeof AgentItemView>[0]["agent"] = {
   media: (id) => (id ? { url: GENERATED_VIDEOS[Number(id.slice(-1)) || 0].poster, video: false, name: id } : undefined),
   ownImages: () => [],
   notify: () => {},
+  resume: () => {},
   items: [],
   busy: false,
   send: async () => {},

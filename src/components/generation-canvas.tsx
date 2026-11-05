@@ -34,7 +34,7 @@ import { CanvasStage } from "@/components/editor/canvas-stage"
 import { ElementToolbar, ToolbarGrip } from "@/components/editor/element-toolbar"
 import { useAgent, type EditorApi, type ElementSpec } from "@/ai/agent"
 import { boxOf, buildDesign, color as colorOf, contrast, describeDesign, elementFor, fontName, freeY, headlineLimit, feedOfField, FIELD_FEED, FIELDS, patchDesign, restack, type Brand, type Field } from "@/ai/design"
-import { generateVideo, isLive, posterOf, shareable, useAiConfig, videoAspectOf, type VideoInput } from "@/ai/client"
+import { cancelJob, generateVideo, isLive, posterOf, shareable, useAiConfig, videoAspectOf, type VideoInput } from "@/ai/client"
 import { isTyping } from "@/lib/keys"
 import { GeneratingGradient } from "@/components/editor/generation-progress"
 import { AgentComposer, isDocked, QuestionDeck, QuickReplies, threadGroups, type AgentCtx } from "@/components/editor/agent-chat"
@@ -1515,6 +1515,30 @@ export function GenerationCanvas({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [live, agentMode, slides])
+  /**
+   * Stops a video that isn't being made yet: one waiting for the OK on Variation 1 is simply removed,
+   * one in the queue is cancelled with the provider. Either way it's refunded. One that has started
+   * can't be stopped (the provider refuses), and the toast says so.
+   */
+  const cancelVideo = async (slideId: string) => {
+    const sl = slidesNow.current.find((x) => x.id === slideId)
+    if (!sl?.job) return
+    const name = slideName(sl, slidesNow.current.indexOf(sl))
+    if (sl.job.id) {
+      const r = await cancelJob(sl.job.id)
+      if (!r.cancelled) {
+        toast({ title: `${name} is already being made`, description: "A video can't be stopped once it has started." })
+        return
+      }
+    }
+    // reset before the job's check sees it was cancelled, so it isn't counted as a failure
+    const now = slidesNow.current.find((x) => x.id === slideId)
+    if (!now) return
+    commitSlides(slidesNow.current.map((x) => (x.id === slideId ? { ...x, job: undefined, startedAt: undefined, video: undefined, prompt: x.used?.prompt, used: undefined } : x)))
+    setDev((d) => ({ credits: d.credits + VIDEO_COST }))
+    toast({ title: `${name} stopped`, description: "It wasn't made, so the credits are back." })
+    agent.notify(`(App: the user stopped ${name}'s video before it was made; it's back to not started. Nothing to reply.)`, false)
+  }
   // the composer in chat mode: talk to the chat, or write a video's prompt yourself
   const [composeMode, setComposeMode] = useState<"chat" | "prompt">("chat")
   const chatting = agentMode && (composeMode === "chat" || !slides[0].startedAt)
@@ -1538,7 +1562,9 @@ export function GenerationCanvas({
       slides.map((s) => {
         const st = status(s)
         const v = st === "done" && s.video !== undefined ? videoAt(wrapVideo(s.video)) : undefined
-        return { name: nameOf(s), state: st, src: v?.mp4 || undefined, poster: v?.poster, since: s.job?.since ?? s.startedAt, ms: s.job ? undefined : ms, status: s.job?.status }
+        // can be stopped until it starts: waiting for the OK, or still in the queue
+        const stoppable = !!s.job && (s.job.status === "waiting" || s.job.status === "starting" || s.job.status === "queued")
+        return { name: nameOf(s), state: st, src: v?.mp4 || undefined, poster: v?.poster, since: s.job?.since ?? s.startedAt, ms: s.job ? undefined : ms, status: s.job?.status, stop: stoppable ? () => void cancelVideo(s.id) : undefined }
       }),
     review: { needed: needsReview, approve: () => approveRef(), change: () => changeRef() },
     progress: () => {

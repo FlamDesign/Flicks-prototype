@@ -4,7 +4,7 @@
  * scripted stand-in calls the same tools, so the flow can always be demoed.
  */
 import { useCallback, useEffect, useRef, useState } from "react"
-import { AiError, aspectOf, keepable, generateImage, imageBlock, library, shareable, sharedNow, type LibraryItem, isLive, readWebsite, siteImage, streamChat, type Block, type Message, type SiteRead, type Tool } from "@/ai/client"
+import { AiError, aspectOf, cancelQueuedImages, keepable, generateImage, pollImage, imageBlock, library, shareable, sharedNow, type LibraryItem, isLive, readWebsite, siteImage, streamChat, type Block, type Message, type SiteRead, type Tool } from "@/ai/client"
 import type { Paint, ShapeKind } from "@/components/editor/elements"
 import { shotPrompt, type Brand, type Design, type Plan, type PlanVariation, type Shot, type VideoMode } from "@/ai/design"
 import { mockReply } from "@/ai/mock"
@@ -169,12 +169,14 @@ type Base = { id: string; at: number }
 export type Item = Base &
   (
     | { kind: "user"; text: string; images: string[] }
-    | { kind: "assistant"; text: string; streaming?: boolean; activity?: string }
+    | { kind: "assistant"; text: string; streaming?: boolean; activity?: string; /** the user stopped it here (what it says, e.g. "Stopped · 2 images cancelled") */ stopped?: string }
+    /** the page closed mid-turn: reopening offers to carry on */
+    | { kind: "resume" }
     | { kind: "question"; toolId: string; question: string; options: Choice[]; display: Display; step?: Step; multi: boolean; custom: boolean; answer?: string; purpose?: string; /** the answer is typed (a brand name, a link): a field that's ready to type in, with this hint, above any other options */ typeFirst?: string; /** how many to pick, when the wording says ("pick 2 to 4") */ range?: { min: number; max: number } }
     | { kind: "assets"; toolId: string; message: string; kinds: string[]; done?: "added" | "skipped"; images?: string[] }
     | { kind: "brand"; brand: Brand }
     | { kind: "plan"; toolId: string; plan: Plan; state: "open" | "approved" | "skipped"; previews?: (string | undefined)[]; frames?: (string | undefined)[] }
-    | { kind: "image"; prompt: string; purpose: string; target?: string; aspect?: string; state: "working" | "done" | "failed"; url?: string; error?: string; placed?: boolean; status?: string; startedAt?: number }
+    | { kind: "image"; prompt: string; purpose: string; target?: string; aspect?: string; state: "working" | "done" | "failed" | "stopped"; url?: string; error?: string; placed?: boolean; status?: string; startedAt?: number; /** its job, so a reload can keep checking it */ job?: string }
     | { kind: "note"; text: string }
     /** a change it made to the Flick (design, copy, variations): grouped as one card per turn */
     | { kind: "design"; text: string }
@@ -1133,7 +1135,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       patch(itemId, { state: "done", url, placed } as Partial<Item>)
       return kept
     }
-    const fail = (e: unknown) => (key && pendingThumbs.current.delete(key), patch(itemId, { state: "failed", error: e instanceof Error ? e.message : "The image failed." } as Partial<Item>))
+    const fail = (e: unknown) => (key && pendingThumbs.current.delete(key), patch(itemId, e instanceof AiError && e.code === "stopped" ? ({ state: "stopped" } as Partial<Item>) : ({ state: "failed", error: e instanceof Error ? e.message : "The image failed." } as Partial<Item>)))
     const refIds = ((input.reference_image_ids as string[] | undefined) ?? []).slice(0, 16)
     const refImages = refIds.map((r) => images.current.find((i) => i.id === r)).filter((i): i is ProjectImage => !!i)
     // the images to keep, at addresses Higgsfield can open (uploads go to the server first)
@@ -1148,7 +1150,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       })
     const made: Promise<ProjectImage> = live.current
       ? refs()
-          .then((urls) => generateImage(prompt, aspect, undefined, (status) => patch(itemId, { status } as Partial<Item>), urls, { project: apiRef.current.state().title, variation: target, purpose }, { text: !!input.has_text, quality: purpose === "idea" ? "draft" : "final" }))
+          .then((urls) => generateImage(prompt, aspect, undefined, (status) => patch(itemId, { status } as Partial<Item>), urls, { project: apiRef.current.state().title, variation: target, purpose }, { text: !!input.has_text, quality: purpose === "idea" ? "draft" : "final", onId: (job) => patch(itemId, { job } as Partial<Item>) }))
           .then(done)
       : new Promise((ok) => setTimeout(() => ok(done(apiRef.current.sampleImage(purpose === "sheet" || purpose === "look" || purpose === "edit" ? "idea" : purpose, target))), 1800 + Math.random() * 1200))
     made.catch(fail)
@@ -1764,6 +1766,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     setBusy(true)
     live.current = isLive()
     abort.current = new AbortController()
+    let replyId = ""
     try {
       const seen = new Set<string>()
       let stopped = false
@@ -1777,6 +1780,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         const now = saved.length ? ({ ...state(), saved_elements: saved.map((e) => ({ name: e.name, kind: e.kind, images: e.images.length })) } as ReturnType<typeof state>) : state()
         const req = cachedRequest(systemPrompt(now), msgs.current, now)
         const itemId = add({ kind: "assistant", text: "", streaming: true })
+        replyId = itemId
+        phase.current = "ask"
         const onText = (text: string) => patch(itemId, { text } as Partial<Item>)
         // what it's doing while it writes a tool call (a plan can take a while, with no words to show)
         const onTool = (name: string) => patch(itemId, { activity: ACTIVITY[name] ?? "Working" } as Partial<Item>)
@@ -1830,6 +1835,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           break
         }
         if (uses.some((u) => CHANGES.has(u.name))) seen.clear()
+        phase.current = "tools"
         const results: Block[] = []
         let waiting = false
         for (const u of uses) {
@@ -1842,15 +1848,32 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           break
         }
         msgs.current.push({ role: "user", content: results })
+        checkpoint()
+        // the user sent something while this step ran: stop here, with every step's result in place
+        if (redirect.current) break
       }
     } catch (e) {
-      // the request is still the last message: Retry sends it again
-      setItems((list) => list.filter((x) => !(x.kind === "assistant" && x.streaming && !x.text)))
-      if (!(e instanceof AiError && e.code === "aborted") && !(e instanceof DOMException && e.name === "AbortError"))
+      const aborted = (e instanceof AiError && e.code === "aborted") || (e instanceof DOMException && e.name === "AbortError")
+      if (aborted) {
+        // what it had written stays, in the chat and in its memory, marked as stopped (so the two match)
+        const said = (itemsRef.current.find((x) => x.id === replyId && x.kind === "assistant") as { text?: string } | undefined)?.text?.trim() ?? ""
+        if (said) msgs.current.push({ role: "assistant", content: [{ type: "text", text: `${said}\n\n(The user stopped this reply here.)` }] })
+        const note = redirect.current ? "Stopped for your new message" : "Stopped"
+        if (said) patch(replyId, { stopped: note, streaming: false } as Partial<Item>)
+        else setItems((list) => list.map((x) => (x.id === replyId ? { ...x, text: "", streaming: false, stopped: note } : x)))
+      } else {
+        // the request is still the last message: Retry sends it again
+        setItems((list) => list.filter((x) => !(x.kind === "assistant" && x.streaming && !x.text)))
         add({ kind: "error", text: e instanceof Error ? e.message : "Something went wrong." })
+      }
     } finally {
+      phase.current = null
       setItems((list) => list.map((x) => (x.kind === "assistant" && x.streaming ? { ...x, streaming: false } : x)))
       setBusy(false)
+      // a message sent while it worked goes now
+      const next = redirect.current
+      redirect.current = null
+      if (next) setTimeout(() => sendRef.current(next.text, next.files, next.mentioned, next.itemId), 0)
       // news from the app that came in while this turn ran
       setTimeout(() => flushRef.current(), 0)
     }
@@ -1862,6 +1885,11 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
    * while cards wait for answers, since a reply can't come between a question and its answer.
    */
   const notes = useRef<{ text: string; wake: boolean }[]>([])
+  /** what the turn is doing: writing a reply (can be cut off) or running steps (finish first) */
+  const phase = useRef<"ask" | "tools" | null>(null)
+  /** a message sent while the chat worked: goes once the turn reaches a safe point */
+  const redirect = useRef<{ text: string; files: File[]; mentioned: FlickElement[]; itemId: string } | null>(null)
+  const sendRef = useRef<(text: string, files?: File[], mentioned?: FlickElement[], itemId?: string) => Promise<void>>(async () => {})
   const flushRef = useRef(() => {})
   flushRef.current = () => {
     if (busyRef.current || pending.current.length || !notes.current.some((n) => n.wake)) return
@@ -1905,9 +1933,16 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   }
 
   const send = useCallback(
-    async (text: string, files: File[] = [], mentioned: FlickElement[] = []) => {
-      if (busy) return
-      const itemId = add({ kind: "user", text, images: [] })
+    async (text: string, files: File[] = [], mentioned: FlickElement[] = [], shownId?: string) => {
+      // while it works: show the message now, and redirect at the next safe point (a reply being
+      // written stops at once; a step that's running finishes first)
+      if (busyRef.current) {
+        const queued = add({ kind: "user", text, images: [] })
+        redirect.current = { text, files, mentioned, itemId: queued }
+        if (phase.current === "ask") abort.current?.abort()
+        return
+      }
+      const itemId = shownId ?? add({ kind: "user", text, images: [] })
       const blocks: Block[] = settle({ ...held.current })
       const got = await attach(files)
       const els = await attachElements(mentioned)
@@ -1922,11 +1957,13 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       const mentionLine = refs.length ? `[Mentions: ${[...new Set(refs)].join("; ")}. @<variation name> means that variation; @Brand means the brand kit.]` : ""
       blocks.push({ type: "text", text: (text || "(files added)") + [got.line, mentionLine].filter(Boolean).map((l) => `\n\n${l}`).join("") })
       msgs.current.push({ role: "user", content: blocks })
+      checkpoint()
       await turn()
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [busy, turn],
   )
+  sendRef.current = send
 
   const answer = useCallback(
     async (itemId: string, value: string, choice?: Choice) => {
@@ -2050,7 +2087,22 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     runImage({ prompt: it.prompt, purpose: it.purpose, variation: it.target, aspect_ratio: it.aspect }, itemId)
   }
 
-  const stop = () => abort.current?.abort()
+  /** Stop: the reply ends, and images that haven't started are cancelled (nothing is charged for those) */
+  const stop = () => {
+    abort.current?.abort()
+    void cancelQueuedImages().then(({ cancelled }) => {
+      if (!cancelled) return
+      setItems((list) => {
+        const at = [...list].reverse().find((x) => x.kind === "assistant" && x.stopped)
+        return at ? list.map((x) => (x === at ? { ...x, stopped: `${(x as { stopped?: string }).stopped} · ${cancelled} image${cancelled > 1 ? "s" : ""} cancelled` } : x)) : list
+      })
+    })
+  }
+  /** the page closed mid-turn: carry on from where it was, or leave it */
+  const resume = (itemId: string, go: boolean) => {
+    setItems((list) => list.filter((x) => x.id !== itemId))
+    if (go && msgs.current.at(-1)?.role === "user") void turn()
+  }
   const retry = useCallback(() => {
     setItems((list) => list.filter((x) => x.kind !== "error"))
     // only when the last thing sent is still waiting for a reply
@@ -2058,19 +2110,46 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   }, [turn])
 
   // the chat is saved with its project (with the AI server connected): reopening it picks up here
-  type SavedChat = { items: Item[]; msgs: Message[]; pending: typeof pending.current; ready: Block[]; held: Record<string, string | Block[]>; images: ProjectImage[]; read: string[]; draft: Design }
+  type SavedChat = { items: Item[]; msgs: Message[]; pending: typeof pending.current; ready: Block[]; held: Record<string, string | Block[]>; images: ProjectImage[]; read: string[]; draft: Design; /** saved mid-turn: a reload offers to carry on */ inTurn?: boolean; notes?: { text: string; wake: boolean }[] }
   // files that only live in this browser are saved by their server address, so they still open after a reload
   const lasting = (i: ProjectImage): ProjectImage => ({ ...i, url: /^blob:/.test(i.url) ? (sharedNow(i.url) ?? i.url) : i.url, ...(i.poster && /^blob:/.test(i.poster) ? { poster: sharedNow(i.poster) ?? i.poster } : {}) })
+  /** an image job from before a reload: when it's done it shows and joins the project's images */
+  const resumeImage = (itemId: string, job: string, target?: string) =>
+    pollImage(job, undefined, (status) => patch(itemId, { status } as Partial<Item>)).then(
+      (url) => {
+        keep(url, target ? `${target} image` : "Image", "generated")
+        patch(itemId, { state: "done", url } as Partial<Item>)
+      },
+      (e) => patch(itemId, e instanceof AiError && e.code === "stopped" ? ({ state: "stopped" } as Partial<Item>) : ({ state: "failed", error: e instanceof Error ? e.message : "The image failed." } as Partial<Item>)),
+    )
   const restored = useRef<"no" | "loading" | "done">("no")
   const saveChat = useRef<((v: unknown) => void) | null>(null)
   useEffect(() => {
     if (!opts.projectId || !live.current) return
-    saveChat.current = saver(`chat-${opts.projectId}`)
+    saveChat.current = saver(`chat-${opts.projectId}`, 1500, 6000)
   }, [opts.projectId])
+  /** the chat as it stands: mid-turn, the reply being written is left out (it isn't in its memory yet) */
+  const snapshot = (inTurn: boolean, list = itemsRef.current): SavedChat => ({
+    items: list.filter((x) => !(inTurn && x.kind === "assistant" && x.streaming)).map((x) => (x.kind === "assistant" ? { ...x, streaming: false } : x)),
+    msgs: msgs.current,
+    pending: pending.current,
+    ready: ready.current,
+    held: held.current,
+    images: images.current.map(lasting),
+    read: [...read.current],
+    draft: draft.current,
+    inTurn,
+    notes: notes.current,
+  })
+  /** saved at safe points mid-turn (after the user's message, after each step), so a reload loses nothing */
+  const checkpoint = () => {
+    if (saveChat.current && restored.current !== "loading") setTimeout(() => saveChat.current?.(snapshot(true)), 0)
+  }
   useEffect(() => {
-    // save once the chat settles (not mid-reply), and only after loading what was saved
+    // save once the chat settles, and only after loading what was saved
     if (!saveChat.current || busy || restored.current === "loading" || !items.length) return
-    saveChat.current({ items: items.map((x) => (x.kind === "assistant" ? { ...x, streaming: false } : x)), msgs: msgs.current, pending: pending.current, ready: ready.current, held: held.current, images: images.current.map(lasting), read: [...read.current], draft: draft.current } satisfies SavedChat)
+    saveChat.current(snapshot(false, items))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, busy])
 
   // the first message: what the user typed on Create (unless this chat was saved before)
@@ -2091,7 +2170,12 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
             images.current = saved.images ?? []
             read.current = new Set(saved.read ?? [])
             if (saved.draft) mergeDraft(saved.draft)
-            setItems(saved.items)
+            notes.current = saved.notes ?? []
+            // images that were being made: carry on checking them (or say they stopped)
+            const list = saved.items.map((x) => (x.kind === "image" && x.state === "working" && !x.job ? { ...x, state: "stopped" as const } : x))
+            for (const x of list) if (x.kind === "image" && x.state === "working" && x.job) resumeImage(x.id, x.job, x.target)
+            // the page closed mid-turn, with the user's message (or a step's results) unanswered
+            setItems(saved.inTurn && saved.msgs.at(-1)?.role === "user" && !(saved.pending ?? []).length ? [...list, { id: crypto.randomUUID(), kind: "resume" } as Item] : list)
           } else begin()
         })
       return
@@ -2123,5 +2207,5 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   /** the user's own images, newest last (a fallback picture for the plan's preview) */
   const ownImages = () => images.current.filter((x) => x.kind !== "video" && (x.from === "upload" || x.from === "library" || x.from === "website")).map((x) => x.url)
 
-  return { imageUrl, media, ownImages, items, busy, send, answer, pendingIds: pending.current.map((p) => p.itemId), addAssets, decidePlan, editPlan, retryImage, stop, retry, notify, waiting: pending.current.length > 0, draft: draftView, plan: plan?.plan, step }
+  return { imageUrl, media, ownImages, items, busy, send, answer, pendingIds: pending.current.map((p) => p.itemId), addAssets, decidePlan, editPlan, retryImage, stop, retry, notify, resume, waiting: pending.current.length > 0, draft: draftView, plan: plan?.plan, step }
 }

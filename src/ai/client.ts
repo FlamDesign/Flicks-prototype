@@ -240,25 +240,60 @@ async function steady(path: string, init?: RequestInit) {
 /** imageUrls: public addresses of the user's photos or a website's images (see shareable), so the product in the picture is theirs */
 /** what a generation is for: kept with it in the library */
 export type GenMeta = { project?: string; variation?: string; purpose?: string }
-/** opts.text: the image must carry readable text (another model renders it); opts.quality: "draft" for previews */
-export async function generateImage(prompt: string, aspect: string, signal?: AbortSignal, onStatus?: (status: string) => void, imageUrls: string[] = [], meta: GenMeta = {}, opts: { text?: boolean; quality?: "draft" | "final" } = {}): Promise<string> {
-  const { id } = (await (await steady("/image", { method: "POST", body: JSON.stringify({ prompt, aspect_ratio: aspect, image_urls: imageUrls, meta, ...opts }), signal })).json()) as { id: string }
+/** opts.text: the image must carry readable text (another model renders it); opts.quality: "draft" for previews; opts.onId: the job's id, so a reload can keep checking it */
+export async function generateImage(prompt: string, aspect: string, signal?: AbortSignal, onStatus?: (status: string) => void, imageUrls: string[] = [], meta: GenMeta = {}, opts: { text?: boolean; quality?: "draft" | "final"; onId?: (id: string) => void } = {}): Promise<string> {
+  const { onId, ...rest } = opts
+  const { id } = (await (await steady("/image", { method: "POST", body: JSON.stringify({ prompt, aspect_ratio: aspect, image_urls: imageUrls, meta, ...rest }), signal })).json()) as { id: string }
+  onId?.(id)
+  return pollImage(id, signal, onStatus)
+}
+
+/** images being made right now (job ids), so Stop can cancel the ones still queued */
+const imageJobs = new Set<string>()
+const cancelledJobs = new Set<string>()
+/** waits for an image job (also one started before a reload) */
+export async function pollImage(id: string, signal?: AbortSignal, onStatus?: (status: string) => void): Promise<string> {
+  imageJobs.add(id)
   onStatus?.("queued")
-  const until = Date.now() + 240_000
-  // checks often, so a finished image shows within a couple of seconds
-  let wait = 1500
-  while (Date.now() < until) {
-    await new Promise((r) => setTimeout(r, wait))
-    if (signal?.aborted) throw new AiError("aborted", "Stopped.")
-    const s = (await (await steady(`/image/${id}`, { signal })).json()) as { status: string; url?: string }
-    onStatus?.(s.status)
-    if (s.status === "completed" && s.url) return s.url
-    if (s.status === "completed") throw new AiError("image_failed", "The image finished but came back empty. Try again.")
-    if (s.status === "failed" || s.status === "canceled") throw new AiError("image_failed", "The image didn't generate. Try again.")
-    if (s.status === "nsfw") throw new AiError("image_blocked", "This image was blocked. Try a different description.")
-    wait = Math.min(wait * 1.25, 3000)
+  try {
+    const until = Date.now() + 240_000
+    // checks often, so a finished image shows within a couple of seconds
+    let wait = 1500
+    while (Date.now() < until) {
+      await new Promise((r) => setTimeout(r, wait))
+      if (signal?.aborted) throw new AiError("aborted", "Stopped.")
+      const s = (await (await steady(`/image/${id}`, { signal })).json()) as { status: string; url?: string }
+      onStatus?.(s.status)
+      if (s.status === "completed" && s.url) return s.url
+      if (s.status === "completed") throw new AiError("image_failed", "The image finished but came back empty. Try again.")
+      if ((s.status === "failed" || s.status === "canceled" || s.status === "cancelled") && cancelledJobs.has(id)) throw new AiError("stopped", "Stopped.")
+      if (s.status === "failed" || s.status === "canceled" || s.status === "cancelled") throw new AiError("image_failed", "The image didn't generate. Try again.")
+      if (s.status === "nsfw") throw new AiError("image_blocked", "This image was blocked. Try a different description.")
+      wait = Math.min(wait * 1.25, 3000)
+    }
+    throw new AiError("image_timeout", "The image is taking too long. Try again.")
+  } finally {
+    imageJobs.delete(id)
   }
-  throw new AiError("image_timeout", "The image is taking too long. Try again.")
+}
+
+/**
+ * Cancels a job that hasn't started yet (images and videos). Once one has started it can't be stopped:
+ * `started` says so. Nothing is charged for a cancelled job.
+ */
+export async function cancelJob(id: string): Promise<{ cancelled: boolean; started?: boolean }> {
+  try {
+    const r = (await (await steady(`/cancel/${id}`, { method: "POST" })).json()) as { cancelled?: boolean; started?: boolean }
+    if (r.cancelled) cancelledJobs.add(id)
+    return { cancelled: !!r.cancelled, started: r.started }
+  } catch {
+    return { cancelled: false }
+  }
+}
+/** Stop: cancels every image still waiting to start; the ones already being made finish */
+export async function cancelQueuedImages() {
+  const r = await Promise.all([...imageJobs].map(cancelJob))
+  return { cancelled: r.filter((x) => x.cancelled).length, started: r.filter((x) => !x.cancelled).length }
 }
 
 /* ---------- sharing images ---------- */

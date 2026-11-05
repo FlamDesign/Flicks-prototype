@@ -39,7 +39,7 @@ export type AgentCtx = {
   size: string
   seconds: number
 }
-export type BuildVideo = { name: string; state: "empty" | "generating" | "done"; src?: string; poster?: string; since?: number; ms?: number; status?: string }
+export type BuildVideo = { name: string; state: "empty" | "generating" | "done"; src?: string; poster?: string; since?: number; ms?: number; status?: string; /** stops it before it starts (waiting or queued); missing once it's being made */ stop?: () => void }
 
 /** true inside the choices panel (planning, beside the chat): cards get room, options become numbered rows */
 export const StageContext = createContext(false)
@@ -79,13 +79,34 @@ export function AgentItemView({ item, agent, ctx }: { item: Item; agent: Agent; 
     case "assistant":
       return (
         <div className="flex flex-col gap-2">
-          {(item.text || !item.streaming) && <Said text={item.text} streaming={item.streaming} />}
+          {item.text && <Said text={item.text} streaming={item.streaming} />}
+          {!item.text && !item.streaming && !item.stopped && <Said text={item.text} streaming={item.streaming} />}
+          {item.stopped && (
+            <span className="flex items-center gap-1.5 px-1 text-xs text-muted-foreground">
+              <HugeiconsIcon icon={StopIcon} className="size-3" />
+              {item.stopped}
+            </span>
+          )}
           {item.streaming && (
             <span aria-live="polite" className="flex h-6 items-center px-1 text-sm">
               {/* a calm shimmer over what it's doing, instead of bouncing dots */}
               <span key={item.activity ?? "thinking"} className="text-shimmer animate-in fade-in-0">{item.activity ? `${item.activity}…` : "Thinking…"}</span>
             </span>
           )}
+        </div>
+      )
+    case "resume":
+      return (
+        <div role="group" aria-label="Carry on" className="mr-6 flex flex-wrap items-center gap-3 rounded-xl bg-muted/50 p-3 ring-1 ring-foreground/10">
+          <p className="min-w-0 flex-1 text-sm">I was in the middle of this when the page closed.</p>
+          <div className="flex gap-1.5">
+            <Button size="sm" variant="ghost" onClick={() => agent.resume(item.id, false)}>
+              Dismiss
+            </Button>
+            <Button size="sm" onClick={() => agent.resume(item.id, true)}>
+              Continue
+            </Button>
+          </div>
         </div>
       )
     case "question":
@@ -487,12 +508,14 @@ function Steps({ items, live }: { items: Item[]; live: boolean }) {
 function Gallery({ items, agent, ctx }: { items: Extract<Item, { kind: "image" }>[]; agent: Agent; ctx: AgentCtx }) {
   const making = items.filter((x) => x.state === "working").length
   const failed = items.filter((x) => x.state === "failed").length
+  const stopped = items.filter((x) => x.state === "stopped").length
   return (
     <Card className="gap-2.5">
       <p className="flex items-center gap-1.5 text-sm font-medium">
         {items.length} images
         {making > 0 && <span className="text-shimmer text-xs font-normal">{making} on the way…</span>}
         {failed > 0 && <span className="text-xs font-normal text-destructive">{failed} failed</span>}
+        {stopped > 0 && <span className="text-xs font-normal text-muted-foreground">{stopped} stopped</span>}
       </p>
       <div className="grid grid-cols-3 gap-2">
         {items.map((x) => (
@@ -1191,7 +1214,14 @@ function BuildTile({ video: v, still, ratio, waiting }: { video: BuildVideo; sti
           </>
         )}
       </div>
-      <figcaption className="truncate px-0.5 text-xs font-medium">{v.name}</figcaption>
+      <figcaption className="flex min-w-0 items-center gap-1 px-0.5 text-xs font-medium">
+        <span className="min-w-0 truncate">{v.name}</span>
+        {v.stop && (
+          <Button size="xs" variant="ghost" onClick={v.stop} className="ml-auto text-muted-foreground">
+            {waiting || v.state === "empty" ? "Remove" : "Cancel"}
+          </Button>
+        )}
+      </figcaption>
     </figure>
   )
 }
@@ -1303,7 +1333,8 @@ export function AgentComposer({ agent, placeholder, variations, brand }: { agent
         .finally(() => setPreparing((p) => p.filter((x) => x.key !== key)))
     }),
   )
-  const can = (text.trim() || files.length) && !agent.busy && !preparing.length
+  // sending while it works redirects it (at the next safe point)
+  const can = (text.trim() || files.length) && !preparing.length
   const send = () => {
     if (!can) return
     agent.send(text.trim(), files, elementsIn(text))
@@ -1353,7 +1384,7 @@ export function AgentComposer({ agent, placeholder, variations, brand }: { agent
           <TooltipContent>Add photos or videos</TooltipContent>
         </Tooltip>
         <div className="flex-1" />
-        {agent.busy ? (
+        {agent.busy && !can ? (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button size="icon-sm" variant="secondary" aria-label="Stop" onClick={agent.stop}>
@@ -1361,6 +1392,15 @@ export function AgentComposer({ agent, placeholder, variations, brand }: { agent
               </Button>
             </TooltipTrigger>
             <TooltipContent>Stop</TooltipContent>
+          </Tooltip>
+        ) : agent.busy ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button size="icon-sm" aria-label="Send now" onClick={send}>
+                <HugeiconsIcon icon={ArrowUp02Icon} className="size-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Send now: it stops what it's doing and picks up your message</TooltipContent>
           </Tooltip>
         ) : (
           <Button size="icon-sm" aria-label="Send" disabled={!can} onClick={send}>
