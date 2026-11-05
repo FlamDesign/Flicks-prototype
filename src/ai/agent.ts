@@ -323,7 +323,7 @@ export const TOOLS: Tool[] = [
         display: { type: "string", enum: ["chips", "cards", "palettes", "layouts", "thumbnails", "pictures", "sizes"] },
         step: { type: "string", enum: ["idea", "look", "plan"] },
         purpose: { type: "string", enum: ["variations", "placement", "size", "other"], description: "'variations' when asking what changes between variations; 'placement' for where it will run; 'size' for the Flick's size (the answer is applied)" },
-        multi_select: { type: "boolean" },
+        multi_select: { type: "boolean", description: "true whenever the user may pick more than one (and whenever the question says pick any, all that apply, or similar); they then tap several and press Continue. Works with chips, cards, pictures and palettes." },
         allow_custom: { type: "boolean", description: "Let the user type their own answer" },
       },
       required: ["question", "options"],
@@ -915,6 +915,12 @@ type DOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never
 type NewItem = DOmit<Item, "id" | "at"> & { id?: string }
 const WAIT = Symbol("wait")
 
+/** displays where several options can be picked */
+const MULTI_DISPLAYS: Display[] = ["chips", "cards", "pictures", "palettes"]
+/** the question itself asks for more than one ("pick all that apply", "choose any", "which ones") */
+export const asksForSeveral = (q: string) =>
+  /\b(all|as many|one or more|several|multiple)\b[^.?!]*\b(apply|you like|you want|that fit|you need)\b|\b(pick|choose|select|tick|add)\s+(all|any|several|multiple|one or more|as many)\b|\bwhich ones\b|\(.*(pick|choose|select)\s+(any|several|multiple).*\)/i.test(q)
+
 export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { url: string; name: string }[]; autoStart?: boolean; projectId?: string }) {
   const apiRef = useRef(api)
   apiRef.current = api
@@ -1360,7 +1366,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           const step = (["idea", "look", "plan"] as Step[]).includes(input.step as Step) ? (input.step as Step) : undefined
           const pictures = display === "pictures"
           const shown = pictures ? options.slice(0, 4) : options
-          const itemId = add({ kind: "question", toolId: u.id, question: String(input.question ?? ""), options: shown, display, step, multi: !!input.multi_select && display === "chips", custom: input.allow_custom !== false && (display === "chips" || pictures || display === "sizes"), purpose: typeof input.purpose === "string" ? input.purpose : undefined })
+          const itemId = add({ kind: "question", toolId: u.id, question: String(input.question ?? ""), options: shown, display, step, multi: (!!input.multi_select || asksForSeveral(String(input.question ?? ""))) && MULTI_DISPLAYS.includes(display), custom: input.allow_custom !== false && (display === "chips" || pictures || display === "sizes"), purpose: typeof input.purpose === "string" ? input.purpose : undefined })
           pending.current.push({ toolId: u.id, itemId })
           // pictures fill in as they're made: a quick draft of each answer, with the user's product in it
           if (pictures)

@@ -568,7 +568,7 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
     <Card className={cn("animate-in fade-in-0 slide-in-from-bottom-1 duration-300", rows && "gap-2 px-2 pb-2")}>
       <p className={cn("text-sm font-medium", stage && "text-lg", rows && "px-3")}>
         {item.question}
-        {rows && item.multi && <span className="ml-2 text-xs font-normal text-muted-foreground">Pick any</span>}
+        {item.multi && <span className="ml-2 text-xs font-normal text-muted-foreground">Pick any</span>}
       </p>
       {rows ? (
         <div className="flex flex-col" role={item.multi ? "group" : "radiogroup"} aria-label={item.question}>
@@ -643,17 +643,27 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
           ))}
         </div>
       ) : (
-        <div className={cn("grid gap-2", item.display === "sizes" ? "grid-cols-3" : item.display === "pictures" ? (item.options.length === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4") : visual || item.display === "palettes" ? "grid-cols-3" : "grid-cols-2")} role="radiogroup" aria-label={item.question}>
-          {item.options.map((o, i) => (
+        <div className={cn("grid gap-2", item.display === "sizes" ? "grid-cols-3" : item.display === "pictures" ? (item.options.length === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4") : visual || item.display === "palettes" ? "grid-cols-3" : "grid-cols-2")} role={item.multi ? "group" : "radiogroup"} aria-label={item.question}>
+          {item.options.map((o, i) => {
+            const on = picked.includes(o.label)
+            return (
             <button
               key={o.label}
               type="button"
-              role="radio"
-              aria-checked={false}
+              role={item.multi ? "checkbox" : "radio"}
+              aria-checked={on}
               onClick={() => pick(o)}
               disabled={agent.busy}
-              className="group/opt flex flex-col gap-1.5 rounded-xl p-1.5 text-left outline-none ring-1 ring-foreground/10 transition-[box-shadow,background-color] hover:bg-muted/50 hover:ring-foreground/30 focus-visible:ring-2 focus-visible:ring-ring"
+              className={cn(
+                "group/opt relative flex flex-col gap-1.5 rounded-xl p-1.5 text-left outline-none ring-1 ring-foreground/10 transition-[box-shadow,background-color] hover:bg-muted/50 hover:ring-foreground/30 focus-visible:ring-2 focus-visible:ring-ring",
+                on && "bg-brand/10 ring-2 ring-brand hover:bg-brand/10 hover:ring-brand",
+              )}
             >
+              {item.multi && (
+                <span aria-hidden className={cn("absolute right-2.5 top-2.5 z-10 grid size-5 place-items-center rounded-full shadow-sm ring-1 transition-colors", on ? "bg-brand text-brand-foreground ring-brand" : "bg-background/90 text-transparent ring-foreground/20 backdrop-blur")}>
+                  <HugeiconsIcon icon={Tick02Icon} className="size-3" strokeWidth={3} />
+                </span>
+              )}
               {visual && (
                 <FlickPreview
                   design={{ headline: "Headline", cta: "Shop now", show_price: true, ...o.design }}
@@ -686,7 +696,8 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
               <span className="px-1 text-xs font-medium leading-tight">{o.label}</span>
               {o.description && <span className="px-1 pb-0.5 text-xs leading-snug text-muted-foreground">{o.description}</span>}
             </button>
-          ))}
+            )
+          })}
         </div>
       )}
       {!rows && (item.custom || item.multi) && (
@@ -702,8 +713,8 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
             />
           )}
           {item.multi && (picked.length > 0 || other.trim()) && (
-            <Button size="sm" onClick={() => agent.answer(item.id, [...picked, ...(other.trim() ? [other.trim()] : [])].join(", "))} className="ml-auto">
-              Continue
+            <Button size="sm" disabled={agent.busy} onClick={send} className="ml-auto">
+              Continue{picked.length > 1 ? ` with ${picked.length}` : ""}
             </Button>
           )}
         </div>
