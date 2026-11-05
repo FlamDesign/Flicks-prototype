@@ -1853,7 +1853,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         if (redirect.current) break
       }
     } catch (e) {
-      const aborted = (e instanceof AiError && e.code === "aborted") || (e instanceof DOMException && e.name === "AbortError")
+      // a cut-off stream can surface as a network error: what counts is whether it was stopped here
+      const aborted = !!abort.current?.signal.aborted || (e instanceof AiError && e.code === "aborted") || (e instanceof DOMException && e.name === "AbortError")
       if (aborted) {
         // what it had written stays, in the chat and in its memory, marked as stopped (so the two match)
         const said = (itemsRef.current.find((x) => x.id === replyId && x.kind === "assistant") as { text?: string } | undefined)?.text?.trim() ?? ""
