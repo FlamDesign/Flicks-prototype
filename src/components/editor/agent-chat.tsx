@@ -29,6 +29,8 @@ export type AgentCtx = {
   ratio: number
   posters: string[]
   brand?: Brand
+  /** Variation 1 is ready and waiting for the user's OK before the variations are made */
+  review?: { needed: boolean; approve: () => void; change: () => void }
   /** the build's steps, read live */
   progress: () => { label: string; state: "done" | "working" | "waiting" }[]
   /** each video in the build, read live: shown in place in the chat as it's made */
@@ -192,7 +194,7 @@ const isLegacyBrowse = (it: Item) => it.kind === "note" && (it.text.startsWith("
 /** which per-turn card an item folds into, if any */
 function bucketOf(it: Item): "steps" | "gallery" | undefined {
   if (it.kind === "image" && it.purpose !== "view" && it.purpose !== "sheet") return "gallery"
-  if (it.kind === "site" || it.kind === "browse" || it.kind === "design" || it.kind === "image" || it.kind === "skill" || it.kind === "note" || (it.kind === "review" && !it.fail.length)) return "steps"
+  if (it.kind === "site" || it.kind === "browse" || it.kind === "design" || it.kind === "image" || it.kind === "skill" || it.kind === "note" || it.kind === "review") return "steps"
   return undefined
 }
 /** questions answered and image requests done: they become a brief update */
@@ -318,7 +320,7 @@ function stepRows(items: Item[]): StepRow[] {
         host,
         working: x.state === "working",
         failed: x.state === "failed",
-        label: x.state === "working" ? `Visiting ${host}` : x.state === "failed" ? `Couldn't open ${host}` : `Visited ${host}${x.price ? ` · ${x.price}` : ""}${x.images.length ? ` · ${x.images.length} image${x.images.length === 1 ? "" : "s"}` : ""}`,
+        label: x.state === "working" ? `Visiting ${host}` : x.state === "failed" ? (/blocks automated/.test(x.reason ?? "") ? `${host} doesn't allow automated visits` : /\b404\b/.test(x.reason ?? "") ? `No such page on ${host}` : `Couldn't open ${host}`) : `Visited ${host}${x.price ? ` · ${x.price}` : ""}${x.images.length ? ` · ${x.images.length} image${x.images.length === 1 ? "" : "s"}` : ""}`,
         link: x.state === "done" ? x.url : undefined,
         detail:
           x.state === "failed" ? (
@@ -345,7 +347,24 @@ function stepRows(items: Item[]): StepRow[] {
       const t = search ? x.text.replace(/^Searched the web:\s*/, "") : x.text.replace(/^Read\s+/, "")
       rows.push(search ? { key: x.id, label: `Searched “${t}”` } : { key: x.id, label: `Read ${t}`, host: hostOf(t), link: `https://${t}` })
     } else if (x.kind === "design") {
-      rows.push({ key: x.id, label: x.text.replace(/\.$/, "") })
+      // every edit in a stretch is one step: "Changed the layout · 6 edits", the edits inside
+      if (rows.some((r) => r.key === "design")) continue
+      const edits = items.filter((y): y is Extract<Item, { kind: "design" }> => y.kind === "design")
+      rows.push(
+        edits.length === 1
+          ? { key: "design", label: x.text.replace(/\.$/, "") }
+          : {
+              key: "design",
+              label: `Changed the Flick · ${edits.length} edits`,
+              detail: (
+                <ul className="flex flex-col gap-1 text-xs text-muted-foreground">
+                  {edits.map((y) => (
+                    <li key={y.id}>{y.text.replace(/\.$/, "")}</li>
+                  ))}
+                </ul>
+              ),
+            },
+      )
     } else if (x.kind === "image" && x.purpose === "sheet") {
       // reference sheets are working material: one step for all of them, pictures inside
       const at = rows.find((r) => r.key === "sheets")
@@ -367,6 +386,8 @@ function stepRows(items: Item[]): StepRow[] {
         ),
       })
     } else if (x.kind === "image" && x.purpose === "view") {
+      // only its latest look in a stretch
+      if ([...items].reverse().find((y) => y.kind === "image" && y.purpose === "view" && y.target === x.target) !== x) continue
       rows.push({
         key: x.id,
         label: `Watched ${x.target ?? "the Flick"} as viewers will`,
@@ -378,7 +399,25 @@ function stepRows(items: Item[]): StepRow[] {
         ) : undefined,
       })
     } else if (x.kind === "review") {
-      rows.push({ key: x.id, label: `Checked every frame · all ${x.pass} checks passed` })
+      // only the latest check in a stretch: earlier ones were fixed after
+      const last = [...items].reverse().find((y) => y.kind === "review")
+      if (last !== x) continue
+      rows.push(
+        x.fail.length
+          ? {
+              key: x.id,
+              failed: true,
+              label: `Checked every frame · ${x.fail.length} thing${x.fail.length === 1 ? "" : "s"} left to fix`,
+              detail: (
+                <ul className="flex flex-col gap-1 text-xs text-muted-foreground">
+                  {x.fail.map((f) => (
+                    <li key={f}>{f.replace(/\s*\(id [^)]*\)/g, "")}</li>
+                  ))}
+                </ul>
+              ),
+            }
+          : { key: x.id, label: "Checked every frame" },
+      )
     } else if (x.kind === "note") {
       rows.push({ key: x.id, label: x.text.replace(/\.$/, "") })
     }
@@ -571,6 +610,22 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
         {item.question}
         {item.multi && <span className="ml-2 text-xs font-normal text-muted-foreground">{pickHint(item.range)}</span>}
       </p>
+      {item.typeFirst && (
+        <div className={cn("flex items-center gap-2", rows && "px-3")}>
+          <Input
+            autoFocus
+            value={other}
+            onChange={(e) => setOther(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && other.trim() && send()}
+            placeholder={item.typeFirst}
+            aria-label={item.typeFirst}
+            className="flex-1"
+          />
+          <Button disabled={agent.busy || !other.trim()} onClick={send}>
+            Continue
+          </Button>
+        </div>
+      )}
       {rows ? (
         <div className="flex flex-col" role={item.multi ? "group" : "radiogroup"} aria-label={item.question}>
           {item.options.map((o, i) => {
@@ -606,7 +661,7 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
               </button>
             )
           })}
-          {item.custom && (
+          {item.custom && !item.typeFirst && (
             <label className={cn("flex items-center gap-3 rounded-lg px-3 transition-colors focus-within:bg-muted/50 hover:bg-muted/50", stage ? "py-2" : "py-1.5")}>
               <span className="grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground ring-1 ring-foreground/10">
                 <HugeiconsIcon icon={PencilEdit01Icon} className="size-3.5" />
@@ -621,7 +676,7 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
               />
             </label>
           )}
-          {(item.multi ? picked.length > 0 || other.trim() : other.trim()) && (
+          {!item.typeFirst && (item.multi ? picked.length > 0 || other.trim() : other.trim()) && (
             <Button size="sm" onClick={send} disabled={agent.busy || (item.multi && !enough)} className="mx-3 mt-2 self-end">
               Continue
             </Button>
@@ -701,7 +756,7 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
           })}
         </div>
       )}
-      {!rows && (item.custom || item.multi) && (
+      {!rows && !item.typeFirst && (item.custom || item.multi) && (
         <div className="flex gap-2">
           {item.custom && (
             <Input
@@ -1060,6 +1115,7 @@ function BuildCard({ ctx, agent }: { ctx: AgentCtx; agent: Agent }) {
           ))}
         </div>
       )}
+      {ctx.review?.needed && <ReviewBar ctx={ctx} poster={videos[0]?.poster} />}
       <ol className="flex flex-col gap-1.5">
         {(videos.length ? others : steps).map((x) => (
           <li key={x.label} className="flex items-center gap-2 text-xs">
@@ -1071,6 +1127,31 @@ function BuildCard({ ctx, agent }: { ctx: AgentCtx; agent: Agent }) {
         ))}
       </ol>
     </Card>
+  )
+}
+
+/** Variation 1 is in: the user's OK starts the other variations (it comes into view once) */
+function ReviewBar({ ctx, poster }: { ctx: AgentCtx; poster?: string }) {
+  const self = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    self.current?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+  }, [])
+  return (
+    <div ref={self} role="group" aria-label="Review Variation 1" className="flex flex-wrap items-center gap-3 rounded-xl bg-brand/10 p-2.5 ring-1 ring-brand/30 animate-in fade-in-0 slide-in-from-bottom-1">
+      {poster && <img src={poster} alt="" decoding="async" className="size-10 shrink-0 rounded-lg object-cover ring-1 ring-foreground/10" />}
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium leading-snug">Happy with Variation 1?</p>
+        <p className="text-xs text-muted-foreground">The others are made from it.</p>
+      </div>
+      <div className="ml-auto flex gap-1.5">
+        <Button size="sm" variant="ghost" onClick={ctx.review!.change}>
+          Change it
+        </Button>
+        <Button size="sm" onClick={ctx.review!.approve}>
+          Make the variations
+        </Button>
+      </div>
+    </div>
   )
 }
 
@@ -1184,6 +1265,24 @@ function ImageCard({ item, ctx, agent }: { item: Extract<Item, { kind: "image" }
 }
 
 /** The chat's message box: text, images, send (or stop while it replies). */
+/** once the Flick is ready and the chat has finished, a few next steps to tap instead of typing */
+const NEXT = ["Make the headline shorter", "Try a bolder button", "Add another variation"]
+export function QuickReplies({ agent, ctx }: { agent: Agent; ctx: AgentCtx }) {
+  const videos = ctx.videos?.() ?? []
+  const last = [...agent.items].reverse().find((x) => x.kind === "user" || x.kind === "assistant")
+  const ready = videos.length > 1 && videos.every((v) => v.state === "done")
+  if (!ready || agent.busy || agent.waiting || last?.kind !== "assistant") return null
+  return (
+    <div role="group" aria-label="Suggestions" className="flex flex-wrap gap-1.5 px-1 animate-in fade-in-0 slide-in-from-bottom-1">
+      {NEXT.map((t) => (
+        <Button key={t} size="sm" variant="outline" onClick={() => agent.send(t)} className="h-8 rounded-full font-normal">
+          {t}
+        </Button>
+      ))}
+    </div>
+  )
+}
+
 export function AgentComposer({ agent, placeholder, variations, brand }: { agent: Agent; placeholder?: string; variations?: { name: string; poster?: string }[]; brand?: boolean }) {
   const [text, setText] = useState("")
   const [files, setFiles] = useState<File[]>([])
@@ -1408,6 +1507,24 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
         </p>
         {pager}
       </header>
+      {q.typeFirst && (
+        <div className="flex items-center gap-2 px-4 pb-2">
+          <Input
+            key={q.id}
+            autoFocus
+            value={typed}
+            onChange={(e) => setOther((o) => ({ ...o, [q.id]: e.target.value }))}
+            onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), cont())}
+            placeholder={q.typeFirst}
+            aria-label={q.typeFirst}
+            className="flex-1"
+          />
+          <Button disabled={agent.busy || !typed.trim()} onClick={cont}>
+            Continue
+          </Button>
+        </div>
+      )}
+      {q.typeFirst && q.options.length > 0 && <p className="px-4 pb-1 text-xs text-muted-foreground">Or</p>}
       <div className="max-h-[50vh] overflow-y-auto px-2">
         {q.display === "concepts" ? (
           // big pictures, little text: the title and the idea; what changes shows over the picture on hover
@@ -1577,6 +1694,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
         )}
       </div>
       <footer className="flex items-center gap-2 border-t px-3 py-2">
+        {q.typeFirst ? <span className="flex-1" /> : <>
         <HugeiconsIcon icon={PencilEdit01Icon} className="size-4 shrink-0 text-muted-foreground" />
         <InputGroupInput
           value={typed}
@@ -1586,10 +1704,11 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
           aria-label="Your own answer"
           className="h-8 min-w-0 flex-1 bg-transparent text-sm placeholder:text-muted-foreground px-0"
         />
+        </>}
         <Button size="sm" variant="ghost" disabled={agent.busy} onClick={() => commit("Skipped")} className="gap-1.5 text-muted-foreground">
           Skip <Shortcut keys={["Esc"]} />
         </Button>
-        {(q.multi || typed.trim()) && (
+        {!q.typeFirst && (q.multi || typed.trim()) && (
           <Button size="sm" disabled={agent.busy || mine.length + (typed.trim() ? 1 : 0) < need} onClick={cont}>
             {q.multi && mine.length ? `Continue with ${mine.length}` : "Continue"}
           </Button>

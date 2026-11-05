@@ -1031,6 +1031,7 @@ const fakeAgent: Parameters<typeof AgentItemView>[0]["agent"] = {
   imageUrl: () => undefined,
   media: (id) => (id ? { url: GENERATED_VIDEOS[Number(id.slice(-1)) || 0].poster, video: false, name: id } : undefined),
   ownImages: () => [],
+  notify: () => {},
   items: [],
   busy: false,
   send: async () => {},
@@ -1078,6 +1079,15 @@ function ChatCardsDemo() {
   const it = (x: Record<string, unknown>) => ({ id: String(Math.random()), at: 0, ...x }) as Item
   const states = [
     { label: "Thinking", node: <AgentItemView item={it({ kind: "assistant", text: "", streaming: true })} agent={fakeAgent} ctx={chatCtx} /> },
+    {
+      label: "Brand question: type straight in",
+      node: (
+        <QuestionDeck
+          agent={{ ...fakeAgent, pendingIds: ["bq"], items: [it({ id: "bq", kind: "question", toolId: "b1", question: "Which brand is it from?", options: [{ label: "No brand, choose for me" }], display: "chips", multi: false, custom: true, purpose: "brand", typeFirst: "Brand name or website link" })] } as typeof fakeAgent}
+          ctx={chatCtx}
+        />
+      ),
+    },
     {
       label: "Questions, docked (1 of 2)",
       node: (

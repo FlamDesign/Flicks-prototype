@@ -47,6 +47,8 @@ export type EditorApi = {
   state(): Omit<ProjectState, "images" | "skills_read">
   /** sets up every video, starts generating them all, places the design; error text if it can't */
   approvePlan(plan: Plan): string
+  /** the user approved Variation 1 in words: start the variations from it; error text if there's nothing to approve */
+  approveReference(): string
   /** a picture of the Flick as viewers see it, for one variation (Variation 1 when not named) */
   shot(variation?: string): Promise<{ blob: Blob; name: string; note: string }>
   /** where it runs, as a size (width×height) and optionally a length */
@@ -168,7 +170,7 @@ export type Item = Base &
   (
     | { kind: "user"; text: string; images: string[] }
     | { kind: "assistant"; text: string; streaming?: boolean; activity?: string }
-    | { kind: "question"; toolId: string; question: string; options: Choice[]; display: Display; step?: Step; multi: boolean; custom: boolean; answer?: string; purpose?: string; /** how many to pick, when the wording says ("pick 2 to 4") */ range?: { min: number; max: number } }
+    | { kind: "question"; toolId: string; question: string; options: Choice[]; display: Display; step?: Step; multi: boolean; custom: boolean; answer?: string; purpose?: string; /** the answer is typed (a brand name, a link): a field that's ready to type in, with this hint, above any other options */ typeFirst?: string; /** how many to pick, when the wording says ("pick 2 to 4") */ range?: { min: number; max: number } }
     | { kind: "assets"; toolId: string; message: string; kinds: string[]; done?: "added" | "skipped"; images?: string[] }
     | { kind: "brand"; brand: Brand }
     | { kind: "plan"; toolId: string; plan: Plan; state: "open" | "approved" | "skipped"; previews?: (string | undefined)[]; frames?: (string | undefined)[] }
@@ -282,6 +284,11 @@ export const TOOLS: Tool[] = [
     input_schema: { type: "object", properties: { variation: { type: "string", description: "Its name; Variation 1 when left out" } } },
   },
   {
+    name: "approve_variation_1",
+    description: "Start the variations from Variation 1, for when the user says in words that they're happy with it ('looks good', 'go ahead', 'make the rest'). The build card in the chat also has a Make the variations button for this. Don't call it unless the user said so.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
     name: "propose_concepts",
     description:
       "Show the user up to 3 concepts to choose from before the plan: each with a title, the idea in one line, the question the tap answers, what changes, the variations, the story in 2 or 3 beats, and a prompt for a quick preview image of its style (the app makes the previews). The user picks one, or types a mix or a change; that comes back as the result. Always use this before propose_plan unless the user already gave a complete concept or asked to skip ideas.",
@@ -322,7 +329,7 @@ export const TOOLS: Tool[] = [
         options: { type: "array", items: choiceSchema, minItems: 2, maxItems: 9, description: "Up to 6; up to 9 for sizes" },
         display: { type: "string", enum: ["chips", "cards", "palettes", "layouts", "thumbnails", "pictures", "sizes"] },
         step: { type: "string", enum: ["idea", "look", "plan"] },
-        purpose: { type: "string", enum: ["variations", "placement", "size", "other"], description: "'variations' when asking what changes between variations; 'placement' for where it will run; 'size' for the Flick's size (the answer is applied)" },
+        purpose: { type: "string", enum: ["variations", "placement", "size", "brand", "other"], description: "'brand' when asking for the brand name or website (the user types it straight into a field; give only options that aren't typed, like 'No brand, choose for me'); 'variations' when asking what changes between variations; 'placement' for where it will run; 'size' for the Flick's size (the answer is applied)" },
         multi_select: { type: "boolean", description: "true whenever the user may pick more than one (and whenever the question says pick any, all that apply, or similar); they then tap several and press Continue. Works with chips, cards, pictures and palettes." },
         allow_custom: { type: "boolean", description: "Let the user type their own answer" },
       },
@@ -664,6 +671,17 @@ export const TOOLS: Tool[] = [
 ]
 
 
+/** an option that only says the user will type something ("I'll type the brand name", "I'll paste my website link") */
+const SAYS_TYPE = /^(i('|’)ll|i will|let me|i('|’)d like to)\s+(type|paste|share|enter|write|give|send|tell)\b/i
+/** what the type-in field asks for */
+function typeHint(question: string, typed: Choice[]) {
+  const t = `${question} ${typed.map((o) => o.label).join(" ")}`.toLowerCase()
+  const link = /website|link|url|page|site/.test(t)
+  const brand = /brand/.test(t)
+  return brand && link ? "Brand name or website link" : link ? "Paste a link" : brand ? "Brand name" : "Type your answer"
+}
+/** while Variation 1 is being made, the Flick only has a stand-in frame: looking at it leads to layout work that's undone later */
+const STAND_IN = "Not now: Variation 1 is still being made, so the Flick only shows a stand-in frame. Set the copy and thumbnails once, then end the turn with one short line. The app tells you when Variation 1 is ready; look then."
 const ACTIVITY: Record<string, string> = {
   read_skill: "Getting into it",
   ask_user: "Lining up a question",
@@ -743,7 +761,7 @@ Flam's skills decide WHAT you ask, suggest and make; follow them over your own h
 
 The order of work (always):
 1. Read everything the user gave: the prompt, every image, every link. When there are images, your first reply opens with a short read-out: one line per image (what it is), then what you conclude (one product in several views, several different products = the variations, a logo, a style reference...). Follow the brief skill's table for what to ask next.
-2. Brand and products, before any concept: if there's any hint of the brand (a name in the prompt, a logo, text on packaging, a website or product name), look it up yourself with web_search and web_fetch: the official site, brand guidelines, the product pages (names, variants, prices, links, images; read_website gets a product page's images). Record it with set_brand (with notes and sources) and say in a line what you found. If there's no hint, ask for the brand name or website (or "no brand"), with options.
+2. Brand and products, before any concept: if there's any hint of the brand (a name in the prompt, a logo, text on packaging, a website or product name), look it up yourself with web_search and web_fetch: the official site, brand guidelines, the product pages (names, variants, prices, links, images; read_website gets a product page's images). Record it with set_brand (with notes and sources) and say in a line what you found. If there's no hint, ask for the brand name or website with ask_user purpose "brand": the user types it straight into a field, so the only option is "No brand, choose for me" (never "I'll type…" options).
    Look up the product range too: the brand's other products, versions, flavours or colours, with their names and images.
 3. What changes between variations, settled with the user before concepts. If the inputs show different products, name them as the variations and ask to confirm. If they show one product (several views) and the user hasn't said what varies, ask with ask_user (purpose "variations"), options built from your research, e.g. "Across the range: Red, Black, Gold, Blue Label", "Red Label only: different serves", "Red Label only: moods or occasions", "I'll add more products". If they pick other products, ask for their pack shots (request_assets) or offer to take the official ones from the brand's site (read_website); never generate a product you have no image of. propose_concepts and propose_plan are refused until this is settled.
 4. Ask anything else still missing (brief skill), then show concepts built on what you found (propose_concepts), then the plan.
@@ -753,17 +771,17 @@ How the app works (the mechanics, not what to ask):
 - Pictures over words: when a question is about something the user judges by eye (setting, mood, light, styling, people, props), ask with display 'pictures' and an image_prompt per answer (up to 4); the app draws each with their product.
 - The goal question is always ask_user purpose "goal"; where it runs is purpose "placement" and the size purpose "size": ask placement and size in the same batch (any size options; the app shows the right sizes for the answer).
 - Links: each variation links to its own product page (that flavour, colour or model), never a range or variety page, unless the user gives one.
-- The storyboard card shows only the storyboard frames; approving it makes the first video (Variation 1). The variations, copy and links you set are applied with it and the user can change them later. When the first video is in, run view_flick and fix the design (text over the product or faces, anything on the thumbnail strip, crowding) before asking the user to review it.
+- The storyboard card shows only the storyboard frames; approving it makes the first video (Variation 1). The variations, copy and links you set are applied with it and the user can change them later. While it's being made (a few minutes), make the thumbnails and set the copy once, then end the turn with one short line; don't look at the Flick or adjust the layout yet (there's only a stand-in frame). The app wakes you when Variation 1 is ready: look once (view_flick), fix only clear clashes, then end with one line asking the user to play it and press Make the variations in the build card, or say what to change. That button is the approval; never ask it with ask_user. If the user says in words they're happy with it, call approve_variation_1.
 - Storyboard: propose_plan shows the storyboard card; call it "the storyboard" to the user, never "the plan". Every one gives storyboard frames (the reference video as 3 or 4 frames: what happens, how it's framed; the app draws a quick still per frame) and a direction per variation. The user never sees prompts, only directions, frames and the on-screen copy; when they edit a direction, it reaches the video as their direction. Don't quote prompts to the user either: describe the idea.
 - Concepts: propose_concepts shows up to 3 concepts as cards with preview images; use it before every plan unless the user already gave a full concept or asked to skip ideas.
 - Videos the user adds (vid-1, vid-2...) arrive as three stills (start, middle, end) with their length (15 seconds at most; longer ones were trimmed). Say what happens in each. Decide from the context what each upload is for, and say it in a line: a video to change (plan reference_mode "edit", source_video_id), a video or image to follow for style, characters or the product (reference_video_ids / reference_image_ids), or an image to bring to life as it is (reference_mode "animate", first_frame_id). Ask only when it's truly unclear.
 - Mentions: the user can type @ to point at things. @Image 1 / @Video 1 are that message's own files in order; @<element name> is a saved element (a product, character, logo or style saved once with its images, listed in saved_elements); it arrives with its images, kept as project images, and a [Mentions: ...] line maps each @name to image ids: use exactly those ids (reference_image_ids, a variation's image_ids, generate_image reference_image_ids). @<variation name> means that variation, @Brand the brand kit. You can suggest saved elements by name ("use @Samba OG?").
 - Questions: ask_user shows tappable answers. display "chips" for words; "layouts", "palettes" or "thumbnails" for visual choices; step "idea", "look" or "plan" moves the progress bar. Several ask_user calls in one reply show together. request_assets asks for files.
-- Web: web_search finds pages; web_fetch reads a page or PDF (text) that appeared in the conversation or in search results; read_website reads a product page for its products, prices, colours and images (and keeps the images for the project). Use them on your own whenever a brand or product is hinted.
+- Web: web_search finds pages; web_fetch reads a page or PDF (text) that appeared in the conversation or in search results; read_website reads a product page for its products, prices, colours and images (and keeps the images for the project). Only read addresses the user gave or a search returned: never guess a page's address. An image address (a logo file) given to read_website is kept as a project image. Use them on your own whenever a brand or product is hinted.
 - Brand: set_brand records the brand (name, colours, font, voice).
 - Images: generate_image (with reference_image_ids to keep the user's images, has_text for readable words), view_image to look at any project image, use_image to place one. The app picks how it's made from these (models skill). When the user gave nothing to work from, suggest looks first: concept previews (propose_concepts) and generate_image purpose "look" make reference images; the picked or approved one goes into the plan's reference_image_ids. To change a user's photo before animating it, generate_image purpose "edit" with that photo in reference_image_ids, then plan reference_mode "animate" with the result as first_frame_id.
 - Sheets: make_sheet makes a product sheet or character sheet (several views on a clean background) from the user's images, so a product or person stays the same in every video. Make one when a product or person must stay consistent across videos, or when there's only one photo of it; use it in reference_image_ids and variations' image_ids. Ask the user to approve it (ask_user) when getting it right matters (a hero product, a face).
-- Videos: the reference video is Variation 1 (the first video in state.videos, role "reference"): it is in the Flick like the others, with its own name, label, thumbnail and link, and the other variations are made from it. It is made first, one of three ways (reference_mode): "reference" (default) stays true to reference_image_ids and reference_video_ids (product, characters, style); "edit" changes the user's own video (source_video_id); "animate" brings the user's image to life as it is (first_frame_id). There is no prompt-only video: with nothing given, suggest looks first. Write the reference prompt as shot (subject, action, camera, setting, keep) and name inputs by position: [Image 1], [Image 2]… for reference_image_ids, [Video 1]… for reference_video_ids, "the video" for the one being edited. When the user has product or people images, the reference video must use them; a plan without them is refused. The user always reviews it (reference_review in the project state); variations are made only after they approve, each one an edit of the latest reference video: same shot, camera, people and timing, with only its change (its prompt says the change, naming its image_ids as [Image 1]…). See the models skill. When the reference is ready, ask them to review it; if they want changes, regenerate the reference with set_variation (variation "reference", regenerate true) and they review the new one.
+- Videos: the reference video is Variation 1 (the first video in state.videos, role "reference"): it is in the Flick like the others, with its own name, label, thumbnail and link, and the other variations are made from it. It is made first, one of three ways (reference_mode): "reference" (default) stays true to reference_image_ids and reference_video_ids (product, characters, style); "edit" changes the user's own video (source_video_id); "animate" brings the user's image to life as it is (first_frame_id). There is no prompt-only video: with nothing given, suggest looks first. Write the reference prompt as shot (subject, action, camera, setting, keep) and name inputs by position: [Image 1], [Image 2]… for reference_image_ids, [Video 1]… for reference_video_ids, "the video" for the one being edited. When the user has product or people images, the reference video must use them; a plan without them is refused. The user always reviews it (reference_review in the project state); variations are made only after they approve, each one an edit of the latest reference video: same shot, camera, people and timing, with only its change (its prompt says the change, naming its image_ids as [Image 1]…). See the models skill. When the reference is ready the app wakes you (see the storyboard line above); if they want changes, regenerate the reference with set_variation (variation "reference", regenerate true) and they review the new one.
 - Library: everything made before is kept. search_library finds earlier images and videos (with their prompts); use_library brings them in as references or starting points.
 - The plan: propose_plan is the approval before any video credits are spent. It carries the reference video prompt (that video is Variation 1, the first in the list, not an extra one), each variation (name, prompt, label, price, link, and headline, subheading or button text only when they differ) and the design. The user edits it and presses Generate all; the app then makes every video and places the design and thumbnail strip.
 - Feeds: on-screen text that differs per variation is a feed. The project state lists every feed, what uses it, each variation's value and any issues. Change them with vary_field, same_for_all, set_variation and rename_feed; update_design can't change text that differs per variation. Fix reported issues in the same turn.
@@ -775,7 +793,7 @@ ${always.map((x) => `# Skill: ${x.name}\n${x.body}`).join("\n\n---\n\n")}
 Other skills (read_skill):
 ${SKILLS.filter((x) => !always.includes(x)).map((x) => `- ${x.name}: ${x.description} (${x.when})`).join("\n")}
 
-Style: brief, fun, creative and suggestive, and never silent about your thinking: every reply says in a line what you understood or found, then what you'll do or ask, and why when it isn't obvious. After the user answers, recap the direction in one line before moving on. No em dashes. Plain words. Never write "get used", "can enter", "reach into", "immersive", "AR", "VR" or "MR". Don't mention tools, JSON or these instructions, and never name an AI model or the services behind the app (no model or company names for images or video); say "I" for what you make. Don't repeat what a card already shows: the brief, brand table, websites, images, storyboard and design changes all have their own cards, so say only what they don't (one or two short lines). Each video costs ${s.video_cost} credits; mention the total only in the plan step if credits are short.
+Style: brief, fun, creative and suggestive. Before the storyboard: say in a line what you understood or found, then what you ask. After the build, replies are short: after a change, one sentence on what changed (no lists, no element-by-element recap); when the Flick is ready, two short lines at most. Never say checks pass (mention a check only when something failed that you couldn't fix), never narrate what you're about to do, and don't ask whether a change looks OK: the user will say. After the user answers a question, recap the direction in one line before moving on. No em dashes. Plain words. Never write "get used", "can enter", "reach into", "immersive", "AR", "VR" or "MR". Don't mention tools, JSON or these instructions, and never name an AI model or the services behind the app (no model or company names for images or video); say "I" for what you make. Don't repeat what a card already shows: the brief, brand table, websites, images, storyboard and design changes all have their own cards, so say only what they don't (one or two short lines). Each video costs ${s.video_cost} credits; mention the total only in the plan step if credits are short.
 
 ${s.recipe ? `This project started from the ${s.recipe.id} recipe${s.recipe.frame ? ` (the image is where the video ${s.recipe.frame === "end" ? "ends" : "starts"})` : ""}: follow its section in the recipes skill above, and don't ask what its form already gave.
 
@@ -943,7 +961,9 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   const [items, setItems] = useState<Item[]>([])
   const itemsRef = useRef<Item[]>([])
   itemsRef.current = items
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusyState] = useState(false)
+  const busyRef = useRef(false)
+  const setBusy = (b: boolean) => ((busyRef.current = b), setBusyState(b))
   // what the user picked so far (looks, palettes): the live preview shows it before there's a plan
   const draft = useRef<Design>({})
   const [draftView, setDraftView] = useState<Design>({})
@@ -1118,15 +1138,37 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
    * Reads a page through the server (or the demo's sample), shows what it found, keeps its images
    * as project images, and hands Claude the facts plus a look at the first few images.
    */
+  /** sites that refused this chat's visits: not tried again (every page on them answers the same) */
+  const blockedHosts = useRef(new Set<string>())
   const readSite = async (raw: string): Promise<string | Block[]> => {
     const url = raw.trim()
     if (!url) return "Error: No address given."
+    const host = url.replace(/^https?:\/\//, "").split(/[/?#]/)[0].replace(/^www\./, "")
+    const blockedLine = `${host} blocks automated visits, so its pages can't be read here (don't try other pages on it). Use what web_search showed, try web_fetch for the page's text, or ask the user for product photos.`
+    if (blockedHosts.current.has(host)) return blockedLine
+    // an image address (a logo, a pack shot): kept as a project image instead of read as a page
+    if (live.current && /\.(png|jpe?g|webp|gif|avif|svg)(\?|#|$)/i.test(url)) {
+      const itemId = add({ kind: "site", url, state: "working", images: [] })
+      try {
+        const blob = await siteImage(url)
+        const show = URL.createObjectURL(blob)
+        webSource.set(show, url)
+        const img = keep(show, `${host} image`, "website")
+        patch(itemId, { state: "done", title: "An image", images: [show] } as Partial<Item>)
+        return [{ type: "text", text: `That address is an image, not a page; kept it as project image ${img.id} (use_image or add_element can place it).` }, await imageBlock(blob)]
+      } catch {
+        patch(itemId, { state: "failed", reason: "The image couldn't be loaded." } as Partial<Item>)
+        return `Couldn't load the image at ${url}. Ask the user to add it.`
+      }
+    }
     const itemId = add({ kind: "site", url, state: "working", images: [] })
     try {
       const r = live.current ? await readWebsite(url) : apiRef.current.sampleSite(url)
       if (!r.ok) {
         patch(itemId, { state: "failed", reason: r.reason } as Partial<Item>)
-        return `Couldn't read ${url}: ${r.reason ?? "no content"}. Ask the user to add product images instead.`
+        if (/blocks automated/.test(r.reason ?? "")) return blockedHosts.current.add(host), blockedLine
+        if (/\b404\b|\b410\b/.test(r.reason ?? "")) return `That page doesn't exist on ${host} (${r.reason}). Don't guess addresses: find the real page with web_search, then read it.`
+        return `Couldn't read ${url}: ${r.reason ?? "no content"}. Try web_fetch for its text, or ask the user for product images.`
       }
       // images come through the server, so they show even where the site blocks embedding
       const found = (r.images ?? []).slice(0, 8)
@@ -1368,6 +1410,9 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     })
   }
 
+  /** Variation 1 is still being made (the Flick shows a stand-in frame) */
+  const standIn = () => /still generating/.test(String((apiRef.current.state() as { reference_review?: string }).reference_review ?? ""))
+
   const runTool = async (u: Extract<Block, { type: "tool_use" }>): Promise<string | Block[] | typeof WAIT> => {
     const a = apiRef.current
     const input = cleanInput(u.input ?? {}) as Record<string, unknown>
@@ -1381,8 +1426,12 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           const display = (["chips", "cards", "palettes", "layouts", "thumbnails", "pictures", "sizes"] as Display[]).includes(input.display as Display) ? (input.display as Display) : "chips"
           const step = (["idea", "look", "plan"] as Step[]).includes(input.step as Step) ? (input.step as Step) : undefined
           const pictures = display === "pictures"
-          const shown = pictures ? options.slice(0, 4) : options
-          const itemId = add({ kind: "question", toolId: u.id, question: String(input.question ?? ""), options: shown, display, step, multi: (!!input.multi_select || asksForSeveral(String(input.question ?? ""))) && MULTI_DISPLAYS.includes(display), range: MULTI_DISPLAYS.includes(display) ? (pickRange(String(input.question ?? "")) ?? undefined) : undefined, custom: input.allow_custom !== false && (display === "chips" || pictures || display === "sizes"), purpose: typeof input.purpose === "string" ? input.purpose : undefined })
+          // "I'll type the brand name" / "I'll paste my link" as a button only answers with those words:
+          // the field to type in replaces them, ready at once
+          const typed = options.filter((o) => SAYS_TYPE.test(o.label))
+          const typeFirst = !pictures && (input.purpose === "brand" || typed.length > 0) ? typeHint(String(input.question ?? ""), typed) : undefined
+          const shown = (pictures ? options.slice(0, 4) : options).filter((o) => !typeFirst || !SAYS_TYPE.test(o.label))
+          const itemId = add({ kind: "question", toolId: u.id, question: String(input.question ?? ""), options: shown, display, step, multi: (!!input.multi_select || asksForSeveral(String(input.question ?? ""))) && MULTI_DISPLAYS.includes(display), range: MULTI_DISPLAYS.includes(display) ? (pickRange(String(input.question ?? "")) ?? undefined) : undefined, custom: input.allow_custom !== false && (display === "chips" || pictures || display === "sizes"), purpose: typeof input.purpose === "string" ? input.purpose : undefined, typeFirst })
           pending.current.push({ toolId: u.id, itemId })
           // pictures fill in as they're made: a quick draft of each answer, with the user's product in it
           if (pictures)
@@ -1497,7 +1546,10 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           })
           return found.map((f) => `# Skill: ${f.name}\n${f.body}`).join("\n\n---\n\n")
         }
+        case "approve_variation_1":
+          return a.approveReference()
         case "review_flick": {
+          if (standIn()) return STAND_IN
           const r = a.review()
           // thumbnails still generating aren't missing: they're on their way
           const pending = pendingThumbs.current
@@ -1517,6 +1569,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           return looks.length ? [{ type: "text", text: `${verdict}\nHow it looks (check by eye: readable text, nothing over the product or faces, not crowded, strip clear of the action):` }, ...looks] : verdict
         }
         case "view_flick": {
+          if (standIn()) return STAND_IN
           const looks = await lookAt([input.variation ? String(input.variation) : undefined])
           return looks.length ? looks : "Error: couldn't draw the Flick (is it built yet?)."
         }
@@ -1713,7 +1766,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
             stopped = true
             continue
           }
-          add({ kind: "note", text: "Stopped a repeated step. Tell me what to change next." })
+          // it already said where things stand: end the turn quietly
           break
         }
         if (uses.some((u) => CHANGES.has(u.name))) seen.clear()
@@ -1738,7 +1791,28 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     } finally {
       setItems((list) => list.map((x) => (x.kind === "assistant" && x.streaming ? { ...x, streaming: false } : x)))
       setBusy(false)
+      // news from the app that came in while this turn ran
+      setTimeout(() => flushRef.current(), 0)
     }
+  }, [])
+
+  /**
+   * News from the app (Variation 1 is ready, the user approved it with a button). `wake` starts a
+   * turn for it; otherwise it rides along with the user's next message. Held while a turn runs or
+   * while cards wait for answers, since a reply can't come between a question and its answer.
+   */
+  const notes = useRef<{ text: string; wake: boolean }[]>([])
+  const flushRef = useRef(() => {})
+  flushRef.current = () => {
+    if (busyRef.current || pending.current.length || !notes.current.some((n) => n.wake)) return
+    const text = notes.current.map((n) => n.text).join("\n")
+    notes.current = []
+    msgs.current.push({ role: "user", content: [{ type: "text", text }] })
+    void turn()
+  }
+  const notify = useCallback((text: string, wake = true) => {
+    notes.current.push({ text, wake })
+    flushRef.current()
   }, [])
 
   /** answers for every waiting card: the one answered, and "skipped" for the rest */
@@ -1759,6 +1833,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     ready.current = []
     pending.current = []
     held.current = {}
+    if (notes.current.length) content.push({ type: "text", text: notes.current.map((n) => n.text).join("\n") }), (notes.current = [])
     return content
   }
   /** answers to questions asked together, kept until every one of them is answered */
@@ -1988,5 +2063,5 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   /** the user's own images, newest last (a fallback picture for the plan's preview) */
   const ownImages = () => images.current.filter((x) => x.kind !== "video" && (x.from === "upload" || x.from === "library" || x.from === "website")).map((x) => x.url)
 
-  return { imageUrl, media, ownImages, items, busy, send, answer, pendingIds: pending.current.map((p) => p.itemId), addAssets, decidePlan, editPlan, retryImage, stop, retry, waiting: pending.current.length > 0, draft: draftView, plan: plan?.plan, step }
+  return { imageUrl, media, ownImages, items, busy, send, answer, pendingIds: pending.current.map((p) => p.itemId), addAssets, decidePlan, editPlan, retryImage, stop, retry, notify, waiting: pending.current.length > 0, draft: draftView, plan: plan?.plan, step }
 }

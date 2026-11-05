@@ -37,7 +37,7 @@ import { boxOf, buildDesign, color as colorOf, contrast, describeDesign, element
 import { generateVideo, isLive, posterOf, shareable, useAiConfig, videoAspectOf, type VideoInput } from "@/ai/client"
 import { isTyping } from "@/lib/keys"
 import { GeneratingGradient } from "@/components/editor/generation-progress"
-import { AgentComposer, isDocked, QuestionDeck, threadGroups, type AgentCtx } from "@/components/editor/agent-chat"
+import { AgentComposer, isDocked, QuestionDeck, QuickReplies, threadGroups, type AgentCtx } from "@/components/editor/agent-chat"
 import { PlanningView, PlanSteps } from "@/components/editor/planning-view"
 import { renderFlickShot } from "@/components/editor/flick-shot"
 import { addMadeVideo, canRotate, SHAPES, SHAPE_GREY, isBox, isMadeVideo, MISSING_POSTER, BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, defaultFill, defaultInk, SAMPLE_UPLOADS, inSet, clampStrip, fitStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload, videoAt, wrapVideo } from "@/components/editor/elements"
@@ -891,6 +891,13 @@ export function GenerationCanvas({
       onFormat?.(`${w}×${h}`, len)
       return `Size set to ${w}×${h}${len ? `, ${len} s` : ""}. Videos are made in ${videoAspectOf(`${w}×${h}`)} (the closest shape the video model makes) and cover the frame, centred; a little may be cropped at the edges.`
     },
+    approveReference() {
+      const main = slidesNow.current[0]
+      if (!isMadeVideo(main.video) || main.job) return "Error: Variation 1 isn't ready yet; the app tells you when it is."
+      if (main.approvedRef === main.startedAt) return "Already approved: the variations are being made from it."
+      approveRef(true)
+      return "Approved: the variations are being made from Variation 1 now (a few minutes). Say so in one short line."
+    },
     approvePlan(plan) {
       const vars = plan.variations.filter((v) => v.name?.trim()).slice(0, 5)
       if (vars.length < 2) return "Error: The plan needs at least two variations."
@@ -1410,10 +1417,23 @@ export function GenerationCanvas({
   const mainNow = slides[0]
   const refReady = isMadeVideo(mainNow.video) && !mainNow.job
   const needsReview = agentMode && live && refReady && mainNow.approvedRef !== mainNow.startedAt && slides.some((x) => x.job?.status === "waiting")
-  const approveRef = () => {
+  /** Variation 1 approved: the waiting variations start. From the chat's own tool (`byChat`) or the build card's button, which the chat hears about */
+  const approveRef = (byChat = false) => {
     commitSlides(slidesNow.current.map((x, i) => (i === 0 ? { ...x, approvedRef: x.startedAt } : x)))
     toast({ title: "Making the variations", description: "From Variation 1, which you approved." })
+    if (!byChat) agent.notify("(App: the user approved Variation 1 with the button; the variations are being made from it. Nothing to reply.)", false)
   }
+  // Variation 1 is in and waiting for review: wake the chat, once per version, so it looks and asks
+  const toldReady = useRef(0)
+  // only when this session watched it being made (a reload of a project already waiting stays quiet)
+  const sawMaking = useRef(0)
+  if (!refReady && mainNow.startedAt) sawMaking.current = mainNow.startedAt
+  useEffect(() => {
+    if (!needsReview || toldReady.current === mainNow.startedAt || sawMaking.current !== mainNow.startedAt) return
+    toldReady.current = mainNow.startedAt ?? 0
+    agent.notify("(App: Variation 1 is ready. Look at it once with view_flick and fix only clear clashes (text over the product or faces, the strip over the action). Then end with one short line asking the user to play it and press Make the variations in the build card, or say what to change. Don't ask with ask_user.)")
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsReview, mainNow.startedAt])
   const changeRef = () => {
     select("main")
     setComposeMode("chat")
@@ -1520,6 +1540,7 @@ export function GenerationCanvas({
         const v = st === "done" && s.video !== undefined ? videoAt(wrapVideo(s.video)) : undefined
         return { name: nameOf(s), state: st, src: v?.mp4 || undefined, poster: v?.poster, since: s.job?.since ?? s.startedAt, ms: s.job ? undefined : ms, status: s.job?.status }
       }),
+    review: { needed: needsReview, approve: () => approveRef(), change: () => changeRef() },
     progress: () => {
       const vs = slides.slice(1)
       return [
@@ -2192,27 +2213,8 @@ export function GenerationCanvas({
             composer={
               chatting ? (
                 <div className="flex flex-col gap-2">
-                  {/* the reference video is ready: the user reviews it here before any variation is made */}
-                  {needsReview && (
-                    <section aria-label="Review Variation 1" className="flex flex-col gap-3 rounded-2xl bg-card p-3 shadow-lg ring-1 ring-foreground/10 animate-in fade-in-0 slide-in-from-bottom-2">
-                      <div className="flex items-center gap-3">
-                        <img loading="lazy" decoding="async" src={videoAt(mainNow.video!).poster} alt="" className="size-12 shrink-0 rounded-lg object-cover ring-1 ring-foreground/10" />
-                        <div className="min-w-0">
-                          <p className="text-base font-medium leading-snug">Happy with Variation 1?</p>
-                          <p className="text-xs text-muted-foreground">The other variations are made from it. Play it on the canvas, then decide.</p>
-                        </div>
-                      </div>
-                      <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="ghost" onClick={changeRef}>
-                          Change it
-                        </Button>
-                        <Button size="sm" onClick={approveRef}>
-                          Make the variations
-                        </Button>
-                      </div>
-                    </section>
-                  )}
                   <QuestionDeck agent={agent} ctx={agentCtx} />
+                  <QuickReplies agent={agent} ctx={agentCtx} />
                   <AgentComposer
                     agent={agent}
                     placeholder={agent.waiting ? "Or reply directly…" : slides[0].startedAt ? "Ask for a change: a headline, a colour, another variation. Type @ to mention" : undefined}

@@ -11,9 +11,10 @@ when: Before spending credits on videos, after the build, and after any big chan
   made without asking.
 - **At checkpoints that set the direction or the final result:** the concept or storyline, the plan,
   and any change that means regenerating videos.
-- **The reference video, always, before any variation is made.** When it's ready, ask the user to
-  review it. Approve → the variations are made from it. Changes → regenerate the reference with them,
-  and ask again; variations always use the latest approved reference.
+- **The reference video, always, before any variation is made.** The build card in the chat has the
+  approval (Make the variations); the app wakes you when the video is ready, so point the user to it
+  in one line. They approve in words → approve_variation_1. Changes → regenerate the reference with
+  them; variations always use the latest approved reference.
 
 ## Change on your own (no need to ask)
 - Fix layout problems: anything overlapping, cropped, unreadable or not working.
@@ -22,9 +23,10 @@ when: Before spending credits on videos, after the build, and after any big chan
 
 ## How much to explain
 Depends on how easy it is to change later:
-- Easy to change (a colour, a word): little or nothing.
+- Easy to change (a colour, a word): one sentence on what changed, nothing more.
 - Hard to change (the concept, the videos): a short reason.
-- Never over-explain.
+- Never over-explain: no bullet-list recaps, no "all checks pass", no "is this OK now?" after a
+  tweak (the user says when they want more).
 
 ## Before handing over
 Run review_flick and fix every failure, then check:
@@ -34,4 +36,5 @@ Run review_flick and fix every failure, then check:
 - [ ] every button has a link, and each link goes to the right page for its variation;
 - [ ] prices and names are right for each variation.
 Missing variations or broken links block export: tell the user what's left. Anything else, fix it
-or mention it in one line.
+or mention it in one line. The hand-over itself is two short lines: what's ready, and one thing they
+might try next.
