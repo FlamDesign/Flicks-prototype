@@ -168,7 +168,7 @@ export type Item = Base &
   (
     | { kind: "user"; text: string; images: string[] }
     | { kind: "assistant"; text: string; streaming?: boolean; activity?: string }
-    | { kind: "question"; toolId: string; question: string; options: Choice[]; display: Display; step?: Step; multi: boolean; custom: boolean; answer?: string; purpose?: string }
+    | { kind: "question"; toolId: string; question: string; options: Choice[]; display: Display; step?: Step; multi: boolean; custom: boolean; answer?: string; purpose?: string; /** how many to pick, when the wording says ("pick 2 to 4") */ range?: { min: number; max: number } }
     | { kind: "assets"; toolId: string; message: string; kinds: string[]; done?: "added" | "skipped"; images?: string[] }
     | { kind: "brand"; brand: Brand }
     | { kind: "plan"; toolId: string; plan: Plan; state: "open" | "approved" | "skipped"; previews?: (string | undefined)[]; frames?: (string | undefined)[] }
@@ -917,8 +917,24 @@ const WAIT = Symbol("wait")
 
 /** displays where several options can be picked */
 const MULTI_DISPLAYS: Display[] = ["chips", "cards", "pictures", "palettes"]
-/** the question itself asks for more than one ("pick all that apply", "choose any", "which ones") */
+const NUM: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9 }
+const num = (w: string) => NUM[w.toLowerCase()] ?? Number(w)
+const N = String.raw`(\d+|one|two|three|four|five|six|seven|eight|nine)`
+/** how many the wording asks for: "pick 2 to 4", "up to 3", "at least 2", "choose two" */
+export function pickRange(q: string): { min: number; max: number } | null {
+  let m = q.match(new RegExp(String.raw`\b(?:pick|choose|select|tick)\s+(?:between\s+)?${N}\s*(?:to|-|–|or|and)\s*${N}\b`, "i"))
+  if (m) return { min: num(m[1]), max: num(m[2]) }
+  m = q.match(new RegExp(String.raw`\bup to\s+${N}\b`, "i"))
+  if (m && num(m[1]) > 1) return { min: 1, max: num(m[1]) }
+  m = q.match(new RegExp(String.raw`\b(?:at least|${N} or more)\s*${N}?`, "i"))
+  if (m) return { min: num(m[1] ?? m[2] ?? "2") || 2, max: 9 }
+  m = q.match(new RegExp(String.raw`\b(?:pick|choose|select)\s+(?:any\s+)?${N}\b`, "i"))
+  if (m && num(m[1]) > 1) return { min: num(m[1]), max: num(m[1]) }
+  return null
+}
+/** the question itself asks for more than one ("pick all that apply", "choose any", "pick 2 to 4", "which ones") */
 export const asksForSeveral = (q: string) =>
+  !!pickRange(q) ||
   /\b(all|as many|one or more|several|multiple)\b[^.?!]*\b(apply|you like|you want|that fit|you need)\b|\b(pick|choose|select|tick|add)\s+(all|any|several|multiple|one or more|as many)\b|\bwhich ones\b|\(.*(pick|choose|select)\s+(any|several|multiple).*\)/i.test(q)
 
 export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { url: string; name: string }[]; autoStart?: boolean; projectId?: string }) {
@@ -1366,7 +1382,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           const step = (["idea", "look", "plan"] as Step[]).includes(input.step as Step) ? (input.step as Step) : undefined
           const pictures = display === "pictures"
           const shown = pictures ? options.slice(0, 4) : options
-          const itemId = add({ kind: "question", toolId: u.id, question: String(input.question ?? ""), options: shown, display, step, multi: (!!input.multi_select || asksForSeveral(String(input.question ?? ""))) && MULTI_DISPLAYS.includes(display), custom: input.allow_custom !== false && (display === "chips" || pictures || display === "sizes"), purpose: typeof input.purpose === "string" ? input.purpose : undefined })
+          const itemId = add({ kind: "question", toolId: u.id, question: String(input.question ?? ""), options: shown, display, step, multi: (!!input.multi_select || asksForSeveral(String(input.question ?? ""))) && MULTI_DISPLAYS.includes(display), range: MULTI_DISPLAYS.includes(display) ? (pickRange(String(input.question ?? "")) ?? undefined) : undefined, custom: input.allow_custom !== false && (display === "chips" || pictures || display === "sizes"), purpose: typeof input.purpose === "string" ? input.purpose : undefined })
           pending.current.push({ toolId: u.id, itemId })
           // pictures fill in as they're made: a quick draft of each answer, with the user's product in it
           if (pictures)

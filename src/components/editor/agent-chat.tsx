@@ -559,7 +559,8 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
         </p>
       </div>
     )
-  const pick = (o: Choice) => (item.multi ? setPicked((p) => (p.includes(o.label) ? p.filter((x) => x !== o.label) : [...p, o.label])) : agent.answer(item.id, o.label, o))
+  const pick = (o: Choice) => (item.multi ? setPicked((p) => (p.includes(o.label) ? p.filter((x) => x !== o.label) : p.length >= (item.range?.max ?? 99) ? [...p.slice(1), o.label] : [...p, o.label])) : agent.answer(item.id, o.label, o))
+  const enough = picked.length + (other.trim() ? 1 : 0) >= (item.range?.min ?? 1)
   pickRef.current = pick
   const visual = item.display === "layouts" || item.display === "thumbnails"
   const send = () => agent.answer(item.id, [...picked, ...(other.trim() ? [other.trim()] : [])].join(", "))
@@ -568,7 +569,7 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
     <Card className={cn("animate-in fade-in-0 slide-in-from-bottom-1 duration-300", rows && "gap-2 px-2 pb-2")}>
       <p className={cn("text-sm font-medium", stage && "text-lg", rows && "px-3")}>
         {item.question}
-        {item.multi && <span className="ml-2 text-xs font-normal text-muted-foreground">Pick any</span>}
+        {item.multi && <span className="ml-2 text-xs font-normal text-muted-foreground">{pickHint(item.range)}</span>}
       </p>
       {rows ? (
         <div className="flex flex-col" role={item.multi ? "group" : "radiogroup"} aria-label={item.question}>
@@ -621,7 +622,7 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
             </label>
           )}
           {(item.multi ? picked.length > 0 || other.trim() : other.trim()) && (
-            <Button size="sm" onClick={send} disabled={agent.busy} className="mx-3 mt-2 self-end">
+            <Button size="sm" onClick={send} disabled={agent.busy || (item.multi && !enough)} className="mx-3 mt-2 self-end">
               Continue
             </Button>
           )}
@@ -713,7 +714,7 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
             />
           )}
           {item.multi && (picked.length > 0 || other.trim()) && (
-            <Button size="sm" disabled={agent.busy} onClick={send} className="ml-auto">
+            <Button size="sm" disabled={agent.busy || !enough} onClick={send} className="ml-auto">
               Continue{picked.length > 1 ? ` with ${picked.length}` : ""}
             </Button>
           )}
@@ -723,6 +724,9 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
     </div>
   )
 }
+
+/** the hint next to a pick-several question: "Pick 2 to 4", "Pick up to 3", or "Pick any" */
+const pickHint = (r?: { min: number; max: number }) => (!r ? "Pick any" : r.min === r.max ? `Pick ${r.min}` : r.max >= 9 ? `Pick at least ${r.min}` : r.min <= 1 ? `Pick up to ${r.max}` : `Pick ${r.min} to ${r.max}`)
 
 function Assets({ item, agent, bare }: { item: Extract<Item, { kind: "assets" }>; agent: Agent; bare?: boolean }) {
   const [files, setFiles] = useState<File[]>([])
@@ -1344,12 +1348,13 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
   }
   const pick = (o: Choice) => {
     if (!q || q.kind !== "question") return
-    if (q.multi) setPicked((p) => ({ ...p, [q.id]: mine.includes(o.label) ? mine.filter((x) => x !== o.label) : [...mine, o.label] }))
+    if (q.multi) setPicked((p) => ({ ...p, [q.id]: mine.includes(o.label) ? mine.filter((x) => x !== o.label) : mine.length >= (q.range?.max ?? 99) ? [...mine.slice(1), o.label] : [...mine, o.label] }))
     else commit(o.label, o)
   }
+  const need = q?.kind === "question" && q.multi ? (q.range?.min ?? 1) : 1
   const cont = () => {
     const all = [...mine, ...(typed.trim() ? [typed.trim()] : [])]
-    if (all.length) commit(all.join(", "))
+    if (all.length >= need) commit(all.join(", "))
   }
   // keys: 1 to 9 pick, Esc skips (not while typing)
   const pickRef = useRef(pick)
@@ -1399,7 +1404,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
       <header className="flex items-start gap-3 px-4 pb-2 pt-3.5">
         <p className="flex-1 text-base font-medium leading-snug">
           {q.question}
-          {q.multi && <span className="ml-2 text-xs font-normal text-muted-foreground">Pick any</span>}
+          {q.multi && <span className="ml-2 text-xs font-normal text-muted-foreground">{pickHint(q.range)}</span>}
         </p>
         {pager}
       </header>
@@ -1470,12 +1475,12 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
           </div>
         ) : q.display === "pictures" ? (
           // one picture per answer, drawn with their product; the name sits on the picture
-          <div className={cn("grid grid-cols-2 gap-2 p-1", q.options.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-4")} role="radiogroup" aria-label={q.question}>
+          <div className={cn("grid grid-cols-2 gap-2 p-1", q.options.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-4")} role={q.multi ? "group" : "radiogroup"} aria-label={q.question}>
             {q.options.map((o, n) => (
               <button
                 key={o.label}
                 type="button"
-                role="radio"
+                role={q.multi ? "checkbox" : "radio"}
                 aria-checked={chosen(o)}
                 aria-description={o.description}
                 disabled={agent.busy}
@@ -1487,6 +1492,11 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
                 style={{ aspectRatio: Math.min(1.25, Math.max(ctx.ratio, 0.8)) }}
               >
                 <PictureSlot src={o.image} imgClassName="transition-[opacity,transform] duration-500 group-hover/p:scale-[1.03]" />
+                {q.multi && (
+                  <span aria-hidden className={cn("absolute right-2 top-2 grid size-6 place-items-center rounded-full shadow-sm ring-1 transition-colors", chosen(o) ? "bg-brand text-brand-foreground ring-brand" : "bg-black/30 text-transparent ring-white/70 backdrop-blur-sm")}>
+                    <HugeiconsIcon icon={Tick02Icon} className="size-3.5" strokeWidth={3} />
+                  </span>
+                )}
                 <span className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-gradient-to-t from-black/70 to-transparent px-2.5 pb-2 pt-8 text-sm font-medium text-white">
                   <span className="grid size-5 shrink-0 place-items-center rounded-full bg-white/20 text-xs tabular-nums backdrop-blur-sm">{n + 1}</span>
                   <span className="truncate">{o.label}</span>
@@ -1525,12 +1535,12 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
             })}
           </div>
         ) : (
-          <div className={cn("grid gap-2 p-1", "grid-cols-3")} role="radiogroup" aria-label={q.question}>
+          <div className={cn("grid gap-2 p-1", "grid-cols-3")} role={q.multi ? "group" : "radiogroup"} aria-label={q.question}>
             {q.options.map((o, n) => (
               <button
                 key={o.label}
                 type="button"
-                role="radio"
+                role={q.multi ? "checkbox" : "radio"}
                 aria-checked={chosen(o)}
                 onClick={() => pick(o)}
                 disabled={agent.busy}
@@ -1580,8 +1590,8 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
           Skip <Shortcut keys={["Esc"]} />
         </Button>
         {(q.multi || typed.trim()) && (
-          <Button size="sm" disabled={agent.busy || !(mine.length || typed.trim())} onClick={cont}>
-            Continue
+          <Button size="sm" disabled={agent.busy || mine.length + (typed.trim() ? 1 : 0) < need} onClick={cont}>
+            {q.multi && mine.length ? `Continue with ${mine.length}` : "Continue"}
           </Button>
         )}
       </footer>
