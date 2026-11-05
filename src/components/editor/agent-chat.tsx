@@ -946,7 +946,7 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
           <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">Storyboard</span>
           <span className="min-w-0 flex-1 truncate text-sm font-medium">{plan.title}</span>
         </div>
-        {frames.length ? (
+        {frames.length && !own ? (
           <Storyboard frames={frames} stills={item.frames ?? []} ratio={ctx.ratio} name={first?.name} />
         ) : (
           // starting from the user's video: it, then each change drawn on its first frame

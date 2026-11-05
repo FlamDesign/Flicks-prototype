@@ -64,9 +64,10 @@ export const briefSig = (entries: BriefEntry[]) => new Map(entries.map((e) => [e
 /** "What mood should it have?" → "Mood"; long questions keep their first few words */
 function shortQuestion(q: string) {
   const t = q.replace(/[?.!]+$/, "").trim()
-  const by = [[/^where\b/i, "Setting"], [/^when\b/i, "Timing"], [/^who\b/i, "People"], [/\bmood\b/i, "Mood"], [/\blight/i, "Light"], [/\bcolou?r/i, "Colours"], [/\blayout\b/i, "Layout"], [/\bvariations?\b|\bchange between\b/i, "What changes"]] as const
+  const by = [[/^where\b/i, "Setting"], [/^when\b/i, "Timing"], [/^who\b/i, "People"], [/\bmood\b/i, "Mood"], [/\blight/i, "Light"], [/\bcolou?r/i, "Colours"], [/\blayout\b/i, "Layout"], [/\bvariations?\b|\bchange between\b/i, "What changes"], [/\b(opening|first) frame\b|\bopen(s|ing)? on\b/i, "Opening frame"], [/\b(last|final|end(ing)?) frame\b/i, "Final frame"], [/\bthumbnails?\b/i, "Thumbnails"], [/\bproducts?\b/i, "Products"], [/\bcast\b|\bpeople\b|\bcharacters?\b/i, "Cast"], [/\bscenes?\b/i, "Scenes"]] as const
   const hit = by.find(([re]) => re.test(t))
   if (hit) return hit[1]
+  if (/^(is|are|does|do|should|shall|can|will|would)\b/i.test(t)) return "Your answer"
   const m = t.match(/^(?:what|which|how|pick|choose)\s+(?:a\s+|the\s+)?(\w+(?:\s\w+)?)/i)
   const w = m ? m[1].replace(/\s(should|do|does|is|are|would|for)$/i, "") : t.split(" ").slice(0, 3).join(" ")
   return w.charAt(0).toUpperCase() + w.slice(1)

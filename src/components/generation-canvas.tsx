@@ -22,6 +22,7 @@ import { FileTitle, ModeSwitch, VideoToggle } from "@/components/editor/editor-t
 import { useToast } from "@/components/ui-extra/toaster"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { recipeOf } from "@/recipes"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { SIZES } from "@/data"
@@ -184,7 +185,7 @@ export function GenerationCanvas({
   const naming = !title
   useEffect(() => {
     if (title) return
-    const t = setTimeout(() => setTitle((v) => v || titleFromPrompt(generation.prompt)), 1200)
+    const t = setTimeout(() => setTitle((v) => v || (generation.recipe ? `${recipeOf(generation.recipe.id)?.name ?? "Recipe"}_${stamp()}` : titleFromPrompt(generation.prompt))), 1200)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
