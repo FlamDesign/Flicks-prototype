@@ -345,7 +345,7 @@ export const TOOLS: Tool[] = [
   {
     name: "set_format",
     description: "Set the Flick's size (width×height in pixels) and, only if the user asked, its length. Use it when the user names a size in their own words; a size question (purpose 'size') applies the answer by itself. Videos are made in the closest available shape and cover the frame, centred.",
-    input_schema: { type: "object", properties: { size: { type: "string", description: "e.g. '300×250' or '728×90'" }, seconds: { type: "number", description: "4 to 15; only when the user asked for a length" } }, required: ["size"] },
+    input_schema: { type: "object", properties: { size: { type: "string", description: "e.g. '300×250' or '728×90'" }, seconds: { type: "number", description: "The total length, 4 to 15; only when the user asked for a length. 'Make it 5 seconds long' means 5 in total, not 5 more; add to the current length only when the user says 'longer by' or 'add'." } }, required: ["size"] },
   },
   {
     name: "request_assets",
@@ -2264,7 +2264,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
             })
             for (const x of list) if (x.kind === "image" && x.state === "working" && x.job) resumeImage(x.id, x.job, x.target)
             // the page closed mid-turn, with the user's message (or a step's results) unanswered
-            setItems(saved.inTurn && saved.msgs.at(-1)?.role === "user" && !(saved.pending ?? []).length ? [...list, { id: crypto.randomUUID(), kind: "resume" } as Item] : list)
+            setItems(saved.inTurn && saved.msgs.at(-1)?.role === "user" && !pending.current.length ? [...list, { id: crypto.randomUUID(), kind: "resume" } as Item] : list)
           } else begin()
         })
       return

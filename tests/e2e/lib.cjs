@@ -141,7 +141,7 @@ async function drive(run, policy, until, { timeout = 8 * 60_000, label = "" } = 
       await p.getByRole("button", { name: "Continue" }).last().click()
       continue
     }
-    if (v.question) {
+    if (v.question && !(v.assets && !v.question.typeField && !v.question.options?.length)) {
       if (policy.onQuestion && (await policy.onQuestion(v.question, v))) continue
       const qq = v.question
       if (qq.typeField) {
@@ -150,10 +150,11 @@ async function drive(run, policy, until, { timeout = 8 * 60_000, label = "" } = 
         await f.fill(policy.typed ?? "No brand, choose for me")
         await f.press("Enter")
       } else if (qq.multi) {
-        log(`question "${qq.text}" (several): picking ${qq.options.slice(0, 2).join(" + ")}`)
+        const need = Number(/Pick (\d)/.exec(qq.text)?.[1] ?? 2)
+        log(`question "${qq.text}" (several): picking ${qq.options.slice(0, need).join(" + ")}`)
         const opts = scope(p, qq).locator('[role="checkbox"]:not([disabled]):visible')
-        await opts.nth(0).click()
-        if ((await opts.count()) > 1) await opts.nth(1).click()
+        const n = Math.min(need, await opts.count())
+        for (let i = 0; i < n; i++) await opts.nth(i).click()
         await p.getByRole("button", { name: /^Continue/ }).last().click()
       } else if (qq.options.length) {
         // questions about redoing a video: the sample clips never match, so keep what's there
