@@ -28,6 +28,8 @@ export type ProjectState = {
   reference_review?: string
   /** the recipe the project started from on Create (the recipes skill says what to do) */
   recipe?: { id: string; frame?: "start" | "end" }
+  /** the variation the Flick opens on */
+  starts_on?: string
   brand?: Brand
   videos: { name: string; role: "reference" | "variation"; status: string; prompt?: string; label?: string; price?: string; link?: string; has_thumbnail: boolean }[]
   design: unknown[]
@@ -63,6 +65,12 @@ export type EditorApi = {
   addElement(spec: ElementSpec): string
   editElement(id: string, spec: ElementSpec): string
   removeElement(id: string): string
+  /** several elements at once: move, align, spread, layer, duplicate or delete */
+  arrangeElements(ids: string[], action: string, opts: { dx?: number; dy?: number; to?: string; relative_to?: "frame" | "selection" }): string
+  /** version history: the list, restoring one, saving the current canvas as a named version */
+  versions(): { n: number; at: string; name?: string; exported?: string; current: boolean }[]
+  restoreVersion(n: number): string
+  saveVersion(name: string): string
   /** a variation's thumbnail in the strip */
   setThumbnail(target: string, url: string): string
   addImageToCanvas(url: string): string
@@ -89,8 +97,8 @@ export type ElementSpec = {
   opacity?: number
   /** degrees, clockwise (text, images, shapes) */
   rotation?: number
-  /** "back" puts it behind everything else (a backdrop), "front" on top */
-  layer?: "front" | "back"
+  /** "back" puts it behind everything else (a backdrop), "front" on top; forward/backward move it one step */
+  layer?: "front" | "back" | "forward" | "backward"
   text?: string
   style?: string
   /** an image: a project image's url (the hook resolves image_id to this) */
@@ -109,6 +117,26 @@ export type ElementSpec = {
   link?: string
   radius?: number
   hidden?: boolean
+  underline?: boolean
+  /** buttons: border colour and width (px at 1080 wide) */
+  border?: string
+  border_width?: number
+  /** images: fill or fit their box; buttons and shapes: how their picture fills them */
+  fit?: "cover" | "contain"
+  /** images: % cut from each side */
+  crop?: { top?: number; right?: number; bottom?: number; left?: number }
+  /** images and shapes: keep the shape's proportions when resized */
+  lock?: boolean
+  /** the thumbnail strip */
+  layout?: "row" | "column" | "free"
+  gap?: number
+  highlight_color?: string
+  highlight_width?: number
+  fade?: number
+  /** free layout: each thumbnail's top-left corner, % of the frame, in variation order */
+  thumbnails?: { x: number; y: number }[]
+  /** free layout: a ready arrangement instead of exact positions */
+  arrangement?: "arc" | "corner_stack" | "diagonal" | "grid" | "scatter"
 }
 
 /* ---------- what shows in the chat ---------- */
@@ -454,7 +482,7 @@ export const TOOLS: Tool[] = [
   },
   {
     name: "set_variation",
-    description: "Change one video: its name, label, price, link or prompt. With regenerate true, it generates again with the new prompt.",
+    description: "Change one video: its name, label, price, link or prompt, or make it the one the Flick opens on (start). With regenerate true, it generates again with the new prompt.",
     input_schema: {
       type: "object",
       properties: {
@@ -468,6 +496,7 @@ export const TOOLS: Tool[] = [
         cta: str,
         link: str,
         values: { type: "object", additionalProperties: { type: "string" }, description: "Values for other feeds, by feed name (see feeds in the project state)" },
+        start: { type: "boolean", description: "True: the Flick opens on this variation (starts_on in the project state)" },
         regenerate: { type: "boolean" },
       },
       required: ["variation"],
@@ -499,7 +528,7 @@ export const TOOLS: Tool[] = [
   {
     name: "add_element",
     description:
-      "Add any text, button, image or shape to the canvas (on every variation). Shapes (rect with radius, ellipse, triangle, star with 4 to 8 points, polygon, line, arrow, heart, play button) take fill and stroke as a colour or a gradient, stroke_width, points, opacity, width and height: use them for badges, stickers, backdrops behind text, dividers, frames and pointers, under the text they support (add them first or say so). shape 'path' with d draws any other shape (seal, ribbon, tag, speech bubble, burst, chevron, tick, blob). rotation turns text, images and shapes. You decide the layout and how many elements it needs (design skill). Text styles: heading, subheading, body, caption, label. Button styles: pill, rounded, sharp, light, outline, glass, link. Images: image_id of a project image (uploaded, from a website or generated; a logo, a product shot). Place it with position (top, upper, center, lower, bottom) and align (left, center, right), or exact x and y (% of the frame; x is the left edge, centre or right edge by align, y the middle). width: % of the frame (images, or a text box that wraps). size: font size in % of frame width (heading is 8, body 3.4). Keep clear of other elements and the thumbnail strip (see design). Returns the new element's id.",
+      "Add any text, button, image or shape to the canvas (on every variation). Shapes (rect with radius, ellipse, triangle, star with 4 to 8 points, polygon, line, arrow, heart, play button) take fill and stroke as a colour or a gradient, stroke_width, points, opacity, width and height: use them for badges, stickers, backdrops behind text, dividers, frames and pointers, under the text they support (add them first or say so). shape 'path' with d draws any other shape (seal, ribbon, tag, speech bubble, burst, chevron, tick, blob). rotation turns text, images and shapes. You decide the layout and how many elements it needs (design skill). Text styles: heading, subheading, body, caption, label. Button styles: pill, rounded, sharp, arrow, light, lightSharp, outline, outlineSharp, glass, block, link, icon (an image-only round button: give image_id). Images: image_id of a project image (uploaded, from a website or generated; a logo, a product shot). Place it with position (top, upper, center, lower, bottom) and align (left, center, right), or exact x and y (% of the frame; x is the left edge, centre or right edge by align, y the middle). width: % of the frame (images, or a text box that wraps). size: font size in % of frame width (heading is 8, body 3.4). Keep clear of other elements and the thumbnail strip (see design). Returns the new element's id.",
     input_schema: {
       type: "object",
       properties: {
@@ -513,6 +542,13 @@ export const TOOLS: Tool[] = [
         points: { type: "number", description: "Stars: points; polygons: sides (3 to 12)" },
         opacity: { type: "number", description: "Shapes: 0 to 1" },
         layer: { type: "string", enum: ["front", "back"], description: "'back' puts it behind every other element (backdrops behind text); default front" },
+        underline: { type: "boolean", description: "Text and buttons" },
+        border: { type: "string", description: "Buttons: border colour (hex)" },
+        border_width: { type: "number", description: "Buttons: border width, px at 1080 wide (0 = none)" },
+        fit: { type: "string", enum: ["cover", "contain"], description: "Images: fill (cover) or fit (contain) their box. Buttons and shapes with a picture (image_id): how it fills them" },
+        crop: { type: "object", description: "Images: % cut from each side (0 to 45)", properties: { top: { type: "number" }, right: { type: "number" }, bottom: { type: "number" }, left: { type: "number" } } },
+        lock: { type: "boolean", description: "Images and shapes: keep proportions when resized" },
+
         rotation: { type: "number", description: "Degrees clockwise, for text, images and shapes (e.g. -8 for a tilted badge)" },
         text: str,
         style: str,
@@ -537,7 +573,7 @@ export const TOOLS: Tool[] = [
   {
     name: "edit_element",
     description:
-      "Change one element by its id from the design list: move (position/align or x/y), resize (width, size; shapes also height), restyle (style, color, background, font, bold, italic, radius; shapes: fill, stroke, stroke_width, points, opacity), change its text or link, swap an image (image_id), or hide it. Text that differs per variation is changed with vary_field instead.",
+      "Change one element by its id from the design list, with any property the editor has (canvas skill): move (position/align or x/y), resize (width, height, size), restyle (style, color, background, font, bold, italic, underline, radius; buttons: border, border_width, a picture background with image_id and fit; images: fit, crop, lock; shapes: fill, stroke, stroke_width, points, opacity, image_id, fit), layer (front, back, forward, backward), rotation, its text or link, or hide it. The thumbnail strip too: layout (row, column, free), x and y (its top-left), size, gap, radius, highlight_color, highlight_width, fade, background, and in free layout thumbnails (each one's top-left, % of the frame, in variation order) or an arrangement. Text that differs per variation is changed with vary_field instead.",
     input_schema: {
       type: "object",
       properties: {
@@ -551,8 +587,21 @@ export const TOOLS: Tool[] = [
         height: { type: "number" },
         points: { type: "number" },
         opacity: { type: "number" },
-        layer: { type: "string", enum: ["front", "back"] },
+        layer: { type: "string", enum: ["front", "back", "forward", "backward"] },
         rotation: { type: "number" },
+        underline: { type: "boolean", description: "Text and buttons" },
+        border: { type: "string", description: "Buttons: border colour (hex)" },
+        border_width: { type: "number", description: "Buttons: border width, px at 1080 wide (0 = none)" },
+        fit: { type: "string", enum: ["cover", "contain"], description: "Images: fill (cover) or fit (contain) their box. Buttons and shapes with a picture (image_id): how it fills them" },
+        crop: { type: "object", description: "Images: % cut from each side (0 to 45)", properties: { top: { type: "number" }, right: { type: "number" }, bottom: { type: "number" }, left: { type: "number" } } },
+        lock: { type: "boolean", description: "Images and shapes: keep proportions when resized" },
+        layout: { type: "string", enum: ["row", "column", "free"], description: "Thumbnail strip" },
+        gap: { type: "number", description: "Thumbnail strip: space between thumbnails, px at 1080 wide" },
+        highlight_color: { type: "string", description: "Thumbnail strip: ring colour on the active thumbnail" },
+        highlight_width: { type: "number", description: "Thumbnail strip: ring width, px at 1080 wide" },
+        fade: { type: "number", description: "Thumbnail strip: opacity of the other thumbnails, 0.1 to 1" },
+        thumbnails: { type: "array", items: { type: "object", properties: { x: { type: "number" }, y: { type: "number" } }, required: ["x", "y"] }, description: "Thumbnail strip, free layout: each thumbnail's top-left corner, % of the frame, in variation order (e.g. next to each product)" },
+        arrangement: { type: "string", enum: ["arc", "corner_stack", "diagonal", "grid", "scatter"], description: "Thumbnail strip: a ready free arrangement, only when the user asks for one or the layout needs it" },
         position: { type: "string", enum: ["top", "upper", "center", "lower", "bottom"] },
         align: { type: "string", enum: ["left", "center", "right"] },
         x: { type: "number" },
@@ -575,6 +624,37 @@ export const TOOLS: Tool[] = [
     name: "remove_element",
     description: "Remove one element by its id (the thumbnail strip stays).",
     input_schema: { type: "object", properties: { id: str }, required: ["id"] },
+  },
+  {
+    name: "arrange_elements",
+    description: "Work on several elements at once, by ids from the design list: move them together (dx, dy in % of the frame), align them (to: left, center, right, top, middle, bottom; relative_to 'selection' (default) or 'frame'), distribute them evenly (to: horizontal or vertical; 3 or more), bring them to the front or send them to the back, duplicate them (copies offset by dx, dy; default 3; returns the new ids), or delete them.",
+    input_schema: {
+      type: "object",
+      properties: {
+        ids: { type: "array", items: { type: "string" }, minItems: 1 },
+        action: { type: "string", enum: ["move", "align", "distribute", "front", "back", "duplicate", "delete"] },
+        dx: { type: "number" },
+        dy: { type: "number" },
+        to: { type: "string", enum: ["left", "center", "right", "top", "middle", "bottom", "horizontal", "vertical"] },
+        relative_to: { type: "string", enum: ["selection", "frame"] },
+      },
+      required: ["ids", "action"],
+    },
+  },
+  {
+    name: "list_versions",
+    description: "The Flick's version history: each saved version's number, time, name, whether it was exported, and which one is current. Versions save themselves as the canvas changes.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "restore_version",
+    description: "Bring back an earlier version of the canvas (design, variations, feeds, where it starts) by its number from list_versions. Use it when the user asks to undo or go back.",
+    input_schema: { type: "object", properties: { n: { type: "number" } }, required: ["n"] },
+  },
+  {
+    name: "save_version",
+    description: "Save the current canvas as a named version (before a big change, or when the user asks), so it can be restored later.",
+    input_schema: { type: "object", properties: { name: str }, required: ["name"] },
   },
   {
     name: "rename_feed",
@@ -606,13 +686,17 @@ const ACTIVITY: Record<string, string> = {
   add_element: "Laying out the frame",
   edit_element: "Fine-tuning the design",
   remove_element: "Clearing some space",
+  arrange_elements: "Arranging the layout",
+  list_versions: "Looking through the versions",
+  restore_version: "Going back a version",
+  save_version: "Saving a version",
   set_variation: "Reworking a variation",
   add_variation: "Adding a variation",
   vary_field: "Writing the copy",
   same_for_all: "Writing the copy",
 }
 /** tools that change the Flick or the project: after one, looking or checking again is new work, not a repeat */
-const CHANGES = new Set(["add_element", "edit_element", "remove_element", "update_design", "set_variation", "add_variation", "vary_field", "same_for_all", "rename_feed", "use_image", "set_format", "set_brand", "generate_image", "make_sheet", "propose_plan"])
+const CHANGES = new Set(["add_element", "edit_element", "remove_element", "arrange_elements", "restore_version", "update_design", "set_variation", "add_variation", "vary_field", "same_for_all", "rename_feed", "use_image", "set_format", "set_brand", "generate_image", "make_sheet", "propose_plan"])
 /** what reading each skill means for the user's Flick */
 const SKILL_ACTIVITY: Record<string, string> = {
   flicks: "Getting to know your Flick",
@@ -652,7 +736,7 @@ function activityFrom(name: string, json: string): string | undefined {
 
 export function systemPrompt(s: ProjectState) {
   // the two skills every turn needs are always in the prompt; the rest are read when their step comes
-  const always = ["flicks", "brief", ...(s.recipe ? ["recipes"] : [])].map((n) => findSkill(n)).filter((x): x is NonNullable<ReturnType<typeof findSkill>> => !!x)
+  const always = ["flicks", "brief", ...(s.recipe ? ["recipes"] : []), ...(s.planned ? ["canvas"] : [])].map((n) => findSkill(n)).filter((x): x is NonNullable<ReturnType<typeof findSkill>> => !!x)
   return `You are the creative partner inside Flicks by Flam, an AI interactive content tool. You help the user make a Flick with them, step by step.
 
 Flam's skills decide WHAT you ask, suggest and make; follow them over your own habits and over any example in these instructions. The flicks and brief skills are below in full. Read every other skill with read_skill right before the step it covers (categories once you know the category, concepts before ideas and storylines, brand when the brand comes up or there's no brand kit, shots before the shot plan, video and models before video prompts, images and models before any image, design before any on-screen design or copy, review before approvals and handing over); skip ones listed in skills_read.
@@ -1507,6 +1591,25 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           }
           const r = u.name === "add_element" ? a.addElement(spec) : u.name === "edit_element" ? a.editElement(String(input.id ?? ""), spec) : a.removeElement(String(input.id ?? ""))
           if (!r.startsWith("Error") && !r.startsWith("Nothing")) add({ kind: "design", text: r.replace(/ \(id [^)]*\)/, "") })
+          return r
+        }
+        case "arrange_elements": {
+          const r = a.arrangeElements(((input.ids as string[]) ?? []).map(String), String(input.action ?? ""), input as { dx?: number; dy?: number; to?: string; relative_to?: "frame" | "selection" })
+          if (!r.startsWith("Error")) add({ kind: "design", text: r.replace(/: new ids .*$/, ".") })
+          return r
+        }
+        case "list_versions": {
+          const list = a.versions()
+          return list.length ? JSON.stringify(list) : "No versions yet."
+        }
+        case "restore_version": {
+          const r = a.restoreVersion(Number(input.n))
+          if (!r.startsWith("Error")) add({ kind: "design", text: `Restored version ${Number(input.n)}` })
+          return r
+        }
+        case "save_version": {
+          const r = a.saveVersion(String(input.name ?? ""))
+          add({ kind: "design", text: r })
           return r
         }
         case "add_variation": {

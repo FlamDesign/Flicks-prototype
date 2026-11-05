@@ -238,21 +238,48 @@ export function feedOfField(els: CanvasElement[], f: Field) {
   return f === "link" ? (el.kind === "button" ? el.linkFeed : undefined) : el.feed
 }
 
-/** What the chat sees of the canvas design: each element with a short id, so it can move or change it. */
-export function describeDesign(els: CanvasElement[], feedName: (id?: string) => string | undefined) {
+/**
+ * What the chat sees of the canvas design: every element with a short id and every property it has,
+ * in the names and units the chat writes with (positions and sizes in % of the frame), its layer (1 is
+ * the back) and whether it's hidden. The strip lists its full style and, in free layout, where each
+ * thumbnail sits.
+ */
+export function describeDesign(els: CanvasElement[], feedName: (id?: string) => string | undefined, opts: { ratio?: number; thumbs?: string[] } = {}) {
   const r = (n: number) => Math.round(n * 10) / 10
-  return els
-    .filter((e) => !e.hidden)
-    .map((e) => {
-      const id = e.id.slice(0, 6)
-      if (e.kind === "text")
-        return { id, type: "text", role: roleOf(e), style: e.variant, text: e.feed ? `{${feedName(e.feed)}}` : e.text, x: r(e.x), y: r(e.y), align: e.align, size: e.size, color: e.color, font: e.font, width: e.w, rotation: e.rotation || undefined }
-      if (e.kind === "button")
-        return { id, type: "button", role: roleOf(e), style: e.variant, text: e.feed ? `{${feedName(e.feed)}}` : e.text, link: e.linkFeed ? `{${feedName(e.linkFeed)}}` : e.link, x: r(e.x), y: r(e.y), bg: e.bg, color: e.color }
-      if (e.kind === "strip") return { id, type: "thumbnail strip", layout: e.layout, x: r(e.x), y: r(e.y), size: r(e.size) }
-      if (e.kind === "shape") return { id, type: "shape", shape: e.shape, x: r(e.x), y: r(e.y), width: r(e.w), height: r(e.h), fill: e.fill, stroke: e.strokeWidth ? e.stroke : undefined, stroke_width: e.strokeWidth || undefined, radius: e.shape === "rect" ? e.radius : undefined, points: e.points, d: e.d, opacity: e.opacity !== undefined && e.opacity < 1 ? e.opacity : undefined, image: e.fillImage ? "yes" : undefined, rotation: e.rotation || undefined }
-      return { id, type: "image", x: r(e.x), y: r(e.y), width: r(e.w), height: r(e.h), radius: e.radius, rotation: e.rotation || undefined }
-    })
+  const ratio = opts.ratio ?? 1
+  const extra = (e: CanvasElement, i: number) => ({ layer: i + 1, ...(e.hidden ? { hidden: true } : {}) })
+  return els.map((e, i) => {
+    const id = e.id.slice(0, 6)
+    const base = extra(e, i)
+    if (e.kind === "text")
+      return { id, type: "text", role: roleOf(e), style: e.variant, text: e.feed ? `{${feedName(e.feed)}}` : e.text, x: r(e.x), y: r(e.y), align: e.align, size: e.size, color: e.color, font: e.font, bold: e.bold, italic: e.italic || undefined, underline: e.underline || undefined, width: e.w, rotation: e.rotation || undefined, ...base }
+    if (e.kind === "button")
+      return { id, type: "button", role: roleOf(e), style: e.variant, text: e.feed ? `{${feedName(e.feed)}}` : e.text, link: e.linkFeed ? `{${feedName(e.linkFeed)}}` : e.link, x: r(e.x), y: r(e.y), align: e.align, background: e.bg, color: e.color, font: e.font, size: e.size, bold: e.bold, italic: e.italic || undefined, underline: e.underline || undefined, radius: e.radius, border: e.borderWidth ? e.border : undefined, border_width: e.borderWidth || undefined, width: e.w !== undefined ? r(e.w) : undefined, height: e.h !== undefined ? r(e.h) : undefined, background_image: e.bgImage ? "yes" : undefined, background_fit: e.bgImage ? (e.bgFit ?? "cover") : undefined, ...base }
+    if (e.kind === "strip") {
+      const tint = e.bg.length === 9 ? parseInt(e.bg.slice(7, 9), 16) / 255 : 1
+      const step = e.size + e.gap / 10.8
+      const offs = Array.from({ length: opts.thumbs?.length ?? 0 }, (_, k) => e.free?.[k] ?? (e.layout === "vertical" ? { x: 0, y: k * step } : { x: k * step, y: 0 }))
+      return {
+        id,
+        type: "thumbnail strip",
+        layout: e.layout === "horizontal" ? "row" : e.layout === "vertical" ? "column" : "free",
+        x: r(e.x),
+        y: r(e.y),
+        size: r(e.size),
+        gap: r(e.gap),
+        radius: e.radius,
+        highlight_color: e.highlight,
+        highlight_width: e.highlightWidth,
+        fade: r(tint),
+        background: e.bg.slice(0, 7),
+        // where each thumbnail's top-left corner is, % of the frame, in variation order
+        thumbnails: offs.map((o, k) => ({ variation: opts.thumbs?.[k], x: r(e.x + o.x), y: r(e.y + o.y * ratio) })),
+        ...base,
+      }
+    }
+    if (e.kind === "shape") return { id, type: "shape", shape: e.shape, x: r(e.x), y: r(e.y), width: r(e.w), height: r(e.h), fill: e.fill, stroke: e.strokeWidth ? e.stroke : undefined, stroke_width: e.strokeWidth || undefined, radius: e.shape === "rect" ? e.radius : undefined, points: e.points, d: e.d, opacity: e.opacity !== undefined && e.opacity < 1 ? e.opacity : undefined, image: e.fillImage ? "yes" : undefined, image_fit: e.fillImage ? (e.fillFit ?? "cover") : undefined, lock: e.lock, rotation: e.rotation || undefined, ...base }
+    return { id, type: "image", x: r(e.x), y: r(e.y), width: r(e.w), height: r(e.h), fit: e.fit, crop: e.crop.t || e.crop.r || e.crop.b || e.crop.l ? e.crop : undefined, radius: e.radius, lock: e.lock, rotation: e.rotation || undefined, ...base }
+  })
 }
 
 /**

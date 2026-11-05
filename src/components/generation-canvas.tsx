@@ -40,7 +40,7 @@ import { GeneratingGradient } from "@/components/editor/generation-progress"
 import { AgentComposer, isDocked, QuestionDeck, threadGroups, type AgentCtx } from "@/components/editor/agent-chat"
 import { PlanningView, PlanSteps } from "@/components/editor/planning-view"
 import { renderFlickShot } from "@/components/editor/flick-shot"
-import { addMadeVideo, canRotate, SHAPES, SHAPE_GREY, isBox, isMadeVideo, MISSING_POSTER, BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, defaultFill, defaultInk, SAMPLE_UPLOADS, inSet, clampStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload, videoAt, wrapVideo } from "@/components/editor/elements"
+import { addMadeVideo, canRotate, SHAPES, SHAPE_GREY, isBox, isMadeVideo, MISSING_POSTER, BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, defaultFill, defaultInk, SAMPLE_UPLOADS, inSet, clampStrip, fitStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload, videoAt, wrapVideo } from "@/components/editor/elements"
 
 export type Generation = {
   id: string
@@ -718,6 +718,88 @@ export function GenerationCanvas({
   /* elements the chat adds or changes by hand */
   const findEl = (short: string) => elementsNow.current.find((e) => e.id === short || e.id.startsWith(short.trim()))
   const POS_Y = { top: 12, upper: 30, center: 50, lower: 70, bottom: 84 }
+
+  // ---------- the chat's full canvas controls ----------
+  const clampN = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
+  /** every property the toolbars offer, applied from the chat's spec (sizes in % of the frame) */
+  const extrasOf = (el: CanvasElement, spec: ElementSpec): CanvasElement => {
+    let n = el
+    if (spec.underline !== undefined && (n.kind === "text" || n.kind === "button")) n = { ...n, underline: spec.underline }
+    if (n.kind === "button") {
+      if (spec.radius !== undefined) n = { ...n, radius: clampN(spec.radius, 0, 100) }
+      if (spec.border !== undefined) n = { ...n, border: colorOf(spec.border) ?? n.border }
+      if (spec.border_width !== undefined) n = { ...n, borderWidth: clampN(spec.border_width, 0, 40) }
+      if (spec.width !== undefined) n = { ...n, w: clampN(spec.width, 4, 100) }
+      if (spec.height !== undefined) n = { ...n, h: clampN(spec.height, 2, 100) }
+      if (spec.url) n = { ...n, bgImage: spec.url }
+      if (spec.fit) n = { ...n, bgFit: spec.fit }
+    }
+    if (n.kind === "image") {
+      if (spec.fit) n = { ...n, fit: spec.fit }
+      if (spec.lock !== undefined) n = { ...n, lock: spec.lock }
+      if (spec.height !== undefined) {
+        const h = clampN(spec.height, 1, 200)
+        n = { ...n, h, ...(n.lock && spec.width === undefined ? { w: (h * n.w) / n.h } : {}) }
+      }
+      if (spec.crop) {
+        const c = (v: number | undefined, was: number) => clampN(v ?? was, 0, 45)
+        n = { ...n, crop: { t: c(spec.crop.top, n.crop.t), r: c(spec.crop.right, n.crop.r), b: c(spec.crop.bottom, n.crop.b), l: c(spec.crop.left, n.crop.l) } }
+      }
+    }
+    if (n.kind === "shape") {
+      if (spec.fit) n = { ...n, fillFit: spec.fit }
+      if (spec.lock !== undefined) n = { ...n, lock: spec.lock }
+    }
+    return n
+  }
+  /** a strip arrangement as each thumbnail's top-left corner, % of the frame */
+  const arrange = (kind: NonNullable<ElementSpec["arrangement"]>, n: number, size: number) => {
+    const h = size * ratio // a square thumbnail's height in % of the frame
+    const span = (a: number, b: number, k: number) => (n === 1 ? (a + b) / 2 : a + ((b - a) * k) / (n - 1))
+    return Array.from({ length: n }, (_, k) => {
+      if (kind === "arc") return { x: span(8, 92 - size, k), y: 90 - h - 10 * Math.sin((Math.PI * (k + 0.5)) / n) }
+      if (kind === "diagonal") return { x: span(8, 92 - size, k), y: span(12, 88 - h, k) }
+      if (kind === "corner_stack") return { x: 92 - size - (k % 2) * size * 0.25, y: 92 - (n - k) * (h + 1.5) }
+      if (kind === "grid") {
+        const rows = Math.ceil(n / 2)
+        return { x: 92 - 2 * size - 2 + (k % 2) * (size + 2), y: 92 - rows * (h + 2) + Math.floor(k / 2) * (h + 2) }
+      }
+      // scatter: round the edges, clear of the middle where the subject usually is
+      const a = (-Math.PI / 2) + (2 * Math.PI * k) / n
+      return { x: clampN(50 + 38 * Math.cos(a) - size / 2, 3, 97 - size), y: clampN(50 + 38 * Math.sin(a) - h / 2, 3, 97 - h) }
+    })
+  }
+  /** the thumbnail strip, from the chat: layout, place, size, gap, rounding, highlight, fade, and free positions */
+  const editStrip = (el: Extract<CanvasElement, { kind: "strip" }>, spec: ElementSpec) => {
+    const count = Math.max(1, (includeRef ? slidesNow.current : slidesNow.current.slice(1)).length)
+    let st = { ...el }
+    const notes: string[] = []
+    if (spec.size !== undefined) st.size = clampN(spec.size, 3, 40)
+    if (spec.gap !== undefined) st.gap = clampN(spec.gap, 0, 200)
+    if (spec.radius !== undefined) st.radius = clampN(spec.radius, 0, 100)
+    if (spec.highlight_color !== undefined) st.highlight = colorOf(spec.highlight_color) ?? st.highlight
+    if (spec.highlight_width !== undefined) st.highlightWidth = clampN(spec.highlight_width, 0, 30)
+    if (spec.background !== undefined && colorOf(spec.background)) st.bg = colorOf(spec.background)!.slice(0, 7) + st.bg.slice(7)
+    if (spec.fade !== undefined) st.bg = st.bg.slice(0, 7) + Math.round(clampN(spec.fade, 0.1, 1) * 255).toString(16).padStart(2, "0")
+    const positions = spec.thumbnails?.length ? spec.thumbnails : spec.arrangement ? arrange(spec.arrangement, count, st.size) : undefined
+    if (positions) {
+      if (positions.length < count) notes.push(`gave ${positions.length} positions for ${count} thumbnails; the rest follow on`)
+      const all = Array.from({ length: count }, (_, k) => positions[k] ?? { x: (positions.at(-1)?.x ?? 8) + (k - positions.length + 1) * (st.size + 2), y: positions.at(-1)?.y ?? 80 })
+      const x0 = Math.min(...all.map((q) => q.x))
+      const y0 = Math.min(...all.map((q) => q.y))
+      st = { ...st, layout: "free", x: x0, y: y0, free: all.map((q) => ({ x: q.x - x0, y: (q.y - y0) / ratio })) }
+    } else if (spec.layout) {
+      const layout = spec.layout === "row" ? "horizontal" : spec.layout === "column" ? "vertical" : "free"
+      if (layout === "free") st = { ...st, layout: "free", free: st.free ?? st.savedFree?.free }
+      else st = { ...st, layout, ...(spec.x === undefined && spec.y === undefined ? fitStrip(st, layout, count, ratio) : {}) }
+    }
+    if (spec.x !== undefined) st.x = spec.x
+    if (spec.y !== undefined) st.y = spec.y
+    const kept = clampStrip(st, count, ratio)
+    if (kept.size < st.size - 0.05) notes.push("it was too big for the frame, so it was made smaller")
+    else if (kept.x !== st.x || kept.y !== st.y) notes.push("it was moved back inside the frame")
+    return { strip: kept, notes }
+  }
   const placeOf = (spec: ElementSpec, el?: CanvasElement) => {
     const align = spec.align ?? (el && el.kind !== "strip" && !isBox(el) ? el.align : undefined) ?? "center"
     const x = spec.x ?? (spec.align || !el ? (align === "left" ? 8 : align === "right" ? 92 : 50) : el.x)
@@ -771,7 +853,9 @@ export function GenerationCanvas({
         values: Object.fromEntries(slidesNow.current.map((x) => [nameOfSlide(x), x.feeds?.[f.id] ?? ""])),
       })),
       issues: feedIssues(),
-      design: describeDesign(elementsNow.current, (id) => feedsNow.current.find((f) => f.id === id)?.name),
+      design: describeDesign(elementsNow.current, (id) => feedsNow.current.find((f) => f.id === id)?.name, { ratio, thumbs: (includeRef ? slidesNow.current : slidesNow.current.slice(1)).filter((x) => x.id === "main" || x.startedAt).map(nameOfSlide) }),
+      // the variation the Flick opens on
+      starts_on: nameOfSlide(slidesNow.current.find((x) => x.id === start) ?? slidesNow.current[0]),
       sample_set: videoAt(generation.video)?.set ?? "sunglasses",
     }),
     async shot(variation) {
@@ -948,6 +1032,10 @@ export function GenerationCanvas({
         setValues(f.id, { [p.name?.trim() || name]: v })
         parts.push(`set ${f.name}`)
       }
+      if ((p as { start?: boolean }).start) {
+        if (sl.id === "main" && !includeRef) parts.push("Variation 1 isn't in the Flick, so it can't be where it starts")
+        else (setStart(sl.id), parts.push("the Flick now starts on it"))
+      }
       if (p.regenerate && p.prompt) {
         if (!startVideo(sl.id, p.prompt)) return "Error: Not enough credits to regenerate."
         parts.push("regenerating with the new prompt")
@@ -1043,6 +1131,7 @@ export function GenerationCanvas({
       }
       // keep clear of what's already there (an exact x/y from the chat is still nudged if it lands on something)
       const shownText = (e: CanvasElement) => (e.kind === "text" || e.kind === "button" ? (e.feed ? (slidesNow.current[1]?.feeds?.[e.feed] ?? e.text) : e.text) : undefined)
+      el = extrasOf(el, spec)
       if (spec.rotation !== undefined && canRotate(el)) el = { ...el, rotation: ((spec.rotation % 360) + 360) % 360 } as CanvasElement
       // shapes go exactly where asked (a backdrop sits behind its text on purpose); the rest keep clear
       const spot = el.kind === "shape" ? { y: el.y, moved: false, overlaps: false } : freeY(elementsNow.current.filter((o) => o.kind !== "shape"), el, ratio, shownText)
@@ -1054,7 +1143,11 @@ export function GenerationCanvas({
     editElement(short, spec) {
       const el = findEl(short)
       if (!el) return `Error: No element with id ${short}.`
-      if (el.kind === "strip") return "Error: Change the thumbnail strip with update_design (thumbnails)."
+      if (el.kind === "strip") {
+        const { strip, notes: sn } = editStrip(el, spec)
+        commitElements(elementsNow.current.map((e) => (e.id === el.id ? strip : e)))
+        return `Changed the thumbnail strip${sn.length ? `; ${sn.join("; ")}` : ""}.`
+      }
       const notes: string[] = []
       const moved = spec.x !== undefined || spec.y !== undefined || spec.position || spec.align ? placeOf(spec, el) : {}
       let next: CanvasElement = { ...el, ...moved, ...(spec.hidden !== undefined ? { hidden: spec.hidden } : {}) } as CanvasElement
@@ -1092,10 +1185,115 @@ export function GenerationCanvas({
         }
         next = { ...next, ...styleOf(spec) } as CanvasElement
       }
+      next = extrasOf(next, spec)
       if (spec.rotation !== undefined && canRotate(next)) next = { ...next, rotation: ((spec.rotation % 360) + 360) % 360 } as CanvasElement
       const others = elementsNow.current.filter((e) => e.id !== el.id)
-      commitElements(spec.layer === "back" ? [next, ...others] : spec.layer === "front" ? [...others, next] : elementsNow.current.map((e) => (e.id === el.id ? next : e)))
+      const at = elementsNow.current.findIndex((e) => e.id === el.id)
+      const step = (to: number) => [...others.slice(0, to), next, ...others.slice(to)]
+      commitElements(
+        spec.layer === "back" ? [next, ...others]
+        : spec.layer === "front" ? [...others, next]
+        : spec.layer === "forward" ? step(Math.min(others.length, at + 1))
+        : spec.layer === "backward" ? step(Math.max(0, at - 1))
+        : elementsNow.current.map((e) => (e.id === el.id ? next : e)),
+      )
       return `Changed the ${el.kind === "text" ? `text “${el.text || el.role || "text"}”` : el.kind}.${notes.length ? ` Note: ${notes.join("; ")}.` : ""}`
+    },
+    arrangeElements(ids, action, o) {
+      const els = ids.map((x) => findEl(x))
+      const missing = ids.filter((_, k) => !els[k])
+      if (missing.length) return `Error: No element with id ${missing.join(", ")}. Ids: ${elementsNow.current.map((e) => `${e.id.slice(0, 6)} (${e.kind})`).join(", ")}.`
+      const list = els as CanvasElement[]
+      const set = new Set(list.map((e) => e.id))
+      const strip = list.find((e) => e.kind === "strip")
+      // each element's box in % of the frame, read from the canvas itself
+      const frame = document.querySelector<HTMLElement>("[data-frame]")?.getBoundingClientRect()
+      const boxOf = (e: CanvasElement) => {
+        const b = document.querySelector<HTMLElement>(`[data-frame] [data-el="${e.id}"]`)?.getBoundingClientRect()
+        if (!b || !frame) return undefined
+        return { l: ((b.left - frame.left) / frame.width) * 100, r: ((b.right - frame.left) / frame.width) * 100, t: ((b.top - frame.top) / frame.height) * 100, b: ((b.bottom - frame.top) / frame.height) * 100 }
+      }
+      const shift = (e: CanvasElement, dx: number, dy: number) => ({ ...e, x: e.x + dx, y: e.y + dy }) as CanvasElement
+      const commitMoved = (moved: Map<string, CanvasElement>) => commitElements(elementsNow.current.map((e) => moved.get(e.id) ?? e))
+      switch (action) {
+        case "move": {
+          const dx = o.dx ?? 0
+          const dy = o.dy ?? 0
+          commitMoved(new Map(list.map((e) => [e.id, shift(e, dx, dy)])))
+          return `Moved ${list.length} element${list.length === 1 ? "" : "s"} by ${dx}, ${dy}.`
+        }
+        case "align":
+        case "distribute": {
+          const boxes = list.map((e) => ({ e, b: boxOf(e) })).filter((x): x is { e: CanvasElement; b: NonNullable<ReturnType<typeof boxOf>> } => !!x.b)
+          if (!boxes.length) return "Error: Couldn't read where the elements are; open the editor and try again."
+          const moved = new Map<string, CanvasElement>()
+          if (action === "align") {
+            const to = o.to ?? "center"
+            const all = { l: Math.min(...boxes.map((x) => x.b.l)), r: Math.max(...boxes.map((x) => x.b.r)), t: Math.min(...boxes.map((x) => x.b.t)), b: Math.max(...boxes.map((x) => x.b.b)) }
+            const ref = o.relative_to === "frame" || boxes.length === 1 ? { l: 0, r: 100, t: 0, b: 100 } : all
+            for (const { e, b } of boxes) {
+              const dx = to === "left" ? ref.l - b.l : to === "right" ? ref.r - b.r : to === "center" ? (ref.l + ref.r) / 2 - (b.l + b.r) / 2 : 0
+              const dy = to === "top" ? ref.t - b.t : to === "bottom" ? ref.b - b.b : to === "middle" ? (ref.t + ref.b) / 2 - (b.t + b.b) / 2 : 0
+              moved.set(e.id, shift(e, dx, dy))
+            }
+            commitMoved(moved)
+            return `Aligned ${boxes.length} element${boxes.length === 1 ? "" : "s"} to the ${to}${o.relative_to === "frame" || boxes.length === 1 ? " of the frame" : ""}.`
+          }
+          if (boxes.length < 3) return "Error: Spreading needs 3 or more elements."
+          const vertical = o.to === "vertical"
+          const sorted = [...boxes].sort((a, b) => (vertical ? a.b.t - b.b.t : a.b.l - b.b.l))
+          const size = sorted.reduce((n, x) => n + (vertical ? x.b.b - x.b.t : x.b.r - x.b.l), 0)
+          const start = vertical ? sorted[0].b.t : sorted[0].b.l
+          const end = vertical ? sorted.at(-1)!.b.b : sorted.at(-1)!.b.r
+          const gap = (end - start - size) / (sorted.length - 1)
+          let at = start
+          for (const { e, b } of sorted) {
+            const d = at - (vertical ? b.t : b.l)
+            moved.set(e.id, shift(e, vertical ? 0 : d, vertical ? d : 0))
+            at += (vertical ? b.b - b.t : b.r - b.l) + gap
+          }
+          commitMoved(moved)
+          return `Spread ${sorted.length} elements evenly ${vertical ? "top to bottom" : "left to right"}.`
+        }
+        case "front":
+        case "back": {
+          const rest = elementsNow.current.filter((e) => !set.has(e.id))
+          const moving = elementsNow.current.filter((e) => set.has(e.id))
+          commitElements(action === "front" ? [...rest, ...moving] : [...moving, ...rest])
+          return `Brought ${list.length} element${list.length === 1 ? "" : "s"} to the ${action}.`
+        }
+        case "duplicate": {
+          if (strip) return "Error: The thumbnail strip can't be duplicated."
+          const dx = o.dx ?? 3
+          const dy = o.dy ?? 3
+          const copies = list.map((e) => ({ ...shift(e, dx, dy), id: crypto.randomUUID() }) as CanvasElement)
+          commitElements([...elementsNow.current, ...copies])
+          return `Duplicated ${copies.length} element${copies.length === 1 ? "" : "s"}: new ids ${copies.map((c) => c.id.slice(0, 6)).join(", ")}.`
+        }
+        case "delete": {
+          if (strip) return "Error: The thumbnail strip stays; viewers need it to switch. Delete the others without it."
+          commitElements(elementsNow.current.filter((e) => !set.has(e.id)))
+          return `Deleted ${list.length} element${list.length === 1 ? "" : "s"}.`
+        }
+      }
+      return "Error: action is one of move, align, distribute, front, back, duplicate, delete."
+    },
+    versions() {
+      return versions.map((v) => ({ n: v.n, at: new Date(v.at).toISOString().slice(0, 16).replace("T", " "), name: v.name, exported: v.exported?.name, current: v.n === currentVersion }))
+    },
+    restoreVersion(n) {
+      if (!versions.some((v) => v.n === n)) return `Error: No version ${n}. Versions: ${versions.map((v) => v.n).join(", ") || "none yet"}.`
+      restore(n)
+      return `Restored version ${n}. (Restoring is saved as a new version, so it can be undone the same way.)`
+    },
+    saveVersion(name) {
+      const label = name.trim().slice(0, 60) || "Saved by the chat"
+      setVersions((v) => {
+        const latest = v.at(-1)
+        if (latest && latest.sig === sig) return v.map((x, k) => (k === v.length - 1 ? { ...x, name: label } : x))
+        return [...v, { n: (latest?.n ?? 0) + 1, at: Date.now(), sig, snap: snapNow(), name: label }]
+      })
+      return `Saved the current canvas as “${label}”.`
     },
     removeElement(short) {
       const el = findEl(short)

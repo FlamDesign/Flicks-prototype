@@ -26,5 +26,6 @@ if [ -n "$hits" ]; then echo "✗ motion used outside components/arrive.tsx"; ec
 # no service or model names in anything people see (strings and JSX text; comments, dev tools and the AI server are exempt)
 hits=$(grep -rnEi "higgsfield|seedance|bytedance|\bkling\b|nano.?banana|\bflare\b|gpt-image" src --include=*.tsx --include=*.ts --include=*.md | grep -vE "src/recipes.ts|/dev/|^[^:]+:[0-9]+:\s*(//|\*|/\*)|//.*(higgsfield|seedance|flare)|/templates/|src/ai/client.ts:[0-9]+:\s*\.replace|HF_|hf-requests" | grep -iE "[\"'\`>][^\"'\`<]*(higgsfield|seedance|bytedance|kling|nano.?banana|flare|gpt-image)" || true)
 if [ -n "$hits" ]; then echo "✗ a service or model name in user-facing text (say Flam Forge, or nothing)"; echo "$hits" | head -20; fail=1; fi
+node scripts/check-canvas-ai.mjs || fail=1
 [ $fail = 0 ] && echo "✓ UI follows the preset"
 exit $fail
