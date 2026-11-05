@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Film01Icon, MountainIcon, PlayCircleIcon, ShoppingBag01Icon, SparklesIcon, Tick02Icon, UserSwitchIcon } from "@hugeicons/core-free-icons"
+import { ArrowRight01Icon, Film01Icon, MountainIcon, PlayCircleIcon, ShoppingBag01Icon, SparklesIcon, Tick02Icon, UserSwitchIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
@@ -31,11 +31,11 @@ function useTick(ms: number, on = true) {
 
 /**
  * A recipe's clips as a tiny Flick: the original, then each swap, switching every couple of seconds,
- * with a thumbnail strip that follows, so the card shows what the recipe makes. Only the visible
+ * cutting straight from one to the next, so the card shows what the recipe makes. Only the visible
  * clip plays.
  */
-function Reel({ r, active, strip = true, className }: { r: Recipe; active: boolean; strip?: boolean; className?: string }) {
-  const { clips, posters, labels } = r.media
+function Reel({ r, active, className }: { r: Recipe; active: boolean; className?: string }) {
+  const { clips, posters } = r.media
   const n = useTick(2400, active && clips.length > 1 && !reduced())
   const at = n % clips.length
   const vids = useRef<(HTMLVideoElement | null)[]>([])
@@ -58,22 +58,9 @@ function Reel({ r, active, strip = true, className }: { r: Recipe; active: boole
           loop
           playsInline
           preload={i === 0 ? "auto" : "metadata"}
-          className={cn("absolute inset-0 size-full object-cover transition-opacity duration-500", i === at ? "opacity-100" : "opacity-0")}
+          className={cn("absolute inset-0 size-full object-cover", i === at ? "visible" : "invisible")}
         />
       ))}
-      {strip && clips.length > 1 && (
-        <span className="absolute inset-x-3 top-3 flex flex-col gap-2">
-          {/* story-style bars: one per variation, the current one filling */}
-          <span className="flex gap-1">
-            {clips.map((c, i) => (
-              <span key={c} className="h-0.5 flex-1 overflow-hidden rounded-full bg-white/30">
-                <span key={i === at ? n : "x"} className={cn("block h-full rounded-full bg-white", i < at ? "w-full" : i === at ? (active && !reduced() ? "animate-[recipe-fill_2400ms_linear_forwards]" : "w-full") : "w-0")} />
-              </span>
-            ))}
-          </span>
-          <span className="w-fit rounded-full bg-black/30 px-2 py-0.5 text-xs font-medium text-white backdrop-blur-md">{labels[at]}</span>
-        </span>
-      )}
     </span>
   )
 }
@@ -95,14 +82,7 @@ export function RecipeCards({ onStart }: { onStart: (s: RecipeStart) => void }) 
   const [open, setOpen] = useState<Recipe | null>(null)
   const [hover, setHover] = useState<RecipeId | null>(null)
   return (
-    <section aria-labelledby="recipes-title" className="flex w-full flex-col gap-5">
-      <div className="flex flex-col gap-1 px-1">
-        <span className="text-xs font-medium uppercase tracking-wider text-brand">Recipes</span>
-        <h2 id="recipes-title" className="text-2xl font-semibold tracking-tight">
-          Start from what you already have
-        </h2>
-        <p className="text-sm text-muted-foreground">Bring a video, an image or finished clips. The AI turns it into a Flick viewers can tap through.</p>
-      </div>
+    <section aria-label="Recipes" className="flex w-full flex-col">
       <ul className="grid grid-cols-2 gap-3 md:grid-cols-4 md:grid-rows-2">
         {RECIPES.map((r, k) => {
           const big = k === 0
@@ -122,6 +102,11 @@ export function RecipeCards({ onStart }: { onStart: (s: RecipeStart) => void }) 
               >
                 {/* every card plays until one is hovered; then only that one moves on */}
                 <Reel r={r} active={!hover || hover === r.id} className="transition-transform duration-700 group-hover/r:scale-[1.04]" />
+                {!big && (
+                  <span aria-hidden className="absolute right-3.5 top-3.5 grid size-8 place-items-center rounded-full bg-white text-black opacity-0 shadow-sm transition-[opacity,transform] duration-300 group-hover/r:opacity-100 group-focus-visible/r:opacity-100 -translate-y-1 group-hover/r:translate-y-0">
+                    <HugeiconsIcon icon={ArrowRight01Icon} className="size-4" />
+                  </span>
+                )}
                 <span aria-hidden className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
                 <span className={cn("absolute inset-x-0 bottom-0 flex flex-col text-white", big ? "gap-2 p-6" : "gap-1 p-3.5")}>
                   <FromLogos r={r} className="mb-1" />
