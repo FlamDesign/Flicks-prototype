@@ -260,11 +260,15 @@ export function MediaPicker({
             <button
               type="button"
               onClick={() => file.current?.click()}
-              className="flex aspect-square flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-foreground/20 text-sm text-muted-foreground outline-none transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring"
+              className="group/up flex aspect-square flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-foreground/20 bg-muted/30 px-3 text-center outline-none transition-colors hover:border-foreground/35 hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <HugeiconsIcon icon={CloudUploadIcon} className="size-5" />
-              Upload file
-              <span className="px-3 text-center text-xs">Photos, or videos up to {MAX_VIDEO_MB} MB</span>
+              <span className="grid size-11 place-items-center rounded-2xl bg-background text-foreground shadow-sm ring-1 ring-foreground/10 transition-transform group-hover/up:-translate-y-0.5">
+                <HugeiconsIcon icon={CloudUploadIcon} className="size-5" />
+              </span>
+              <span className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium">Upload</span>
+                <span className="text-xs text-muted-foreground">Drop files or click · photos, videos up to {MAX_VIDEO_MB} MB</span>
+              </span>
             </button>
             {loading
               ? Array.from({ length: 7 }, (_, i) => <Skeleton key={i} className="aspect-square rounded-xl" />)
@@ -368,6 +372,8 @@ function Tile({ x, on, onToggle, onOpen, onDuration }: { x: MediaItem; on: boole
         </>
       }
     >
+      {/* a calm placeholder until the picture or video frame arrives */}
+      {x.kind === "video" && !x.poster && <span aria-hidden className="shimmer absolute inset-0" />}
       {x.kind === "video" && !x.poster && <video src={`${x.url}#t=0.1`} muted playsInline preload="metadata" crossOrigin="anonymous" onLoadedMetadata={probe} className="absolute inset-0 size-full object-cover" />}
       {x.kind === "video" && x.poster && x.duration === undefined && <video src={`${x.url}#t=0.1`} muted playsInline preload="metadata" crossOrigin="anonymous" onLoadedMetadata={probe} className="hidden" />}
       <button type="button" onClick={onToggle} aria-pressed={on} aria-label={`${on ? "Unselect" : "Select"} ${x.name}`} className="absolute inset-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring" />

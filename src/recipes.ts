@@ -30,7 +30,18 @@ export type Recipe = {
   from?: { name: string; domain: string }[]
   /** what the note field asks */
   note: string
+  /** the card's and the how-it-works panel's media: looping clips (the original first, then its swaps) and their stills */
+  media: { clips: string[]; posters: string[]; labels: string[]; still?: string }
+  /** how it works, in three short steps */
+  steps: [string, string][]
 }
+
+const M = (id: string, labels: string[], still = false) => ({
+  clips: labels.map((_, i) => `recipes/${id}/${"abc"[i]}.mp4`),
+  posters: labels.map((_, i) => `recipes/${id}/${"abc"[i]}.jpg`),
+  labels,
+  ...(still ? { still: `recipes/${id}/still.jpg` } : {}),
+})
 
 const VIDEO: Slot = { key: "video", kind: "video", label: "Your video", hint: "Up to 15 seconds. Longer videos are trimmed.", min: 1, max: 1 }
 
@@ -42,6 +53,12 @@ export const RECIPES: Recipe[] = [
     tone: "brand",
     slots: [VIDEO, { key: "items", kind: "image", label: "Products to swap in", hint: "One photo per product, or leave it to me to suggest some.", min: 0, max: 5 }],
     note: "Anything to keep in mind? Product links, names, prices…",
+    media: M("product-swap", ["White", "Red", "Sage"]),
+    steps: [
+      ["Add your video", "Any product video, up to 15 seconds."],
+      ["Pick what to swap in", "Your product photos, or let the AI suggest from your range."],
+      ["Viewers tap to switch", "One Flick, every product in the same shot."],
+    ],
   },
   {
     id: "recast",
@@ -50,6 +67,12 @@ export const RECIPES: Recipe[] = [
     tone: "chart-2",
     slots: [VIDEO, { key: "items", kind: "image", label: "People to cast in", hint: "One photo per person, or leave it to me to suggest some.", min: 0, max: 5 }],
     note: "Anything to keep in mind? Who it's for, the look you want…",
+    media: M("recast", ["Ava", "Leo", "June"]),
+    steps: [
+      ["Add your video", "Someone on camera, up to 15 seconds."],
+      ["Choose who to cast", "Your own photos, or casts the AI suggests for your audience."],
+      ["Viewers tap to switch", "Same moves, a face for every audience."],
+    ],
   },
   {
     id: "scene-shift",
@@ -58,6 +81,12 @@ export const RECIPES: Recipe[] = [
     tone: "chart-3",
     slots: [VIDEO, { key: "items", kind: "image", label: "Scene references", hint: "Photos of places or moods, or leave it to me to suggest some.", min: 0, max: 5 }],
     note: "Anything to keep in mind?",
+    media: M("scene-shift", ["Coast", "Snow", "City"]),
+    steps: [
+      ["Add your video", "Any scene, up to 15 seconds."],
+      ["Pick new places", "Your reference photos, or scenes the AI suggests."],
+      ["Viewers tap to switch", "The same shot, anywhere you like."],
+    ],
   },
   {
     id: "make-it-move",
@@ -68,6 +97,12 @@ export const RECIPES: Recipe[] = [
     frame: true,
     lengths: [4, 8, 12],
     note: "What should move? A slow push-in, the product spinning…",
+    media: { ...M("make-it-move", ["Moving"]), still: "recipes/make-it-move/still.jpg" },
+    steps: [
+      ["Add your image", "A product shot or a finished ad."],
+      ["Choose start or end", "The video opens on it, or builds up to it."],
+      ["It comes to life", "Motion, light and depth, in your image's shape."],
+    ],
   },
   {
     id: "clips-to-flick",
@@ -83,6 +118,12 @@ export const RECIPES: Recipe[] = [
       { name: "Runway", domain: "runwayml.com" },
     ],
     note: "Anything to keep in mind? Names, links, prices…",
+    media: M("clips-to-flick", ["Orange", "Lime", "Berry"]),
+    steps: [
+      ["Add your clips", "2 to 5 finished videos, one per variation."],
+      ["Thumbnails matched", "Yours are paired with the right clip, or made from a frame."],
+      ["One Flick to tap through", "Nothing to generate, ready in seconds."],
+    ],
   },
 ]
 

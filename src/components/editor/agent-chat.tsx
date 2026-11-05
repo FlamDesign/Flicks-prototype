@@ -2,7 +2,7 @@ import { GeneratingGradient, PictureSlot } from "@/components/editor/generation-
 import { Shortcut } from "@/components/shortcut"
 import { createContext, useContext, useEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Add01Icon, Alert02Icon, ArrowLeft01Icon, ArrowRight01Icon, ArrowDown01Icon, CheckmarkBadge01Icon, Globe02Icon, ArrowUp02Icon, ImageAdd01Icon, PencilEdit01Icon, LeftToRightListNumberIcon, PaintBoardIcon, RefreshIcon, SparklesIcon, StopIcon, Tick02Icon, Cancel01Icon, PlayIcon, ArrowUpRight01Icon } from "@hugeicons/core-free-icons"
+import { Add01Icon, Alert02Icon, ArrowLeft01Icon, ArrowRight01Icon, ArrowDown01Icon, CheckmarkBadge01Icon, Globe02Icon, ArrowUp02Icon, PencilEdit01Icon, LeftToRightListNumberIcon, PaintBoardIcon, RefreshIcon, SparklesIcon, StopIcon, Tick02Icon, Cancel01Icon, PlayIcon, ArrowUpRight01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { InputGroupInput } from "@/components/ui/input-group"
@@ -11,6 +11,7 @@ import type { Choice, Item, useAgent } from "@/ai/agent"
 import type { Brand, Plan, PlanVariation } from "@/ai/design"
 import { FlickPreview } from "@/components/editor/flick-preview"
 import { noNames } from "@/ai/client"
+import { Dropzone } from "@/components/dropzone"
 import { BriefUpdate, briefAt, briefSig, sigOf, type BriefEntry } from "@/components/editor/brief-card"
 import { cn } from "@/lib/utils"
 import { useMediaAdd } from "@/components/media-picker"
@@ -714,7 +715,6 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
 
 function Assets({ item, agent, bare }: { item: Extract<Item, { kind: "assets" }>; agent: Agent; bare?: boolean }) {
   const [files, setFiles] = useState<File[]>([])
-  const [over, setOver] = useState(false)
   const url = (f: File) => blobUrl(f)
   // added at once; a trimmed clip shows as preparing while it's cut, then joins the files
   const [preparing, setPreparing] = useState<{ key: string; poster?: string; name: string }[]>([])
@@ -749,33 +749,19 @@ function Assets({ item, agent, bare }: { item: Extract<Item, { kind: "assets" }>
     <>
       {!bare && <p className="text-sm font-medium">{item.message}</p>}
       {media.ui}
-      <button
-        type="button"
-        onClick={media.openPicker}
-        onDragOver={(e) => (e.preventDefault(), setOver(true))}
-        onDragLeave={() => setOver(false)}
-        onDrop={(e) => (e.preventDefault(), setOver(false), addFiles(e.dataTransfer.files))}
-        className={cn(
-          "flex min-h-24 flex-wrap items-center justify-center gap-2 rounded-xl border border-dashed border-foreground/20 p-3 text-sm text-muted-foreground outline-none transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring",
-          over && "border-brand bg-brand/5",
-        )}
-      >
-        {files.length || preparing.length ? (
-          <>
-            {files.map((f) => <FileThumb key={url(f)} file={f} url={url(f)} className="size-14" />)}
-            {preparing.map((p) => <Preparing key={p.key} poster={p.poster} name={p.name} className="size-14" />)}
-            <span className="grid size-14 place-items-center rounded-lg border border-dashed border-foreground/20">
-              <HugeiconsIcon icon={Add01Icon} className="size-4" />
-            </span>
-          </>
-        ) : (
-          <span className="flex flex-col items-center gap-1.5">
-            <HugeiconsIcon icon={ImageAdd01Icon} className="size-5" />
-            Drop photos or videos, or click to pick
-            {item.kinds.length > 0 && <span className="text-xs">{item.kinds.join(", ")}</span>}
-          </span>
-        )}
-      </button>
+      <Dropzone
+        accept="media"
+        max={8}
+        size={bare ? "md" : "sm"}
+        hint={[item.kinds.length ? `For: ${item.kinds.join(", ")}` : "", "Photos, or videos up to 15 s"].filter(Boolean).join(" · ")}
+        items={[
+          ...files.map((f) => ({ id: url(f), name: f.name, url: url(f), kind: f.type.startsWith("video/") ? ("video" as const) : ("image" as const) })),
+          ...preparing.map((p) => ({ id: p.key, name: p.name, poster: p.poster, kind: "video" as const, preparing: true })),
+        ]}
+        onBrowse={media.openPicker}
+        onFiles={addFiles}
+        onRemove={(id) => setFiles((x) => x.filter((f) => url(f) !== id))}
+      />
       <div className="flex justify-end gap-2">
         <Button size="sm" variant="ghost" disabled={agent.busy} onClick={() => agent.addAssets(item.id, [])}>
           Skip

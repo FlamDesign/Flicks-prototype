@@ -59,6 +59,7 @@ import { cn } from "@/lib/utils"
 import { AgentItemView, QuestionDeck, threadGroups } from "@/components/editor/agent-chat"
 import { BriefUpdate } from "@/components/editor/brief-card"
 import { RecipeCards } from "@/components/recipes"
+import { Dropzone } from "@/components/dropzone"
 import { Shortcut } from "@/components/shortcut"
 import type { Item } from "@/ai/agent"
 import type { Plan } from "@/ai/design"
@@ -711,8 +712,19 @@ const ENTRIES: Entry[] = [
   {
     name: "Recipes",
     kind: "UI",
-    about: "Recipes on Create: five cards (Product Swap, Recast, Scene Shift, Make It Move, Clips to Flick). Each opens a short form asking only for what it needs; Start hands it all to the AI chat. Banners are theme placeholders for now.",
+    about: "Recipes on Create: five cards (Product Swap, Recast, Scene Shift, Make It Move, Clips to Flick). Large cards play looping clips of each recipe. Each opens a two-pane form (animated how it works, then numbered steps with the shared uploader); Start hands it all to the AI chat.",
     render: () => <RecipeCards onStart={() => {}} />,
+  },
+  {
+    name: "Uploader",
+    kind: "UI",
+    about: "The one uploader: recipe forms, the chat's asset requests and the picker. Empty, it names what it takes and its limits; filled, it shows tiles with remove and an Add tile. Drop files on it or click to browse.",
+    render: () => (
+      <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
+        <Dropzone items={[]} onBrowse={() => {}} onFiles={() => {}} accept="video" title="Drop your video here" hint="MP4, MOV or WebM · up to 15 s" />
+        <Dropzone items={[{ id: "1", name: "White", kind: "video", poster: "recipes/product-swap/a.jpg", meta: "0:05" }, { id: "2", name: "Still", kind: "image", url: "recipes/make-it-move/still.jpg" }]} onBrowse={() => {}} onFiles={() => {}} onRemove={() => {}} accept="media" max={5} hint="photos or videos" />
+      </div>
+    ),
   },
   {
     name: "Layers panel",
