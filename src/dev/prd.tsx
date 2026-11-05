@@ -640,7 +640,7 @@ const SECTIONS: Section[] = [
             "Title and description (\u201cDrafts you\u2019re working on.\u201d), then search, a last-edited date filter (see Assets) and a size filter.",
             "Cards: a square (1:1) thumbnail (the starting variation), the name, last edited and size. 4 to a row on wide screens (3 on medium). Hovering a card shows its saved versions and how many times it was exported over the thumbnail.",
             "A project saves as you work: anything started from Create, a template, Assets or Remix shows up here, and reopens as it was left.",
-            "A project\u2019s picture is its own: the start variation\u2019s thumbnail or a finished video\u2019s still. A project made with the AI chat that has neither yet shows a placeholder in the theme\u2019s colours with a small video mark (never a sample image); the same placeholder shows in search.",
+            "A project\u2019s picture is its own: the start variation\u2019s thumbnail or a finished video\u2019s still. A project made with the AI chat that has neither yet shows a plain tint of the theme\u2019s brand colour (never a sample image); the same placeholder shows in search.",
             "\u22ef and right-click: Duplicate and Delete. Both happen at once with Undo in the toast (\u201c\u2018Name\u2019 deleted \u00b7 Its Flicks stay.\u201d). Flicks still confirm before deleting, as they may be live in ads.",
             "Empty: \u201cNo projects yet\u201d with Create; no match, with Clear filters.",
           ]}
