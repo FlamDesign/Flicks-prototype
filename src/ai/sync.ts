@@ -53,12 +53,12 @@ export async function save(key: string, value: unknown, keepalive = false) {
   lastSaved.set(key, text)
 }
 
-const flushers = new Set<() => void>()
+const flushers = new Set<(closing: boolean) => void>()
 if (typeof window !== "undefined") {
   // leaving or hiding the page saves what's waiting
-  const flushAll = () => flushers.forEach((f) => f())
-  window.addEventListener("pagehide", flushAll)
-  document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" && flushAll())
+  // hidden: the page is still alive, so a normal save (with its merge); closing: a quick one
+  window.addEventListener("pagehide", () => flushers.forEach((f) => f(true)))
+  document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" && flushers.forEach((f) => f(false)))
 }
 
 /**
@@ -66,7 +66,7 @@ if (typeof window !== "undefined") {
  * changes keep coming (dragging, typing), the latest one winning. Unchanged values aren't sent, and
  * hiding or closing the page saves at once. Keeps the server's writes to a few a minute at most.
  */
-export function saver(key: string, ms = 8000, maxMs = 45000) {
+export function saver(key: string, ms = 8000, maxMs = 45000, prepare?: (value: unknown, closing: boolean) => Promise<unknown>) {
   let timer: ReturnType<typeof setTimeout> | undefined
   let first: number | undefined
   let latest: unknown
@@ -76,9 +76,10 @@ export function saver(key: string, ms = 8000, maxMs = 45000) {
     if (!waiting) return
     waiting = false
     first = undefined
-    void save(key, latest, keepalive).catch((e) => console.warn("Couldn't save", key, e))
+    const value = latest
+    void (prepare ? prepare(value, keepalive).catch(() => value) : Promise.resolve(value)).then((v) => save(key, v, keepalive)).catch((e) => console.warn("Couldn't save", key, e))
   }
-  flushers.add(() => run(true))
+  flushers.add((closing) => run(closing))
   return (value: unknown) => {
     latest = value
     waiting = true
@@ -88,7 +89,61 @@ export function saver(key: string, ms = 8000, maxMs = 45000) {
   }
 }
 
-type Saved = LibraryState & { made?: SampleVideo[] }
+/** `deleted`: when each project or Flick was deleted, so another tab's older list can't bring it back */
+type Saved = LibraryState & { made?: SampleVideo[]; deleted?: Record<string, number> }
+
+const MONTH = 30 * 24 * 3600 * 1000
+/** projects and Flicks deleted here (by id, when): sent with every save */
+const deleted: Record<string, number> = {}
+
+/**
+ * This tab's library, merged with what's saved on the server (another tab or device may have saved
+ * since): every project and Flick from both, the newer copy where both have one, minus deletions.
+ * Videos made elsewhere join the list, and the server's projects are renumbered to find them.
+ */
+export function merge(mine: Saved, theirs: Saved | null): { merged: Saved; changedHere: boolean } {
+  if (!theirs?.projects) return { merged: mine, changedHere: false }
+  const tomb = { ...(theirs.deleted ?? {}), ...deleted }
+  for (const [id, at] of Object.entries(theirs.deleted ?? {})) deleted[id] = Math.max(deleted[id] ?? 0, at)
+  for (const [id, at] of Object.entries(deleted)) if (Date.now() - at > MONTH) delete deleted[id]
+  // the server's made videos that this tab doesn't have yet: added to the end of ours
+  const samples = GENERATED_VIDEOS.findIndex((v) => v.set === "made")
+  const base = samples < 0 ? GENERATED_VIDEOS.length : samples
+  const ours = GENERATED_VIDEOS.slice(base)
+  const extras = (theirs.made ?? []).filter((v) => !ours.some((o) => o.mp4 === v.mp4))
+  if (extras.length) GENERATED_VIDEOS.push(...extras.map((v) => ({ ...v, set: "made" as const })))
+  // a server index -> the same video's index here
+  const at = (i: number) => {
+    if (i < base) return i
+    const v = theirs.made?.[i - base]
+    const k = v ? GENERATED_VIDEOS.findIndex((g) => g.mp4 === v.mp4) : -1
+    return k < 0 ? i : k
+  }
+  const renumber = <T,>(x: T): T =>
+    JSON.parse(JSON.stringify(x), (key, val) => (key === "video" && typeof val === "number" ? at(val) : key === "videos" && Array.isArray(val) ? val.map((n) => (typeof n === "number" ? at(n) : n)) : val))
+  let changedHere = false
+  const pick = <T extends { id: string; editedAt?: number }>(a: T[], b: T[]) => {
+    const out: T[] = []
+    const seen = new Set<string>()
+    for (const x of [...a, ...b]) {
+      if (seen.has(x.id)) continue
+      seen.add(x.id)
+      const here = a.find((y) => y.id === x.id)
+      const there = b.find((y) => y.id === x.id)
+      const newer = here && there ? ((there.editedAt ?? 0) > (here.editedAt ?? 0) ? renumber(there) : here) : (here ?? renumber(there!))
+      const gone = tomb[x.id]
+      if (gone && gone >= (newer.editedAt ?? 0)) continue
+      if (newer !== here) changedHere = true
+      out.push(newer)
+    }
+    // newest first, as the lists show them
+    return out.sort((p, q) => (q.editedAt ?? 0) - (p.editedAt ?? 0))
+  }
+  const projects = pick(mine.projects, theirs.projects)
+  const flicks = pick(mine.flicks, theirs.flicks)
+  if (projects.length !== mine.projects.length || flicks.length !== mine.flicks.length) changedHere = true
+  return { merged: { projects, flicks, made: GENERATED_VIDEOS.filter((v) => v.set === "made"), deleted: { ...deleted } }, changedHere }
+}
 
 /** real videos made anywhere: the server's list comes first, so saved projects find theirs by position */
 function mergeMade(made: SampleVideo[] = []) {
@@ -105,9 +160,26 @@ export function startSync() {
     if (started || !isLive()) return
     started = true
     let ready = false
-    const put = saver("state")
+    // saving merges with the server's copy first, so tabs and devices add to each other instead of replacing
+    // the server's copy as last seen: a closing page merges with it (it can't wait to fetch a fresh one)
+    let lastTheirs: Saved | null = null
+    const put = saver("state", 8000, 45000, async (mine, closing) => {
+      const theirs = closing ? lastTheirs : await loadSaved<Saved>("state").catch(() => lastTheirs)
+      const { merged, changedHere } = merge(mine as Saved, theirs)
+      lastTheirs = merged
+      if (changedHere) library.load(merged)
+      return merged
+    })
+    // deletions are remembered (and forgotten again on Undo)
+    let ids = new Set<string>()
     watchLibrary((s, silent) => {
-      if (ready && !silent) put({ projects: s.projects, flicks: s.flicks, made: GENERATED_VIDEOS.filter((v) => v.set === "made") } satisfies Saved)
+      const now = new Set([...s.projects, ...s.flicks].map((x) => x.id))
+      if (ready && !silent) {
+        for (const id of ids) if (!now.has(id)) deleted[id] = Date.now()
+        for (const id of now) delete deleted[id]
+      }
+      ids = now
+      if (ready && !silent) put({ projects: s.projects, flicks: s.flicks, made: GENERATED_VIDEOS.filter((v) => v.set === "made"), deleted: { ...deleted } } satisfies Saved)
     })
     // elements (named products, characters, logos) follow the user too
     let elementsReady = false
@@ -125,6 +197,8 @@ export function startSync() {
       const saved = await loadSaved<Saved>("state")
       if (saved?.projects) {
         mergeMade(saved.made)
+        Object.assign(deleted, saved.deleted ?? {})
+        lastTheirs = saved
         library.load(saved)
       }
     } catch (e) {
