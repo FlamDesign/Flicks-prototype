@@ -785,7 +785,9 @@ export function cachedRequest(system: string, raw: Message[], state: unknown, fl
     // sent back as they were, so they become plain notes of what was searched
     const broken = flatten || m.content.some((b) => b.type === "thinking" && !b.signature)
     const content = (broken ? m.content.flatMap((b): Block[] => (b.type === "thinking" || b.type === "redacted_thinking" ? (flatten ? [] : [b]) : b.type === "server_tool_use" ? [{ type: "text", text: `(Searched the web: ${String((b.input as { query?: string; url?: string } | undefined)?.query ?? (b.input as { url?: string } | undefined)?.url ?? "")})` }] : b.type === "web_search_tool_result" || b.type === "web_fetch_tool_result" ? [] : [b])) : m.content).filter(keepable)
-    return { ...m, content: content.length ? content : [{ type: "text", text: "(thinking)" } as Block] }
+    // a half-written tool input saved by an older build (a reply cut off mid tool call) is dropped from the block
+    const tidy = content.map((b) => ("json" in b ? (({ json: _drop, ...rest }) => (void _drop, rest as Block))(b as Block & { json?: unknown }) : b))
+    return { ...m, content: tidy.length ? tidy : [{ type: "text", text: "(thinking)" } as Block] }
   })
   const cache = { cache_control: { type: "ephemeral" } }
   const tools = [...SERVER_TOOLS, ...TOOLS]

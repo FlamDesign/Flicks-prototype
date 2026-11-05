@@ -198,6 +198,18 @@ export async function streamChat(req: ChatRequest, onText: (text: string) => voi
       else if (ev.type === "error") throw new AiError("claude_error", ev.error?.message ?? "Claude returned an error.")
     }
   }
+  // a reply cut off mid tool call (the stream ended before the block closed): finish what can be read,
+  // and never keep the half-written input around (the API refuses it when the chat is sent back)
+  for (const b of blocks)
+    if (b && "json" in b) {
+      const t = b as { input?: unknown; json?: string }
+      try {
+        t.input = t.json ? JSON.parse(t.json) : {}
+      } catch {
+        t.input = {}
+      }
+      delete t.json
+    }
   // the API refuses empty text blocks when they're sent back
   // a web search whose results never came (the reply stopped for one of our tools first) can't be
   // sent back alone: it becomes a plain note of what was searched
