@@ -611,6 +611,8 @@ const ACTIVITY: Record<string, string> = {
   vary_field: "Writing the copy",
   same_for_all: "Writing the copy",
 }
+/** tools that change the Flick or the project: after one, looking or checking again is new work, not a repeat */
+const CHANGES = new Set(["add_element", "edit_element", "remove_element", "update_design", "set_variation", "add_variation", "vary_field", "same_for_all", "rename_feed", "use_image", "set_format", "set_brand", "generate_image", "make_sheet", "propose_plan"])
 /** what reading each skill means for the user's Flick */
 const SKILL_ACTIVITY: Record<string, string> = {
   flicks: "Getting to know your Flick",
@@ -1526,6 +1528,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     abort.current = new AbortController()
     try {
       const seen = new Set<string>()
+      let stopped = false
       let nudged = false
       for (let step = 0; step < 8; step++) {
         // let the editor re-render after the last tools, so the state sent is current
@@ -1574,14 +1577,21 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           break
         }
         // the same call again in one reply means it's going round in circles: stop it
+        // (looking again after a change isn't a repeat: once the Flick changes, earlier calls are forgotten)
         const sigs = uses.map((u) => u.name + JSON.stringify(u.input))
         const repeated = sigs.some((x) => seen.has(x))
         sigs.forEach((x) => seen.add(x))
         if (repeated && step > 0) {
-          msgs.current.push({ role: "user", content: uses.map((u) => ({ type: "tool_result" as const, tool_use_id: u.id, content: "Not run: this repeats an earlier call. Stop and tell the user what's left." })) })
+          msgs.current.push({ role: "user", content: uses.map((u) => ({ type: "tool_result" as const, tool_use_id: u.id, content: "Not run: this repeats an earlier call. Stop and tell the user, in a line or two, what you did and what's left." })) })
+          // one more round so it can say where things stand, instead of the chat going quiet
+          if (!stopped) {
+            stopped = true
+            continue
+          }
           add({ kind: "note", text: "Stopped a repeated step. Tell me what to change next." })
           break
         }
+        if (uses.some((u) => CHANGES.has(u.name))) seen.clear()
         const results: Block[] = []
         let waiting = false
         for (const u of uses) {
