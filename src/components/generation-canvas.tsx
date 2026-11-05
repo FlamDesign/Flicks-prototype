@@ -1495,13 +1495,25 @@ export function GenerationCanvas({
         async ({ url, poster }) => {
           const still = poster ?? (await posterOf(url)) ?? videoAt(sl.video ?? generation.video ?? 0).poster
           const video = addMadeVideo({ name: `${slideName(sl, slidesNow.current.indexOf(sl))}-${sl.startedAt}`, size: generation.size, mp4: url, poster: still })
-          patchJob({ video, job: undefined })
+          patchJob({ video, job: undefined, failed: undefined })
         },
         (e) => {
           if (!slidesNow.current.some(mine)) return
           setDev((d) => ({ credits: d.credits + VIDEO_COST }))
-          patchJob({ job: undefined, startedAt: undefined, video: undefined, prompt: sl.used?.prompt, used: undefined })
-          toast({ title: `${slideName(sl, slidesNow.current.findIndex(mine))} didn’t generate`, description: `${e instanceof Error ? e.message : "The video failed."} Credits refunded.` })
+          const name = slideName(sl, slidesNow.current.findIndex(mine))
+          const reason = e instanceof Error ? e.message : "The video failed."
+          const tries = (sl.failed?.tries ?? 0) + 1
+          patchJob({ job: undefined, startedAt: undefined, video: undefined, prompt: sl.used?.prompt, used: undefined, failed: { reason, tries } })
+          toast({ title: `${name} didn’t generate`, description: `${reason} Credits refunded.` })
+          // the chat hears about it: a variation's first failure, it retries once with a gentler change; after that it asks
+          if (agentMode && live)
+            agent.notify(
+              sl.id === "main"
+                ? `(App: Variation 1's video failed (${reason}); refunded. Tell the user in one short line; they can press Try again in the build card, or you can regenerate it with a simpler prompt if they ask.)`
+                : tries === 1
+                  ? `(App: ${name}'s video failed (${reason}); it's back to not started and refunded. Retry it once now: set_variation "${name}" with a gentler, simpler version of the same change and regenerate true. Don't ask first; say it in one short line.)`
+                  : `(App: ${name} failed again (${reason}); refunded. Don't retry. Tell the user in one short line and suggest a different change, or Try again in the build card.)`,
+            )
           // without the reference video, the variations waiting for it can't be made: refunded too
           if (sl.id === "main") {
             const waiting = slidesNow.current.filter((x) => x.job?.status === "waiting")
@@ -1539,6 +1551,26 @@ export function GenerationCanvas({
     toast({ title: `${name} stopped`, description: "It wasn't made, so the credits are back." })
     agent.notify(`(App: the user stopped ${name}'s video before it was made; it's back to not started. Nothing to reply.)`, false)
   }
+  /** a failed video, tried again as it was (from the build card) */
+  const retryVideo = (slideId: string) => {
+    const sl = slidesNow.current.find((x) => x.id === slideId)
+    if (!sl?.failed || sl.job) return
+    // the failure stays noted until a try succeeds, so the chat's retry count carries on
+    startVideo(slideId, sl.prompt ?? "")
+  }
+  // every variation is made (this session watched them being made): wake the chat once, for a final
+  // check of every variation and the hand-over
+  const sawVariations = useRef("")
+  const toldDone = useRef("")
+  const batch = slides.map((x) => x.startedAt ?? 0).join(",")
+  if (agentMode && slides.slice(1).some((x) => x.job && x.job.status !== "waiting")) sawVariations.current = batch
+  const allMade = slides.length > 1 && slides.every((x) => !x.job && isMadeVideo(x.video)) && mainNow.approvedRef === mainNow.startedAt
+  useEffect(() => {
+    if (!agentMode || !live || !allMade || toldDone.current === batch || sawVariations.current !== batch) return
+    toldDone.current = batch
+    agent.notify("(App: every variation is made. Check each once: view_flick on each variation (or review_flick for all of them), fix only real clashes (text over faces or the product, the strip over the action), and make sure each has its label and link. Then hand over in two short lines.)")
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allMade, batch])
   // the composer in chat mode: talk to the chat, or write a video's prompt yourself
   const [composeMode, setComposeMode] = useState<"chat" | "prompt">("chat")
   const chatting = agentMode && (composeMode === "chat" || !slides[0].startedAt)
@@ -1564,7 +1596,8 @@ export function GenerationCanvas({
         const v = st === "done" && s.video !== undefined ? videoAt(wrapVideo(s.video)) : undefined
         // can be stopped until it starts: waiting for the OK, or still in the queue
         const stoppable = !!s.job && (s.job.status === "waiting" || s.job.status === "starting" || s.job.status === "queued")
-        return { name: nameOf(s), state: st, src: v?.mp4 || undefined, poster: v?.poster, since: s.job?.since ?? s.startedAt, ms: s.job ? undefined : ms, status: s.job?.status, stop: stoppable ? () => void cancelVideo(s.id) : undefined }
+        const failed = !s.job && !isMadeVideo(s.video) && s.failed ? s.failed.reason : undefined
+        return { name: nameOf(s), state: st, src: v?.mp4 || undefined, poster: v?.poster, since: s.job?.since ?? s.startedAt, ms: s.job ? undefined : ms, status: s.job?.status, stop: stoppable ? () => void cancelVideo(s.id) : undefined, failed, retry: failed ? () => retryVideo(s.id) : undefined }
       }),
     review: { needed: needsReview, approve: () => approveRef(), change: () => changeRef() },
     progress: () => {

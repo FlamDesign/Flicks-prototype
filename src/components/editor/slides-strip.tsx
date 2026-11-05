@@ -33,6 +33,8 @@ export type Slide = {
   job?: { status: string; since: number; id?: string }
   /** the reference video: the startedAt of the version the user approved (variations are made only from an approved one) */
   approvedRef?: number
+  /** the last try at its video failed (why, and how many tries in a row): the build card offers Try again */
+  failed?: { reason: string; tries: number }
 }
 /**
  * A slide's name when the user hasn't named it. The reference video is Variation 1 (it's in the

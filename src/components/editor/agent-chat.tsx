@@ -39,7 +39,7 @@ export type AgentCtx = {
   size: string
   seconds: number
 }
-export type BuildVideo = { name: string; state: "empty" | "generating" | "done"; src?: string; poster?: string; since?: number; ms?: number; status?: string; /** stops it before it starts (waiting or queued); missing once it's being made */ stop?: () => void }
+export type BuildVideo = { name: string; state: "empty" | "generating" | "done"; src?: string; poster?: string; since?: number; ms?: number; status?: string; /** stops it before it starts (waiting or queued); missing once it's being made */ stop?: () => void; /** its last try failed (why) */ failed?: string; retry?: () => void }
 
 /** true inside the choices panel (planning, beside the chat): cards get room, options become numbered rows */
 export const StageContext = createContext(false)
@@ -1197,11 +1197,25 @@ function BuildTile({ video: v, still, ratio, waiting }: { video: BuildVideo; sti
           <>
             {still && <img src={still} alt="" decoding="async" className={cn("absolute inset-0 size-full object-cover", v.state === "generating" ? "opacity-60 blur-xs" : "opacity-40 grayscale")} />}
             {v.state === "generating" && <GeneratingGradient sweep className="bg-transparent opacity-70" />}
-            <span className="absolute inset-x-1.5 bottom-1.5 flex min-w-0 items-center gap-1 truncate rounded-md bg-background/85 px-1.5 py-0.5 text-xs tabular-nums text-muted-foreground backdrop-blur">
+            {v.retry && (
+              <span className="absolute inset-x-1.5 bottom-1.5 flex flex-col items-stretch gap-1">
+                <span className="truncate text-center text-xs font-medium text-destructive" title={v.failed}>
+                  Didn't generate
+                </span>
+                <Button size="xs" variant="secondary" onClick={v.retry}>
+                  Try again
+                </Button>
+              </span>
+            )}
+            <span className={cn("absolute inset-x-1.5 bottom-1.5 flex min-w-0 items-center gap-1 truncate rounded-md bg-background/85 px-1.5 py-0.5 text-xs tabular-nums text-muted-foreground backdrop-blur", v.retry && "hidden")}>
               {v.state === "generating" ? (
                 <>
                   {pct !== undefined ? `${pct}%` : `${STATUS[v.status ?? ""] ?? "generating"} · ${secs < 60 ? `${secs}s` : `${Math.floor(secs / 60)}m`}`}
                 </>
+              ) : v.failed ? (
+                <span className="truncate text-destructive" title={v.failed}>
+                  Didn't generate
+                </span>
               ) : waiting ? (
                 "After your OK"
               ) : (

@@ -1056,7 +1056,7 @@ const buildCtx = {
   videos: () => [
     { name: "Gold", state: "done" as const, src: GENERATED_VIDEOS[1].mp4, poster: GENERATED_VIDEOS[1].poster },
     { name: "Sapphire", state: "generating" as const, since: Date.now() - 9000, ms: 30000 },
-    { name: "Ember", state: "empty" as const },
+    { name: "Ember", state: "empty" as const, failed: "The video didn't generate. Try again.", retry: () => {} },
   ],
 }
 const demoPlan: Plan = {
