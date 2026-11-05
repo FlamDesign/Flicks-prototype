@@ -62,12 +62,16 @@ function Reel({ r, active, strip = true, className }: { r: Recipe; active: boole
         />
       ))}
       {strip && clips.length > 1 && (
-        <span className="absolute right-2.5 top-2.5 flex gap-1 rounded-full bg-black/30 p-1 backdrop-blur-md">
-          {posters.map((p, i) => (
-            <span key={p} title={labels[i]} className={cn("size-6 overflow-hidden rounded-full ring-2 transition-[box-shadow,opacity]", i === at ? "opacity-100 ring-white" : "opacity-60 ring-transparent")}>
-              <img src={p} alt="" className="size-full object-cover" />
-            </span>
-          ))}
+        <span className="absolute inset-x-3 top-3 flex flex-col gap-2">
+          {/* story-style bars: one per variation, the current one filling */}
+          <span className="flex gap-1">
+            {clips.map((c, i) => (
+              <span key={c} className="h-0.5 flex-1 overflow-hidden rounded-full bg-white/30">
+                <span key={i === at ? n : "x"} className={cn("block h-full rounded-full bg-white", i < at ? "w-full" : i === at ? (active && !reduced() ? "animate-[recipe-fill_2400ms_linear_forwards]" : "w-full") : "w-0")} />
+              </span>
+            ))}
+          </span>
+          <span className="w-fit rounded-full bg-black/30 px-2 py-0.5 text-xs font-medium text-white backdrop-blur-md">{labels[at]}</span>
         </span>
       )}
     </span>
@@ -99,32 +103,44 @@ export function RecipeCards({ onStart }: { onStart: (s: RecipeStart) => void }) 
         </h2>
         <p className="text-sm text-muted-foreground">Bring a video, an image or finished clips. The AI turns it into a Flick viewers can tap through.</p>
       </div>
-      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {RECIPES.map((r, k) => (
-          <li key={r.id}>
-            <button
-              type="button"
-              onClick={() => setOpen(r)}
-              onPointerEnter={() => setHover(r.id)}
-              onPointerLeave={() => setHover(null)}
-              onFocus={() => setHover(r.id)}
-              onBlur={() => setHover(null)}
-              className="group/r relative block aspect-[3/4] w-full overflow-hidden rounded-2xl bg-muted text-left shadow-xs ring-1 ring-foreground/10 outline-none transition-[box-shadow,transform] duration-300 hover:-translate-y-0.5 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {/* every card plays; the one under the pointer gets the full reel */}
-              <Reel r={r} active={hover === r.id || (hover === null && k === 0) || !hover} className="transition-transform duration-700 group-hover/r:scale-[1.04]" />
-              <span aria-hidden className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/70 via-black/50 to-transparent" />
-              <FromLogos r={r} className="absolute left-2.5 top-2.5" />
-              <span className="absolute inset-x-0 bottom-0 flex flex-col gap-1 p-3.5 text-white">
-                <span className="flex items-center gap-1.5 text-lg font-semibold leading-tight">
-                  <HugeiconsIcon icon={ICON[r.id]} className="size-4 shrink-0 opacity-90" />
-                  {r.name}
+      <ul className="grid grid-cols-2 gap-3 md:grid-cols-4 md:grid-rows-2">
+        {RECIPES.map((r, k) => {
+          const big = k === 0
+          return (
+            <li key={r.id} className={cn(big && "col-span-2 md:row-span-2")}>
+              <button
+                type="button"
+                onClick={() => setOpen(r)}
+                onPointerEnter={() => setHover(r.id)}
+                onPointerLeave={() => setHover(null)}
+                onFocus={() => setHover(r.id)}
+                onBlur={() => setHover(null)}
+                className={cn(
+                  "group/r relative block w-full overflow-hidden rounded-2xl bg-muted text-left shadow-xs ring-1 ring-foreground/10 outline-none transition-[box-shadow,transform] duration-300 hover:-translate-y-0.5 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-ring",
+                  big ? "aspect-[4/5] md:aspect-auto md:h-full" : "aspect-[4/5]",
+                )}
+              >
+                {/* every card plays until one is hovered; then only that one moves on */}
+                <Reel r={r} active={!hover || hover === r.id} className="transition-transform duration-700 group-hover/r:scale-[1.04]" />
+                <span aria-hidden className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+                <span className={cn("absolute inset-x-0 bottom-0 flex flex-col text-white", big ? "gap-2 p-6" : "gap-1 p-3.5")}>
+                  <FromLogos r={r} className="mb-1" />
+                  <span className={cn("flex items-center gap-2 font-semibold leading-tight tracking-tight", big ? "text-3xl" : "text-lg")}>
+                    <HugeiconsIcon icon={ICON[r.id]} className={cn("shrink-0 opacity-90", big ? "size-6" : "size-4")} />
+                    {r.name}
+                  </span>
+                  <span className={cn("leading-snug text-white/70", big ? "max-w-sm text-base" : "line-clamp-2 text-sm")}>{r.line}</span>
+                  {big && (
+                    <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-medium text-black transition-transform group-hover/r:translate-x-0.5">
+                      <HugeiconsIcon icon={SparklesIcon} className="size-4" />
+                      Try it
+                    </span>
+                  )}
                 </span>
-                <span className="text-sm leading-snug text-white/70">{r.line}</span>
-              </span>
-            </button>
-          </li>
-        ))}
+              </button>
+            </li>
+          )
+        })}
       </ul>
       {open && <RecipeForm key={open.id} recipe={open} onClose={() => setOpen(null)} onStart={(s) => (setOpen(null), onStart(s))} />}
     </section>

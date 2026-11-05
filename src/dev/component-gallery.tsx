@@ -712,7 +712,7 @@ const ENTRIES: Entry[] = [
   {
     name: "Recipes",
     kind: "UI",
-    about: "Recipes on Create: five cards (Product Swap, Recast, Scene Shift, Make It Move, Clips to Flick). Large cards play looping clips of each recipe. Each opens a two-pane form (animated how it works, then numbered steps with the shared uploader); Start hands it all to the AI chat.",
+    about: "Recipes on Create: five cards (Product Swap, Recast, Scene Shift, Make It Move, Clips to Flick). A bento grid (Product Swap featured) of cards playing looping clips of each recipe, with story-style bars and the current variation's name. Each opens a two-pane form (animated how it works, then numbered steps with the shared uploader); Start hands it all to the AI chat.",
     render: () => <RecipeCards onStart={() => {}} />,
   },
   {
