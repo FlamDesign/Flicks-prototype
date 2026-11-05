@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils"
 import { useDevActions } from "@/dev/dev-actions"
 import { useDevState } from "@/dev/state"
+import { mockVideos } from "@/ai/client"
 
 const KEY = "flam.devWidget"
 const MARGIN = 8
@@ -29,6 +30,7 @@ export function DevWidget({ onStateManager, onComponents, onPrd, onEmails, onReq
   // expanded while hovered or focused. The item under the pointer stays put as names appear (the bar
   // slides left to keep it there), and the bar never runs off either edge of the screen.
   const [open, setOpen] = useState(false)
+  const [mock, setMock] = useState(mockVideos)
   const [shift, setShift] = useState(0)
   const anchor = useRef<{ el: Element; x: number } | null>(null)
   const expand = (target: EventTarget | null) => {
@@ -183,6 +185,36 @@ export function DevWidget({ onStateManager, onComponents, onPrd, onEmails, onReq
           </Button>
         </TooltipTrigger>
         <TooltipContent>{dev.aiChat ? "On: a new prompt opens the chat, which plans the Flick first. Click to turn off." : "Off: Generate makes the video straight away. Click to turn on the chat."}</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            role="switch"
+            aria-checked={mock}
+            aria-label="Sample videos"
+            onClick={() => {
+              const next = !mock
+              try {
+                localStorage.setItem("flam.mockVideos", next ? "1" : "0")
+              } catch {
+                /* no storage */
+              }
+              setMock(next)
+            }}
+            className={cn(
+              "relative h-7 gap-1.5 rounded-lg text-xs font-normal transition-none hover:bg-white/10 hover:text-white dark:hover:bg-white/10",
+              mock ? "bg-white/20 text-white" : "text-white/70",
+              open ? "px-2" : "w-7 px-0",
+            )}
+          >
+            <HugeiconsIcon icon={TestTubeIcon} className="size-3.5" />
+            {open && <span className="animate-in fade-in-0 duration-150">Sample videos {mock ? "on" : "off"}</span>}
+            <span aria-hidden className={cn("size-1.5 rounded-full", mock ? "bg-brand" : "bg-white/30", !open && "absolute right-1 top-1")} />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{mock ? "On: videos come back as sample clips after a short wait; nothing is generated. Click to turn off." : "Off: videos are really generated. Click to use sample clips for testing."}</TooltipContent>
       </Tooltip>
       <span aria-hidden className="mx-0.5 h-4 w-px bg-white/20" />
       {tools.map((t) => (

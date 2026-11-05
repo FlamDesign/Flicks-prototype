@@ -357,7 +357,46 @@ export function videoAspectOf(size: string) {
  * `video`, matching `images` for the change.
  */
 export type VideoInput = { mode: "text" | "image" | "reference" | "edit"; prompt: string; image?: string; endImage?: string; images?: string[]; video?: string; videos?: string[] }
+/**
+ * Testing without making videos: "Sample videos" (a dev switch, kept in this browser) answers every
+ * video request with one of the built-in sample clips after a short pretend wait, with the same
+ * statuses. flam.mockFail (a number) makes that many upcoming videos fail, to test failures.
+ */
+export const mockVideos = () => {
+  try {
+    return localStorage.getItem("flam.mockVideos") === "1"
+  } catch {
+    return false
+  }
+}
+async function mockVideo(input: { prompt: string; resume?: string; onId?: (id: string) => void }, onStatus?: (status: string) => void, signal?: AbortSignal): Promise<{ url: string; poster?: string }> {
+  const id = input.resume ?? `mock-${crypto.randomUUID()}`
+  input.onId?.(id)
+  const steps: [string, number][] = [["queued", 1500], ["in_progress", 4000], ["in_progress", 2500]]
+  for (const [status, ms] of steps) {
+    onStatus?.(status)
+    await new Promise((r) => setTimeout(r, input.resume ? 300 : ms))
+    if (signal?.aborted) throw new AiError("aborted", "Stopped.")
+  }
+  let fail = 0
+  try {
+    fail = Number(localStorage.getItem("flam.mockFail") ?? 0)
+    if (fail > 0) localStorage.setItem("flam.mockFail", String(fail - 1))
+  } catch {
+    /* no storage: no failures */
+  }
+  if (fail > 0) throw new AiError("video_failed", "The video didn't generate. Try again.")
+  const { GENERATED_VIDEOS } = await import("@/components/editor/elements")
+  const samples = GENERATED_VIDEOS.filter((v) => v.set !== "made" && v.mp4)
+  let h = 0
+  for (const c of input.prompt) h = (h * 31 + c.charCodeAt(0)) >>> 0
+  const v = samples[h % samples.length]
+  onStatus?.("completed")
+  return { url: new URL(v.mp4, location.href).href, poster: new URL(v.poster, location.href).href }
+}
+
 export async function generateVideo(input: VideoInput & { aspect: string; seconds: number; meta?: GenMeta; resume?: string; onId?: (id: string) => void }, onStatus?: (status: string) => void, signal?: AbortSignal): Promise<{ url: string; poster?: string }> {
+  if (mockVideos() || input.resume?.startsWith("mock-")) return mockVideo(input, onStatus, signal)
   // a video started before a reload carries on from its id
   const { id } = input.resume ? { id: input.resume } : ((await (
     await steady("/video", { method: "POST", body: JSON.stringify({ mode: input.mode, prompt: input.prompt, aspect_ratio: input.aspect, duration: input.seconds, image_url: input.image, end_image_url: input.endImage, image_urls: input.images, video_url: input.video, video_urls: input.videos, meta: input.meta }), signal })
