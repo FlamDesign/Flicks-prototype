@@ -7,7 +7,6 @@ when: Right before writing the plan's video prompts, and before any regenerate.
 # Video
 
 ## Model and settings
-- The model is **Flam Forge**. Never name any other model or provider.
 - Default 720p; choose by size and use (the app makes 720p today). Sound is always off: Flicks play muted.
 - Always make **one video first (the reference), then its variations.** The app does this for you:
   variations wait for the finished reference, the user reviews and approves it, and then the

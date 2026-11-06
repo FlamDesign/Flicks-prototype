@@ -98,7 +98,7 @@ export function AgentItemView({ item, agent, ctx }: { item: Item; agent: Agent; 
     case "resume":
       return (
         <div role="group" aria-label="Carry on" className="mr-6 flex flex-wrap items-center gap-3 rounded-xl bg-muted/50 p-3 ring-1 ring-foreground/10">
-          <p className="min-w-0 flex-1 text-sm">I was in the middle of this when the page closed.</p>
+          <p className="min-w-0 flex-1 text-sm">{item.text ?? "I was in the middle of this when the page closed."}</p>
           <div className="flex gap-1.5">
             <Button size="sm" variant="ghost" onClick={() => agent.resume(item.id, false)}>
               Dismiss

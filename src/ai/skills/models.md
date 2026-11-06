@@ -1,15 +1,14 @@
 ---
 name: models
-description: Which image and video models make each step, what they cost and how fast they are, and how your choices (purpose, references, text, the reference video) pick the model.
-when: Before generating images or videos, and when the user asks about cost, speed or quality.
+description: Which image and video models make each step, what they cost and how fast they are, how your choices (purpose, references, text, the reference video) pick the model, and the prompt recipes for previews, thumbnails and canvas images.
+when: Before generating any image or video, and when the user asks about cost, speed or quality.
 ---
 
 # Models
 
 The app picks the model from what you ask for. Your choices decide it: the image's purpose, whether
 you pass reference images, whether it needs readable text, and (for videos) whether it's the
-reference or a variation. Never name models or providers to the user; the video model is
-"Flam Forge" if asked.
+reference or a variation.
 
 ## Images
 | Step | You ask for | Model the app uses | Cost each | Speed |
@@ -51,6 +50,17 @@ keep "the label and bottle shape exactly as in [Image 1]".
 
 Costs: about 46 cents a second at 720p (an 8 s reference is about $3.70). Variations are edits of the
 reference video, billed by its length, so they cost about the same.
+
+Prompt recipes:
+- **Concept preview or look:** "<scene from the concept>, <shot size and angle>, <light>, <style>,
+  photographic, no text". One per concept.
+- **Thumbnail:** "<the product in this variation>, centred, three-quarter view, on a plain <neutral
+  or brand colour> background, soft studio light, sharp focus, square, no text". Same background,
+  angle and light for every variation; only the product changes, and the difference shows at 60 pixels.
+- **Canvas image (badge, background, extra product):** describe exactly what and where it sits;
+  transparent or plain background; no text unless asked.
+- With the user's images as references, describe only the change: "this exact product, in gold, on
+  a plain white background". Product first, then a model or scene.
 
 Images for videos:
 - **Sheets** keep a product or person the same in every video: make one when it must stay

@@ -165,6 +165,8 @@ export type Choice = {
   beats?: string[]
   /** pictures: what the app draws for this answer */
   image_prompt?: string
+  /** pictures: a project image shown as the answer instead */
+  image_id?: string
   /** sizes: width×height in pixels */
   size?: string
 }
@@ -175,7 +177,7 @@ export type Item = Base &
     | { kind: "user"; text: string; images: string[] }
     | { kind: "assistant"; text: string; streaming?: boolean; activity?: string; /** the user stopped it here (what it says, e.g. "Stopped · 2 images cancelled") */ stopped?: string }
     /** the page closed mid-turn: reopening offers to carry on */
-    | { kind: "resume" }
+    | { kind: "resume"; text?: string }
     | { kind: "question"; toolId: string; question: string; options: Choice[]; display: Display; step?: Step; multi: boolean; custom: boolean; answer?: string; purpose?: string; /** the answer is typed (a brand name, a link): a field that's ready to type in, with this hint, above any other options */ typeFirst?: string; /** how many to pick, when the wording says ("pick 2 to 4") */ range?: { min: number; max: number } }
     | { kind: "assets"; toolId: string; message: string; kinds: string[]; done?: "added" | "skipped"; images?: string[] }
     | { kind: "brand"; brand: Brand }
@@ -258,6 +260,7 @@ const choiceSchema = {
         design: { ...designSchema, description: "For layouts and thumbnails: the design this answer applies (layout, align, button_style, thumbnails…)" },
         size: { type: "string", description: "For sizes: width×height in pixels, e.g. '300×250'" },
         image_prompt: { type: "string", description: "For pictures: a visual description of this answer (setting, light, mood, styling); the app makes a quick picture of it with the user's product" },
+        image_id: { type: "string", description: "For pictures: show this project image (a pack shot from the brand's site, an upload) as the answer's picture instead of drawing one. Use it for the variations question when the range's product images are in the project." },
       },
       required: ["label"],
     },
@@ -335,7 +338,7 @@ export const TOOLS: Tool[] = [
         options: { type: "array", items: choiceSchema, minItems: 2, maxItems: 9, description: "Up to 6; up to 9 for sizes" },
         display: { type: "string", enum: ["chips", "cards", "palettes", "layouts", "thumbnails", "pictures", "sizes"] },
         step: { type: "string", enum: ["idea", "look", "plan"] },
-        purpose: { type: "string", enum: ["variations", "placement", "size", "brand", "other"], description: "'brand' when asking for the brand name or website (the user types it straight into a field; give only options that aren't typed, like 'No brand, choose for me'); 'variations' when asking what changes between variations; 'placement' for where it will run; 'size' for the Flick's size (the answer is applied)" },
+        purpose: { type: "string", enum: ["goal", "variations", "placement", "size", "brand", "other"], description: "'brand' when asking for the brand name or website (the user types it straight into a field; give only options that aren't typed, like 'No brand, choose for me'); 'variations' when asking what changes between variations; 'placement' for where it will run; 'size' for the Flick's size (the answer is applied)" },
         multi_select: { type: "boolean", description: "true whenever the user may pick more than one (and whenever the question says pick any, all that apply, or similar); they then tap several and press Continue. Works with chips, cards, pictures and palettes." },
         allow_custom: { type: "boolean", description: "Let the user type their own answer" },
       },
@@ -725,6 +728,9 @@ async function cutPanels(sheet: Blob, layout: { cols: number; rows: number }, n:
 }
 
 /** an option that only says the user will type something ("I'll type the brand name", "I'll paste my website link") */
+/** a tool result that answered nothing: skipped, or typed past */
+const UNANSWERED = /^(Skipped\b|The user didn't use this card)/
+const resultText = (c: unknown) => (typeof c === "string" ? c : Array.isArray(c) ? c.map((b) => (b as { text?: string }).text ?? "").join("") : "")
 const SAYS_TYPE = /^(i('|’)ll|i will|let me|i('|’)d like to)\s+(type|paste|share|enter|write|give|send|tell)\b/i
 /** what the type-in field asks for */
 function typeHint(question: string, typed: Choice[]) {
@@ -811,19 +817,18 @@ export function systemPrompt(s: ProjectState) {
   const always = ["flicks", "brief", ...(s.recipe ? ["recipes"] : []), ...(s.storyboarding && !s.planned ? ["shots", "video", "models", "design"] : []), ...(s.planned ? ["canvas", "design"] : [])].map((n) => findSkill(n)).filter((x): x is NonNullable<ReturnType<typeof findSkill>> => !!x)
   return `You are the creative partner inside Flicks by Flam, an AI interactive content tool. You help the user make a Flick with them, step by step.
 
-Flam's skills decide WHAT you ask, suggest and make; follow them over your own habits and over any example in these instructions. The skills below are in full (flicks and brief always; others when their step is near): never read_skill one that's below. Read every other skill with read_skill right before the step it covers (categories once you know the category, concepts before ideas and storylines, brand when the brand comes up or there's no brand kit, shots before the shot plan, video and models before video prompts, images and models before any image, design before any on-screen design or copy, review before approvals and handing over); skip ones listed in skills_read.
+Flam's skills decide WHAT you ask, suggest and make; follow them over your own habits and over any example in these instructions. The skills below are in full (flicks and brief always; others when their step is near): never read_skill one that's below. Read every other skill with read_skill right before the step it covers (categories once you know the category, concepts before ideas and storylines, brand when the brand comes up or there's no brand kit, shots before the shot plan, video and models before video prompts, models before any image, design before any on-screen design or copy, review before approvals and handing over); skip ones listed in skills_read.
 
 The order of work (always):
-1. Read everything the user gave: the prompt, every image, every link. When there are images, your first reply says in one or two plain sentences what they are and what you conclude (one product in several views, several different products = the variations, a logo, a style reference...): no lists, no per-image lines. Follow the brief skill's table for what to ask next.
-2. Brand and products, before any concept: if there's any hint of the brand (a name in the prompt, a logo, text on packaging, a website or product name), look it up yourself with web_search and web_fetch: the official site, brand guidelines, the product pages (names, variants, prices, links, images; read_website gets a product page's images). Record it with set_brand (with notes and sources) and say in a line what you found. If there's no hint, ask for the brand name or website with ask_user purpose "brand": the user types it straight into a field, so the only option is "No brand, choose for me" (never "I'll type…" options). When the Flick will have a button that leads somewhere (shop, learn more), ask in the same question for the website or product page link, so links are asked once; don't remind them about links until the hand-over.
-   Look up the product range too: the brand's other products, versions, flavours or colours, with their names and images.
-3. What changes between variations, settled with the user before concepts. If the inputs show different products, name them as the variations and ask to confirm. If they show one product (several views) and the user hasn't said what varies, ask with ask_user (purpose "variations"), options built from your research, e.g. "Across the range: Red, Black, Gold, Blue Label", "Red Label only: different serves", "Red Label only: moods or occasions", "I'll add more products". If they pick other products, ask for their pack shots (request_assets) or offer to take the official ones from the brand's site (read_website); never generate a product you have no image of. propose_concepts and propose_plan are refused until this is settled.
-4. Ask anything else still missing (brief skill), then show concepts built on what you found (propose_concepts), then the plan.
+1. Read everything the user gave: the prompt, every image, every video, every link (links before asking anything they could answer). With images, the first reply says in one or two plain sentences what they are and what you conclude (one product in several views, several products = the variations, a logo, a style reference); no lists, no per-image lines.
+2. Research the brand yourself when there's any hint of it (a name, a logo, packaging text, a website or product name): the brief skill says how. Say in a line what you found. Never generate a product you have no image of: ask for pack shots (request_assets) or take the official ones (read_website).
+3. In that same first reply, ask everything still missing in ONE batch of ask_user calls (they show together as one deck, "1 of 4"): the brand (purpose "brand", only when there's no hint; the user types into a field, so the only option is "No brand, choose for me"; when the Flick will have a button, ask for the website or product page link in this same question, and never mention links again until the hand-over), what changes between variations (purpose "variations", always settled before any idea; when read_website kept the range's product images, ask it as pictures with image_id per option so they see the real products), the goal (purpose "goal"), and where it runs with the size (purposes "placement" and "size"). Skip whatever the user already said or research settled. Never spread these over several turns.
+4. The next reply shows concepts (propose_concepts) built on the answers. When the user picks a concept, draft the storyboard (propose_plan) in that same reply: nothing is left to ask. propose_concepts and propose_plan are refused until what varies is settled.
 
 How the app works (the mechanics, not what to ask):
 - The user's own variation videos: when the user gives a finished video for each variation (e.g. 'here are my 3 videos'), nothing needs generating. Skip concepts, looks, sheets, shots and storyboards: settle only what's missing for the design (names, copy, prices, links), then propose_plan with each variation's video_id (and thumbnail_id when they gave thumbnails); no shot or reference fields. The app checks the videos match each other and the Flick in frame shape and length, and tells you if they don't. After approval, make thumbnails only for variations without one; if every variation has a thumbnail, make none. If only some variations have a video, the rest are made as usual (from Variation 1).
 - Pictures over words: when a question is about something the user judges by eye (setting, mood, light, styling, people, props), ask with display 'pictures' and an image_prompt per answer (up to 4); the app draws each with their product.
-- The goal question is always ask_user purpose "goal"; where it runs is purpose "placement" and the size purpose "size": ask placement and size in the same batch (any size options; the app shows the right sizes for the answer).
+- Placement and size go in one batch (any size options: the app shows the right sizes for the placement answer).
 - Links: each variation links to its own product page (that flavour, colour or model), never a range or variety page, unless the user gives one.
 - The storyboard card shows only the storyboard frames; approving it makes the first video (Variation 1). The variations, copy and links you set are applied with it and the user can change them later. While it's being made (a few minutes), make the thumbnails and set the copy once, then end the turn with one short line; don't look at the Flick or adjust the layout yet (there's only a stand-in frame). The app wakes you when Variation 1 is ready: look once (view_flick), fix only clear clashes, then end with one line asking the user to play it and press Make the variations in the build card, or say what to change. That button is the approval; never ask it with ask_user. If the user says in words they're happy with it, call approve_variation_1. While videos are being made, send no progress updates (the build card shows progress); speak again when the app wakes you. When the state has sample_videos, the videos are test samples that won't show the product: don't judge what's in them, remake them or explain them; carry on as if they were right. Images you made yourself (concept previews, looks) are already described in their results: don't view them again before the storyboard. Never remake a video on your own judgement (it costs credits): if a finished video looks wrong to you, say so in one line and let the user decide; remake only when they ask, or when the app reports a failure to retry.
 - Storyboard: propose_plan shows the storyboard card; call it "the storyboard" to the user, never "the plan". Every one gives storyboard frames (the reference video as 3 or 4 frames: what happens, how it's framed; the app draws a quick still per frame) and a direction per variation. The user never sees prompts, only directions, frames and the on-screen copy; when they edit a direction, it reaches the video as their direction. Don't quote prompts to the user either: describe the idea.
@@ -1170,7 +1175,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     made.catch(fail)
     // images the plan builds on come back with their id, so the next step can use them
     if (purpose === "look" || purpose === "edit" || purpose === "sheet")
-      return made.then(
+      return orStopped(made).then(
         (img) => `Done: ${img.id} (${purpose === "sheet" ? `${input.sheet_kind ?? "product"} sheet` : purpose === "edit" ? "edited photo" : "suggested look"}), shown in the chat. ${purpose === "edit" ? "Animate it with reference_mode \"animate\" and first_frame_id." : "Use it in reference_image_ids (and variations' image_ids for a sheet)."}`,
         (e) => `Error: ${e instanceof Error ? e.message : "The image failed."}`,
       )
@@ -1312,7 +1317,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
 
   /** concepts and plans wait until what varies is settled: a variations question answered, or the user's own words */
   const variationsSettled = (from: unknown, forPlan: boolean) => {
-    const answered = new Set(msgs.current.flatMap((m) => (m.role === "user" ? m.content.flatMap((b) => (b.type === "tool_result" ? [b.tool_use_id] : [])) : [])))
+    // a skipped question (Esc) or one the user typed past doesn't settle anything
+    const answered = new Set(msgs.current.flatMap((m) => (m.role === "user" ? m.content.flatMap((b) => (b.type === "tool_result" && !UNANSWERED.test(resultText(b.content)) ? [b.tool_use_id] : [])) : [])))
     const calls = msgs.current.flatMap((m) => (m.role === "assistant" ? m.content.filter((b): b is Extract<Block, { type: "tool_use" }> => b.type === "tool_use") : []))
     if (calls.some((c) => c.name === "ask_user" && (c.input as { purpose?: string }).purpose === "variations" && answered.has(c.id))) return true
     if (forPlan && calls.some((c) => c.name === "propose_concepts" && answered.has(c.id))) return true
@@ -1486,6 +1492,15 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       .catch(() => {})
   }
 
+  /** a tool's wait that ends when the user presses Stop (what it waited for carries on and shows in the chat when ready) */
+  const orStopped = <T,>(p: Promise<T>) =>
+    new Promise<T>((ok, no) => {
+      const sig = abort.current?.signal
+      if (sig?.aborted) return no(new DOMException("Stopped", "AbortError"))
+      sig?.addEventListener("abort", () => no(new DOMException("Stopped", "AbortError")), { once: true })
+      p.then(ok, no)
+    })
+
   /** the user's own latest words (not a note from the app or a nudge), and where they are in the conversation; null when the latest user turn is the app's */
   const lastRealUser = (): { text: string; at: number } | null => {
     for (let i = msgs.current.length - 1; i >= 0; i--) {
@@ -1519,13 +1534,16 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           // the field to type in replaces them, ready at once
           const typed = options.filter((o) => SAYS_TYPE.test(o.label))
           const typeFirst = !pictures && (input.purpose === "brand" || typed.length > 0) ? typeHint(String(input.question ?? ""), typed) : undefined
-          const shown = (pictures ? options.slice(0, 4) : options).filter((o) => !typeFirst || !SAYS_TYPE.test(o.label))
+          const shown = (pictures && !options.every((o) => o.image_id) ? options.slice(0, 4) : options).filter((o) => !typeFirst || !SAYS_TYPE.test(o.label))
           const itemId = add({ kind: "question", toolId: u.id, question: String(input.question ?? ""), options: shown, display, step, multi: (!!input.multi_select || asksForSeveral(String(input.question ?? ""))) && MULTI_DISPLAYS.includes(display), range: MULTI_DISPLAYS.includes(display) ? (pickRange(String(input.question ?? "")) ?? undefined) : undefined, custom: input.allow_custom !== false && (display === "chips" || pictures || display === "sizes"), purpose: typeof input.purpose === "string" ? input.purpose : undefined, typeFirst })
           pending.current.push({ toolId: u.id, itemId })
           // pictures fill in as they're made: a quick draft of each answer, with the user's product in it
           if (pictures)
             shown.forEach((o, i) => {
               const fill = (url: string) => setItems((all) => all.map((x) => (x.id === itemId && x.kind === "question" ? { ...x, options: x.options.map((c, j) => (j === i ? { ...c, image: url } : c)) } : x)))
+              // a real image (a pack shot) shows as it is
+              const given = o.image_id && images.current.find((x) => x.id === o.image_id)
+              if (given) return fill(given.url)
               if (!live.current) return void setTimeout(() => fill(apiRef.current.sampleImage("variation", String(i))), 800 + i * 500)
               previewFor(u.id, i, { image_prompt: o.image_prompt || `${String(input.question ?? "")}: ${o.label}. ${o.description ?? ""}` }).then(fill, () => {})
             })
@@ -1644,6 +1662,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           })
           if (!said || said.at < readyAt || !/\b(good|great|love|perfect|nice|go ahead|go for it|approve|yes|yep|make (the )?(rest|others|variations)|happy|fine|works|do it|ship it|ok(ay)?)\b/i.test(said.text))
             return "Error: only when the user says, in their own message after Variation 1 was ready, that they're happy with it. Otherwise point them to Make the variations in the build card."
+          // "yes, but move the button first" asks for a change, not the variations
+          if (/\b(but|change|instead|except|fix|redo|move|not|first|before|remake|again)\b/i.test(said.text)) return "Error: the user asked for a change along with it: make the change first, then let them approve from the build card."
           return a.approveReference()
         }
         case "review_flick": {
@@ -1663,12 +1683,12 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           const st = a.state() as unknown as { feeds?: { used_by?: string[]; values?: Record<string, string> }[] }
           const ownCopy = (st.feeds ?? []).some((f) => f.used_by?.some((u) => /headline|subheading|button text/i.test(u)))
           const names = ownCopy ? [...new Set((st.feeds ?? []).flatMap((f) => Object.keys(f.values ?? {})))].slice(0, 3) : []
-          const looks = await lookAt(names.length ? names : [undefined])
+          const looks = await orStopped(lookAt(names.length ? names : [undefined]))
           return looks.length ? [{ type: "text", text: `${verdict}\nHow it looks (check by eye: readable text, nothing over the product or faces, not crowded, strip clear of the action):` }, ...looks] : verdict
         }
         case "view_flick": {
           if (standIn()) return STAND_IN
-          const looks = await lookAt([input.variation ? String(input.variation) : undefined])
+          const looks = await orStopped(lookAt([input.variation ? String(input.variation) : undefined]))
           return looks.length ? looks : "Error: couldn't draw the Flick (is it built yet?)."
         }
         case "search_library": {
@@ -1721,7 +1741,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           return blocks
         }
         case "read_website":
-          return readSite(String(input.url ?? ""))
+          return orStopped(readSite(String(input.url ?? "")))
         case "use_image": {
           const img = images.current.find((i) => i.id === input.image_id)
           if (!img) return "Error: no image with that id."
@@ -1805,7 +1825,10 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     }
   }
 
+  const turning = useRef(false)
   const turn = useCallback(async () => {
+    turning.current = true
+    resumeDismissed.current = false
     setBusy(true)
     live.current = isLive()
     abort.current = new AbortController()
@@ -1889,6 +1912,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         const results: Block[] = []
         let waiting = false
         for (const u of uses) {
+          if (abort.current?.signal.aborted) throw new DOMException("Stopped", "AbortError")
           const r = await runTool(u)
           if (r === WAIT) waiting = true
           else results.push({ type: "tool_result", tool_use_id: u.id, content: r, ...(typeof r === "string" && r.startsWith("Error") ? { is_error: true } : {}) })
@@ -1901,6 +1925,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         checkpoint()
         // the user sent something while this step ran: stop here, with every step's result in place
         if (redirect.current) break
+        // out of steps with results still unanswered: say so, and offer to carry on
+        if (step === 7) add({ kind: "resume", text: "That was a long one; I paused here." } as Item)
       }
     } catch (e) {
       // a cut-off stream can surface as a network error: what counts is whether it was stopped here
@@ -1919,6 +1945,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       }
     } finally {
       phase.current = null
+      turning.current = false
       setItems((list) => list.map((x) => (x.kind === "assistant" && x.streaming ? { ...x, streaming: false } : x)))
       setBusy(false)
       // a message sent while it worked goes now
@@ -2024,30 +2051,36 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   const answer = useCallback(
     async (itemId: string, value: string, choice?: Choice) => {
       const it = items.find((x) => x.id === itemId)
-      if (!it || it.kind !== "question" || busy) return
-      if (answered(it.toolId)) return void patch(itemId, { answer: it.answer ?? value } as Partial<Item>)
-      // an option the app worked out (sizes for where it runs) is kept on the question, so the brief can read it
-      patch(itemId, { answer: value, ...(choice && !it.options.some((o) => o.label === choice.label) ? { options: [...it.options, choice] } : {}) } as Partial<Item>)
-      // a visual answer shows in the preview straight away
-      if (choice?.design) mergeDraft(choice.design)
-      if (choice?.colors?.length) mergeDraft({ button_color: choice.colors[0], ...(choice.colors[2] ? { text_color: choice.colors[2] } : {}) })
-      const detail = choice && (choice.design || choice.colors) ? ` (${JSON.stringify({ ...(choice.design ? { design: choice.design } : {}), ...(choice.colors ? { colors: choice.colors } : {}) })})` : ""
-      // a picked concept's preview becomes a project image: the suggested look the video can be made from
-      const shown = it.display === "concepts" ? (choice?.image ?? it.options.find((o) => o.label === value)?.image) : undefined
-      const look = shown ? (images.current.find((x) => x.url === shown) ?? keep(shown, `Look: ${value}`.slice(0, 40), "generated")) : undefined
-      const lookLine = look ? ` (its preview image is ${look.id}: the suggested look; use it in reference_image_ids when the video should look like it)` : ""
-      // the Flick's size: a picked size, or one the user typed ("728x90"), is applied straight away
-      let sizeLine = ""
-      if (it.purpose === "size" || it.display === "sizes") {
-        const typed = value.match(/(\d{2,4})\s*[x×]\s*(\d{2,4})/i)
-        const size = choice?.size ?? it.options.find((o) => o.label === value)?.size ?? (typed ? `${typed[1]}×${typed[2]}` : undefined)
-        sizeLine = size ? ` (${apiRef.current.setFormat(size)})` : " (no size in that answer: ask again or call set_format)"
+      if (!it || it.kind !== "question" || busy || busyRef.current) return
+      // taken at once: a second click while the first is still preparing does nothing
+      setBusy(true)
+      try {
+        if (answered(it.toolId)) return void patch(itemId, { answer: it.answer ?? value } as Partial<Item>)
+        // an option the app worked out (sizes for where it runs) is kept on the question, so the brief can read it
+        patch(itemId, { answer: value, ...(choice && !it.options.some((o) => o.label === choice.label) ? { options: [...it.options, choice] } : {}) } as Partial<Item>)
+        // a visual answer shows in the preview straight away
+        if (choice?.design) mergeDraft(choice.design)
+        if (choice?.colors?.length) mergeDraft({ button_color: choice.colors[0], ...(choice.colors[2] ? { text_color: choice.colors[2] } : {}) })
+        const detail = choice && (choice.design || choice.colors) ? ` (${JSON.stringify({ ...(choice.design ? { design: choice.design } : {}), ...(choice.colors ? { colors: choice.colors } : {}) })})` : ""
+        // a picked concept's preview becomes a project image: the suggested look the video can be made from
+        const shown = it.display === "concepts" ? (choice?.image ?? it.options.find((o) => o.label === value)?.image) : undefined
+        const look = shown ? (images.current.find((x) => x.url === shown) ?? keep(shown, `Look: ${value}`.slice(0, 40), "generated")) : undefined
+        const lookLine = look ? ` (its preview image is ${look.id}: the suggested look; use it in reference_image_ids when the video should look like it)` : ""
+        // the Flick's size: a picked size, or one the user typed ("728x90"), is applied straight away
+        let sizeLine = ""
+        if (it.purpose === "size" || it.display === "sizes") {
+          const typed = value.match(/(\d{2,4})\s*[x×]\s*(\d{2,4})/i)
+          const size = choice?.size ?? it.options.find((o) => o.label === value)?.size ?? (typed ? `${typed[1]}×${typed[2]}` : undefined)
+          sizeLine = size ? ` (${apiRef.current.setFormat(size)})` : " (no size in that answer: ask again or call set_format)"
+        }
+        // questions and image requests asked together go back together, once all are answered (or skipped)
+        if (!hold(it.toolId, value + detail + lookLine + sizeLine)) return
+        msgs.current.push({ role: "user", content: settle({ ...held.current }) })
+        checkpoint(true)
+        await turn()
+      } finally {
+        if (!turning.current) setBusy(false)
       }
-      // questions and image requests asked together go back together, once all are answered (or skipped)
-      if (!hold(it.toolId, value + detail + lookLine + sizeLine)) return
-      msgs.current.push({ role: "user", content: settle({ ...held.current }) })
-      checkpoint(true)
-      await turn()
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [items, busy, turn],
@@ -2056,21 +2089,28 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   const addAssets = useCallback(
     async (itemId: string, files: File[], kind?: string) => {
       const it = items.find((x) => x.id === itemId)
-      if (!it || it.kind !== "assets" || busy) return
-      if (answered(it.toolId)) return void patch(itemId, { done: it.done ?? "added" } as Partial<Item>)
-      if (!files.length) {
-        patch(itemId, { done: "skipped" } as Partial<Item>)
-        if (!hold(it.toolId, "Skipped: no images.")) return
+      if (!it || it.kind !== "assets" || busy || busyRef.current) return
+      // taken at once: a second click while the first is still preparing does nothing
+      setBusy(true)
+      try {
+        if (answered(it.toolId)) return void patch(itemId, { done: it.done ?? "added" } as Partial<Item>)
+        if (!files.length) {
+          patch(itemId, { done: "skipped" } as Partial<Item>)
+          if (!hold(it.toolId, "Skipped: no images.")) return
+          msgs.current.push({ role: "user", content: settle({ ...held.current }) })
+          await turn()
+          return
+        }
+        const got = await attach(files, kind)
+        patch(itemId, { done: "added", images: got.shows } as Partial<Item>)
+        const result: Block[] = [{ type: "text", text: got.line }, ...got.blocks]
+        if (!hold(it.toolId, result)) return
         msgs.current.push({ role: "user", content: settle({ ...held.current }) })
-        return turn()
+        checkpoint(true)
+        await turn()
+      } finally {
+        if (!turning.current) setBusy(false)
       }
-      const got = await attach(files, kind)
-      patch(itemId, { done: "added", images: got.shows } as Partial<Item>)
-      const result: Block[] = [{ type: "text", text: got.line }, ...got.blocks]
-      if (!hold(it.toolId, result)) return
-      msgs.current.push({ role: "user", content: settle({ ...held.current }) })
-      checkpoint(true)
-      await turn()
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [items, busy, turn],
@@ -2079,59 +2119,65 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   const decidePlan = useCallback(
     async (itemId: string, plan: Plan | null) => {
       const it = items.find((x) => x.id === itemId)
-      if (!it || it.kind !== "plan" || busy) return
-      // already approved (before a reload): approving again would start the videos twice
-      if (answered(it.toolId)) return void patch(itemId, { state: "approved" } as Partial<Item>)
-      if (!plan) {
-        // the user wants changes: they say what in the chat
-        return
-      }
-      // image ids become addresses the video model can use
-      const url = (id?: string) => (id ? images.current.find((i) => i.id === id)?.url : undefined)
-      const urls = (ids?: string[], max = 30) => (ids ?? []).map(url).filter((u): u is string => !!u).slice(0, max)
-      // @mentioned elements in a prompt: their images go with that video, first; the @ is dropped from the text
-      const elementIds = (text: string) =>
-        elementsIn(text).flatMap((el) => el.images.slice(0, 3).map((im, i) => (images.current.find((x) => x.url === im.url) ?? keep(im.url, `${el.name} ${i + 1}`, "library", el.kind)).id))
-      const withEls = (text: string, ids?: string[]) => [...new Set([...elementIds(text), ...(ids ?? [])])]
-      // the user's own videos and thumbnails go in as they are (kept on the server, so they last)
-      const lasting = async (u?: string) => (u && live.current ? await shareable(u).catch(() => u) : u)
-      const own = await Promise.all(
-        plan.variations.map(async (v) => {
-          const vid = images.current.find((x) => x.id === v.video_id)
-          const th = images.current.find((x) => x.id === v.thumbnail_id)
-          return vid || th ? { video: await lasting(vid?.url), poster: await lasting(vid?.poster), thumb: await lasting(th?.url) } : undefined
-        }),
-      )
-      const r = apiRef.current.approvePlan({
-        ...plan,
-        reference: {
-          ...plan.reference,
-          prompt: plainMentions(plan.reference.prompt),
-          media: {
-            mode: plan.reference.mode ?? "reference",
-            first_frame: url(plan.reference.first_frame_id),
-            last_frame: url(plan.reference.last_frame_id),
-            // the given images keep their order ([Image 1]…); @mentioned elements' images follow them
-            images: urls([...new Set([...(plan.reference.image_ids ?? []), ...withEls(plan.reference.prompt)])]),
-            videos: urls(plan.reference.video_ids, 10),
-            source: url(plan.reference.source_video_id),
+      if (!it || it.kind !== "plan" || busy || busyRef.current) return
+      // taken at once: a second click while the first is still preparing does nothing
+      setBusy(true)
+      try {
+        // already approved (before a reload): approving again would start the videos twice
+        if (answered(it.toolId)) return void patch(itemId, { state: "approved" } as Partial<Item>)
+        if (!plan) {
+          // the user wants changes: they say what in the chat
+          return
+        }
+        // image ids become addresses the video model can use
+        const url = (id?: string) => (id ? images.current.find((i) => i.id === id)?.url : undefined)
+        const urls = (ids?: string[], max = 30) => (ids ?? []).map(url).filter((u): u is string => !!u).slice(0, max)
+        // @mentioned elements in a prompt: their images go with that video, first; the @ is dropped from the text
+        const elementIds = (text: string) =>
+          elementsIn(text).flatMap((el) => el.images.slice(0, 3).map((im, i) => (images.current.find((x) => x.url === im.url) ?? keep(im.url, `${el.name} ${i + 1}`, "library", el.kind)).id))
+        const withEls = (text: string, ids?: string[]) => [...new Set([...elementIds(text), ...(ids ?? [])])]
+        // the user's own videos and thumbnails go in as they are (kept on the server, so they last)
+        const lasting = async (u?: string) => (u && live.current ? await shareable(u).catch(() => u) : u)
+        const own = await Promise.all(
+          plan.variations.map(async (v) => {
+            const vid = images.current.find((x) => x.id === v.video_id)
+            const th = images.current.find((x) => x.id === v.thumbnail_id)
+            return vid || th ? { video: await lasting(vid?.url), poster: await lasting(vid?.poster), thumb: await lasting(th?.url) } : undefined
+          }),
+        )
+        const r = apiRef.current.approvePlan({
+          ...plan,
+          reference: {
+            ...plan.reference,
+            prompt: plainMentions(plan.reference.prompt),
+            media: {
+              mode: plan.reference.mode ?? "reference",
+              first_frame: url(plan.reference.first_frame_id),
+              last_frame: url(plan.reference.last_frame_id),
+              // the given images keep their order ([Image 1]…); @mentioned elements' images follow them
+              images: urls([...new Set([...(plan.reference.image_ids ?? []), ...withEls(plan.reference.prompt)])]),
+              videos: urls(plan.reference.video_ids, 10),
+              source: url(plan.reference.source_video_id),
+            },
           },
-        },
-        // every other variation edits the approved reference video
-        variations: plan.variations.map((v, i) => ({ ...v, own: own[i], method: undefined, prompt: plainMentions(v.prompt), media: { images: urls(i === 0 ? [] : [...new Set([...(v.image_ids ?? []), ...withEls(v.prompt)])]) } })),
-      })
-      if (r.startsWith("Error")) {
-        add({ kind: "error", text: r.replace(/^Error: /, "") })
-        return
+          // every other variation edits the approved reference video
+          variations: plan.variations.map((v, i) => ({ ...v, own: own[i], method: undefined, prompt: plainMentions(v.prompt), media: { images: urls(i === 0 ? [] : [...new Set([...(v.image_ids ?? []), ...withEls(v.prompt)])]) } })),
+        })
+        if (r.startsWith("Error")) {
+          add({ kind: "error", text: r.replace(/^Error: /, "") })
+          return
+        }
+        patch(itemId, { state: "approved", plan } as Partial<Item>)
+        add({ kind: "build", count: plan.variations.length })
+        msgs.current.push({ role: "user", content: settle({ [it.toolId]: `Approved${JSON.stringify(plan) !== JSON.stringify(it.plan) ? " with edits" : ""}. ${r}` }) })
+        // saved at once: a reload right after must not offer the storyboard again
+        checkpoint(true)
+        // the project too (the videos just started), once the canvas has stored them (it does so after half a second)
+        setTimeout(saveWaitingNow, 900)
+        await turn()
+      } finally {
+        if (!turning.current) setBusy(false)
       }
-      patch(itemId, { state: "approved", plan } as Partial<Item>)
-      add({ kind: "build", count: plan.variations.length })
-      msgs.current.push({ role: "user", content: settle({ [it.toolId]: `Approved${JSON.stringify(plan) !== JSON.stringify(it.plan) ? " with edits" : ""}. ${r}` }) })
-      // saved at once: a reload right after must not offer the storyboard again
-      checkpoint(true)
-      // the project too (the videos just started), once the canvas has stored them (it does so after half a second)
-      setTimeout(saveWaitingNow, 900)
-      await turn()
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [items, busy, turn],
@@ -2165,9 +2211,14 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     })
   }
   /** the page closed mid-turn: carry on from where it was, or leave it */
+  const resumeDismissed = useRef(false)
   const resume = (itemId: string, go: boolean) => {
     setItems((list) => list.filter((x) => x.id !== itemId))
     if (go && msgs.current.at(-1)?.role === "user") void turn()
+    else {
+      resumeDismissed.current = true
+      checkpoint(true)
+    }
   }
   const retry = useCallback(() => {
     setItems((list) => list.filter((x) => x.kind !== "error"))
@@ -2176,7 +2227,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   }, [turn])
 
   // the chat is saved with its project (with the AI server connected): reopening it picks up here
-  type SavedChat = { items: Item[]; msgs: Message[]; pending: typeof pending.current; ready: Block[]; held: Record<string, string | Block[]>; images: ProjectImage[]; read: string[]; draft: Design; /** saved mid-turn: a reload offers to carry on */ inTurn?: boolean; notes?: { text: string; wake: boolean }[] }
+  type SavedChat = { items: Item[]; msgs: Message[]; pending: typeof pending.current; ready: Block[]; held: Record<string, string | Block[]>; images: ProjectImage[]; read: string[]; draft: Design; /** saved mid-turn: a reload offers to carry on */ inTurn?: boolean; /** the user dismissed the offer to carry on: don't offer again until something new happens */ resumeDismissed?: boolean; notes?: { text: string; wake: boolean }[] }
   // files that only live in this browser are saved by their server address, so they still open after a reload
   const lasting = (i: ProjectImage): ProjectImage => ({ ...i, url: /^blob:/.test(i.url) ? (sharedNow(i.url) ?? i.url) : i.url, ...(i.poster && /^blob:/.test(i.poster) ? { poster: sharedNow(i.poster) ?? i.poster } : {}) })
   /** an image job from before a reload: when it's done it shows and joins the project's images */
@@ -2209,6 +2260,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     draft: draft.current,
     // an answer (or a step's results) still waiting for a reply counts as mid-turn, even if this save came from a quiet moment
     inTurn: inTurn || msgs.current.at(-1)?.role === "user",
+    resumeDismissed: resumeDismissed.current,
     notes: notes.current,
   })
   /** saved at safe points mid-turn (after the user's message, after each step), so a reload loses nothing */
@@ -2268,7 +2320,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
             })
             for (const x of list) if (x.kind === "image" && x.state === "working" && x.job) resumeImage(x.id, x.job, x.target)
             // the page closed mid-turn, with the user's message (or a step's results) unanswered
-            setItems(saved.msgs.at(-1)?.role === "user" && !pending.current.length ? [...list, { id: crypto.randomUUID(), kind: "resume" } as Item] : list)
+            resumeDismissed.current = !!saved.resumeDismissed
+            setItems(saved.msgs.at(-1)?.role === "user" && !pending.current.length && !saved.resumeDismissed ? [...list, { id: crypto.randomUUID(), kind: "resume" } as Item] : list)
           } else begin()
         })
       return
