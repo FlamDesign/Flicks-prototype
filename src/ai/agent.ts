@@ -2204,7 +2204,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     images: images.current.map(lasting),
     read: [...read.current],
     draft: draft.current,
-    inTurn,
+    // an answer (or a step's results) still waiting for a reply counts as mid-turn, even if this save came from a quiet moment
+    inTurn: inTurn || msgs.current.at(-1)?.role === "user",
     notes: notes.current,
   })
   /** saved at safe points mid-turn (after the user's message, after each step), so a reload loses nothing */
