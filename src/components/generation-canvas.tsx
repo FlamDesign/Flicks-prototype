@@ -598,7 +598,7 @@ export function GenerationCanvas({
     const startedAt = id === "main" ? now : main.startedAt && now < main.startedAt + ms ? main.startedAt + ms + 1 : now
     const video = inSet(generation.video ?? 0, nextVideo.current++)
     // a regenerate keeps what the video is made from (first frame, images, method)
-    commitSlides(slidesNow.current.map((x) => (x.id === id ? { ...x, video, startedAt, prompt: "", refs: [], used: { prompt, refs: [], fromReference: id !== "main", media: { ...(x.used?.media ?? {}), ...(opts?.keep_seconds !== undefined ? { keep_seconds: opts.keep_seconds } : {}) } }, openingRetry: opts?.openingRetry } : x)))
+    commitSlides(slidesNow.current.map((x) => (x.id === id ? { ...x, video, startedAt, prompt: "", refs: [], used: { prompt, refs: [], fromReference: id !== "main", media: { ...(x.used?.media ?? {}), ...(opts?.keep_seconds !== undefined ? { keep_seconds: opts.keep_seconds } : {}) } }, openingRetry: opts?.openingRetry, openingDrift: undefined } : x)))
     setHistory((h) => [...h, { id: crypto.randomUUID(), slideId: id, prompt, refs: [], fromReference: id !== "main", video, startedAt, at: now }])
     return true
   }
@@ -1553,14 +1553,19 @@ export function GenerationCanvas({
           const still = poster ?? (await posterOf(url)) ?? videoAt(sl.video ?? generation.video ?? 0).poster
           const video = addMadeVideo({ name: `${slideName(sl, slidesNow.current.indexOf(sl))}-${sl.startedAt}`, size: generation.size, mp4: url, poster: still })
           patchJob({ video, job: undefined, failed: undefined })
-          // a pinned opening is checked against the reference's: one remake if it drifted, then the chat hears about it
+          // a pinned opening is checked against the reference's: a drift is marked on the tile (Remake is the user's call) and said once
           if (keepS && refPoster && live) {
             const diff = await openingDiff(still, refPoster)
             const name = slideName(sl, slidesNow.current.findIndex(mine))
             if (diff !== undefined && diff > OPENING_DRIFT) {
-              if (!sl.openingRetry && startVideo(sl.id, sl.used!.prompt, { keep_seconds: keepS, openingRetry: true })) {
-                if (agentMode) agent.notify(`(App: ${name}'s opening drifted from Variation 1's, so it's being remade once with the opening pinned harder; no need to say anything yet.)`, false)
-              } else if (agentMode) agent.notify(`(App: ${name}'s opening still differs from Variation 1's after a remake. Say so at the hand-over, in one line, and offer to try a different change or leave it.)`, false)
+              patchJob({ openingDrift: true })
+              if (agentMode)
+                agent.notify(
+                  sl.openingRetry
+                    ? `(App: ${name}'s opening still differs from Variation 1's after the remake. Tell the user in one line and suggest a different change (a swap that runs through the whole video, or that room from the first frame) rather than another remake. Don't remake it yourself.)`
+                    : `(App: ${name}'s opening differs from Variation 1's. Tell the user in one short line: the build card has Remake on it (${VIDEO_COST} credits, with the opening pinned harder), or they can leave it. Don't remake it yourself.)`,
+                  false,
+                )
             }
           }
         },
@@ -1626,6 +1631,12 @@ export function GenerationCanvas({
     // the failure stays noted until a try succeeds, so the chat's retry count carries on
     startVideo(slideId, sl.prompt ?? "")
   }
+  /** the user's remake of a variation whose opening drifted: the same change, with the opening pinned harder */
+  const remakeOpening = (slideId: string) => {
+    const sl = slidesNow.current.find((x) => x.id === slideId)
+    if (!sl?.openingDrift || sl.job || !sl.used) return
+    startVideo(slideId, sl.used.prompt, { keep_seconds: sl.used.media?.keep_seconds, openingRetry: true })
+  }
   // every variation is made (this session watched them being made): wake the chat once, for a final
   // check of every variation and the hand-over
   const sawVariations = useRef("")
@@ -1665,7 +1676,8 @@ export function GenerationCanvas({
         // can be stopped until it starts: waiting for the OK, or still in the queue
         const stoppable = !!s.job && (s.job.status === "waiting" || s.job.status === "starting" || s.job.status === "queued")
         const failed = !s.job && !isMadeVideo(s.video) && s.failed ? s.failed.reason : undefined
-        return { name: nameOf(s), state: st, src: v?.mp4 || undefined, poster: v?.poster, since: s.job?.since ?? s.startedAt, ms: s.job ? undefined : ms, status: s.job?.status, stop: stoppable ? () => void cancelVideo(s.id) : undefined, failed, retry: failed ? () => retryVideo(s.id) : undefined }
+        const drift = st === "done" && s.openingDrift ? (s.openingRetry ? "Opening still differs from Variation 1 after a remake." : "Opening differs from Variation 1.") : undefined
+        return { name: nameOf(s), state: st, src: v?.mp4 || undefined, poster: v?.poster, since: s.job?.since ?? s.startedAt, ms: s.job ? undefined : ms, status: s.job?.status, stop: stoppable ? () => void cancelVideo(s.id) : undefined, failed, retry: failed ? () => retryVideo(s.id) : undefined, drift, remake: drift && !s.openingRetry ? () => remakeOpening(s.id) : undefined, cost: VIDEO_COST }
       }),
     review: { needed: needsReview, approve: () => approveRef(), change: () => changeRef() },
     issues: () => publishIssues.filter((x) => !x.blocking).map((x) => x.text),

@@ -41,7 +41,7 @@ export type AgentCtx = {
   size: string
   seconds: number
 }
-export type BuildVideo = { name: string; state: "empty" | "generating" | "done"; src?: string; poster?: string; since?: number; ms?: number; status?: string; /** stops it before it starts (waiting or queued); missing once it's being made */ stop?: () => void; /** its last try failed (why) */ failed?: string; retry?: () => void }
+export type BuildVideo = { name: string; state: "empty" | "generating" | "done"; src?: string; poster?: string; since?: number; ms?: number; status?: string; /** stops it before it starts (waiting or queued); missing once it's being made */ stop?: () => void; /** its last try failed (why) */ failed?: string; retry?: () => void; /** its opening differs from Variation 1's (a pinned opening that drifted) */ drift?: string; /** the user's remake with the opening pinned harder; missing after one remake */ remake?: () => void; cost?: number }
 
 /** true inside the choices panel (planning, beside the chat): cards get room, options become numbered rows */
 export const StageContext = createContext(false)
@@ -1220,7 +1220,21 @@ function BuildTile({ video: v, still, ratio, waiting, direction }: { video: Buil
     <figure className="flex min-w-0 flex-col gap-1">
       <div className="relative overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/10" style={{ aspectRatio: String(Math.min(1.78, Math.max(0.56, ratio))) }}>
         {v.state === "done" && v.src ? (
-          <video src={v.src} poster={v.poster} autoPlay muted loop playsInline className="absolute inset-0 size-full object-cover animate-in fade-in-0 duration-500" />
+          <>
+            <video src={v.src} poster={v.poster} autoPlay muted loop playsInline className="absolute inset-0 size-full object-cover animate-in fade-in-0 duration-500" />
+            {v.drift && (
+              <span className="absolute inset-x-1.5 bottom-1.5 flex flex-col items-stretch gap-1">
+                <span className="truncate rounded-md bg-background/85 px-1.5 py-0.5 text-center text-xs font-medium text-destructive backdrop-blur" title={v.drift}>
+                  {v.remake ? "Opening differs" : "Still differs"}
+                </span>
+                {v.remake && (
+                  <Button size="xs" variant="secondary" onClick={v.remake} title="The same change again, with the opening pinned harder">
+                    Remake · {v.cost} credits
+                  </Button>
+                )}
+              </span>
+            )}
+          </>
         ) : (
           <>
             {still && <img src={still} alt="" decoding="async" className={cn("absolute inset-0 size-full object-cover", v.state === "generating" ? "opacity-60 blur-xs" : "opacity-40 grayscale")} />}

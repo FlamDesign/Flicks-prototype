@@ -33,8 +33,10 @@ export type Slide = {
   job?: { status: string; since: number; id?: string }
   /** the reference video: the startedAt of the version the user approved (variations are made only from an approved one) */
   approvedRef?: number
-  /** remade once because its pinned opening drifted from the reference's */
+  /** remade because its pinned opening drifted from the reference's (the user asked) */
   openingRetry?: boolean
+  /** its finished video's opening differs from Variation 1's (a pinned opening that drifted): the user decides whether to remake */
+  openingDrift?: boolean
   /** the last try at its video failed (why, and how many tries in a row): the build card offers Try again */
   failed?: { reason: string; tries: number }
 }

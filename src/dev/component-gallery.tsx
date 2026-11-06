@@ -1057,6 +1057,7 @@ const buildCtx = {
     { name: "Gold", state: "done" as const, src: GENERATED_VIDEOS[1].mp4, poster: GENERATED_VIDEOS[1].poster },
     { name: "Sapphire", state: "generating" as const, since: Date.now() - 9000, ms: 30000 },
     { name: "Ember", state: "empty" as const, failed: "The video didn't generate. Try again.", retry: () => {} },
+    { name: "Bedroom", state: "done" as const, src: GENERATED_VIDEOS[2].mp4, poster: GENERATED_VIDEOS[2].poster, drift: "Opening differs from Variation 1.", remake: () => {}, cost: 48 },
   ],
 }
 const demoPlan: Plan = {

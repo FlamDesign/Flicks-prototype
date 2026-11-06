@@ -39,7 +39,8 @@ the model treats them as new instructions and the variations stop matching.
   starts (the storyboard's timeline tells you: "0 to 5 s drone and entry, 5 to 8 s the kitchen" means
   keep_seconds 5), and write the line as "From 5 s: … instead of the kitchen". The app pins the
   opening (timecodes, Variation 1's first frame as a reference), checks the finished video's opening
-  against Variation 1's, remakes it once if it drifted, and tells you if it still differs. Without
+  against Variation 1's, and if it drifted marks the tile with Remake (the user's call; you say it in
+  one line and never remake on your own). Without
   keep_seconds the model redraws the whole clip and the opening drifts.
   Prefer swaps that run through the whole video (one room per variation from the first frame, a
   colour, a product) when the brief allows: they match far more reliably than a shared opening.
