@@ -10,7 +10,7 @@ ALLOWED_ORIGINS = "https://flamdesign.github.io,http://localhost:5173,http://loc
 DAILY_IMAGE_CAP = "200"
 DAILY_CHAT_CAP = "500"
 # videos cost the most (about $0.46 a second at 720p): keep this low
-DAILY_VIDEO_CAP = "20"
+DAILY_VIDEO_CAP = "70"
 # videos: Higgsfield, 720p only
 HF_VIDEO_PATH = "/bytedance/seedance-2.5/text-to-video"
 HF_VIDEO_IMAGE_PATH = "/bytedance/seedance-2.5/image-to-video"
