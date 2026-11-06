@@ -182,9 +182,9 @@ function ErrorText({ text: raw0 }: { text: string }) {
   const plain = !raw
     ? text
     : /overloaded|529|rate|429/i.test(text)
-      ? "Claude is busy right now. Try again in a moment."
+      ? "The chat is busy right now. Try again in a moment."
       : /credit balance is too low|billing/i.test(text)
-        ? "The AI account is out of credit. Top it up in the Anthropic Console (Plans & Billing), then press Retry."
+        ? "The AI account is out of credit. Ask your admin to top it up, then press Retry."
         : /daily_limit/i.test(text)
         ? "Today’s limit for the AI is reached. It resets tomorrow."
         : "Something went wrong talking to the AI. Try again."

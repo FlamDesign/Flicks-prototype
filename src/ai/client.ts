@@ -78,7 +78,7 @@ const MESSAGES: Record<string, string> = {
   origin_not_allowed: "The AI server doesn't accept requests from this site.",
   daily_limit: "Today's AI limit is reached. Try again tomorrow.",
   storage_full: "Today's storage writes are used up, so uploads can't be kept until 4 pm Pacific (midnight UTC). Chat and generation still work.",
-  claude_not_set_up: "The AI server has no Claude key yet.",
+  claude_not_set_up: "The AI server has no chat key yet.",
   images_not_set_up: "The AI server has no image key yet.",
   server_not_set_up: "The AI server isn't set up yet (no passcode).",
   network: "Couldn't reach the AI server. Check your connection and try again.",
@@ -200,7 +200,7 @@ export async function streamChat(req: ChatRequest, onText: (text: string) => voi
           delete b.json
         }
       } else if (ev.type === "message_delta" && ev.delta?.stop_reason) stop = ev.delta.stop_reason
-      else if (ev.type === "error") throw new AiError("claude_error", ev.error?.message ?? "Claude returned an error.")
+      else if (ev.type === "error") throw new AiError("claude_error", ev.error?.message ?? "The chat returned an error.")
     }
   }
   // a reply cut off mid tool call (the stream ended before the block closed): finish what can be read,

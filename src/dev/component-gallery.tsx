@@ -1071,8 +1071,8 @@ const demoPlan: Plan = {
     ],
   },
   variations: [
-    { name: "Gold", prompt: "Same scene, gold mirrored lenses.", price: "$189", link: "https://example.com/gold" },
-    { name: "Sapphire", prompt: "Same scene, sapphire lenses.", price: "$199" },
+    { name: "Gold", prompt: "Same scene, gold mirrored lenses.", direction: "Gold mirrored lenses catch the sun", price: "$189", link: "https://example.com/gold" },
+    { name: "Sapphire", prompt: "Same scene, sapphire lenses.", direction: "Sapphire lenses, the same turn", price: "$199" },
   ],
   design: { headline: "Find your lens", cta: "Shop now", show_price: true, layout: "bottom" },
 }
@@ -1103,9 +1103,10 @@ function ChatCardsDemo() {
     { label: "Images request", node: <AgentItemView item={it({ kind: "assets", toolId: "a", message: "Add product photos or your logo.", kinds: ["product", "logo"] })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Look: layouts (visual answers)", node: <AgentItemView item={it({ kind: "question", toolId: "l", question: "Which layout fits?", display: "layouts", step: "look", multi: false, custom: false, options: [{ label: "Bold bottom", design: { layout: "bottom", thumbnails: { position: "bottom" } } }, { label: "Editorial", design: { layout: "bottom", align: "left", button_style: "sharp", thumbnails: { position: "right", shape: "square", size: "small" } } }, { label: "Clean top", design: { layout: "top", button_style: "light", thumbnails: { shape: "circle" } } }] })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Look: palettes", node: <AgentItemView item={it({ kind: "question", toolId: "c", question: "And the colours?", display: "palettes", step: "look", multi: false, custom: false, options: [{ label: "Ink", colors: ["#09090b", "#a1a1aa", "#ffffff"] }, { label: "Sunset", colors: ["#ea580c", "#fdba74", "#ffffff"] }, { label: "Ocean", colors: ["#2563eb", "#93c5fd", "#ffffff"] }] })} agent={fakeAgent} ctx={chatCtx} /> },
-    { label: "Build, videos made in place", node: <AgentItemView item={it({ kind: "build", count: 3 })} agent={fakeAgent} ctx={buildCtx} /> },
+    { label: "Build, videos made in place (directions under the waiting ones)", node: <AgentItemView item={it({ kind: "build", count: 3 })} agent={{ ...fakeAgent, items: [it({ kind: "plan", toolId: "p", plan: { ...demoPlan, variations: [...demoPlan.variations, { name: "Ember", prompt: "Same scene, ember lenses.", direction: "Ember lenses, warm tint" }] }, state: "approved" })] } as typeof fakeAgent} ctx={buildCtx} /> },
+    { label: "Carry on (after a reload, or a long reply)", node: <AgentItemView item={it({ kind: "resume", text: "That was a long one; I paused here." })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Brand", node: <AgentItemView item={it({ kind: "brand", brand: { name: "Lumen", primary_color: "#ea580c", text_color: "#ffffff", font: "Montserrat", tone: "Bold" } })} agent={fakeAgent} ctx={chatCtx} /> },
-    { label: "Plan (storyboard, made from)", node: <AgentItemView item={it({ kind: "plan", toolId: "p", plan: demoPlan, state: "open", frames: [4, 5, 6].map((i) => GENERATED_VIDEOS[i].poster) })} agent={fakeAgent} ctx={chatCtx} /> },
+    { label: "Storyboard (frames, where the button goes)", node: <AgentItemView item={it({ kind: "plan", toolId: "p", plan: demoPlan, state: "open", frames: [4, 5, 6].map((i) => GENERATED_VIDEOS[i].poster) })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Question: sizes", node: <AgentItemView item={it({ kind: "question", toolId: "sz", question: "Which size?", display: "sizes", purpose: "size", multi: false, custom: true, options: [{ label: "Medium rectangle", size: "300×250" }, { label: "Half page", size: "300×600" }, { label: "Wide 16:9", size: "1920×1080" }] })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Question: pictures", node: <AgentItemView item={it({ kind: "question", toolId: "pq", question: "Where should it be set?", display: "pictures", step: "look", multi: false, custom: true, options: [{ label: "City dawn", image: GENERATED_VIDEOS[0].poster }, { label: "Beach", image: GENERATED_VIDEOS[2].poster }, { label: "Studio", image: GENERATED_VIDEOS[3].poster }, { label: "Desert" }] })} agent={fakeAgent} ctx={chatCtx} /> },
     {

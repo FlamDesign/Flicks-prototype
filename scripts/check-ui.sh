@@ -24,7 +24,7 @@ if [ -n "$hits" ]; then echo "✗ primary used directly in app code (buttons get
 hits=$(grep -rln 'from "motion' src --include=*.tsx | grep -v "components/arrive.tsx" || true)
 if [ -n "$hits" ]; then echo "✗ motion used outside components/arrive.tsx"; echo "$hits"; fail=1; fi
 # no service or model names in anything people see (strings and JSX text; comments, dev tools and the AI server are exempt)
-hits=$(grep -rnEi "higgsfield|seedance|bytedance|\bkling\b|nano.?banana|\bflare\b|gpt-image" src --include=*.tsx --include=*.ts --include=*.md | grep -vE "src/recipes.ts|/dev/|^[^:]+:[0-9]+:\s*(//|\*|/\*)|//.*(higgsfield|seedance|flare)|/templates/|src/ai/client.ts:[0-9]+:\s*\.replace|HF_|hf-requests" | grep -iE "[\"'\`>][^\"'\`<]*(higgsfield|seedance|bytedance|kling|nano.?banana|flare|gpt-image)" || true)
+hits=$(grep -rnEi "higgsfield|seedance|bytedance|\bkling\b|nano.?banana|\bflare\b|gpt-image|\bclaude\b|anthropic|\brunway\b|\bveo\b|\bsonnet\b|\bopus\b" src --include=*.tsx --include=*.ts --include=*.md | grep -vE "src/recipes.ts|/dev/|src/ai/client.ts:1[0-9]:.*label: \"Claude|^[^:]+:[0-9]+:\s*(//|\*|/\*)|//.*(higgsfield|seedance|flare)|/templates/|src/ai/client.ts:[0-9]+:\s*\.replace|HF_|hf-requests" | grep -iE "[\"'\`>][^\"'\`<]*(higgsfield|seedance|bytedance|kling|nano.?banana|flare|gpt-image|claude|anthropic|runway|veo|sonnet|opus)" || true)
 if [ -n "$hits" ]; then echo "✗ a service or model name in user-facing text (say Flam Forge, or nothing)"; echo "$hits" | head -20; fail=1; fi
 node scripts/check-canvas-ai.mjs || fail=1
 [ $fail = 0 ] && echo "✓ UI follows the preset"

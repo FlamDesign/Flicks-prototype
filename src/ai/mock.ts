@@ -172,7 +172,7 @@ export async function mockReply(messages: Message[], s: ProjectState, onText: (t
       const name = (m[1] || "New").trim().replace(/^\w/, (c) => c.toUpperCase()) || "New"
       return reply("", tool("add_variation", { name, prompt: `Same scene, ${name.toLowerCase()} version.`, label: name, generate: true }))
     }
-    return reply("In this demo I can change the headline or the button text, the button colour, make the headline, button, price or label differ per variation (or one value again), set one variation's price, add a variation, add text (add a badge “New”) or an image (add the logo), and move or remove things (move the button to the top). Connect Claude in dev tools (State manager, AI) and I can do much more.")
+    return reply("In this demo I can change the headline or the button text, the button colour, make the headline, button, price or label differ per variation (or one value again), set one variation's price, add a variation, add text (add a badge “New”) or an image (add the logo), and move or remove things (move the button to the top). Connect the AI in dev tools (State manager, AI) and I can do much more.")
   }
 
   // the idea

@@ -2252,9 +2252,9 @@ export function GenerationCanvas({
               badge: (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className={cn("rounded-full px-1.5 py-0.5 text-xs font-medium", live ? "bg-brand/10 text-brand" : "bg-muted text-muted-foreground")}>{live ? "Claude" : "Demo"}</span>
+                    <span className={cn("rounded-full px-1.5 py-0.5 text-xs font-medium", live ? "bg-brand/10 text-brand" : "bg-muted text-muted-foreground")}>{live ? "Live" : "Demo"}</span>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom">{live ? "Live: Claude plans and designs, Flam Forge makes images and videos" : "Scripted demo. Connect AI in dev tools to go live."}</TooltipContent>
+                  <TooltipContent side="bottom">{live ? "Live: the chat plans and designs, and makes the images and videos" : "Scripted demo. Connect AI in dev tools to go live."}</TooltipContent>
                 </Tooltip>
               ),
               // questions waiting for an answer dock above the composer instead
