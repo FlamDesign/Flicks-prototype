@@ -2199,8 +2199,9 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   /** the chat as it stands: mid-turn, the reply being written is left out (it isn't in its memory yet) */
   const snapshot = (inTurn: boolean, list = itemsRef.current): SavedChat => ({
     items: list.filter((x) => !(inTurn && x.kind === "assistant" && x.streaming)).map((x) => (x.kind === "assistant" ? { ...x, streaming: false } : x)),
-    msgs: msgs.current,
-    pending: pending.current,
+    // copies: a save sent a moment later must match the moment it was taken
+    msgs: [...msgs.current],
+    pending: [...pending.current],
     ready: ready.current,
     held: held.current,
     images: images.current.map(lasting),
@@ -2267,7 +2268,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
             })
             for (const x of list) if (x.kind === "image" && x.state === "working" && x.job) resumeImage(x.id, x.job, x.target)
             // the page closed mid-turn, with the user's message (or a step's results) unanswered
-            setItems(saved.inTurn && saved.msgs.at(-1)?.role === "user" && !pending.current.length ? [...list, { id: crypto.randomUUID(), kind: "resume" } as Item] : list)
+            setItems(saved.msgs.at(-1)?.role === "user" && !pending.current.length ? [...list, { id: crypto.randomUUID(), kind: "resume" } as Item] : list)
           } else begin()
         })
       return
