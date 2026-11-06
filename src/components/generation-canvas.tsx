@@ -1603,6 +1603,7 @@ export function GenerationCanvas({
         return { name: nameOf(s), state: st, src: v?.mp4 || undefined, poster: v?.poster, since: s.job?.since ?? s.startedAt, ms: s.job ? undefined : ms, status: s.job?.status, stop: stoppable ? () => void cancelVideo(s.id) : undefined, failed, retry: failed ? () => retryVideo(s.id) : undefined }
       }),
     review: { needed: needsReview, approve: () => approveRef(), change: () => changeRef() },
+    issues: () => publishIssues.filter((x) => !x.blocking).map((x) => x.text),
     progress: () => {
       const vs = slides.slice(1)
       return [

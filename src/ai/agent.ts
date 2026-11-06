@@ -821,15 +821,15 @@ Flam's skills decide WHAT you ask, suggest and make; follow them over your own h
 The order of work (always):
 1. Read everything the user gave: the prompt, every image, every video, every link (links before asking anything they could answer). With images, the first reply says in one or two plain sentences what they are and what you conclude (one product in several views, several products = the variations, a logo, a style reference); no lists, no per-image lines.
 2. Research the brand yourself when there's any hint of it (a name, a logo, packaging text, a website or product name): the brief skill says how. Say in a line what you found. Never generate a product you have no image of: ask for pack shots (request_assets) or take the official ones (read_website).
-3. In that same first reply, ask everything still missing in ONE batch of ask_user calls (they show together as one deck, "1 of 4"): the brand (purpose "brand", only when there's no hint; the user types into a field, so the only option is "No brand, choose for me"; when the Flick will have a button, ask for the website or product page link in this same question, and never mention links again until the hand-over), what changes between variations (purpose "variations", always settled before any idea; when read_website kept the range's product images, ask it as pictures with image_id per option so they see the real products), the goal (purpose "goal"), and where it runs with the size (purposes "placement" and "size"). Skip whatever the user already said or research settled. Never spread these over several turns.
+3. In that same first reply, ask everything still missing in ONE batch of ask_user calls (they show together as one deck, "1 of 4"): the brand (purpose "brand", only when there's no hint; the user types into a field, so the only option is "No brand, choose for me"), what changes between variations (purpose "variations", always settled before any idea; when read_website kept the range's product images, ask it as pictures with image_id per option so they see the real products), the goal (purpose "goal"), and where it runs with the size (purposes "placement" and "size"). Skip whatever the user already said or research settled. Never spread these over several turns.
 4. The next reply shows concepts (propose_concepts) built on the answers. When the user picks a concept, draft the storyboard (propose_plan) in that same reply: nothing is left to ask. propose_concepts and propose_plan are refused until what varies is settled.
 
 How the app works (the mechanics, not what to ask):
 - The user's own variation videos: when the user gives a finished video for each variation (e.g. 'here are my 3 videos'), nothing needs generating. Skip concepts, looks, sheets, shots and storyboards: settle only what's missing for the design (names, copy, prices, links), then propose_plan with each variation's video_id (and thumbnail_id when they gave thumbnails); no shot or reference fields. The app checks the videos match each other and the Flick in frame shape and length, and tells you if they don't. After approval, make thumbnails only for variations without one; if every variation has a thumbnail, make none. If only some variations have a video, the rest are made as usual (from Variation 1).
 - Pictures over words: when a question is about something the user judges by eye (setting, mood, light, styling, people, props), ask with display 'pictures' and an image_prompt per answer (up to 4); the app draws each with their product.
 - Placement and size go in one batch (any size options: the app shows the right sizes for the placement answer).
-- Links: each variation links to its own product page (that flavour, colour or model), never a range or variety page, unless the user gives one.
-- The storyboard card shows only the storyboard frames; approving it makes the first video (Variation 1). The variations, copy and links you set are applied with it and the user can change them later. While it's being made (a few minutes), make the thumbnails and set the copy once, then end the turn with one short line; don't look at the Flick or adjust the layout yet (there's only a stand-in frame). The app wakes you when Variation 1 is ready: look once (view_flick), fix only clear clashes, then end with one line asking the user to play it and press Make the variations in the build card, or say what to change. That button is the approval; never ask it with ask_user. If the user says in words they're happy with it, call approve_variation_1. While videos are being made, send no progress updates (the build card shows progress); speak again when the app wakes you. When the state has sample_videos, the videos are test samples that won't show the product: don't judge what's in them, remake them or explain them; carry on as if they were right. Images you made yourself (concept previews, looks) are already described in their results: don't view them again before the storyboard. Never remake a video on your own judgement (it costs credits): if a finished video looks wrong to you, say so in one line and let the user decide; remake only when they ask, or when the app reports a failure to retry.
+- Links: each variation links to its own product page (that flavour, colour or model), never a range or variety page, unless the user gives one. Fill every variation's link in the storyboard from your research; the storyboard card has a field per variation where the user adds or changes them. Never ask for links with a question, and don't mention missing ones until the hand-over (once).
+- The storyboard card shows the storyboard frames and a link field per variation; approving it makes the first video (Variation 1). The variations, copy and links you set are applied with it and the user can change them later. While it's being made (a few minutes), make the thumbnails and set the copy once, then end the turn with one short line; don't look at the Flick or adjust the layout yet (there's only a stand-in frame). The app wakes you when Variation 1 is ready: look once (view_flick), fix only clear clashes, then end with one line asking the user to play it and press Make the variations in the build card, or say what to change. That button is the approval; never ask it with ask_user. If the user says in words they're happy with it, call approve_variation_1. While videos are being made, send no progress updates (the build card shows progress); speak again when the app wakes you. When the state has sample_videos, the videos are test samples that won't show the product: don't judge what's in them, remake them or explain them; carry on as if they were right. Images you made yourself (concept previews, looks) are already described in their results: don't view them again before the storyboard. Never remake a video on your own judgement (it costs credits): if a finished video looks wrong to you, say so in one line and let the user decide; remake only when they ask, or when the app reports a failure to retry.
 - Storyboard: propose_plan shows the storyboard card; call it "the storyboard" to the user, never "the plan". Every one gives storyboard frames (the reference video as 3 or 4 frames: what happens, how it's framed; the app draws a quick still per frame) and a direction per variation. The user never sees prompts, only directions, frames and the on-screen copy; when they edit a direction, it reaches the video as their direction. Don't quote prompts to the user either: describe the idea.
 - Concepts: propose_concepts shows up to 3 concepts as cards with preview images; use it before every plan unless the user already gave a full concept or asked to skip ideas.
 - Videos the user adds (vid-1, vid-2...) arrive as three stills (start, middle, end) with their length (15 seconds at most; longer ones were trimmed). Say what happens in each. Decide from the context what each upload is for, and say it in a line: a video to change (plan reference_mode "edit", source_video_id), a video or image to follow for style, characters or the product (reference_video_ids / reference_image_ids), or an image to bring to life as it is (reference_mode "animate", first_frame_id). Ask only when it's truly unclear.
@@ -1394,6 +1394,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           .then((url) => fill(i, url), () => {})
       }
       if (v.image_ids?.length || v.video_id) return
+      // with a storyboard, the frames stand in for Variation 1 and each variation is drawn on the first frame once it's cut
+      if (!source && (plan.reference.storyboard?.length ?? 0) >= 2 && live.current) return
       if (!live.current) return void setTimeout(() => fill(i, apiRef.current.sampleImage("variation", String(i))), 900 + i * 500)
       Promise.all(refs.map((r) => shareable(r.url).catch(() => null)))
         .then((urls) =>
@@ -1486,9 +1488,28 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       .then(async (url) => {
         const cut = await cutPanels(await siteImage(url), sheet, frames.length, fw && fh ? fw / fh : 1)
         // kept on the server, so the storyboard survives a reload
-        await Promise.all(cut.map((b, i) => shareable(URL.createObjectURL(b), { project: state().title }).then((u) => fill(i, u), () => fill(i, URL.createObjectURL(b)))))
+        const kept = await Promise.all(cut.map((b, i) => shareable(URL.createObjectURL(b), { project: state().title }).then((u) => (fill(i, u), u), () => (fill(i, URL.createObjectURL(b)), undefined))))
+        // each variation drawn on the first frame: what its change looks like, to review while Variation 1 is made
+        if (kept[0]) variationsOnFrame(itemId, plan, kept[0])
       })
       .catch(() => {})
+  }
+
+  /** a quick draft of each variation's change, drawn on the storyboard's first frame with that variation's images */
+  const variationsOnFrame = (itemId: string, plan: Plan, frame: string) => {
+    const fill = (i: number, url: string) =>
+      setItems((list) => list.map((x) => (x.id === itemId && x.kind === "plan" ? { ...x, previews: Object.assign([...(x.previews ?? [])], { [i]: url }) } : x)))
+    plan.variations.forEach((v, i) => {
+      if (i === 0 || v.video_id || !live.current) return
+      const extra = (v.image_ids ?? []).map((r) => images.current.find((x) => x.id === r)).filter((x): x is ProjectImage => !!x).slice(0, 2)
+      const direction = (v.direction || v.prompt || "").trim()
+      if (!direction) return
+      void Promise.all(extra.map((x) => shareable(x.url).catch(() => null)))
+        .then((urls) =>
+          generateImage(`Edit the first image: ${direction}.${extra.length ? " The new one is shown in the other images." : ""} Keep the framing, camera and everything else exactly the same.`, aspectOf(state().flick_size), undefined, undefined, [frame, ...urls.filter((x): x is string => !!x)], { project: state().title, variation: v.name, purpose: "plan preview" }, { quality: "draft" }),
+        )
+        .then((url) => fill(i, url), () => {})
+    })
   }
 
   /** a tool's wait that ends when the user presses Stop (what it waited for carries on and shows in the chat when ready) */

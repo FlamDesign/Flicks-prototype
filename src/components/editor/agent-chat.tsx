@@ -35,6 +35,8 @@ export type AgentCtx = {
   progress: () => { label: string; state: "done" | "working" | "waiting" }[]
   /** each video in the build, read live: shown in place in the chat as it's made */
   videos?: () => BuildVideo[]
+  /** what Export would flag now (empty links, empty feeds), read live */
+  issues?: () => string[]
   /** the Flick's size ("1080×1080") and length in seconds, for the brief */
   size: string
   seconds: number
@@ -1036,6 +1038,7 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
             ))}
           </ol>
         )}
+        {(plan.design?.cta || plan.variations.some((v) => v.link)) && <PlanLinks plan={plan} onChange={(next) => agent.editPlan(item.id, next)} />}
         <p className="px-1.5 text-xs text-muted-foreground">
           {own
             ? making
@@ -1058,6 +1061,39 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
         </Button>
       </div>
     </Card>
+  )
+}
+
+/** Where each variation's button goes: one field per variation, prefilled from the research, edited here rather than typed into the chat. */
+function PlanLinks({ plan, onChange }: { plan: Plan; onChange: (plan: Plan) => void }) {
+  const [open, setOpen] = useState(() => plan.variations.some((v) => !v.link))
+  const missing = plan.variations.filter((v) => !v.link?.trim()).length
+  return (
+    <section aria-label="Links" className="flex flex-col gap-1.5">
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex items-center gap-2 px-1.5 text-left text-xs font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:text-foreground">
+        <span>Where the button goes</span>
+        <span className="font-normal">{missing ? `${missing} to add` : "set for every variation"}</span>
+        <HugeiconsIcon icon={ArrowDown01Icon} className={cn("ml-auto size-3.5 transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <ol className="flex flex-col gap-1">
+          {plan.variations.map((v, i) => (
+            <li key={i} className="flex items-center gap-2 rounded-lg px-1.5 py-1 transition-colors focus-within:bg-muted/50">
+              <span className="w-28 shrink-0 truncate text-xs font-medium">{v.name}</span>
+              <InputGroupInput
+                type="url"
+                inputMode="url"
+                value={v.link ?? ""}
+                onChange={(e) => onChange({ ...plan, variations: plan.variations.map((x, j) => (j === i ? { ...x, link: e.target.value } : x)) })}
+                placeholder="https://… the product page for this one"
+                aria-label={`${v.name} link`}
+                className="h-7 min-w-0 flex-1 bg-transparent px-0 text-xs placeholder:text-muted-foreground"
+              />
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
   )
 }
 
@@ -1126,7 +1162,7 @@ function BuildCard({ ctx, agent }: { ctx: AgentCtx; agent: Agent }) {
       {videos.length > 0 && (
         <div className={cn("grid gap-2", videos.length > 3 ? "grid-cols-3" : videos.length === 3 ? "grid-cols-3" : "grid-cols-2")}>
           {videos.map((v, i) => (
-            <BuildTile key={i} video={v} still={stillOf(i)} ratio={ctx.ratio} waiting={i > 0 && v.state === "empty" && videos[0].state === "done"} />
+            <BuildTile key={i} video={v} still={stillOf(i)} ratio={ctx.ratio} waiting={i > 0 && v.state === "empty" && videos[0].state === "done"} direction={i > 0 && v.state !== "done" && plan ? directionOf(plan.plan.variations[i], i, plan.plan) : undefined} />
           ))}
         </div>
       )}
@@ -1171,14 +1207,14 @@ function ReviewBar({ ctx, poster }: { ctx: AgentCtx; poster?: string }) {
 }
 
 /** one video in the build: its still while it's made (with progress), then the video itself */
-function BuildTile({ video: v, still, ratio, waiting }: { video: BuildVideo; still?: string; ratio: number; waiting?: boolean }) {
+function BuildTile({ video: v, still, ratio, waiting, direction }: { video: BuildVideo; still?: string; ratio: number; waiting?: boolean; direction?: string }) {
   const [, tick] = useState(0)
   useEffect(() => {
     if (v.state !== "generating") return
     const t = setInterval(() => tick((n) => n + 1), 500)
     return () => clearInterval(t)
   }, [v.state])
-  const pct = v.state === "generating" && v.since && v.ms ? Math.min(99, Math.round(((Date.now() - v.since) / v.ms) * 100)) : undefined
+  const pct = v.state === "generating" && v.since && v.ms ? Math.min(99, Math.max(0, Math.round(((Date.now() - v.since) / v.ms) * 100))) : undefined
   const secs = v.state === "generating" && v.since ? Math.round((Date.now() - v.since) / 1000) : 0
   return (
     <figure className="flex min-w-0 flex-col gap-1">
@@ -1220,13 +1256,16 @@ function BuildTile({ video: v, still, ratio, waiting }: { video: BuildVideo; sti
           </>
         )}
       </div>
-      <figcaption className="flex min-w-0 items-center gap-1 px-0.5 text-xs font-medium">
-        <span className="min-w-0 truncate">{v.name}</span>
-        {v.stop && (
-          <Button size="xs" variant="ghost" onClick={v.stop} className="ml-auto text-muted-foreground">
-            {waiting || v.state === "empty" ? "Remove" : "Cancel"}
-          </Button>
-        )}
+      <figcaption className="flex min-w-0 flex-col gap-0.5 px-0.5 text-xs">
+        <span className="flex min-w-0 items-center gap-1 font-medium">
+          <span className="min-w-0 truncate">{v.name}</span>
+          {v.stop && (
+            <Button size="xs" variant="ghost" onClick={v.stop} className="ml-auto text-muted-foreground">
+              {waiting || v.state === "empty" ? "Remove" : "Cancel"}
+            </Button>
+          )}
+        </span>
+        {direction && <span className="line-clamp-2 leading-snug text-muted-foreground">{direction}</span>}
       </figcaption>
     </figure>
   )
@@ -1302,15 +1341,27 @@ function ImageCard({ item, ctx, agent }: { item: Extract<Item, { kind: "image" }
 
 /** The chat's message box: text, images, send (or stop while it replies). */
 /** once the Flick is ready and the chat has finished, a few next steps to tap instead of typing */
-const NEXT = ["Make the headline shorter", "Try a bolder button", "Add another variation"]
+/** what to try next, from where the Flick stands: a failed video, review issues, missing links, then the usual tweaks */
 export function QuickReplies({ agent, ctx }: { agent: Agent; ctx: AgentCtx }) {
   const videos = ctx.videos?.() ?? []
   const last = [...agent.items].reverse().find((x) => x.kind === "user" || x.kind === "assistant")
-  const ready = videos.length > 1 && videos.every((v) => v.state === "done")
+  const failed = videos.filter((v) => v.failed && v.state !== "done")
+  const ready = videos.length > 1 && videos.every((v) => v.state === "done" || v.failed)
   if (!ready || agent.busy || agent.waiting || last?.kind !== "assistant") return null
+  const review = [...agent.items].reverse().find((x): x is Extract<Item, { kind: "review" }> => x.kind === "review")
+  const issues = ctx.issues?.() ?? []
+  const links = issues.filter((t) => /no link/.test(t)).length
+  const next = [
+    ...failed.slice(0, 2).map((v) => `Make ${v.name} again`),
+    ...(review?.fail.length ? [`Fix the ${review.fail.length === 1 ? "review issue" : `${review.fail.length} review issues`}`] : []),
+    ...(links ? ["Set the missing links"] : []),
+    "Make the headline shorter",
+    "Try a bolder button",
+    ...(videos.length < 5 ? ["Add another variation"] : []),
+  ].slice(0, 4)
   return (
     <div role="group" aria-label="Suggestions" className="flex flex-wrap gap-1.5 px-1 animate-in fade-in-0 slide-in-from-bottom-1">
-      {NEXT.map((t) => (
+      {next.map((t) => (
         <Button key={t} size="sm" variant="outline" onClick={() => agent.send(t)} className="h-8 rounded-full font-normal">
           {t}
         </Button>
