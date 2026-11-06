@@ -784,7 +784,6 @@ const SKILL_ACTIVITY: Record<string, string> = {
   shots: "Blocking out the shots",
   video: "Directing your Flick",
   models: "Setting up the shoot",
-  images: "Framing the shot",
   design: "Laying out the frame",
   review: "Giving it a final once-over",
 }
