@@ -181,13 +181,14 @@ export async function mockReply(messages: Message[], s: ProjectState, onText: (t
     return reply(
       justRead ? `I read the page and kept ${s.images.filter((i) => i.from === "website").length} product photos for thumbnails. What should viewers switch between?` : "Love it. Let's build it together. First, what should viewers switch between?",
       tool("read_skill", { names: ["flicks", "brief"] }),
+      tool("ask_user", { question: "What's the brand name or website?", options: ["No brand, choose for me", "I'll type the brand name"], purpose: "brand", step: "idea" }),
       tool("ask_user", { question: "What should change between variations?", options: ["Colours", "Products", "People or models", "Scenes", "Decide for me"], multi_select: true, step: "idea" }),
     )
-  if (asks === 1) return reply("", tool("ask_user", { question: "Where will this Flick run?", options: ["Ads", "My website", "Share as a link", "All of these"], step: "idea" }))
+  if (asks === 2) return reply("", tool("ask_user", { question: "Where will this Flick run?", options: ["Ads", "My website", "Share as a link", "All of these"], step: "idea" }))
   if (!used("request_assets").length && !s.images.some((i) => i.from === "website"))
     return reply("", tool("request_assets", { message: "Add product photos or your logo if you have them. I'll match thumbnails and colours to them.", kinds: ["product", "logo"] }))
   // the look: picked from previews, shown live beside the chat
-  if (asks === 2)
+  if (asks === 3)
     return reply(
       "Now the look. Pick a layout; the preview updates as you choose.",
       tool("read_skill", { names: ["design"] }),
@@ -202,7 +203,7 @@ export async function mockReply(messages: Message[], s: ProjectState, onText: (t
         ],
       }),
     )
-  if (asks === 3)
+  if (asks === 4)
     return reply(
       "",
       tool("ask_user", {

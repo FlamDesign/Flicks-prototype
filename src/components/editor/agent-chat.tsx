@@ -640,22 +640,7 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
         {item.question}
         {item.multi && <span className="ml-2 text-xs font-normal text-muted-foreground">{pickHint(item.range)}</span>}
       </p>
-      {item.typeFirst && (
-        <div className={cn("flex items-center gap-2", rows && "px-3")}>
-          <Input
-            autoFocus
-            value={other}
-            onChange={(e) => setOther(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && other.trim() && send()}
-            placeholder={item.typeFirst}
-            aria-label={item.typeFirst}
-            className="flex-1"
-          />
-          <Button disabled={agent.busy || !other.trim()} onClick={send}>
-            Continue
-          </Button>
-        </div>
-      )}
+      {item.typeFirst && <TypeRow value={other} onChange={setOther} onEnter={() => other.trim() && send()} placeholder={item.typeFirst} last={!item.options.length} />}
       {rows ? (
         <div className="flex flex-col" role={item.multi ? "group" : "radiogroup"} aria-label={item.question}>
           {item.options.map((o, i) => {
@@ -706,7 +691,7 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
               />
             </label>
           )}
-          {!item.typeFirst && (item.multi ? picked.length > 0 || other.trim() : other.trim()) && (
+          {(item.multi ? picked.length > 0 || other.trim() : other.trim()) && (
             <Button size="sm" onClick={send} disabled={agent.busy || (item.multi && !enough)} className="mx-3 mt-2 self-end">
               Continue
             </Button>
@@ -1471,6 +1456,32 @@ function withSizes<T extends Deckable>(q: T, items: Item[]): T {
   return list ? { ...q, options: list.map(([label, size]) => ({ label, size })) } : q
 }
 
+/** a question's own text field, drawn as the first row of its answers: ready to type in, Enter sends */
+function TypeRow({ value, onChange, onEnter, placeholder, last }: { value: string; onChange: (v: string) => void; onEnter: () => void; placeholder: string; last?: boolean }) {
+  return (
+    <label
+      className={cn(
+        "relative flex items-center gap-3 rounded-xl px-3 py-2 transition-colors focus-within:bg-muted/50 hover:bg-muted/50",
+        !last && "after:absolute after:inset-x-3 after:bottom-0 after:h-px after:bg-foreground/8 focus-within:after:opacity-0 hover:after:opacity-0",
+      )}
+    >
+      <span className="grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground ring-1 ring-foreground/10">
+        <HugeiconsIcon icon={PencilEdit01Icon} className="size-3.5" />
+      </span>
+      <InputGroupInput
+        autoFocus
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), onEnter())}
+        placeholder={placeholder}
+        aria-label={placeholder}
+        className="h-8 min-w-0 flex-1 bg-transparent px-0 text-sm placeholder:text-muted-foreground"
+      />
+      {value.trim() && <Shortcut keys={["Enter"]} className="shrink-0" />}
+    </label>
+  )
+}
+
 export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: AgentCtx; className?: string }) {
   const qs = agent.items.filter((x): x is Deckable => isDocked(x, agent.pendingIds)).map((x) => withSizes(x, agent.items))
   const [at, setAt] = useState(0)
@@ -1568,25 +1579,8 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
         </p>
         {pager}
       </header>
-      {q.typeFirst && (
-        <div className="flex items-center gap-2 px-4 pb-2">
-          <Input
-            key={q.id}
-            autoFocus
-            value={typed}
-            onChange={(e) => setOther((o) => ({ ...o, [q.id]: e.target.value }))}
-            onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), cont())}
-            placeholder={q.typeFirst}
-            aria-label={q.typeFirst}
-            className="flex-1"
-          />
-          <Button disabled={agent.busy || !typed.trim()} onClick={cont}>
-            Continue
-          </Button>
-        </div>
-      )}
-      {q.typeFirst && q.options.length > 0 && <p className="px-4 pb-1 text-xs text-muted-foreground">Or</p>}
       <div className="max-h-[50vh] overflow-y-auto px-2">
+        {q.typeFirst && <TypeRow key={q.id} value={typed} onChange={(v) => setOther((o) => ({ ...o, [q.id]: v }))} onEnter={cont} placeholder={q.typeFirst} last={!q.options.length} />}
         {q.display === "concepts" ? (
           // big pictures, little text: the title and the idea; what changes shows over the picture on hover
           <div className="grid grid-cols-1 gap-2.5 p-1 sm:grid-cols-3" role="radiogroup" aria-label={q.question}>
@@ -1769,7 +1763,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
         <Button size="sm" variant="ghost" disabled={agent.busy} onClick={() => commit("Skipped")} className="gap-1.5 text-muted-foreground">
           Skip <Shortcut keys={["Esc"]} />
         </Button>
-        {!q.typeFirst && (q.multi || typed.trim()) && (
+        {(q.multi || typed.trim()) && (
           <Button size="sm" disabled={agent.busy || mine.length + (typed.trim() ? 1 : 0) < need} onClick={cont}>
             {q.multi && mine.length ? `Continue with ${mine.length}` : "Continue"}
           </Button>
