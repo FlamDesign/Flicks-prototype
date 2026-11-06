@@ -23,7 +23,7 @@ export const FIELD_FEED: Record<Field, { name: string; type: "text" | "link" }> 
  * video), animate (opens exactly on `first_frame`, the user's image).
  */
 export type VideoMode = "reference" | "edit" | "animate"
-export type VideoMedia = { mode?: VideoMode; first_frame?: string; last_frame?: string; images?: string[]; videos?: string[]; source?: string; method?: "edit" | "regenerate" }
+export type VideoMedia = { mode?: VideoMode; first_frame?: string; last_frame?: string; images?: string[]; videos?: string[]; source?: string; method?: "edit" | "regenerate"; /** a variation whose change comes later in the video: this many seconds from the start stay as in the reference */ keep_seconds?: number }
 /** variations are always edits of the approved reference video; `method` is kept only so older plans load */
 export type PlanVariation = {
   name: string
@@ -31,6 +31,8 @@ export type PlanVariation = {
   /** what the user sees instead of the prompt: one plain line of direction */
   direction?: string
   image_ids?: string[]
+  /** the change comes later in the video: the first seconds stay as in the reference (a room tour's shared opening) */
+  keep_seconds?: number
   method?: "edit" | "regenerate"
   media?: VideoMedia
   /** the user's own finished video for this variation: used as it is, nothing generated */

@@ -590,7 +590,7 @@ export function GenerationCanvas({
   const keepImage = (src: string, name: string) =>
     setUploads((u) => (u.some((x) => x.src === src) ? u : [{ id: crypto.randomUUID(), name: `${name.slice(0, 40)}.jpg`, src, loading: false }, ...u]))
   /** starts one video now (or right after the reference video), charged and logged like the prompt box does */
-  const startVideo = (id: string, prompt: string) => {
+  const startVideo = (id: string, prompt: string, opts?: { keep_seconds?: number; openingRetry?: boolean }) => {
     if (dev.credits < VIDEO_COST) return void onGetCredits()
     setDev((d) => ({ credits: d.credits - VIDEO_COST }))
     const now = Date.now()
@@ -598,9 +598,22 @@ export function GenerationCanvas({
     const startedAt = id === "main" ? now : main.startedAt && now < main.startedAt + ms ? main.startedAt + ms + 1 : now
     const video = inSet(generation.video ?? 0, nextVideo.current++)
     // a regenerate keeps what the video is made from (first frame, images, method)
-    commitSlides(slidesNow.current.map((x) => (x.id === id ? { ...x, video, startedAt, prompt: "", refs: [], used: { prompt, refs: [], fromReference: id !== "main", media: x.used?.media } } : x)))
+    commitSlides(slidesNow.current.map((x) => (x.id === id ? { ...x, video, startedAt, prompt: "", refs: [], used: { prompt, refs: [], fromReference: id !== "main", media: { ...(x.used?.media ?? {}), ...(opts?.keep_seconds !== undefined ? { keep_seconds: opts.keep_seconds } : {}) } }, openingRetry: opts?.openingRetry } : x)))
     setHistory((h) => [...h, { id: crypto.randomUUID(), slideId: id, prompt, refs: [], fromReference: id !== "main", video, startedAt, at: now }])
     return true
+  }
+  /** this variation's finished videos before the current one, newest first (from the prompts history) */
+  const earlierVideos = (slideId: string) => {
+    const cur = slidesNow.current.find((x) => x.id === slideId)
+    const seen = new Set<number>()
+    return history
+      .filter((h) => h.slideId === slideId && isMadeVideo(h.video) && h.video !== cur?.video && h.startedAt + ms < Date.now())
+      .sort((a, b) => b.startedAt - a.startedAt)
+      .filter((h) => (seen.has(h.video) ? false : (seen.add(h.video), true)))
+  }
+  const ago = (t: number) => {
+    const m = Math.round((Date.now() - t) / 60_000)
+    return m < 1 ? "just now" : m < 60 ? `${m} min ago` : `${Math.round(m / 60)} h ago`
   }
   // feeds and elements too: several tools can run in one reply
   const feedsNow = useRef(feeds)
@@ -846,6 +859,8 @@ export function GenerationCanvas({
         status: status(x),
         prompt: x.used?.prompt || x.prompt || undefined,
         has_thumbnail: !!x.thumb,
+        // finished videos this variation had before (1 = the most recent): set_variation use_earlier puts one back
+        ...(earlierVideos(x.id).length ? { earlier_videos: earlierVideos(x.id).map((e, j) => ({ n: j + 1, made: ago(e.startedAt), prompt: e.prompt.slice(0, 80) })) } : {}),
       })),
       // every feed, including ones the user or a template made, with what uses it and each variation's value
       feeds: feedsNow.current.map((f) => ({
@@ -967,23 +982,45 @@ export function GenerationCanvas({
           : { id: crypto.randomUUID(), n: i + 1, name: v.name.trim(), prompt: "", refs: [], ...given(v, v.name.trim()), feeds: valuesFor(v), ...thumbOf(v) },
       )
       nextN.current = vs.length + 1
-      commitSlides([main, ...vs])
+      // a storyboard approved after a build (a change of person, setting or shot): the videos are remade, the canvas stays.
+      // Same-named variations keep their thumbnails and their feed values; the design, logo and anything placed stay where they are.
+      const rebuilt = stripAdded.current && elementsNow.current.length > 0 && slidesNow.current.some((x) => x.startedAt)
+      const before = slidesNow.current
+      const keepOf = (name: string | undefined) => (rebuilt && name ? before.find((x) => nameOfSlide(x).toLowerCase() === name.toLowerCase()) : undefined)
+      const kept = (x: Slide): Slide => {
+        const prev = keepOf(x.name)
+        if (!prev) return x
+        // the existing feeds keep their values; a value the new storyboard gives wins
+        const feedVals = { ...(prev.feeds ?? {}) }
+        for (const f of FIELDS) {
+          const id = feedOfField(elementsNow.current, f)
+          const v = vars.find((y) => y.name.trim().toLowerCase() === (x.name ?? "").toLowerCase())?.[f]?.trim()
+          if (id && v) feedVals[id] = v
+        }
+        return { ...x, thumb: x.thumb ?? prev.thumb, feeds: feedVals }
+      }
+      const slidesNext = rebuilt ? [kept(main), ...vs.map(kept)] : [main, ...vs]
+      commitSlides(slidesNext)
       // the prompts history lists only videos being made, not the user's own
-      setHistory([main, ...vs].filter((x) => x.used?.prompt !== "The user's own video").map((x) => ({ id: crypto.randomUUID(), slideId: x.id, prompt: x.used!.prompt, refs: refsOf(x.used!.refs), fromReference: x.id !== "main", video: x.video!, startedAt: x.startedAt!, batch: x.id !== "main", at: now })))
-      commitFeeds(feedsMade)
-      stripAdded.current = true
-      const els = buildDesign(design, { ratio, count: vars.length, feeds: ids, brand })
-      elementsNow.current = els
-      setShared(els)
+      setHistory((h) => [...(rebuilt ? h : []), ...slidesNext.filter((x) => x.used?.prompt !== "The user's own video" && x.startedAt && x.startedAt >= now).map((x) => ({ id: crypto.randomUUID(), slideId: x.id, prompt: x.used!.prompt, refs: refsOf(x.used!.refs), fromReference: x.id !== "main", video: x.video!, startedAt: x.startedAt!, batch: x.id !== "main", at: now }))])
+      if (!rebuilt) {
+        commitFeeds(feedsMade)
+        stripAdded.current = true
+        const els = buildDesign(design, { ratio, count: vars.length, feeds: ids, brand })
+        elementsNow.current = els
+        setShared(els)
+      }
       setStart("main")
       setActive("main")
       setSelected([])
       if (plan.title?.trim()) setTitle(plan.title.trim())
-      const per = feedsMade.map((f) => f.name)
+      const per = rebuilt ? feedsNow.current.map((f) => f.name) : feedsMade.map((f) => f.name)
       const theirs = vars.filter((v) => !made(v)).map((v) => v.name)
-      const needThumbs = vars.filter((v) => !v.own?.thumb).map((v) => v.name)
-      const thumbsLine = needThumbs.length ? `Thumbnails still needed for: ${needThumbs.join(", ")}.` : "Every variation has the user's own thumbnail: don't make any."
-      const designLine = `The design is on the canvas${per.length ? `, with ${per.join(", ")} set per variation (feeds)` : ""}.`
+      const needThumbs = slidesNext.filter((x) => !x.thumb).map(nameOfSlide)
+      const thumbsLine = needThumbs.length ? `Thumbnails still needed for: ${needThumbs.join(", ")}.` : rebuilt ? "Every variation kept its thumbnail: don't make any." : "Every variation has the user's own thumbnail: don't make any."
+      const designLine = rebuilt
+        ? `The canvas is unchanged: the design, logo and everything placed stay as they were${per.length ? `, with ${per.join(", ")} per variation` : ""}; don't add or re-place anything.`
+        : `The design is on the canvas${per.length ? `, with ${per.join(", ")} set per variation (feeds)` : ""}.`
       if (!toMake) return withIssues(`Nothing to generate and no credits used: all ${vars.length} variations use the user's own videos, ready in the Flick now. ${designLine} ${thumbsLine}`)
       const mine = theirs.length ? ` ${theirs.join(", ")} use${theirs.length === 1 ? "s" : ""} the user's own video${theirs.length === 1 ? "" : "s"} (ready now, not charged).` : ""
       if (!made(vars[0])) return withIssues(`Generating ${toMake} video${toMake === 1 ? "" : "s"} (${cost.toLocaleString("en-US")} credits), each made from the user's own Variation 1 video, starting now.${mine} ${designLine} ${thumbsLine}`)
@@ -1046,8 +1083,18 @@ export function GenerationCanvas({
         else (setStart(sl.id), parts.push("the Flick now starts on it"))
       }
       if (p.regenerate && p.prompt) {
-        if (!startVideo(sl.id, p.prompt)) return "Error: Not enough credits to regenerate."
-        parts.push("regenerating with the new prompt")
+        if (!startVideo(sl.id, p.prompt, { keep_seconds: p.keep_seconds })) return "Error: Not enough credits to regenerate."
+        parts.push(`regenerating with the new prompt${p.keep_seconds ? ` (the first ${p.keep_seconds} s pinned to Variation 1)` : ""}`)
+      }
+      // an earlier video of this variation, back as it is: nothing made, nothing charged
+      if (p.use_earlier) {
+        const cur = slidesNow.current.find((x) => x.id === sl.id)
+        const earlier = earlierVideos(sl.id)
+        const pick = earlier[Math.max(1, Math.floor(p.use_earlier)) - 1]
+        if (!pick) return `Error: ${name} has ${earlier.length ? `only ${earlier.length} earlier video${earlier.length === 1 ? "" : "s"}` : "no earlier video"} (see earlier_videos in the project state).`
+        if (cur?.job?.id) cancelJob(cur.job.id).catch(() => {})
+        commitSlides(slidesNow.current.map((x) => (x.id === sl.id ? { ...x, video: pick.video, startedAt: pick.startedAt, job: undefined, failed: undefined, used: { prompt: pick.prompt, refs: [], fromReference: sl.id !== "main" } } : x)))
+        parts.push(`now shows its earlier video from ${ago(pick.startedAt)}${sl.id === "main" && slidesNow.current.length > 1 ? " (the other variations were made from a different reference: remake them only if the user wants them to match)" : ""}`)
       }
       return withIssues(parts.length ? `${name}: ${parts.join(", ")}.` : `Nothing changed on ${name}.`)
     },
@@ -1292,8 +1339,9 @@ export function GenerationCanvas({
     },
     restoreVersion(n) {
       if (!versions.some((v) => v.n === n)) return `Error: No version ${n}. Versions: ${versions.map((v) => v.n).join(", ") || "none yet"}.`
-      restore(n)
-      return `Restored version ${n}. (Restoring is saved as a new version, so it can be undone the same way.)`
+      const back = restore(n) ?? []
+      const vids = back.map((x) => `${nameOfSlide(x)} (${isMadeVideo(x.video) ? "its video is back, done" : "no video: make it only if the user wants it"})`)
+      return `Restored version ${n}: the canvas, feeds and videos as they were. Videos: ${vids.join("; ")}. Nothing needs making or re-planning. (Restoring is saved as a new version, so it can be undone the same way.)`
     },
     saveVersion(name) {
       const label = name.trim().slice(0, 60) || "Saved by the chat"
@@ -1477,8 +1525,15 @@ export function GenerationCanvas({
       const named = (n: number, word: string) => (n === 1 ? `[${word} 1]` : `[${word} 1] to [${word} ${n}]`)
       const picsLine = pics.length ? ` ${named(pics.length, "Image")} ${pics.length === 1 ? "shows" : "show"} exactly how the change must look: match ${pics.length === 1 ? "it" : "them"}.` : ""
       const keep = "Keep everything else exactly the same: people, product, camera, framing, motion, timing, setting and lighting."
+      // a change that comes later in the video: the opening is pinned with timecodes and the reference's first frame
+      const keepS = fromRef ? media.keep_seconds : undefined
+      const refPoster = fromRef && isMadeVideo(main.video) ? videoAt(main.video!).poster : undefined
+      const pinned = keepS && refPoster ? refPoster : undefined
+      const openingLine = keepS
+        ? ` From 0 to ${keepS} s the video stays exactly as it is, frame for frame: same shot, same motion, nothing added or changed${pinned ? `; ${named(pics.length + 1, "Image").split(" to ").pop()} is its first frame, and the edited video must open on exactly that frame` : ""}. The change happens only after ${keepS} s.${sl.openingRetry ? " This is a remake because the opening drifted: the opening must be identical to the original video." : ""}`
+        : ""
       const plan: VideoInput = fromRef
-        ? { mode: "edit", prompt: `Edit the video. Change only this: ${end(sl.used.prompt)}${picsLine} ${keep}`, video: refVideo, images: pics }
+        ? { mode: "edit", prompt: `Edit the video. Change only this: ${end(sl.used.prompt)}${picsLine}${openingLine} ${keep}`, video: refVideo, images: pinned ? [...pics, pinned] : pics }
         : media.mode === "edit" && media.source
           ? { mode: "edit", prompt: `Edit the video. ${end(sl.used.prompt)} Keep everything not mentioned exactly as it is.`, video: media.source, images: pics, videos: vids }
           : media.first_frame && media.mode !== "reference"
@@ -1498,6 +1553,16 @@ export function GenerationCanvas({
           const still = poster ?? (await posterOf(url)) ?? videoAt(sl.video ?? generation.video ?? 0).poster
           const video = addMadeVideo({ name: `${slideName(sl, slidesNow.current.indexOf(sl))}-${sl.startedAt}`, size: generation.size, mp4: url, poster: still })
           patchJob({ video, job: undefined, failed: undefined })
+          // a pinned opening is checked against the reference's: one remake if it drifted, then the chat hears about it
+          if (keepS && refPoster && live) {
+            const diff = await openingDiff(still, refPoster)
+            const name = slideName(sl, slidesNow.current.findIndex(mine))
+            if (diff !== undefined && diff > OPENING_DRIFT) {
+              if (!sl.openingRetry && startVideo(sl.id, sl.used!.prompt, { keep_seconds: keepS, openingRetry: true })) {
+                if (agentMode) agent.notify(`(App: ${name}'s opening drifted from Variation 1's, so it's being remade once with the opening pinned harder; no need to say anything yet.)`, false)
+              } else if (agentMode) agent.notify(`(App: ${name}'s opening still differs from Variation 1's after a remake. Say so at the hand-over, in one line, and offer to try a different change or leave it.)`, false)
+            }
+          }
         },
         (e) => {
           if (!slidesNow.current.some(mine)) return
@@ -1660,13 +1725,16 @@ export function GenerationCanvas({
     if (!v) return
     const { snap } = v
     setShared(snap.elements)
-    setSlides(snap.slides)
+    // a job that was running when the version was saved is long gone: a made video shows, anything else is empty
+    const slidesBack = snap.slides.map((x) => ({ ...x, job: undefined, failed: undefined, startedAt: x.startedAt ? (isMadeVideo(x.video) ? x.startedAt : undefined) : undefined }))
+    commitSlides(slidesBack)
     setFeeds(snap.feeds)
     setStart(snap.start)
     setSelected([])
     setEditing(null)
     if (!snap.slides.some((x) => x.id === active)) setActive("main")
     toast(`Restored ${v.name || `version ${n}`}`)
+    return slidesBack
   }
   const [panel, setPanel] = useState<"history" | "template" | null>(null)
 
@@ -2360,6 +2428,34 @@ const SKIP = new Set(
   "a an the and or of in on at to for with from by into onto across through over under near is are be as it its this that slow fast quick push-in push pull-out pan zoom tilt dolly orbit close-up closeup wide shot shots camera cinematic video scene footage featuring showing shows".split(" "),
 )
 /** What an existing Flick's two variations were made from. */
+/** how different two openings may look before they count as drifted (mean difference of a 24 px grey thumbnail, 0 to 1) */
+const OPENING_DRIFT = 0.16
+/** how different two stills look, 0 (same) to 1; undefined when one can't be read */
+async function openingDiff(a: string, b: string): Promise<number | undefined> {
+  const grey = (src: string) =>
+    new Promise<Uint8ClampedArray | undefined>((ok) => {
+      const im = new Image()
+      im.crossOrigin = "anonymous"
+      im.onload = () => {
+        const c = document.createElement("canvas")
+        c.width = c.height = 24
+        const g = c.getContext("2d")!
+        g.drawImage(im, 0, 0, 24, 24)
+        const d = g.getImageData(0, 0, 24, 24).data
+        const out = new Uint8ClampedArray(24 * 24)
+        for (let i = 0; i < out.length; i++) out[i] = (d[i * 4] * 299 + d[i * 4 + 1] * 587 + d[i * 4 + 2] * 114) / 1000
+        ok(out)
+      }
+      im.onerror = () => ok(undefined)
+      im.src = src
+    })
+  const [x, y] = await Promise.all([grey(a), grey(b)])
+  if (!x || !y) return undefined
+  let sum = 0
+  for (let i = 0; i < x.length; i++) sum += Math.abs(x[i] - y[i])
+  return sum / x.length / 255
+}
+
 const VARIATION_PROMPTS = ["Same scene, the second colourway", "Same scene, the third colourway, warmer light"]
 
 /** Stands in for the AI naming step: the first few meaningful words of the prompt, title-cased. */

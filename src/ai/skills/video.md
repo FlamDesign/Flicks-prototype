@@ -34,6 +34,15 @@ the model treats them as new instructions and the variations stop matching.
 - **Never repeat:** the camera, the light, the setting or the action. Never add a new action.
 - **Keep the footprint:** the changed thing keeps the same shape, size and position.
 - **Master video from the user:** vary only what they asked, based on their references.
+- **A change that comes later in the video** (a tour with the same opening and a different room at
+  the end, a reveal with the same lead-in): set the variation's keep_seconds to where the change
+  starts (the storyboard's timeline tells you: "0 to 5 s drone and entry, 5 to 8 s the kitchen" means
+  keep_seconds 5), and write the line as "From 5 s: … instead of the kitchen". The app pins the
+  opening (timecodes, Variation 1's first frame as a reference), checks the finished video's opening
+  against Variation 1's, remakes it once if it drifted, and tells you if it still differs. Without
+  keep_seconds the model redraws the whole clip and the opening drifts.
+  Prefer swaps that run through the whole video (one room per variation from the first frame, a
+  colour, a product) when the brief allows: they match far more reliably than a shared opening.
 
 ## What video models get wrong
 Mention the ones that apply, in plain words at the end of the prompt.
