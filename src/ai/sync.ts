@@ -61,6 +61,11 @@ if (typeof window !== "undefined") {
   document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" && flushers.forEach((f) => f(false)))
 }
 
+/** saves everything that's waiting now (after a decision, such as approving the videos, so a reload right after keeps it) */
+export function saveWaitingNow() {
+  flushers.forEach((f) => f(false))
+}
+
 /**
  * A value saved once changes settle: `ms` after the last change, and at least every `maxMs` while
  * changes keep coming (dragging, typing), the latest one winning. Unchanged values aren't sent, and

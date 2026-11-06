@@ -9,7 +9,7 @@ import type { Paint, ShapeKind } from "@/components/editor/elements"
 import { shotPrompt, type Brand, type Design, type Plan, type PlanVariation, type Shot, type VideoMode } from "@/ai/design"
 import { mockReply } from "@/ai/mock"
 import { findSkill, SKILLS } from "@/ai/skills"
-import { loadSaved, save, saver, webSource } from "@/ai/sync"
+import { loadSaved, save, saver, saveWaitingNow, webSource } from "@/ai/sync"
 import { blobUrl, probeVideo, sameUrl, stillsAt } from "@/lib/media"
 import { elements as elementStore, elementsIn, plainMentions, type FlickElement } from "@/lib/elements"
 const elementsList = () => elementStore.get()
@@ -2129,6 +2129,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       msgs.current.push({ role: "user", content: settle({ [it.toolId]: `Approved${JSON.stringify(plan) !== JSON.stringify(it.plan) ? " with edits" : ""}. ${r}` }) })
       // saved at once: a reload right after must not offer the storyboard again
       checkpoint(true)
+      // the project too (the videos just started), once the canvas has stored them (it does so after half a second)
+      setTimeout(saveWaitingNow, 900)
       await turn()
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps

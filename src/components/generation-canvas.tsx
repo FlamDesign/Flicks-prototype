@@ -144,7 +144,9 @@ export function GenerationCanvas({
     // reopened: finished videos count as made long ago; a real video still being made keeps going
     if (savedSnap) {
       const going = (x: Slide) => !!x.job?.id || x.job?.status === "waiting"
-      return savedSnap.slides.map((x, i) => ({ ...x, n: x.n ?? (i || undefined), job: going(x) ? x.job : undefined, startedAt: x.startedAt ? (going(x) ? x.startedAt : 1) : undefined }))
+      // started but closed before the server took it (no job id): nothing was charged, so it starts again
+      const lost = (x: Slide) => !!generation.agent && !!x.job && !going(x) && !isMadeVideo(x.video) && !!x.used?.prompt
+      return savedSnap.slides.map((x, i) => (lost(x) ? { ...x, n: x.n ?? (i || undefined), job: undefined, startedAt: Date.now() } : { ...x, n: x.n ?? (i || undefined), job: going(x) ? x.job : undefined, startedAt: x.startedAt ? (going(x) ? x.startedAt : 1) : undefined }))
     }
     // a sample project: the reference video and two variations, all made long ago (startedAt 1)
     if (generation.sample)

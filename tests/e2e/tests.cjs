@@ -1,5 +1,5 @@
 // The six end-to-end chats. Run one: node tests.cjs t1
-const { open, drop, look, say, drive, file, finish, projectName } = require("./lib.cjs")
+const { open, drop, look, say, drive, file, finish, projectName, savedChat } = require("./lib.cjs")
 
 const done = (v) => v.suggestions && !v.busy
 const check = (run, checks, name, ok, note = "") => {
@@ -218,7 +218,17 @@ const TESTS = {
           reload2 = true
           const name = await nameWhenSaved(run)
           run.log("RELOAD while videos are made", name)
+          const brief = (c) => c && JSON.stringify({ inTurn: c.inTurn, last: c.msgs?.at(-1)?.role, pending: c.pending?.length, plan: c.items?.find((x) => x.kind === "plan")?.state })
+          // a real reload comes a few seconds after approving at the earliest: wait for the approval to be saved (up to 15 s)
+          let before = null
+          for (let i = 0; i < 15; i++) {
+            before = await savedChat(run)
+            if (before?.items?.find((x) => x.kind === "plan")?.state === "approved") break
+            await run.p.waitForTimeout(1000)
+          }
+          run.log("saved before reload", brief(before))
           await run.p.reload({ waitUntil: "networkidle" })
+          run.log("saved after reload", brief(await savedChat(run)))
           await reopenLatest(run, name)
           await run.shot("after-reload-2")
           return true
