@@ -56,7 +56,13 @@ async function nameWhenSaved(run) {
 
 async function reopenLatest(run, name) {
   const { p, log } = run
-  await p.getByText("Projects", { exact: true }).first().click()
+  // the reload may land on the project itself: then there's nothing to reopen
+  const link = p.getByText("Projects", { exact: true }).first()
+  if (!(await link.waitFor({ state: "visible", timeout: 15000 }).then(() => true, () => false))) {
+    await p.screenshot({ path: require("path").join(run.out, "reload-landing.png") })
+    if (await p.getByRole("textbox").count()) return log("reload kept the project open")
+  }
+  await link.click()
   await p.waitForTimeout(3000)
   // its own project (other tests run at the same time)
   const card = name ? p.getByRole("button", { name: `Open ${name}`, exact: true }).first() : p.getByRole("button", { name: /^Open / }).first()
@@ -198,7 +204,7 @@ const TESTS = {
   async t5() {
     const run = await open("t5-make-it-move-reloads")
     const checks = []
-    let reload1 = false, reload2 = false, removed = false, busyTicks = 0, resumed = 0
+    let reload1 = false, reload2 = false, removed = false, waitingSeen = 0, busyTicks = 0, resumed = 0
     await startRecipe(run, "Make It Move", [[file("perfume.jpg")]], "A slow push-in, the bottle catching light")
     const v = await drive(run, {
       onTick: async (v) => {
@@ -229,7 +235,8 @@ const TESTS = {
           run.log("saved before reload", brief(before))
           await run.p.reload({ waitUntil: "networkidle" })
           run.log("saved after reload", brief(await savedChat(run)))
-          await reopenLatest(run, name)
+          // approving can rename the project: reopen it by its current name
+          await reopenLatest(run, (await nameWhenSaved(run)) ?? name)
           await run.shot("after-reload-2")
           return true
         }
@@ -238,6 +245,7 @@ const TESTS = {
       onReview: async () => {
         if (!removed) {
           const rm = run.p.getByRole("button", { name: "Remove" })
+          waitingSeen = Math.max(waitingSeen, await rm.count())
           if ((await rm.count()) > 1) {
             removed = true
             run.log("removing one waiting variation")
@@ -251,7 +259,9 @@ const TESTS = {
     }, done, { timeout: 20 * 60_000 })
     check(run, checks, "reload mid-reply offered Continue", resumed > 0 || !reload1, `resume card seen ${resumed}×`)
     check(run, checks, "videos carried on after a reload", reload2 && !!v)
-    check(run, checks, "removed a waiting variation", removed)
+    // only when there were two or more waiting (the plan decides how many variations there are)
+    if (waitingSeen > 1) check(run, checks, "removed a waiting variation", removed)
+    else run.log(`remove step skipped: ${waitingSeen} waiting variation(s)`)
     check(run, checks, "finished with hand-over", !!v)
     return finish(run, { test: "t5", checks })
   },
