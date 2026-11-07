@@ -1375,11 +1375,30 @@ export function GenerationCanvas({
   // the reference video, ready and not yet approved, with variations waiting on it
   const mainNow = slides[0]
   const refReady = isMadeVideo(mainNow.video) && !mainNow.job
-  const needsReview = agentMode && live && refReady && mainNow.approvedRef !== mainNow.startedAt && slides.some((x) => x.job?.status === "waiting")
-  /** Variation 1 approved: the waiting variations start. From the chat's own tool (`byChat`) or the build card's button, which the chat hears about */
+  // variations waiting for the first Variation 1, or made from an earlier one (a remake through a Make card)
+  const waitingOnRef = slides.filter((x) => x.job?.status === "waiting")
+  const staleOnRef = slides.filter((x) => stale(x) && !x.job && !!x.used?.prompt)
+  const remade = refReady && !waitingOnRef.length && staleOnRef.length > 0
+  const needsReview = agentMode && live && refReady && mainNow.approvedRef !== mainNow.startedAt && (waitingOnRef.length > 0 || staleOnRef.length > 0)
+  /**
+   * Variation 1 approved: the waiting variations start. After a remake, the variations made from the
+   * earlier one are queued again (charged now, one cost for all). From the chat's own tool (`byChat`)
+   * or the review bar's button, which the chat hears about.
+   */
   const approveRef = (byChat = false) => {
-    commitSlides(slidesNow.current.map((x, i) => (i === 0 ? { ...x, approvedRef: x.startedAt } : x)))
-    if (!byChat) agent.notify("(App: the user approved Variation 1 with the button; the variations are being made from it. Nothing to reply.)", false)
+    const again = staleOnRef
+    if (again.length) {
+      const cost = again.length * VIDEO_COST
+      if (dev.credits < cost) return void onGetCredits()
+      setDev((d) => ({ credits: d.credits - cost }))
+    }
+    const now = Date.now()
+    commitSlides(
+      slidesNow.current.map((x, i) =>
+        i === 0 ? { ...x, approvedRef: x.startedAt } : again.some((a) => a.id === x.id) ? { ...x, video: inSet(generation.video ?? 0, nextVideo.current++), startedAt: now + i, job: { status: "waiting", since: now }, failed: undefined } : x,
+      ),
+    )
+    if (!byChat) agent.notify(`(App: the user approved Variation 1 with the button; the variations are being made from it${again.length ? " again" : ""}. Nothing to reply.)`, false)
   }
   // Variation 1 is in and waiting for review: wake the chat, once per version, so it looks and asks
   const toldReady = useRef(0)
@@ -1573,7 +1592,8 @@ export function GenerationCanvas({
         const failed = !s.job && !isMadeVideo(s.video) && s.failed ? s.failed.reason : undefined
         return { name: nameOf(s), state: st, src: v?.mp4 || undefined, poster: v?.poster, since: s.job?.since ?? s.startedAt, ms: s.job ? undefined : ms, status: s.job?.status, stop: stoppable ? () => void cancelVideo(s.id) : undefined, failed, retry: failed ? () => retryVideo(s.id) : undefined }
       }),
-    review: { needed: needsReview, approve: () => approveRef(), change: () => changeRef(), count: slides.filter((x) => x.job?.status === "waiting").length, cost: slides.filter((x) => x.job?.status === "waiting").length * VIDEO_COST },
+    // the review bar steps aside while the chat is asking something or offering a new storyboard (a start-over): the deck or the card is the question then
+    review: { needed: needsReview && !agent.waiting && !agent.items.some((x) => x.kind === "plan" && x.state === "open"), approve: () => approveRef(), change: () => changeRef(), count: waitingOnRef.length + staleOnRef.length, cost: (waitingOnRef.length + staleOnRef.length) * VIDEO_COST, remade },
     proposals: () => proposals.map((p) => ({ id: p.id, name: p.name, change: p.change ?? p.prompt, cost: p.cost, make: () => void makeProposed(p.id), dismiss: () => dropProposed(p.id) })),
     issues: () => publishIssues.filter((x) => !x.blocking).map((x) => x.text),
     progress: () => {

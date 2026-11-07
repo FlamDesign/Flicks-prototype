@@ -1424,8 +1424,9 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         const shot = await apiRef.current.shot(v)
         out.push({ type: "text", text: shot.note }, await imageBlock(shot.blob))
         add({ kind: "image", prompt: shot.note, purpose: "view", target: shot.name, state: "done", url: URL.createObjectURL(shot.blob), placed: true })
-      } catch {
-        /* not built yet, or it couldn't be drawn */
+      } catch (e) {
+        // not built yet, or it couldn't be drawn: say which, so the chat doesn't try again and again
+        out.push({ type: "text", text: `Couldn't draw ${v ?? "Variation 1"} (${e instanceof Error ? e.message : "no picture"}). Don't retry; carry on without the look.` })
       }
     }
     return out
@@ -1772,7 +1773,10 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         case "use_image": {
           const img = images.current.find((i) => i.id === input.image_id)
           if (!img) return "Error: no image with that id."
-          const r = input.as === "thumbnail" ? a.setThumbnail(String(input.variation ?? ""), img.url) : a.addImageToCanvas(img.url)
+          // a video stands in with its still (a thumbnail or a canvas image is always a picture)
+          const pic = img.kind === "video" ? img.poster : img.url
+          if (!pic) return "Error: that video has no still yet."
+          const r = input.as === "thumbnail" ? a.setThumbnail(String(input.variation ?? ""), pic) : a.addImageToCanvas(pic)
           if (!r.startsWith("Error")) add({ kind: "design", text: r })
           return r
         }

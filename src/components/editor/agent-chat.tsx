@@ -31,7 +31,7 @@ export type AgentCtx = {
   posters: string[]
   brand?: Brand
   /** Variation 1 is ready and waiting for the user's OK before the variations are made */
-  review?: { needed: boolean; approve: () => void; change: () => void; /** the variations waiting on it, and what they cost together */ count?: number; cost?: number }
+  review?: { needed: boolean; approve: () => void; change: () => void; /** the variations waiting on it, and what they cost together */ count?: number; cost?: number; /** a remake: the variations were made from the earlier Variation 1 */ remade?: boolean }
   /** videos the chat proposed, waiting for the user's Make (nothing is made without it) */
   proposals?: () => { id: string; name: string; change: string; cost: number; make: () => void; dismiss: () => void }[]
   /** the build's steps, read live */
@@ -1191,15 +1191,15 @@ export function ApprovalDock({ agent, ctx, poster }: { agent: Agent; ctx: AgentC
         <div role="group" aria-label="Review Variation 1" className="flex flex-wrap items-center gap-3 rounded-xl bg-brand/10 p-2.5 ring-1 ring-brand/30 animate-in fade-in-0 slide-in-from-bottom-1">
           {poster && <img src={poster} alt="" decoding="async" className="size-10 shrink-0 rounded-lg object-cover ring-1 ring-foreground/10" />}
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium leading-snug">Variation 1 is ready. Happy with it?</p>
-            <p className="text-xs text-muted-foreground">The others are made from it{ctx.review!.count ? ` · ${ctx.review!.count} videos · ${(ctx.review!.cost ?? 0).toLocaleString("en-US")} credits` : ctx.videoCost ? ` · ${ctx.videoCost} credits each` : ""}.</p>
+            <p className="text-sm font-medium leading-snug">{ctx.review!.remade ? "Variation 1 is remade. Keep it?" : "Variation 1 is ready. Happy with it?"}</p>
+            <p className="text-xs text-muted-foreground">{ctx.review!.remade ? "The others were made from the earlier one and need making again" : "The others are made from it"}{ctx.review!.count ? ` · ${ctx.review!.count} videos · ${(ctx.review!.cost ?? 0).toLocaleString("en-US")} credits` : ctx.videoCost ? ` · ${ctx.videoCost} credits each` : ""}.</p>
           </div>
           <div className="ml-auto flex gap-1.5">
             <Button size="sm" variant="ghost" onClick={ctx.review!.change} disabled={agent.busy}>
               Change it
             </Button>
             <Button size="sm" onClick={ctx.review!.approve} disabled={agent.busy}>
-              Make the variations{ctx.review!.cost ? ` · ${ctx.review!.cost.toLocaleString("en-US")}` : ""}
+              {ctx.review!.remade ? "Make the variations again" : "Make the variations"}{ctx.review!.cost ? ` · ${ctx.review!.cost.toLocaleString("en-US")}` : ""}
             </Button>
           </div>
         </div>
