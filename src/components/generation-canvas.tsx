@@ -1785,12 +1785,20 @@ export function GenerationCanvas({
   const saveProject = (extra?: { versions?: Checkpoint<Snap>[] }) =>
     library.saveProject({ id: generation.id, name: title, size: generation.size, image: poster, video: generation.video, base, snap: snapNow(), versions: extra?.versions ?? versions, sample: generation.sample })
   const deleted = useRef(false)
+  // A project exists because the user did something. A template opened and left untouched, or a saved project
+  // reopened and only looked at, is never saved (no new card in Projects, no bumped "edited" time): saving starts
+  // with the first real change (an element, a feed value, a variation, a video, an export). A chat project and a
+  // new generation from Create are the user's work from the start.
+  const startSig = useRef<string | null>(null)
+  if (startSig.current === null && !firstRun) startSig.current = sig
+  const dirtyFromStart = agentMode || (!generation.template && !generation.resume && !generation.copy)
+  const dirty = dirtyFromStart || (startSig.current !== null && sig !== startSig.current)
   useEffect(() => {
-    if (!title || deleted.current) return
+    if (!title || deleted.current || !dirty) return
     const t = setTimeout(() => saveProject(), 500)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [title, sig, versions])
+  }, [title, sig, versions, dirty])
   const lib = useLibrary()
   const project = lib.projects.find((p) => p.id === generation.id)
   const lastFlick = project?.exports[0] ? lib.flicks.find((f) => f.id === project.exports[0]) : undefined
@@ -1875,7 +1883,7 @@ export function GenerationCanvas({
           size={generation.size}
           sizeLabel={sizeInfo?.label}
           duration={generation.duration ?? 8}
-          onHome={() => (title && saveProject(), onBack())}
+          onHome={() => (title && dirty && saveProject(), onBack())}
           onDuplicate={() => onDuplicate({ title: `${title} copy`, snap: snapNow() })}
           onSaveTemplate={() => setPanel("template")}
           onHistory={() => setPanel("history")}
@@ -1946,7 +1954,7 @@ export function GenerationCanvas({
           current={currentVersion}
           onRestore={restore}
           onRename={(n, name) => setVersions((v) => v.map((x) => (x.n === n ? { ...x, name: name || undefined } : x)))}
-          onOpenFlick={(id) => (saveProject(), onOpenFlick(id))}
+          onOpenFlick={(id) => (dirty && saveProject(), onOpenFlick(id))}
           onClose={() => setPanel(null)}
         />
       )}
