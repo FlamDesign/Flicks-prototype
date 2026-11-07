@@ -1678,7 +1678,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
         {q.display === "concepts" ? (
           // wide (the chat on its own): three across, with the title and the idea wrapping under each picture;
           // narrow (the panel beside the canvas): one per row, the picture left and the whole text right.
-          // The variation chips sit with the text, so touch sees them too.
+          // The variations each concept would make are read out to screen readers only.
           <div className="@container">
             <div className="grid grid-cols-1 gap-2.5 p-1 @[540px]:grid-cols-3" role="radiogroup" aria-label={q.question}>
               {q.options.map((o, n) => (
@@ -1702,15 +1702,6 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
                   <span className="flex min-w-0 flex-1 flex-col gap-1 py-1 pr-1 @[540px]:px-1 @[540px]:pb-1 @[540px]:pt-0">
                     <span className="line-clamp-2 text-sm font-medium leading-snug">{o.label}</span>
                     {o.description && <span className="text-xs leading-snug text-muted-foreground">{o.description}</span>}
-                    {!!o.variations?.length && (
-                      <span className="mt-1 flex flex-wrap gap-1">
-                        {o.variations.map((v) => (
-                          <Badge key={v} variant="subtle">
-                            {v}
-                          </Badge>
-                        ))}
-                      </span>
-                    )}
                   </span>
                 </button>
               ))}
