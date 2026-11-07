@@ -16,8 +16,10 @@ export const isVideo = (x: LibraryItem) => x.kind === "video" || (x.type ?? "").
 export const isUpload = (x: LibraryItem) => !!x.file && (x.purpose === "upload" || (x.model === "upload" && !x.purpose)) && !APP_COPY.test(x.prompt ?? "")
 /** a finished video made for the user (not a preview, thumbnail or working copy) */
 export const isFinalVideo = (x: LibraryItem) => !!x.file && isVideo(x) && x.model !== "upload" && x.purpose !== "app" && !DRAFT.test(x.purpose ?? "")
-/** a finished image made for the user: a thumbnail or final picture (previews stay out) */
-export const isFinalImage = (x: LibraryItem) => !!x.file && !isVideo(x) && x.model !== "upload" && x.purpose !== "app" && !DRAFT.test(x.purpose ?? "")
+/** a thumbnail made for a variation (the only generated image shown in Assets and the pickers) */
+export const isThumbnail = (x: LibraryItem) => !!x.file && !isVideo(x) && x.model !== "upload" && x.purpose === "thumbnail"
+/** a finished image made for the user: a thumbnail or final picture (previews, looks, frames and canvases stay out) */
+export const isFinalImage = (x: LibraryItem) => !!x.file && !isVideo(x) && x.model !== "upload" && (x.purpose === "thumbnail" || x.purpose === "edit")
 
 /** the name shown for an item: an upload's file name, else what it was made for */
 export const nameOf = (x: LibraryItem) =>

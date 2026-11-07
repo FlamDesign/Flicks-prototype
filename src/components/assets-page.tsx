@@ -14,7 +14,7 @@ import { useToast } from "@/components/ui-extra/toaster"
 import { ALL_DATES, DateFilter, inDateFilter, type DateFilterValue } from "@/components/ui-extra/date-filter"
 import { download, MediaViewer, type ViewerItem } from "@/components/media-viewer"
 import { hideFromLibrary, isLive, NOT_CONNECTED, useAiConfig } from "@/ai/client"
-import { isFinalVideo, isUpload, isVideo, loadLibrary, nameOf, type LibraryRef } from "@/lib/library"
+import { isFinalVideo, isThumbnail, isUpload, isVideo, loadLibrary, nameOf, type LibraryRef } from "@/lib/library"
 import { useDevState } from "@/dev/state"
 
 /** What a video was made from: an uploaded image, or the reference video (for variations). */
@@ -93,7 +93,7 @@ export function AssetsPage({ onCreate, onUse }: { onCreate: () => void; onUse: (
         if (!on) return
         setAssets(
           lib.items
-            .filter((x) => isFinalVideo(x) || isUpload(x))
+            .filter((x) => isFinalVideo(x) || isThumbnail(x) || isUpload(x))
             .map((x) => ({
               id: x.id,
               kind: isVideo(x) ? "video" : "image",
