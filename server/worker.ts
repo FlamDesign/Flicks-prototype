@@ -108,7 +108,7 @@ export default {
       const caps = { images: num(env.DAILY_IMAGE_CAP, 50), chats: num(env.DAILY_CHAT_CAP, 500), videos: num(env.DAILY_VIDEO_CAP, 20) }
       // the library: every generation is recorded when it starts and copied here when it finishes
       // (Higgsfield deletes its copies after 7 days and can't list past requests)
-      type Meta = { project?: string; variation?: string; purpose?: string }
+      type Meta = { project?: string; variation?: string; purpose?: string; chat?: boolean }
       const started = async (kind: "image" | "video", id: string, prompt: string, model: string, meta: Meta = {}, refs: string[] = []) => {
         // the library entry is a record, not the job: a full storage quota mustn't stop the job
         await put(env, `lib:${id}`, JSON.stringify({ id, kind, prompt, model, refs, ...pick(meta), created: Date.now(), saved: false }))
@@ -305,7 +305,6 @@ export default {
         const body = (await req.json()) as { mode?: string; prompt?: string; aspect_ratio?: string; duration?: number; image_url?: string; end_image_url?: string; image_urls?: string[]; video_url?: string; video_urls?: string[]; meta?: Meta }
         const prompt = String(body.prompt ?? "").trim().slice(0, 2000)
         if (!prompt) return json({ error: "no_prompt" }, 400, cors)
-        if (!(await take(env, `vid:${day}`, caps.videos))) return json({ error: "daily_limit", what: "videos" }, 429, cors)
         const aspect = VIDEO_ASPECTS.includes(String(body.aspect_ratio)) ? String(body.aspect_ratio) : "16:9"
         const duration = Math.max(4, Math.min(15, Math.round(Number(body.duration) || 8)))
         const https = (u?: string) => (u && /^https:\/\//.test(u) ? u : undefined)
@@ -319,6 +318,9 @@ export default {
         // text: prompt only · image: opens on a first frame (may end on a last one) · reference: stays
         // true to images, and follows a video when given · edit: edits a video, keeping all but the change
         const mode = body.mode === "edit" && video ? "edit" : body.mode === "reference" && (images.length || videos.length || video) ? "reference" : (body.mode === "image" || (!body.mode && image)) && image ? "image" : video ? "reference" : "text"
+        // a chat project's video always stays true to something: a prompt-only video would invent the product or person
+        if (mode === "text" && (body.meta as { chat?: boolean } | undefined)?.chat) return json({ error: "no_references", message: "A chat project's video needs reference images or a video; none were given." }, 400, cors)
+        if (!(await take(env, `vid:${day}`, caps.videos))) return json({ error: "daily_limit", what: "videos" }, 429, cors)
         const common = { prompt, resolution: "720p", generate_audio: false }
         const [path, payload]: [string, Record<string, unknown>] =
           mode === "edit"

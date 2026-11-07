@@ -77,6 +77,7 @@ const MESSAGES: Record<string, string> = {
   wrong_passcode: "The passcode isn't right. Check it in dev tools.",
   origin_not_allowed: "The AI server doesn't accept requests from this site.",
   daily_limit: "Today's AI limit is reached. Try again tomorrow.",
+  no_references: "This video has no reference images or video to stay true to.",
   storage_full: "Today's storage writes are used up, so uploads can't be kept until 4 pm Pacific (midnight UTC). Chat and generation still work.",
   claude_not_set_up: "The AI server has no chat key yet.",
   images_not_set_up: "The AI server has no image key yet.",
@@ -244,7 +245,7 @@ async function steady(path: string, init?: RequestInit) {
 
 /** imageUrls: public addresses of the user's photos or a website's images (see shareable), so the product in the picture is theirs */
 /** what a generation is for: kept with it in the library */
-export type GenMeta = { project?: string; variation?: string; purpose?: string }
+export type GenMeta = { project?: string; variation?: string; purpose?: string; /** a chat project: never a prompt-only video */ chat?: boolean }
 /** opts.text: the image must carry readable text (another model renders it); opts.quality: "draft" for previews; opts.onId: the job's id, so a reload can keep checking it */
 export async function generateImage(prompt: string, aspect: string, signal?: AbortSignal, onStatus?: (status: string) => void, imageUrls: string[] = [], meta: GenMeta = {}, opts: { text?: boolean; quality?: "draft" | "final"; onId?: (id: string) => void } = {}): Promise<string> {
   const { onId, ...rest } = opts

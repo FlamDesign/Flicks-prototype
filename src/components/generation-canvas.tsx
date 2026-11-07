@@ -1577,11 +1577,21 @@ export function GenerationCanvas({
               ? { mode: "reference", prompt: end(sl.used.prompt), images: pics, videos: vids }
               : // an older plan with nothing to work from
                 { mode: "text", prompt: sl.used.prompt }
+      // a chat project never makes a prompt-only video: without its pictures the video would invent a new product or
+      // person and still cost credits, so it doesn't start, and the chat says what's missing
+      if (plan.mode === "text" && agentMode) {
+        jobs.current.delete(key)
+        setDev((d) => ({ credits: d.credits + VIDEO_COST }))
+        const name = slideName(sl, slidesNow.current.indexOf(sl))
+        patchJob({ job: undefined, startedAt: undefined, video: undefined, prompt: sl.used?.prompt, used: undefined, failed: { reason: "No reference images or video for it.", tries: sl.failed?.tries ?? 0 } })
+        if (live) agent.notify(`(App: ${name} wasn't started: it has no reference images or video to stay true to, and a video from words alone would invent a new product or person. Refunded. Tell the user in one line and fix the inputs: set the reference images (the product photos, a look or a sheet) with a new storyboard or set_variation, or ask for photos with request_assets.)`)
+        continue
+      }
       if (!resume) patchJob({ job: { status: "starting", since: Date.now() } })
       // images that only live in this page go to the server first, so the video model can open them
       const share = (u?: string) => (u ? shareable(u).catch(() => undefined) : Promise.resolve(undefined))
       Promise.all([share(plan.image), share(plan.endImage), Promise.all((plan.images ?? []).map(share)), Promise.all((plan.videos ?? []).map(share)), share(plan.video)]).then(([image, endImage, images, videos, video]) =>
-      generateVideo({ ...plan, image, endImage, video, images: images.filter((x): x is string => !!x), videos: videos.filter((x): x is string => !!x), aspect: videoAspectOf(generation.size), seconds: generation.duration ?? 8, resume, onId: (id) => commitSlides(slidesNow.current.map((x) => (mine(x) && x.job ? { ...x, job: { ...x.job, id } } : x))), meta: { project: title, variation: slideName(sl, slidesNow.current.indexOf(sl)), purpose: "video" } }, (status) =>
+      generateVideo({ ...plan, image, endImage, video, images: images.filter((x): x is string => !!x), videos: videos.filter((x): x is string => !!x), aspect: videoAspectOf(generation.size), seconds: generation.duration ?? 8, resume, onId: (id) => commitSlides(slidesNow.current.map((x) => (mine(x) && x.job ? { ...x, job: { ...x.job, id } } : x))), meta: { project: title, variation: slideName(sl, slidesNow.current.indexOf(sl)), purpose: "video", chat: agentMode } }, (status) =>
         commitSlides(slidesNow.current.map((x) => (mine(x) && x.job ? { ...x, job: { ...x.job, status } } : x))),
       )).then(
         async ({ url, poster }) => {

@@ -2170,8 +2170,20 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           // the user wants changes: they say what in the chat
           return
         }
-        // image ids become addresses the video model can use
-        const url = (id?: string) => (id ? images.current.find((i) => i.id === id)?.url : undefined)
+        // image ids become addresses the video model can use: kept on the server first, so a revert, a reload or
+        // another device still finds them (a page-only address dies with the tab)
+        const lastingUrl = async (id?: string) => {
+          const im = id ? images.current.find((i) => i.id === id) : undefined
+          if (!im) return undefined
+          if (/^https:\/\//.test(im.url) || !live.current) return im.url
+          const kept = await shareable(im.url, { project: state().title }).catch(() => undefined)
+          if (kept) images.current = images.current.map((x) => (x.id === im.id ? { ...x, url: kept } : x))
+          return kept ?? im.url
+        }
+        const resolved = new Map<string, string | undefined>()
+        const allIds = [...new Set([plan.reference.first_frame_id, plan.reference.last_frame_id, ...(plan.reference.image_ids ?? []), ...plan.variations.flatMap((v) => v.image_ids ?? [])].filter((x): x is string => !!x))]
+        await Promise.all(allIds.map(async (id) => resolved.set(id, await lastingUrl(id))))
+        const url = (id?: string) => (id ? (resolved.has(id) ? resolved.get(id) : images.current.find((i) => i.id === id)?.url) : undefined)
         const urls = (ids?: string[], max = 30) => (ids ?? []).map(url).filter((u): u is string => !!u).slice(0, max)
         // @mentioned elements in a prompt: their images go with that video, first; the @ is dropped from the text
         const elementIds = (text: string) =>
