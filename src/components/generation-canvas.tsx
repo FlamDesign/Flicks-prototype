@@ -1674,7 +1674,7 @@ export function GenerationCanvas({
     ? (ownPoster(startSlide) ?? slides.map(ownPoster).find(Boolean) ?? "")
     : (startSlide.thumb ?? videoAt(startSlide.video ?? generation.video)?.poster ?? videoAt(generation.video).poster)
   const saveProject = (extra?: { versions?: Checkpoint<Snap>[] }) =>
-    library.saveProject({ id: generation.id, name: title, size: generation.size, image: poster, video: generation.video, base, snap: snapNow(), versions: extra?.versions ?? versions, sample: generation.sample })
+    library.saveProject({ id: generation.id, name: title || "Untitled project", size: generation.size, image: poster, video: generation.video, base, snap: snapNow(), versions: extra?.versions ?? versions, sample: generation.sample })
   const deleted = useRef(false)
   // A project exists because the user did something. A template opened and left untouched, or a saved project
   // reopened and only looked at, is never saved (no new card in Projects, no bumped "edited" time): saving starts
@@ -1685,7 +1685,8 @@ export function GenerationCanvas({
   const dirtyFromStart = fresh
   const dirty = dirtyFromStart || (startSig.current !== null && sig !== startSig.current)
   useEffect(() => {
-    if (!title || deleted.current || !dirty) return
+    // an unnamed project saves too ("Untitled project" until the chat names it): a chat that stops before the storyboard must still be in Projects
+    if (deleted.current || !dirty) return
     const t = setTimeout(() => saveProject(), 500)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1773,7 +1774,7 @@ export function GenerationCanvas({
           size={generation.size}
           sizeLabel={sizeInfo?.label}
           duration={generation.duration ?? 8}
-          onHome={() => (title && dirty && saveProject(), onBack())}
+          onHome={() => (dirty && saveProject(), onBack())}
           onDuplicate={() => onDuplicate({ title: `${title} copy`, snap: snapNow() })}
           onHistory={() => setPanel("history")}
           // gone at once, with Undo in the toast, the same as on the Projects page (its Flicks stay)
