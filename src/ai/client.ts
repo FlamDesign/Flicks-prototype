@@ -245,7 +245,15 @@ async function steady(path: string, init?: RequestInit) {
 
 /** imageUrls: public addresses of the user's photos or a website's images (see shareable), so the product in the picture is theirs */
 /** what a generation is for: kept with it in the library */
-export type GenMeta = { project?: string; variation?: string; purpose?: string; /** a chat project: never a prompt-only video */ chat?: boolean }
+export type GenMeta = { project?: string; variation?: string; purpose?: string; /** a chat project: never a prompt-only video */ chat?: boolean; /** tests only: a cheaper render */ resolution?: "480p" | "720p"; /** made by a test run (deleted afterwards) */ test?: boolean }
+/** tests only (set in this browser): videos render at 480p and are tagged as test work */
+export const testVideos = () => {
+  try {
+    return localStorage.getItem("flam.testVideos") === "1"
+  } catch {
+    return false
+  }
+}
 /** opts.text: the image must carry readable text (another model renders it); opts.quality: "draft" for previews; opts.onId: the job's id, so a reload can keep checking it */
 export async function generateImage(prompt: string, aspect: string, signal?: AbortSignal, onStatus?: (status: string) => void, imageUrls: string[] = [], meta: GenMeta = {}, opts: { text?: boolean; quality?: "draft" | "final"; onId?: (id: string) => void } = {}): Promise<string> {
   const { onId, ...rest } = opts
@@ -405,7 +413,7 @@ export async function generateVideo(input: VideoInput & { aspect: string; second
   if (mockVideos() || input.resume?.startsWith("mock-")) return mockVideo(input, onStatus, signal)
   // a video started before a reload carries on from its id
   const { id } = input.resume ? { id: input.resume } : ((await (
-    await steady("/video", { method: "POST", body: JSON.stringify({ mode: input.mode, prompt: input.prompt, aspect_ratio: input.aspect, duration: input.seconds, image_url: input.image, end_image_url: input.endImage, image_urls: input.images, video_url: input.video, video_urls: input.videos, meta: input.meta }), signal })
+    await steady("/video", { method: "POST", body: JSON.stringify({ mode: input.mode, prompt: input.prompt, aspect_ratio: input.aspect, duration: input.seconds, image_url: input.image, end_image_url: input.endImage, image_urls: input.images, video_url: input.video, video_urls: input.videos, meta: { ...(input.meta ?? {}), ...(testVideos() ? { resolution: "480p", test: true } : {}) } }), signal })
   ).json()) as { id: string })
   input.onId?.(id)
   onStatus?.("queued")

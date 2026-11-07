@@ -108,7 +108,7 @@ export default {
       const caps = { images: num(env.DAILY_IMAGE_CAP, 50), chats: num(env.DAILY_CHAT_CAP, 500), videos: num(env.DAILY_VIDEO_CAP, 20) }
       // the library: every generation is recorded when it starts and copied here when it finishes
       // (Higgsfield deletes its copies after 7 days and can't list past requests)
-      type Meta = { project?: string; variation?: string; purpose?: string; chat?: boolean }
+      type Meta = { project?: string; variation?: string; purpose?: string; chat?: boolean; resolution?: string; test?: boolean }
       const started = async (kind: "image" | "video", id: string, prompt: string, model: string, meta: Meta = {}, refs: string[] = []) => {
         // the library entry is a record, not the job: a full storage quota mustn't stop the job
         await put(env, `lib:${id}`, JSON.stringify({ id, kind, prompt, model, refs, ...pick(meta), created: Date.now(), saved: false }))
@@ -321,7 +321,9 @@ export default {
         // a chat project's video always stays true to something: a prompt-only video would invent the product or person
         if (mode === "text" && (body.meta as { chat?: boolean } | undefined)?.chat) return json({ error: "no_references", message: "A chat project's video needs reference images or a video; none were given." }, 400, cors)
         if (!(await take(env, `vid:${day}`, caps.videos))) return json({ error: "daily_limit", what: "videos" }, 429, cors)
-        const common = { prompt, resolution: "720p", generate_audio: false }
+        // tests may ask for 480p (cheaper); everything else is 720p
+        const resolution = (body.meta as { resolution?: string } | undefined)?.resolution === "480p" ? "480p" : "720p"
+        const common = { prompt, resolution, generate_audio: false }
         const [path, payload]: [string, Record<string, unknown>] =
           mode === "edit"
             ? [env.HF_VIDEO_EDIT_PATH || "/bytedance/seedance-2.5/video-edit", { ...common, video_url: video, ...(images.length ? { image_urls: images } : {}), ...(videos.filter((v) => v !== video).length ? { video_urls: videos.filter((v) => v !== video).slice(0, 9) } : {}) }]
