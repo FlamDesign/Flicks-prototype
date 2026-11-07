@@ -590,7 +590,7 @@ export function GenerationCanvas({
   const keepImage = (src: string, name: string) =>
     setUploads((u) => (u.some((x) => x.src === src) ? u : [{ id: crypto.randomUUID(), name: `${name.slice(0, 40)}.jpg`, src, loading: false }, ...u]))
   /** starts one video now (or right after the reference video), charged and logged like the prompt box does */
-  const startVideo = (id: string, prompt: string, opts?: { keep_seconds?: number; openingRetry?: boolean }) => {
+  const startVideo = (id: string, prompt: string, opts?: { keep_seconds?: number }) => {
     if (dev.credits < VIDEO_COST) return void onGetCredits()
     setDev((d) => ({ credits: d.credits - VIDEO_COST }))
     const now = Date.now()
@@ -598,7 +598,7 @@ export function GenerationCanvas({
     const startedAt = id === "main" ? now : main.startedAt && now < main.startedAt + ms ? main.startedAt + ms + 1 : now
     const video = inSet(generation.video ?? 0, nextVideo.current++)
     // a regenerate keeps what the video is made from (first frame, images, method)
-    commitSlides(slidesNow.current.map((x) => (x.id === id ? { ...x, video, startedAt, prompt: "", refs: [], used: { prompt, refs: [], fromReference: id !== "main", media: { ...(x.used?.media ?? {}), ...(opts?.keep_seconds !== undefined ? { keep_seconds: opts.keep_seconds } : {}) } }, openingRetry: opts?.openingRetry, openingDrift: undefined } : x)))
+    commitSlides(slidesNow.current.map((x) => (x.id === id ? { ...x, video, startedAt, prompt: "", refs: [], used: { prompt, refs: [], fromReference: id !== "main", media: { ...(x.used?.media ?? {}), ...(opts?.keep_seconds !== undefined ? { keep_seconds: opts.keep_seconds } : {}) } } } : x)))
     setHistory((h) => [...h, { id: crypto.randomUUID(), slideId: id, prompt, refs: [], fromReference: id !== "main", video, startedAt, at: now }])
     return true
   }
@@ -1530,7 +1530,7 @@ export function GenerationCanvas({
       const refPoster = fromRef && isMadeVideo(main.video) ? videoAt(main.video!).poster : undefined
       const pinned = keepS && refPoster ? refPoster : undefined
       const openingLine = keepS
-        ? ` From 0 to ${keepS} s the video stays exactly as it is, frame for frame: same shot, same motion, nothing added or changed${pinned ? `; ${named(pics.length + 1, "Image").split(" to ").pop()} is its first frame, and the edited video must open on exactly that frame` : ""}. The change happens only after ${keepS} s.${sl.openingRetry ? " This is a remake because the opening drifted: the opening must be identical to the original video." : ""}`
+        ? ` From 0 to ${keepS} s the video stays exactly as it is, frame for frame: same shot, same motion, nothing added or changed${pinned ? `; ${named(pics.length + 1, "Image").split(" to ").pop()} is its first frame, and the edited video must open on exactly that frame` : ""}. The change happens only after ${keepS} s.`
         : ""
       const plan: VideoInput = fromRef
         ? { mode: "edit", prompt: `Edit the video. Change only this: ${end(sl.used.prompt)}${picsLine}${openingLine} ${keep}`, video: refVideo, images: pinned ? [...pics, pinned] : pics }
@@ -1553,21 +1553,6 @@ export function GenerationCanvas({
           const still = poster ?? (await posterOf(url)) ?? videoAt(sl.video ?? generation.video ?? 0).poster
           const video = addMadeVideo({ name: `${slideName(sl, slidesNow.current.indexOf(sl))}-${sl.startedAt}`, size: generation.size, mp4: url, poster: still })
           patchJob({ video, job: undefined, failed: undefined })
-          // a pinned opening is checked against the reference's: a drift is marked on the tile (Remake is the user's call) and said once
-          if (keepS && refPoster && live) {
-            const diff = await openingDiff(still, refPoster)
-            const name = slideName(sl, slidesNow.current.findIndex(mine))
-            if (diff !== undefined && diff > OPENING_DRIFT) {
-              patchJob({ openingDrift: true })
-              if (agentMode)
-                agent.notify(
-                  sl.openingRetry
-                    ? `(App: ${name}'s opening still differs from Variation 1's after the remake. Tell the user in one line and suggest a different change (a swap that runs through the whole video, or that room from the first frame) rather than another remake. Don't remake it yourself.)`
-                    : `(App: ${name}'s opening differs from Variation 1's. Tell the user in one short line: the build card has Remake on it (${VIDEO_COST} credits, with the opening pinned harder), or they can leave it. Don't remake it yourself.)`,
-                  false,
-                )
-            }
-          }
         },
         (e) => {
           if (!slidesNow.current.some(mine)) return
@@ -1631,12 +1616,6 @@ export function GenerationCanvas({
     // the failure stays noted until a try succeeds, so the chat's retry count carries on
     startVideo(slideId, sl.prompt ?? "")
   }
-  /** the user's remake of a variation whose opening drifted: the same change, with the opening pinned harder */
-  const remakeOpening = (slideId: string) => {
-    const sl = slidesNow.current.find((x) => x.id === slideId)
-    if (!sl?.openingDrift || sl.job || !sl.used) return
-    startVideo(slideId, sl.used.prompt, { keep_seconds: sl.used.media?.keep_seconds, openingRetry: true })
-  }
   // every variation is made (this session watched them being made): wake the chat once, for a final
   // check of every variation and the hand-over
   const sawVariations = useRef("")
@@ -1676,8 +1655,7 @@ export function GenerationCanvas({
         // can be stopped until it starts: waiting for the OK, or still in the queue
         const stoppable = !!s.job && (s.job.status === "waiting" || s.job.status === "starting" || s.job.status === "queued")
         const failed = !s.job && !isMadeVideo(s.video) && s.failed ? s.failed.reason : undefined
-        const drift = st === "done" && s.openingDrift ? (s.openingRetry ? "Opening still differs from Variation 1 after a remake." : "Opening differs from Variation 1.") : undefined
-        return { name: nameOf(s), state: st, src: v?.mp4 || undefined, poster: v?.poster, since: s.job?.since ?? s.startedAt, ms: s.job ? undefined : ms, status: s.job?.status, stop: stoppable ? () => void cancelVideo(s.id) : undefined, failed, retry: failed ? () => retryVideo(s.id) : undefined, drift, remake: drift && !s.openingRetry ? () => remakeOpening(s.id) : undefined, cost: VIDEO_COST }
+        return { name: nameOf(s), state: st, src: v?.mp4 || undefined, poster: v?.poster, since: s.job?.since ?? s.startedAt, ms: s.job ? undefined : ms, status: s.job?.status, stop: stoppable ? () => void cancelVideo(s.id) : undefined, failed, retry: failed ? () => retryVideo(s.id) : undefined }
       }),
     review: { needed: needsReview, approve: () => approveRef(), change: () => changeRef() },
     issues: () => publishIssues.filter((x) => !x.blocking).map((x) => x.text),
@@ -2440,34 +2418,6 @@ const SKIP = new Set(
   "a an the and or of in on at to for with from by into onto across through over under near is are be as it its this that slow fast quick push-in push pull-out pan zoom tilt dolly orbit close-up closeup wide shot shots camera cinematic video scene footage featuring showing shows".split(" "),
 )
 /** What an existing Flick's two variations were made from. */
-/** how different two openings may look before they count as drifted (mean difference of a 24 px grey thumbnail, 0 to 1) */
-const OPENING_DRIFT = 0.16
-/** how different two stills look, 0 (same) to 1; undefined when one can't be read */
-async function openingDiff(a: string, b: string): Promise<number | undefined> {
-  const grey = (src: string) =>
-    new Promise<Uint8ClampedArray | undefined>((ok) => {
-      const im = new Image()
-      im.crossOrigin = "anonymous"
-      im.onload = () => {
-        const c = document.createElement("canvas")
-        c.width = c.height = 24
-        const g = c.getContext("2d")!
-        g.drawImage(im, 0, 0, 24, 24)
-        const d = g.getImageData(0, 0, 24, 24).data
-        const out = new Uint8ClampedArray(24 * 24)
-        for (let i = 0; i < out.length; i++) out[i] = (d[i * 4] * 299 + d[i * 4 + 1] * 587 + d[i * 4 + 2] * 114) / 1000
-        ok(out)
-      }
-      im.onerror = () => ok(undefined)
-      im.src = src
-    })
-  const [x, y] = await Promise.all([grey(a), grey(b)])
-  if (!x || !y) return undefined
-  let sum = 0
-  for (let i = 0; i < x.length; i++) sum += Math.abs(x[i] - y[i])
-  return sum / x.length / 255
-}
-
 const VARIATION_PROMPTS = ["Same scene, the second colourway", "Same scene, the third colourway, warmer light"]
 
 /** Stands in for the AI naming step: the first few meaningful words of the prompt, title-cased. */
