@@ -1101,7 +1101,7 @@ function ChatCardsDemo() {
     { label: "Build, videos made in place (directions under the waiting ones)", node: <AgentItemView item={it({ kind: "build", count: 3 })} agent={{ ...fakeAgent, items: [it({ kind: "plan", toolId: "p", plan: { ...demoPlan, variations: [...demoPlan.variations, { name: "Ember", prompt: "Same scene, ember lenses.", direction: "Ember lenses, warm tint" }] }, state: "approved" })] } as typeof fakeAgent} ctx={buildCtx} /> },
     {
       label: "Docked approvals (above the composer): Variation 1 review, a proposed remake",
-      node: <ApprovalDock agent={fakeAgent} ctx={{ ...chatCtx, review: { needed: true, approve: () => {}, change: () => {} }, proposals: () => [{ id: "p1", name: "Mango", change: "Darker background, the can lit from the side", cost: 48, make: () => {}, dismiss: () => {} }] }} poster={GENERATED_VIDEOS[1].poster} />,
+      node: <ApprovalDock agent={fakeAgent} ctx={{ ...chatCtx, review: { needed: true, approve: () => {}, change: () => {}, name: "Lime", others: "Mango and Berry", count: 2, cost: 96 }, proposals: () => [{ id: "p1", name: "Lime", change: "Darker background, the can lit from the side", cost: 48, make: () => {}, dismiss: () => {}, first: true, others: "Mango and Berry", othersCost: 96 }] }} poster={GENERATED_VIDEOS[1].poster} />,
     },
     { label: "Carry on (after a reload, or a long reply)", node: <AgentItemView item={it({ kind: "resume", text: "That was a long one; I paused here." })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Brand", node: <AgentItemView item={it({ kind: "brand", brand: { name: "Lumen", primary_color: "#ea580c", text_color: "#ffffff", font: "Montserrat", tone: "Bold" } })} agent={fakeAgent} ctx={chatCtx} /> },

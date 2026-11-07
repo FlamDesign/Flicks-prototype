@@ -2229,7 +2229,7 @@ export function GenerationCanvas({
                   <QuickReplies agent={agent} ctx={agentCtx} />
                   <AgentComposer
                     agent={agent}
-                    placeholder={agent.waiting ? "Answer in your own words…" : slides[0].startedAt ? "Ask for a change. @ picks a photo or variation" : undefined}
+                    placeholder={agent.items.some((x) => x.kind === "question" && agent.pendingIds.includes(x.id)) ? "Answer in your own words…" : slides[0].startedAt ? "Ask for a change. @ picks a photo or variation" : undefined}
                     variations={slides[0].startedAt ? slides.map((x) => ({ name: nameOf(x), poster: x.video !== undefined ? videoAt(wrapVideo(x.video))?.poster : undefined })) : undefined}
                     brand={!!brand}
                   />

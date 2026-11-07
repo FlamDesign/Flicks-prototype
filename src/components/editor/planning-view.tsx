@@ -64,14 +64,14 @@ export function PlanningView({ agent, ctx }: { agent: Agent; ctx: AgentCtx; desi
             </Arrive>
           ))}
           {/* before the first reply: what's about to happen, so the steps bar and the wait make sense */}
-          {!agent.items.some((x) => x.kind === "assistant" && x.text) && (
+          {!agent.items.some((x) => x.kind !== "user" && x.kind !== "template" && !(x.kind === "assistant" && !x.text)) && (
             <p className="px-1 text-xs text-muted-foreground animate-in fade-in-0 duration-500">I'll ask a few quick questions, show you three concepts, then a storyboard to approve. Nothing is made until you say so.</p>
           )}
         </div>
       </div>
       <div className="mx-auto flex w-full max-w-[720px] flex-col gap-2 px-5 pb-5" data-composer>
         <QuestionDeck agent={agent} ctx={ctx} />
-        <AgentComposer agent={agent} placeholder={agent.waiting ? "Answer in your own words…" : agent.items.some((x) => x.kind === "assistant" && x.text) ? "Tell me more" : "Add details or photos while I think"} />
+        <AgentComposer agent={agent} placeholder={agent.items.some((x) => x.kind === "question" && agent.pendingIds.includes(x.id)) ? "Answer in your own words…" : agent.items.some((x) => x.kind === "assistant" && x.text) || agent.items.some((x) => x.kind === "plan") ? "Tell me more, or ask for a change" : "Add details or photos while I think"} />
       </div>
     </div>
   )

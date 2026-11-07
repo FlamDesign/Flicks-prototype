@@ -1079,7 +1079,7 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
               ? "Each change is a quick sketch on your video’s first frame; the videos are made when you approve. "
               : ""
             : plan.variations.length > 1
-              ? `${plan.variations.length - 1} more variation${plan.variations.length > 2 ? "s" : ""} (${plan.variations.slice(1).map((v) => v.name).join(", ")}) follow once you like the first video. `
+              ? `${plan.variations.length - 1} more variation${plan.variations.length > 2 ? "s" : ""} (${listNames(plan.variations.slice(1).map((v) => v.name))}) follow${plan.variations.length > 2 ? "" : "s"} once you like the first video. `
               : ""}
           Want something different? Tell me below.
         </p>
@@ -1202,13 +1202,23 @@ export function ApprovalDock({ agent, ctx, poster }: { agent: Agent; ctx: AgentC
   return (
     <div role="region" aria-label="Waiting for you" className="flex flex-col gap-1.5">
       {review && (
-        <div role="group" aria-label="Review Variation 1" className="flex flex-wrap items-center gap-3 rounded-xl bg-brand/10 p-2.5 ring-1 ring-brand/30 animate-in fade-in-0 slide-in-from-bottom-1">
-          {poster && <img src={poster} alt="" decoding="async" className="size-10 shrink-0 rounded-lg object-cover ring-1 ring-foreground/10" />}
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium leading-snug">{ctx.review!.remade ? `${ctx.review!.name ?? "Variation 1"} is remade. Keep it?` : `${ctx.review!.name ?? "Variation 1"} is ready. Happy with it?`}</p>
-            <p className="text-xs text-muted-foreground">{ctx.review!.remade ? `${ctx.review!.others ?? "The others"} were made from the earlier one and need making again` : `${ctx.review!.others ?? "The others"} are made from it`}{ctx.review!.count ? ` · ${ctx.review!.count} videos · ${(ctx.review!.cost ?? 0).toLocaleString("en-US")} credits` : ctx.videoCost ? ` · ${ctx.videoCost} credits each` : ""}.</p>
+        <div role="group" aria-label="Review Variation 1" className="flex flex-col gap-2 rounded-xl bg-brand/10 p-2.5 ring-1 ring-brand/30 animate-in fade-in-0 slide-in-from-bottom-1">
+          <div className="flex items-center gap-3">
+            {poster && <img src={poster} alt="" decoding="async" className="size-10 shrink-0 rounded-lg object-cover ring-1 ring-foreground/10" />}
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium leading-snug">{ctx.review!.remade ? `${ctx.review!.name ?? "Variation 1"} is remade. Keep it?` : `${ctx.review!.name ?? "Variation 1"} is ready. Happy with it?`}</p>
+              <p className="text-xs leading-snug text-muted-foreground">
+                {(() => {
+                  const n = ctx.review!.count ?? 0
+                  const who = ctx.review!.others ?? "The others"
+                  const one = n === 1
+                  return ctx.review!.remade ? `${who} ${one ? "was" : "were"} made from the earlier one and need${one ? "s" : ""} making again` : `${who} ${one ? "is" : "are"} made from it`
+                })()}
+                {ctx.review!.count ? ` · ${ctx.review!.count} video${ctx.review!.count === 1 ? "" : "s"} · ${(ctx.review!.cost ?? 0).toLocaleString("en-US")} credits` : ""}
+              </p>
+            </div>
           </div>
-          <div className="ml-auto flex flex-wrap justify-end gap-1.5">
+          <div className="flex flex-wrap justify-end gap-1.5">
             <Button size="sm" variant="ghost" onClick={ctx.review!.change} disabled={agent.busy}>
               Change it
             </Button>
