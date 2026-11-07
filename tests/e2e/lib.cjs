@@ -15,6 +15,8 @@ function file(name) {
 
 /** real: videos are really made (at 480p, tagged as test work); otherwise sample clips stand in */
 async function open(name, { real = false } = {}) {
+  // SAMPLE=1 runs any scenario with sample videos (no video credits, no real renders)
+  if (process.env.SAMPLE === "1") real = false
   const out = path.join(__dirname, "runs", name)
   fs.mkdirSync(out, { recursive: true })
   const b = await chromium.launch({ proxy: { server: process.env.HTTPS_PROXY } })
