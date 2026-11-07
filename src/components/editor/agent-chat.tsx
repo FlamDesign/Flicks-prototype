@@ -661,7 +661,7 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
       </p>
       {item.typeFirst && <TypeRow value={other} onChange={setOther} onEnter={() => other.trim() && send()} placeholder={item.typeFirst} last={!item.options.length} />}
       {rows ? (
-        <div className="flex flex-col" role="group" aria-label={item.question}>
+        <div className="flex flex-col" role="group" aria-label={item.question} data-multi={item.multi ? "" : undefined}>
           {item.options.map((o, i) => {
             const on = picked.includes(o.label)
             return (
@@ -716,7 +716,7 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
           )}
         </div>
       ) : item.display === "chips" ? (
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label={item.question}>
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label={item.question} data-multi={item.multi ? "" : undefined}>
           {item.options.map((o) => (
             <Button
               key={o.label}
@@ -732,7 +732,7 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
           ))}
         </div>
       ) : (
-        <div className={cn("grid gap-2", item.display === "sizes" ? "grid-cols-3" : item.display === "pictures" ? (item.options.length === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4") : visual || item.display === "palettes" ? "grid-cols-3" : "grid-cols-2")} role="group" aria-label={item.question}>
+        <div className={cn("grid gap-2", item.display === "sizes" ? "grid-cols-3" : item.display === "pictures" ? (item.options.length === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4") : visual || item.display === "palettes" ? "grid-cols-3" : "grid-cols-2")} role="group" aria-label={item.question} data-multi={item.multi ? "" : undefined}>
           {item.options.map((o, i) => {
             const on = picked.includes(o.label)
             return (
@@ -1696,7 +1696,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
           // narrow (the panel beside the canvas): one per row, the picture left and the whole text right.
           // The variations each concept would make are read out to screen readers only.
           <div className="@container">
-            <div className="grid grid-cols-1 gap-2.5 p-1 @[540px]:grid-cols-3" role="group" aria-label={q.question}>
+            <div className="grid grid-cols-1 gap-2.5 p-1 @[540px]:grid-cols-3" role="group" aria-label={q.question} data-multi={q.multi ? "" : undefined}>
               {q.options.map((o, n) => (
                 <button
                   key={o.label}
@@ -1724,7 +1724,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
           </div>
         ) : q.display === "sizes" ? (
           // frame shapes drawn to scale, with the name and the pixels
-          <div className="grid grid-cols-3 gap-2 p-1 sm:grid-cols-5" role="group" aria-label={q.question}>
+          <div className="grid grid-cols-3 gap-2 p-1 sm:grid-cols-5" role="group" aria-label={q.question} data-multi={q.multi ? "" : undefined}>
             {q.options.map((o, n) => (
               <button
                 key={o.label}
@@ -1750,7 +1750,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
           </div>
         ) : q.display === "pictures" ? (
           // one picture per answer, drawn with their product; the name sits on the picture
-          <div className={cn("grid grid-cols-2 gap-2 p-1", q.options.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-4")} role="group" aria-label={q.question}>
+          <div className={cn("grid grid-cols-2 gap-2 p-1", q.options.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-4")} role="group" aria-label={q.question} data-multi={q.multi ? "" : undefined}>
             {q.options.map((o, n) => (
               <button
                 key={o.label}
@@ -1779,7 +1779,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
             ))}
           </div>
         ) : q.display === "chips" || q.display === "cards" ? (
-          <div className="flex flex-col" role="group" aria-label={q.question}>
+          <div className="flex flex-col" role="group" aria-label={q.question} data-multi={q.multi ? "" : undefined}>
             {q.options.map((o, n) => {
               const on = chosen(o)
               return (
@@ -1808,7 +1808,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
             })}
           </div>
         ) : (
-          <div className={cn("grid gap-2 p-1", "grid-cols-3")} role="group" aria-label={q.question}>
+          <div className={cn("grid gap-2 p-1", "grid-cols-3")} role="group" aria-label={q.question} data-multi={q.multi ? "" : undefined}>
             {q.options.map((o, n) => (
               <button
                 key={o.label}

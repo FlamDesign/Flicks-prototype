@@ -83,19 +83,19 @@ async function look(p) {
     const deck = q('[aria-label="Questions"]')
     let question = null
     if (deck && deck.offsetParent) {
-      const opts = [...deck.querySelectorAll('[role="radio"],[role="checkbox"]')].filter((b) => !b.disabled && b.offsetParent)
+      const opts = [...deck.querySelectorAll('[role="group"] button[aria-pressed]')].filter((b) => !b.disabled && b.offsetParent)
       const typeField = [...deck.querySelectorAll("input")].find((i) => i.offsetParent && i.getAttribute("aria-label") && i.getAttribute("aria-label") !== "Your own answer")
       const header = deck.querySelector("header")
-      question = { text: (header?.innerText ?? deck.innerText).split("\n")[0].slice(0, 160), options: opts.map((o) => o.innerText.replace(/\s+/g, " ").trim().slice(0, 60)), multi: opts.some((o) => o.getAttribute("role") === "checkbox"), typeField: typeField?.getAttribute("aria-label") ?? null }
+      question = { text: (header?.innerText ?? deck.innerText).split("\n")[0].slice(0, 160), options: opts.map((o) => o.innerText.replace(/\s+/g, " ").trim().slice(0, 60)), multi: !!deck.querySelector("[data-multi]"), typeField: typeField?.getAttribute("aria-label") ?? null }
     }
     // an inline question card (not docked)
     if (!question) {
       // only the chat's own question cards (not the canvas's toggles, like Mode)
-      const groups = [...document.querySelectorAll('[role="radiogroup"],[role="group"]')].filter((g) => g.offsetParent && /\?|Pick|Choose|Which/i.test(g.getAttribute("aria-label") ?? "") && g.querySelector('[role="radio"]:not([disabled]),[role="checkbox"]:not([disabled])'))
+      const groups = [...document.querySelectorAll('[role="radiogroup"],[role="group"]')].filter((g) => g.offsetParent && /\?|Pick|Choose|Which/i.test(g.getAttribute("aria-label") ?? "") && g.querySelector('button[aria-pressed]:not([disabled]),[role="radio"]:not([disabled]),[role="checkbox"]:not([disabled])'))
       const g = groups.at(-1)
       if (g) {
-        const opts = [...g.querySelectorAll('[role="radio"],[role="checkbox"]')].filter((b) => !b.disabled)
-        question = { text: (g.getAttribute("aria-label") ?? "").slice(0, 160), options: opts.map((o) => o.innerText.replace(/\s+/g, " ").trim().slice(0, 60)), multi: opts.some((o) => o.getAttribute("role") === "checkbox"), typeField: null, inline: true }
+        const opts = [...g.querySelectorAll('button[aria-pressed],[role="radio"],[role="checkbox"]')].filter((b) => !b.disabled)
+        question = { text: (g.getAttribute("aria-label") ?? "").slice(0, 160), options: opts.map((o) => o.innerText.replace(/\s+/g, " ").trim().slice(0, 60)), multi: g.hasAttribute("data-multi"), typeField: null, inline: true }
       }
     }
     // an asset request (in the chat or docked): Skip plus a drop area (its Add stays disabled until files are in)
@@ -159,7 +159,7 @@ async function drive(run, policy, until, { timeout = 8 * 60_000, label = "" } = 
       } else if (qq.multi) {
         const need = Number(/Pick (\d)/.exec(qq.text)?.[1] ?? 2)
         log(`question "${qq.text}" (several): picking ${qq.options.slice(0, need).join(" + ")}`)
-        const opts = scope(p, qq).locator('[role="checkbox"]:not([disabled]):visible')
+        const opts = scope(p, qq).locator('button[aria-pressed]:not([disabled]):visible')
         const n = Math.min(need, await opts.count())
         for (let i = 0; i < n; i++) await opts.nth(i).click()
         await p.getByRole("button", { name: /^Continue/ }).last().click()
@@ -168,7 +168,7 @@ async function drive(run, policy, until, { timeout = 8 * 60_000, label = "" } = 
         const keep = /remake|redo|regenerate|again/i.test(qq.text) ? qq.options.findIndex((o) => /keep|no|looks good|fine|go ahead|continue|as it is/i.test(o)) : -1
         const at = keep >= 0 ? keep : (policy.pick?.(qq) ?? 0)
         log(`question "${qq.text}": picking "${qq.options[at]}"`)
-        await scope(p, qq).locator('[role="radio"]:not([disabled]):visible').nth(at).click()
+        await scope(p, qq).locator('button[aria-pressed]:not([disabled]):visible').nth(at).click()
       }
       continue
     }
