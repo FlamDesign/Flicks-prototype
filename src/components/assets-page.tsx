@@ -1,6 +1,6 @@
 import { EmptyState } from "@/components/empty-state"
 import { PAGE, PageHeader } from "@/components/page-kit"
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { MediaTile, TileBadge } from "@/components/media-tile"
 import { CardsSkeleton, Loading, PendingButton } from "@/components/page-skeletons"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -8,88 +8,33 @@ import { Download01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/components/ui-extra/toaster"
 import { ALL_DATES, DateFilter, inDateFilter, type DateFilterValue } from "@/components/ui-extra/date-filter"
 import { download, MediaViewer, type ViewerItem } from "@/components/media-viewer"
-import { SAMPLE_UPLOADS, SAMPLE_VIDEO_COUNT, videoAt } from "@/components/editor/elements"
+import { hideFromLibrary, isLive, NOT_CONNECTED, useAiConfig } from "@/ai/client"
+import { isFinalVideo, isUpload, isVideo, loadLibrary, nameOf, type LibraryRef } from "@/lib/library"
 import { useDevState } from "@/dev/state"
 
 /** What a video was made from: an uploaded image, or the reference video (for variations). */
-export type AssetRef = { kind: "image" | "video"; name: string; src: string; poster?: string }
+export type AssetRef = LibraryRef
+/** A video made for the user, or a photo or clip they uploaded, as kept on the server. */
 export type Asset = {
   id: string
-  /** which sample video */
-  video: number
+  kind: "video" | "image"
+  name: string
+  url: string
   prompt: string
   refs: AssetRef[]
-  size: string
-  /** length in seconds */
-  duration: number
+  project?: string
+  source: "Uploaded" | "Generated"
   createdAt: number
+  type?: string
 }
+/** a video's size and length, once its metadata has loaded */
+type VideoMeta = { size: string; duration: number }
 
 const DAY = 86_400_000
-const at = (daysAgo: number, h: number, m: number) => {
-  const d = new Date(Date.now() - daysAgo * DAY)
-  d.setHours(h, m, 0, 0)
-  return d.getTime()
-}
-const up = (i: number): AssetRef => ({ kind: "image", name: SAMPLE_UPLOADS[i].name, src: SAMPLE_UPLOADS[i].src })
-const refVideo = (i: number): AssetRef => ({ kind: "video", name: `${videoAt(i).name}.mp4`, src: videoAt(i).mp4, poster: videoAt(i).poster })
-
-/**
- * What each sample video was made from, so prompt, references and video match.
- * Reference videos (0 sunglasses, 5 boots, 8 dress) come from images; the rest are variations of them.
- */
-const MADE_FROM: { prompts: string[]; refs: AssetRef[] }[] = [
-  {
-    prompts: [
-      "Athlete in black tee against a sunlit concrete wall, slow push-in, gold-lens sport sunglasses, then a street run at golden hour",
-      "Wide shot of the city at dawn, the runner enters frame from the left, lenses flash as he passes the camera, slow motion on the turn, then cut to a tight close-up of the frames with the skyline reflected in the lenses. Keep the color warm and the grain subtle, like a film commercial from the nineties. End on the product held up to the light.",
-    ],
-    refs: [up(2), up(0)],
-  },
-  { prompts: ["Same runner, black frame with red lenses, quicker cuts"], refs: [refVideo(0), up(1)] },
-  { prompts: ["Same runner, sapphire mirrored lenses catching the low sun"], refs: [refVideo(0), up(3)] },
-  { prompts: ["Swap to the white frame with orange lenses, keep the wall and light"], refs: [refVideo(0), up(5)] },
-  { prompts: ["Classic black frame with clear lenses, softer light, calmer pace"], refs: [refVideo(0), up(4)] },
-  {
-    prompts: ["Wheat leather 6-inch boot on wet black rock in heavy rain, slow macro push along the stitching, then a splash as the boot lands, moody storm light"],
-    refs: [up(7), up(9)],
-  },
-  { prompts: ["Same rain scene, swap to the black nubuck boot"], refs: [refVideo(5), up(8)] },
-  { prompts: ["Same scene in the dark brown leather boot, keep the splash"], refs: [refVideo(5), up(9)] },
-  {
-    prompts: ["Model in a rust tiered halter gown walking a sunlit stone alley, smiles to camera, then a slow twirl seen from above, warm golden light"],
-    refs: [up(10)],
-  },
-  { prompts: ["Same walk and twirl in the ombré strapless gown"], refs: [refVideo(8), up(11)] },
-]
-
-/** Sample library for the filled state: 20 today, 15 yesterday, 12 a few days ago, across all three product sets. */
-export const SAMPLE_ASSETS: Asset[] = [
-  [0, 20],
-  [1, 15],
-  [4, 12],
-].flatMap(([day, n]) =>
-  Array.from({ length: n }, (_, i) => {
-    const k = day * 7 + i
-    const video = k % SAMPLE_VIDEO_COUNT
-    const from = MADE_FROM[video]
-    return {
-      id: `a${day}-${i}`,
-      video,
-      prompt: from.prompts[Math.floor(k / SAMPLE_VIDEO_COUNT) % from.prompts.length],
-      refs: from.refs,
-      size: videoAt(video).size,
-      duration: [8, 6, 10, 12, 15, 8, 10][k % 7],
-      // today: spread back from now; earlier days: through the afternoon
-      createdAt: day === 0 ? Date.now() - (i + 1) * 9 * 60_000 : at(day, 18 - Math.floor(i / 2), (i * 17) % 60),
-    }
-  }),
-)
-
 const dayKey = (t: number) => new Date(t).toDateString()
 /** Today, Yesterday, then the date (with the year only when it isn't this year). */
 const dayLabel = (t: number) => {
@@ -102,30 +47,79 @@ const dayLabel = (t: number) => {
 const timeLabel = (t: number) => new Date(t).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
 const fullLabel = (t: number) => `${new Date(t).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}, ${timeLabel(t)}`
 
-const fileName = (a: Asset) => `flicks-video-${a.id}.mp4`
+const ext = (a: Asset) => (a.type?.split("/")[1] ?? (a.kind === "video" ? "mp4" : "png")).replace("jpeg", "jpg").replace("quicktime", "mov")
+const fileName = (a: Asset) => (a.source === "Uploaded" && /\.\w{2,4}$/.test(a.name) ? a.name : `flicks-${a.kind}-${a.id.slice(0, 8)}.${ext(a)}`)
 
-/**
- * Assets: every video generated, newest first, grouped by day. Each card plays on hover;
- * open one to see what it was made from (prompt, references), download it or delete it.
- */
 /** Length as m:ss, like 0:09. */
 export const clockLabel = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`
-const linkOf = (a: Asset) => `https://flicks.flamapp.ai/a/${a.id}`
 
+type Kind = "all" | "video" | "image"
+
+/** true once the element has scrolled into view (and stays true), so a grid of hundreds loads only what shows */
+function useSeen<T extends HTMLElement>() {
+  const ref = useRef<T>(null)
+  const [seen, setSeen] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el || seen) return
+    const io = new IntersectionObserver(([e]) => e.isIntersecting && setSeen(true), { rootMargin: "200px" })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [seen])
+  return { ref, seen }
+}
+
+/**
+ * Assets: every video made for the user and every photo or clip they uploaded, from the server's library,
+ * newest first and grouped by day. Each card plays on hover; open one to see what it was made from
+ * (prompt, references), download it, delete it or start a new project from it.
+ */
 export function AssetsPage({ onCreate, onUse }: { onCreate: () => void; onUse: (a: Asset) => void }) {
   const { state: dev } = useDevState()
   const toast = useToast()
-  const [assets, setAssets] = useState<Asset[]>(dev.assetsEmpty ? [] : SAMPLE_ASSETS)
-  useEffect(() => setAssets(dev.assetsEmpty ? [] : SAMPLE_ASSETS), [dev.assetsEmpty])
+  const live = isLive(useAiConfig())
+  const [assets, setAssets] = useState<Asset[] | null>(null)
+  const [failed, setFailed] = useState(false)
+  const [tries, setTries] = useState(0)
+  const [metas, setMetas] = useState<Record<string, VideoMeta>>({})
+  const noteMeta = useCallback((id: string, m: VideoMeta) => setMetas((all) => (all[id] ? all : { ...all, [id]: m })), [])
+
+  useEffect(() => {
+    if (!live) return void (setAssets([]), setFailed(true))
+    let on = true
+    setAssets(null)
+    setFailed(false)
+    loadLibrary()
+      .then((lib) => {
+        if (!on) return
+        setAssets(
+          lib.items
+            .filter((x) => isFinalVideo(x) || isUpload(x))
+            .map((x) => ({
+              id: x.id,
+              kind: isVideo(x) ? "video" : "image",
+              name: nameOf(x),
+              url: x.file!,
+              prompt: isUpload(x) ? "" : x.prompt,
+              refs: isUpload(x) ? [] : lib.refs(x),
+              project: x.project || undefined,
+              source: x.model === "upload" ? "Uploaded" : "Generated",
+              createdAt: x.created,
+              type: x.type,
+            })),
+        )
+      })
+      .catch(() => on && (setFailed(true), setAssets([])))
+    return () => void (on = false)
+  }, [live, tries])
+  const list = useMemo(() => (dev.assetsEmpty ? [] : (assets ?? [])), [assets, dev.assetsEmpty])
+
   const [openId, setOpenId] = useState<string | null>(null)
   const [confirm, setConfirm] = useState<Asset | null>(null)
-
-  const [sizeFilter, setSizeFilter] = useState("all")
+  const [kind, setKind] = useState<Kind>("all")
   const [dates, setDates] = useState<DateFilterValue>(ALL_DATES)
-  // only the sizes there are videos in
-  const sizes = useMemo(() => [...new Set(assets.map((a) => a.size))].sort((x, y) => x.localeCompare(y, undefined, { numeric: true })), [assets])
-  const shown = useMemo(() => assets.filter((a) => (sizeFilter === "all" || a.size === sizeFilter) && inDateFilter(a.createdAt, dates)), [assets, sizeFilter, dates])
-  const filtering = sizeFilter !== "all" || dates.preset !== "all"
+  const shown = useMemo(() => list.filter((a) => (kind === "all" || a.kind === kind) && inDateFilter(a.createdAt, dates)), [list, kind, dates])
+  const filtering = kind !== "all" || dates.preset !== "all"
   const groups = useMemo(() => {
     const sorted = [...shown].sort((a, b) => b.createdAt - a.createdAt)
     const out: { label: string; items: Asset[] }[] = []
@@ -142,87 +136,107 @@ export function AssetsPage({ onCreate, onUse }: { onCreate: () => void; onUse: (
   const viewerItems: ViewerItem[] = useMemo(
     () =>
       ordered.map((a) => {
-        const v = videoAt(a.video)
+        const m = metas[a.id]
         return {
           id: a.id,
-          kind: "video",
-          src: v.mp4,
-          webm: v.webm,
-          poster: v.poster,
+          kind: a.kind,
+          src: a.url,
           name: fileName(a),
-          prompt: a.prompt,
-          refs: a.refs.map((r) => ({ ...r, kind: r.kind, src: r.src, poster: r.poster, source: r.kind === "video" ? "Generated" : "Uploaded" })),
+          prompt: a.prompt || undefined,
+          refs: a.refs.map((r) => ({ kind: r.kind, src: r.src, name: r.name, source: r.source })),
           details: [
-            ["Type", "Video"],
-            ["Size", a.size.replace("×", " × ")],
-            ["Length", `${a.duration} seconds`],
+            ["Source", a.source],
+            ["Type", a.kind === "video" ? "Video" : "Image"],
+            ...(a.project ? [["Project", a.project] as [string, string]] : []),
+            ...(m ? ([["Size", m.size.replace("×", " × ")], ["Length", `${Math.round(m.duration)} seconds`]] as [string, string][]) : []),
             ["Created", fullLabel(a.createdAt)],
           ],
-          link: linkOf(a),
+          link: a.url,
         } satisfies ViewerItem
       }),
-    [ordered],
+    [ordered, metas],
   )
 
-  const remove = (a: Asset) => {
-    setAssets((l) => l.filter((x) => x.id !== a.id))
+  const remove = async (a: Asset) => {
+    try {
+      await hideFromLibrary(a.id)
+    } catch {
+      setConfirm(null)
+      return void toast({ kind: "error", title: `Couldn’t delete this ${a.kind}`, description: NOT_CONNECTED })
+    }
+    setAssets((l) => (l ?? []).filter((x) => x.id !== a.id))
     setConfirm(null)
     // keep the viewer open on the next one, if there is one
     if (openId === a.id) {
       const i = ordered.findIndex((x) => x.id === a.id)
       setOpenId(ordered[i + 1]?.id ?? ordered[i - 1]?.id ?? null)
     }
-    toast("Video deleted")
+    toast(a.kind === "video" ? "Video deleted" : "Image deleted")
   }
+
+  const videos = shown.filter((a) => a.kind === "video").length
+  const count = kind === "image" ? `${shown.length} image${shown.length === 1 ? "" : "s"}` : kind === "video" || videos === shown.length ? `${shown.length} video${shown.length === 1 ? "" : "s"}` : `${shown.length} item${shown.length === 1 ? "" : "s"}`
+  const grid = "grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
 
   return (
     <div className={PAGE}>
       <PageHeader
         title="Assets"
-        count={assets.length > 0 ? (shown.length === 1 ? "1 video" : `${shown.length} videos`) : undefined}
+        count={list.length > 0 ? count : undefined}
         toolbar={
-          assets.length > 0 && (
+          list.length > 0 && (
             <>
               <DateFilter value={dates} onChange={setDates} className="w-[150px]" />
-              <Select value={sizeFilter} onValueChange={setSizeFilter}>
-                <SelectTrigger className="w-[140px]" aria-label="Size"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All sizes</SelectItem>
-                  {sizes.map((sz) => <SelectItem key={sz} value={sz}><span className="tabular-nums">{sz}</span></SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Tabs value={kind} onValueChange={(v) => setKind(v as Kind)}>
+                <TabsList aria-label="Type">
+                  <TabsTrigger value="all">All</TabsTrigger>
+                  <TabsTrigger value="video">Videos</TabsTrigger>
+                  <TabsTrigger value="image">Images</TabsTrigger>
+                </TabsList>
+              </Tabs>
             </>
           )
         }
       />
 
-      {/* filtering fetches again */}
-      <Loading k={[sizeFilter, dates]} skipFirst skeleton={<div className="mt-6"><CardsSkeleton count={12} cols="grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6" aspect="aspect-[9/16]" lines={0} /></div>}>
-      {assets.length === 0 ? (
+      {assets === null && !dev.assetsEmpty ? (
+        <div className="mt-6"><CardsSkeleton count={12} cols={grid} aspect="aspect-square" lines={1} /></div>
+      ) : failed && !dev.assetsEmpty ? (
+        <EmptyState
+          className="mt-6"
+          art="media"
+          title={NOT_CONNECTED}
+          text="Your videos and uploads are kept on the AI server. Check the connection and try again."
+          action={<Button size="sm" variant="outline" onClick={() => setTries((t) => t + 1)}>Try again</Button>}
+        />
+      ) : (
+      /* filtering fetches again */
+      <Loading k={[kind, dates]} skipFirst skeleton={<div className="mt-6"><CardsSkeleton count={12} cols={grid} aspect="aspect-square" lines={1} /></div>}>
+      {list.length === 0 ? (
         <EmptyState
           className="mt-6"
           art="media"
           title="No videos yet"
-          text="Every video you generate shows up here, with the prompt and references it was made from."
+          text="Every video you make and every photo or clip you add shows up here, with the prompt and references it was made from."
           action={<Button size="sm" onClick={onCreate}>Create</Button>}
         />
       ) : shown.length === 0 && filtering ? (
         <EmptyState
           className="mt-6"
           art="search"
-          title="No videos match these filters"
-          text="Try another date or size."
-          action={<Button size="sm" variant="outline" onClick={() => (setSizeFilter("all"), setDates(ALL_DATES))}>Clear filters</Button>}
+          title="Nothing matches these filters"
+          text="Try another date or type."
+          action={<Button size="sm" variant="outline" onClick={() => (setKind("all"), setDates(ALL_DATES))}>Clear filters</Button>}
         />
       ) : (
         <div className="mt-6 flex flex-col gap-10">
           {groups.map((g) => (
             <section key={g.label} aria-label={g.label}>
               <h2 className="mb-3 text-sm font-medium text-muted-foreground">{g.label}</h2>
-              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+              <ul className={`grid ${grid}`}>
                 {g.items.map((a) => (
                   <li key={a.id}>
-                    <AssetCard a={a} onOpen={() => setOpenId(a.id)} />
+                    <AssetCard a={a} onOpen={() => setOpenId(a.id)} onMeta={noteMeta} />
                   </li>
                 ))}
               </ul>
@@ -231,6 +245,7 @@ export function AssetsPage({ onCreate, onUse }: { onCreate: () => void; onUse: (
         </div>
       )}
       </Loading>
+      )}
 
       <MediaViewer
         items={viewerItems}
@@ -250,8 +265,8 @@ export function AssetsPage({ onCreate, onUse }: { onCreate: () => void; onUse: (
       <Dialog open={!!confirm} onOpenChange={(o) => !o && setConfirm(null)}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Delete this video?</DialogTitle>
-            <DialogDescription>It’s removed from Assets. Flicks using this video won’t be affected.</DialogDescription>
+            <DialogTitle>Delete this {confirm?.kind === "image" ? "image" : "video"}?</DialogTitle>
+            <DialogDescription>It’s removed from Assets. Flicks using it won’t be affected.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirm(null)}>
@@ -267,26 +282,32 @@ export function AssetsPage({ onCreate, onUse }: { onCreate: () => void; onUse: (
   )
 }
 
-/** A video in the grid: the shared tile; plays on hover, its prompt slides up, length and size bottom-left, download top-right. */
-function AssetCard({ a, onOpen }: { a: Asset; onOpen: () => void }) {
-  const v = videoAt(a.video)
+/**
+ * One asset in the grid: the shared tile. A video plays on hover and shows its length and size bottom-left
+ * once known; an upload shows "Uploaded". The prompt (or file name) slides up on hover; download top-right.
+ */
+function AssetCard({ a, onOpen, onMeta }: { a: Asset; onOpen: () => void; onMeta: (id: string, m: VideoMeta) => void }) {
+  const { ref, seen } = useSeen<HTMLDivElement>()
+  const [meta, setMeta] = useState<VideoMeta | null>(null)
+  const label = a.prompt || a.name
   const corner = "size-7 rounded-lg bg-background/90 opacity-0 shadow-sm backdrop-blur-sm transition-opacity hover:bg-background group-hover/tile:opacity-100 focus-visible:opacity-100"
   return (
-    <div className="flex flex-col gap-1.5">
+    <div ref={ref} className="flex flex-col gap-1.5">
       <MediaTile
-        src={v.poster}
-        video={{ mp4: v.mp4, webm: v.webm }}
+        src={a.kind === "image" && seen ? a.url : undefined}
+        video={a.kind === "video" ? { mp4: a.url } : undefined}
         badges={
           <>
-            <TileBadge>{clockLabel(a.duration)}</TileBadge>
-            <TileBadge>{a.size}</TileBadge>
+            {meta && <TileBadge>{clockLabel(meta.duration)}</TileBadge>}
+            {meta && <TileBadge>{meta.size}</TileBadge>}
+            {a.source === "Uploaded" && <TileBadge>Uploaded</TileBadge>}
           </>
         }
-        details={<p className="line-clamp-3">{a.prompt}</p>}
+        details={<p className="line-clamp-3">{label}</p>}
         actions={
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="secondary" size="icon-xs" aria-label="Download" onClick={() => download(v.mp4, fileName(a))} className={corner}>
+              <Button variant="secondary" size="icon-xs" aria-label="Download" onClick={() => download(a.url, fileName(a))} className={corner}>
                 <HugeiconsIcon icon={Download01Icon} className="size-3.5" />
               </Button>
             </TooltipTrigger>
@@ -294,10 +315,27 @@ function AssetCard({ a, onOpen }: { a: Asset; onOpen: () => void }) {
           </Tooltip>
         }
       >
-        <button type="button" onClick={onOpen} aria-label={`Open video: ${a.prompt}`} className="absolute inset-0 rounded-xl focus-ring" />
+        {/* a video has no poster of its own on the server: its first frame stands in until it plays, and its metadata gives the length and size */}
+        {a.kind === "video" && seen && (
+          <video
+            src={`${a.url}#t=0.1`}
+            muted
+            playsInline
+            preload="metadata"
+            aria-hidden
+            onLoadedMetadata={(e) => {
+              const v = e.currentTarget
+              const m = { size: `${v.videoWidth}×${v.videoHeight}`, duration: v.duration }
+              setMeta(m)
+              onMeta(a.id, m)
+            }}
+            className="pointer-events-none absolute inset-0 size-full object-cover"
+          />
+        )}
+        <button type="button" onClick={onOpen} aria-label={`Open ${a.kind}: ${label}`} className="absolute inset-0 rounded-xl focus-ring" />
       </MediaTile>
-      <p className="truncate px-0.5 text-xs text-muted-foreground" title={a.prompt}>
-        {a.prompt}
+      <p className="truncate px-0.5 text-xs text-muted-foreground" title={label}>
+        {a.project ? `${a.project} · ${label}` : label}
       </p>
     </div>
   )

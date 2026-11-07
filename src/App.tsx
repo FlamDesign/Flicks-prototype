@@ -383,8 +383,10 @@ export default function App() {
 <AssetsPage
                 onCreate={() => setPage("Create")}
                 onUse={(a) => {
-                  // a new project with this video as its reference video, already made
-                  setGeneration({ id: crypto.randomUUID(), prompt: a.prompt, size: a.size, duration: a.duration, references: 0, refs: [], startedAt: 1, video: a.video, fromAsset: true, back: "Assets" })
+                  // a new chat project with this video (or photo) attached as a reference; the chat plans from it
+                  const ref = { id: a.id, name: a.name, url: a.url, loading: false, media: a.kind }
+                  const prompt = a.kind === "video" ? "Make a Flick from this video. Use it as it is for Variation 1." : "Make a Flick with this image as the product reference."
+                  setGeneration({ id: crypto.randomUUID(), prompt, size: "1080×1080", duration: 8, references: 1, refs: [ref], startedAt: 0, video: 0, agent: true, back: "Assets" })
                   setPage("Generate")
                 }}
               />

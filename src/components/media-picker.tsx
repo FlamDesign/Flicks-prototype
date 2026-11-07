@@ -10,10 +10,9 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useToast } from "@/components/ui-extra/toaster"
-import { SAMPLE_UPLOADS, SAMPLE_VIDEO_COUNT, videoAt } from "@/components/editor/elements"
-import { SAMPLE_ASSETS } from "@/components/assets-page"
 import { MediaViewer, type ViewerItem } from "@/components/media-viewer"
-import { isLive, library, shareAs, shareable, type LibraryItem } from "@/ai/client"
+import { isLive, library, NOT_CONNECTED, shareAs, shareable, type LibraryItem } from "@/ai/client"
+import { isFinalImage, isFinalVideo, isUpload, isVideo, nameOf } from "@/lib/library"
 
 /** a video's length and a still from its start (left as it is if it can't be read in time) */
 const withStill = (i: MediaItem): Promise<MediaItem> =>
@@ -31,17 +30,17 @@ const withStill = (i: MediaItem): Promise<MediaItem> =>
  * (4K phone video) is saved as a 1280 px copy made in the browser, under the same name.
  */
 const saveVideo = (it: MediaItem) => {
-  if (!it.file || it.file.size <= 20 * 1_048_576) return save(it.id, it.url, it.name)
+  if (!it.file || it.file.size <= 20 * 1_048_576) return save(it.id, it.url, it.name, it.project)
   const job = cutClip(it.url, it.name, 0, it.duration ?? MAX_REF_SECONDS)
-    .then((f) => shareable(blobUrl(f), { name: it.name, purpose: "upload" }))
+    .then((f) => shareable(blobUrl(f), { name: it.name, purpose: "upload", project: it.project }))
   shareAs(it.url, job)
     .then((saved) => sessionUploads.update(it.id, { saved }))
     .catch(() => {})
 }
 
 /** keeps a session upload on the AI server; the picker then knows its server copy */
-const save = (id: string, url: string, name: string) =>
-  shareable(url, { name, purpose: "upload" })
+const save = (id: string, url: string, name: string, project?: string) =>
+  shareable(url, { name, purpose: "upload", project })
     .then((saved) => sessionUploads.update(id, { saved }))
     .catch(() => {})
 import { MAX_REF_SECONDS, MAX_VIDEO_MB, blobUrl, clock, cutClip, length, isVideoFile, probeVideo, sessionUploads, stillsAt, useSessionUploads, type MediaItem, type PickedMedia } from "@/lib/media"
@@ -49,23 +48,15 @@ import { cn } from "@/lib/utils"
 
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"]
 const VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm"]
-/** saved before uploads were labeled: the chat's website images and unnamed working copies */
-const APP_COPY = /^(Uploaded (image|video)|.+ image \d+)$/
-/** previews and option images aren't final work: left out of Generated */
-const DRAFT = /preview|idea|option|draft|look/i
-
-/** The server library as picker items: uploads, and final generated work with its prompt and references. */
+/** The server library as picker items: the user's uploads, and final generated work with its prompt and references. */
 const fromLibrary = (x: LibraryItem): MediaItem | null => {
   if (!x.file) return null
-  // the user's own files only: images the chat took from websites, stills and other working copies stay out
-  if (x.model === "upload" && (x.purpose !== "upload" || APP_COPY.test(x.prompt ?? ""))) return null
-  const upload = x.purpose === "upload" || x.model === "upload"
-  if (!upload && DRAFT.test(x.purpose ?? "")) return null
-  const kind = x.kind === "video" || (x.type ?? "").startsWith("video/") ? "video" : "image"
+  const upload = isUpload(x)
+  if (!upload && !isFinalVideo(x) && !isFinalImage(x)) return null
   return {
     id: x.id,
-    kind,
-    name: upload ? x.prompt || "Upload" : [x.project, x.variation, x.purpose].filter(Boolean).join(" · ") || (kind === "video" ? "Video" : "Image"),
+    kind: isVideo(x) ? "video" : "image",
+    name: nameOf(x),
     url: x.file,
     source: upload ? "upload" : "generated",
     project: x.project,
@@ -74,16 +65,6 @@ const fromLibrary = (x: LibraryItem): MediaItem | null => {
     created: x.created,
   }
 }
-
-/** Without the AI server: the sample uploads and sample videos (with what each was made from). */
-const SAMPLES: MediaItem[] = [
-  ...SAMPLE_UPLOADS.map((u, i) => ({ id: `s-${u.id}`, kind: "image" as const, name: u.name, url: u.src, source: "upload" as const, project: "Samples", created: Date.now() - (i + 2) * 3_600_000 })),
-  ...Array.from({ length: SAMPLE_VIDEO_COUNT }, (_, v) => {
-    const a = SAMPLE_ASSETS.find((x) => x.video === v)
-    const g = videoAt(v)
-    return { id: `s-v${v}`, kind: "video" as const, name: `${g.name}.mp4`, url: g.mp4, poster: g.poster, source: "generated" as const, project: "Samples", prompt: a?.prompt, refs: a?.refs.map((r) => r.poster ?? r.src), created: a?.createdAt ?? Date.now() - v * 60_000, duration: a?.duration }
-  }),
-]
 
 /**
  * Adds photos and videos to a prompt box: the picker (uploads and generated work, with search and
@@ -123,7 +104,7 @@ export function useMediaAdd(onAdd: (items: PickedMedia[]) => void, opts: { proje
     // (long originals aren't; their trimmed clips are, once cut)
     if (isLive())
       for (const it of items) {
-        if (it.kind === "image") save(it.id, it.url, it.name)
+        if (it.kind === "image") save(it.id, it.url, it.name, it.project)
         else if ((it.duration ?? Infinity) <= MAX_REF_SECONDS + 0.05) saveVideo(it)
       }
     if (direct) choose(items)
@@ -192,7 +173,7 @@ export function MediaPicker({
   useEffect(() => {
     if (!open) return
     setPicked([])
-    if (!live) return setServer([])
+    if (!live) return (setServer([]), setFailed(true))
     setServer(null)
     setFailed(false)
     library()
@@ -203,7 +184,7 @@ export function MediaPicker({
   const all = useMemo(() => {
     // a session upload already saved on the server shows once (as the session's copy)
     const seen = new Set<string>(session.flatMap((x) => (x.saved ? [x.saved] : [])))
-    const list = [...session.filter((x) => !seen.has(x.url)), ...(server ?? []), ...(live ? [] : SAMPLES)].filter((x) => !seen.has(x.url) && seen.add(x.url))
+    const list = [...session.filter((x) => !seen.has(x.url)), ...(server ?? [])].filter((x) => !seen.has(x.url) && seen.add(x.url))
     return list.map((x) => (durations[x.id] && !x.duration ? { ...x, duration: durations[x.id] } : x))
   }, [session, server, live, durations])
   const words = q.toLowerCase().split(/\s+/).filter(Boolean)
@@ -255,7 +236,7 @@ export function MediaPicker({
 
         <div className={cn("relative min-h-0 flex-1 overflow-y-auto p-4", over && "bg-brand/10")}>
           <input ref={file} type="file" accept={[...IMAGE_TYPES, ...VIDEO_TYPES].join(",")} multiple hidden onChange={(e) => (e.target.files && upload(e.target.files), (e.target.value = ""))} />
-          {failed && <p className="mb-3 text-xs text-destructive">Couldn’t load your library. Uploads from this session still show.</p>}
+          {failed && <p className="mb-3 text-xs text-destructive">{NOT_CONNECTED} Uploads from this session still show.</p>}
           <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3">
             <button
               type="button"

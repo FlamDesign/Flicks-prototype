@@ -16,6 +16,7 @@
  *   PUT  /store/:key      saves it (JSON, whole value replaced)
  *   GET  /library         every image and video made here, newest first (each kept on our side once it finishes)
  *   POST /library/import  keeps copies of finished images or videos the app still has links to
+ *   DELETE /library/:id   hides an item from the library (Assets); its file stays, so Flicks using it keep working
  *   POST /read            reads a public web page for the chat: product, prices, images, colours, text
  *   GET  /img?u=          a website's image, passed through (sites often refuse to be shown elsewhere)
  *
@@ -434,9 +435,18 @@ export default {
           keys.push(...page.keys.map((k) => k.name))
           cursor = page.list_complete ? undefined : page.cursor
         } while (cursor && keys.length < 5000)
-        const items = (await Promise.all(keys.map((k) => env.USAGE!.get(k)))).flatMap((x) => (x ? [JSON.parse(x) as { created: number; id: string; saved?: boolean }] : []))
+        const items = (await Promise.all(keys.map((k) => env.USAGE!.get(k)))).flatMap((x) => (x ? [JSON.parse(x) as { created: number; id: string; saved?: boolean; hidden?: boolean }] : []))
         items.sort((a, b) => b.created - a.created)
-        return json({ items: items.map((x) => ({ ...x, file: x.saved ? `${url.origin}/file/${x.id}` : undefined })) }, 200, cors)
+        // deleted from Assets: left out (the record and file stay, so Flicks using it keep working)
+        return json({ items: items.filter((x) => !x.hidden).map((x) => ({ ...x, file: x.saved ? `${url.origin}/file/${x.id}` : undefined })) }, 200, cors)
+      }
+
+      const hide = url.pathname.match(/^\/library\/([\w-]{20,64})$/)
+      if (req.method === "DELETE" && hide) {
+        const raw = await env.USAGE?.get(`lib:${hide[1]}`)
+        if (!raw) return json({ error: "not_found" }, 404, cors)
+        await put(env, `lib:${hide[1]}`, JSON.stringify({ ...JSON.parse(raw), hidden: true, hiddenAt: Date.now() }))
+        return json({ hidden: true }, 200, cors)
       }
 
       if (req.method === "POST" && url.pathname === "/library/import") {
@@ -500,7 +510,7 @@ function corsHeaders(origin: string | null): Record<string, string> {
   return origin
     ? {
         "access-control-allow-origin": origin,
-        "access-control-allow-methods": "GET, POST, PUT, OPTIONS",
+        "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS",
         "access-control-allow-headers": "content-type, x-flicks-pass",
         "access-control-max-age": "86400",
         vary: "origin",

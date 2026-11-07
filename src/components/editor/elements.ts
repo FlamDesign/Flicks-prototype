@@ -14,13 +14,6 @@ import poster2 from "@/assets/video/poster-2.jpg"
 import poster3 from "@/assets/video/poster-3.jpg"
 import poster4 from "@/assets/video/poster-4.jpg"
 import poster5 from "@/assets/video/poster-5.jpg"
-import up1 from "@/assets/uploads/hstn-clear-brown.jpg"
-import up2 from "@/assets/uploads/hstn-black-red.jpg"
-import up3 from "@/assets/uploads/vanguard-black.jpg"
-import up4 from "@/assets/uploads/vanguard-white-blue.jpg"
-import up5 from "@/assets/uploads/hstn-black-clear.jpg"
-import up6 from "@/assets/uploads/hstn-white-orange.jpg"
-import up7 from "@/assets/uploads/meta-logo.png"
 import shoe1mp4 from "@/assets/video/shoe-1-wheat.mp4"
 import shoe2mp4 from "@/assets/video/shoe-2-black.mp4"
 import shoe3mp4 from "@/assets/video/shoe-3-brown.mp4"
@@ -31,11 +24,6 @@ import shoe2poster from "@/assets/video/shoe-2-black.jpg"
 import shoe3poster from "@/assets/video/shoe-3-brown.jpg"
 import dress1poster from "@/assets/video/dress-1-rust.jpg"
 import dress2poster from "@/assets/video/dress-2-ombre.jpg"
-import up8 from "@/assets/uploads/boot-brown-classic.jpg"
-import up9 from "@/assets/uploads/boot-black-classic.jpg"
-import up10 from "@/assets/uploads/boot-pro-brown.jpg"
-import up11 from "@/assets/uploads/dress-rust-tiered.jpg"
-import up12 from "@/assets/uploads/dress-ombre-gown.jpg"
 import { BRAND_VIDEOS, type BrandSet } from "@/templates/brand-assets"
 import { REAL_BASE, REAL_VIDEOS, type RealSlug } from "@/templates/real-media"
 
@@ -444,22 +432,7 @@ export const BUTTON_TEXT = "Shop now"
 /** Default image for a new icon button: a generic social icon (PNG) to replace with the brand's own. */
 export const DEFAULT_ICON = socialIcon
 
-export type Upload = { id: string; name: string; src: string; loading: boolean; failed?: boolean }
-
-export const SAMPLE_UPLOADS: Upload[] = [
-  { id: "u1", name: "hstn-clear-brown.jpg", src: up1, loading: false },
-  { id: "u2", name: "hstn-black-red.jpg", src: up2, loading: false },
-  { id: "u3", name: "vanguard-black.jpg", src: up3, loading: false },
-  { id: "u4", name: "vanguard-white-blue.jpg", src: up4, loading: false },
-  { id: "u5", name: "hstn-black-clear.jpg", src: up5, loading: false },
-  { id: "u6", name: "hstn-white-orange.jpg", src: up6, loading: false },
-  { id: "u7", name: "meta-logo.png", src: up7, loading: false },
-  { id: "u8", name: "boot-brown-classic.jpg", src: up8, loading: false },
-  { id: "u9", name: "boot-black-classic.jpg", src: up9, loading: false },
-  { id: "u10", name: "boot-pro-brown.jpg", src: up10, loading: false },
-  { id: "u11", name: "dress-rust-tiered.jpg", src: up11, loading: false },
-  { id: "u12", name: "dress-ombre-gown.jpg", src: up12, loading: false },
-]
+export type Upload = { id: string; name: string; src: string; loading: boolean; failed?: boolean; /** kept in the server library (Assets) */ server?: boolean }
 
 const uid = () => crypto.randomUUID()
 const text = (variant: TextVariant, x: number, y: number, align: Align = "center") =>

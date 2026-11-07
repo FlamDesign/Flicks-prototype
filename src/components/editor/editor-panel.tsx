@@ -39,6 +39,7 @@ import { ShapeView } from "@/components/editor/shape-view"
 import { cn } from "@/lib/utils"
 import { MediaViewer, type ViewerItem } from "@/components/media-viewer"
 import { useImageUploads, type UploadItem } from "@/lib/uploads"
+import { hideFromLibrary, isLive, NOT_CONNECTED, shareable } from "@/ai/client"
 
 /** Regular tooltip: hides the pointer arrow the default tooltip draws. */
 const PLAIN_TIP = "[&>span:last-child]:hidden"
@@ -70,6 +71,8 @@ export function EditorPanel({
   onAddLayout,
   uploads,
   setUploads,
+  uploadsState = "ready",
+  project,
   picker,
   layers,
   feeds,
@@ -96,6 +99,10 @@ export function EditorPanel({
   onAddLayout: (els: CanvasElement[]) => void
   uploads: Upload[]
   setUploads: React.Dispatch<React.SetStateAction<Upload[]>>
+  /** the library's uploads: still loading, loaded, or not reachable (the server is off or down) */
+  uploadsState?: "loading" | "ready" | "failed"
+  /** this project's name: new uploads are kept under it */
+  project?: string
 }) {
   const [open, setOpen] = useState<Section | null>(null)
   const current = ALL.find((s) => s.id === open)
@@ -153,7 +160,7 @@ export function EditorPanel({
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
             <Loading k={picker.title} skeleton={<CardsSkeleton count={6} cols="grid-cols-2" aspect="aspect-square" lines={0} />}>
-              <PickerList picker={picker} uploads={uploads} setUploads={setUploads} />
+              <PickerList picker={picker} uploads={uploads} setUploads={setUploads} state={uploadsState} project={project} />
             </Loading>
           </div>
         </div>
@@ -185,7 +192,7 @@ export function EditorPanel({
             {open === "shapes" && <ShapeList disabled={disabled} onAdd={(v) => (onAddShape(v), setOpen(null))} />}
             {open === "images" && (
               <Loading k="images" skeleton={<CardsSkeleton count={6} cols="grid-cols-2" aspect="aspect-square" lines={0} />}>
-                <ImageList disabled={disabled} onAdd={(src) => (onAddImage(src), setOpen(null))} uploads={uploads} setUploads={setUploads} />
+                <ImageList disabled={disabled} onAdd={(src) => (onAddImage(src), setOpen(null))} uploads={uploads} setUploads={setUploads} state={uploadsState} project={project} />
               </Loading>
             )}
             {open === "layers" && <LayersPanel {...layers} />}
@@ -329,17 +336,26 @@ function ImageList({
   onAdd,
   uploads,
   setUploads,
+  state,
+  project,
 }: {
   disabled: boolean
   onAdd: (src: string) => void
   uploads: Upload[]
   setUploads: React.Dispatch<React.SetStateAction<Upload[]>>
+  state: "loading" | "ready" | "failed"
+  project?: string
 }) {
   const input = useRef<HTMLInputElement>(null)
   const [preview, setPreview] = useState<Upload | null>(null)
   // deleting an upload asks first
   const [confirmDel, setConfirmDel] = useState<Upload | null>(null)
-  const { upload, retry } = useUploader(setUploads)
+  const { upload, retry } = useUploader(setUploads, undefined, project)
+  const remove = (u: Upload) => {
+    setUploads((list) => list.filter((x) => x.id !== u.id))
+    setConfirmDel(null)
+    if (u.server) hideFromLibrary(u.id).catch(() => {})
+  }
 
   return (
     <div className="space-y-3">
@@ -349,8 +365,11 @@ function ImageList({
         Upload images
       </Button>
 
-      <p className="px-1 text-xs text-muted-foreground">Recent uploads</p>
-      {uploads.length === 0 ? (
+      <p className="px-1 text-xs text-muted-foreground">Your uploads</p>
+      {state === "failed" && <p className="px-1 text-xs text-destructive">{NOT_CONNECTED} Images you add now stay in this browser.</p>}
+      {state === "loading" ? (
+        <CardsSkeleton count={6} cols="grid-cols-2" aspect="aspect-square" lines={0} />
+      ) : uploads.length === 0 ? (
         <EmptyState size="sm" className="py-6" title="No uploads yet" />
       ) : (
         <ul className="grid grid-cols-2 gap-2">
@@ -414,7 +433,7 @@ function ImageList({
             <Button variant="outline" onClick={() => setConfirmDel(null)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={() => (setUploads((list) => list.filter((x) => x.id !== confirmDel?.id)), setConfirmDel(null))}>
+            <Button variant="destructive" onClick={() => confirmDel && remove(confirmDel)}>
               Delete
             </Button>
           </DialogFooter>
@@ -434,18 +453,31 @@ function ImageLightbox({ image, onClose }: { image: Upload | null; onClose: () =
 }
 
 /** Simulated upload: a shimmer, then the image (or a failed tile with retry). Calls onDone with the first file that uploads. */
-function useUploader(setUploads: React.Dispatch<React.SetStateAction<Upload[]>>, onDone?: (src: string) => void) {
+/**
+ * Uploads for the Images panel and the pickers. With the AI server on, each image is kept in its
+ * library (under this project, as an upload) and the tile then points at the server copy, so it
+ * survives a reload and shows in Assets; without it, the simulated uploader stands in.
+ */
+function useUploader(setUploads: React.Dispatch<React.SetStateAction<Upload[]>>, onDone?: (src: string) => void, project?: string) {
   const uploads = useImageUploads()
   const srcs = useRef<Record<string, string>>({})
   const first = useRef<string | null>(null)
-  const settle = (id: string, ok: boolean) => {
-    setUploads((u) => u.map((x) => (x.id === id ? { ...x, loading: false, failed: !ok } : x)))
-    if (ok && first.current === id) onDone?.(srcs.current[id])
+  const settle = (id: string, ok: boolean, src = srcs.current[id]) => {
+    setUploads((u) => u.map((x) => (x.id === id ? { ...x, src, loading: false, failed: !ok, server: ok && src !== srcs.current[id] } : x)))
+    if (ok && first.current === id) onDone?.(src)
+  }
+  const run = (items: UploadItem[]) => {
+    if (!isLive()) return uploads.run(items, settle, retry)
+    for (const it of items)
+      shareable(srcs.current[it.id], { name: it.name, purpose: "upload", project }).then(
+        (url) => settle(it.id, true, url),
+        () => settle(it.id, false),
+      )
   }
   const retry = (items: UploadItem[]) => {
     const ids = items.map((i) => i.id)
     setUploads((u) => u.map((x) => (ids.includes(x.id) ? { ...x, loading: true, failed: false } : x)))
-    uploads.run(items, settle, retry)
+    run(items)
   }
   const upload = (files: FileList | null) => {
     const items = uploads.screen(files).map((file) => {
@@ -456,7 +488,7 @@ function useUploader(setUploads: React.Dispatch<React.SetStateAction<Upload[]>>,
     if (!items.length) return
     first.current = items[0].id
     setUploads((u) => [...items.map((it) => ({ ...it, src: srcs.current[it.id], loading: true })), ...u])
-    uploads.run(items, settle, retry)
+    run(items)
   }
   return { upload, retry }
 }
@@ -491,9 +523,9 @@ function FailedTile({ u, onRetry, onRemove }: { u: Upload; onRetry: () => void; 
 }
 
 /** Uploads only: pick one, or upload a new one (applied once it finishes uploading). */
-function PickerList({ picker, uploads, setUploads }: { picker: Picker; uploads: Upload[]; setUploads: React.Dispatch<React.SetStateAction<Upload[]>> }) {
+function PickerList({ picker, uploads, setUploads, state, project }: { picker: Picker; uploads: Upload[]; setUploads: React.Dispatch<React.SetStateAction<Upload[]>>; state: "loading" | "ready" | "failed"; project?: string }) {
   const input = useRef<HTMLInputElement>(null)
-  const { upload, retry } = useUploader(setUploads, picker.onPick)
+  const { upload, retry } = useUploader(setUploads, picker.onPick, project)
   return (
     <div className="space-y-3">
       <input ref={input} type="file" accept="image/*" hidden onChange={(e) => (upload(e.target.files), (e.target.value = ""))} />
@@ -502,7 +534,10 @@ function PickerList({ picker, uploads, setUploads }: { picker: Picker; uploads: 
         Upload image
       </Button>
       <p className="px-1 text-xs text-muted-foreground">Your uploads</p>
-      {uploads.length === 0 ? (
+      {state === "failed" && <p className="px-1 text-xs text-destructive">{NOT_CONNECTED} Images you add now stay in this browser.</p>}
+      {state === "loading" ? (
+        <CardsSkeleton count={6} cols="grid-cols-2" aspect="aspect-square" lines={0} />
+      ) : uploads.length === 0 ? (
         <EmptyState size="sm" className="py-6" title="No uploads yet" />
       ) : (
         <ul className="grid grid-cols-2 gap-2">

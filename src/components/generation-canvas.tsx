@@ -31,12 +31,13 @@ import { ElementToolbar, ToolbarGrip } from "@/components/editor/element-toolbar
 import { useAgent, type EditorApi, type ElementSpec } from "@/ai/agent"
 import { boxOf, buildDesign, color as colorOf, contrast, describeDesign, elementFor, fontName, freeY, headlineLimit, feedOfField, FIELD_FEED, FIELDS, patchDesign, restack, type Brand, type Field } from "@/ai/design"
 import { cancelJob, generateVideo, isLive, posterOf, shareable, useAiConfig, videoAspectOf, type VideoInput } from "@/ai/client"
+import { loadLibrary, nameOf as libraryName } from "@/lib/library"
 import { isTyping } from "@/lib/keys"
 import { GeneratingGradient } from "@/components/editor/generation-progress"
 import { AgentComposer, ApprovalDock, isDocked, QuestionDeck, QuickReplies, threadGroups, type AgentCtx } from "@/components/editor/agent-chat"
 import { PlanningView, PlanSteps } from "@/components/editor/planning-view"
 import { renderFlickShot } from "@/components/editor/flick-shot"
-import { addMadeVideo, canRotate, SHAPES, SHAPE_GREY, isBox, isMadeVideo, MISSING_POSTER, BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, defaultFill, defaultInk, SAMPLE_UPLOADS, inSet, clampStrip, fitStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload, videoAt, wrapVideo } from "@/components/editor/elements"
+import { addMadeVideo, canRotate, SHAPES, SHAPE_GREY, isBox, isMadeVideo, MISSING_POSTER, BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, defaultFill, defaultInk, inSet, clampStrip, fitStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload, videoAt, wrapVideo } from "@/components/editor/elements"
 
 export type Generation = {
   id: string
@@ -346,7 +347,26 @@ export function GenerationCanvas({
     }
     img.src = src
   }
-  const [uploads, setUploads] = useState<Upload[]>(SAMPLE_UPLOADS)
+  // the Images panel and pickers: the user's uploaded photos from the server library, this project's first
+  const [uploads, setUploads] = useState<Upload[]>([])
+  const [uploadsState, setUploadsState] = useState<"loading" | "ready" | "failed">("loading")
+  const liveNow = isLive(useAiConfig())
+  useEffect(() => {
+    if (!liveNow) return void setUploadsState("failed")
+    let on = true
+    setUploadsState("loading")
+    loadLibrary()
+      .then((lib) => {
+        if (!on) return
+        const own = lib.uploadedImages(title || undefined).map((x) => ({ id: x.id, name: libraryName(x), src: x.file!, loading: false, server: true }))
+        // anything added in this session (still uploading, or just kept) stays on top
+        setUploads((u) => [...u.filter((x) => !x.server), ...own])
+        setUploadsState("ready")
+      })
+      .catch(() => on && setUploadsState("failed"))
+    return () => void (on = false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveNow])
   const add = (el: DistributiveOmit<CanvasElement, "id" | "x" | "y">) => {
     const id = crypto.randomUUID()
     // stagger new elements slightly so repeated adds don't stack exactly
@@ -1839,6 +1859,8 @@ export function GenerationCanvas({
           disabled={!canEdit}
           uploads={uploads}
           setUploads={setUploads}
+          uploadsState={uploadsState}
+          project={title || undefined}
           picker={picker}
           layers={{ elements, setElements, selected, setSelected: (ids) => (setEditing(null), setSelected(ids)), onHover: setHovered }}
           request={panelReq}
