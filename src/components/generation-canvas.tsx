@@ -10,7 +10,7 @@ import type { Reference } from "@/components/prompt-composer"
 import { TEMPLATES, type Template } from "@/data"
 import { MAX_VARIATIONS, SlidesStrip, slideName, type Slide, type SlideStatus } from "@/components/editor/slides-strip"
 import { SlidePrompt } from "@/components/editor/slide-prompt"
-import { focusPromptBox, PromptChat, refsOf, TargetChip, type HistoryItem } from "@/components/editor/prompt-chat"
+import { focusPromptBox, PromptChat, refsOf, type HistoryItem } from "@/components/editor/prompt-chat"
 import { FeedsPanel, FeedsTitle } from "@/components/editor/feeds-panel"
 import { VideoLightbox } from "@/components/editor/video-lightbox"
 import { ExportControl } from "@/components/editor/export-flick"
@@ -2353,27 +2353,8 @@ export function GenerationCanvas({
               ),
               // questions waiting for an answer dock above the composer instead
               extra: threadGroups(agent.items.filter((it) => !isDocked(it, agent.pendingIds)), agent, agentCtx),
-              // once the plan is made, the box can also write one video's prompt directly
-              head: slides[0].startedAt ? (
-                <div className="flex items-center gap-2 px-1 pb-2 text-xs text-muted-foreground">
-                  <div role="tablist" aria-label="Write to" className="flex rounded-lg bg-foreground/5 p-0.5">
-                    {(["chat", "prompt"] as const).map((m) => (
-                      <button
-                        key={m}
-                        role="tab"
-                        aria-selected={composeMode === m}
-                        onClick={() => setComposeMode(m)}
-                        className={cn("rounded-md px-2 py-0.5 font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring", composeMode === m ? "bg-background text-foreground shadow-xs" : "hover:text-foreground")}
-                      >
-                        {m === "chat" ? "Chat" : "Prompt a video"}
-                      </button>
-                    ))}
-                  </div>
-                  {composeMode === "prompt" && <TargetChip name={nameOf(activeSlide)} poster={activeStatus === "done" ? videoAt(activeSlide.video!).poster : undefined} />}
-                </div>
-              ) : (
-                <div />
-              ),
+              // the chat is the only way to ask for a video: asking goes through the Make card, so nothing is made by accident
+              head: <div />,
             })}
             composer={
               chatting ? (
