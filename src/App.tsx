@@ -21,8 +21,7 @@ import { useDevAction } from "@/dev/dev-actions"
 import { AccountSkeleton, ChatSkeleton, DetailSkeleton, EditorSkeleton, FlickPageSkeleton, GridSkeleton, PageLoader, TableSkeleton } from "@/components/page-skeletons"
 import { WelcomeGiftDialog, WELCOME_CREDITS } from "@/components/welcome-gift-page"
 import { type Generation } from "@/components/generation-canvas"
-import { REFERENCE_VIDEOS } from "@/components/editor/elements"
-import { type Template } from "@/data"
+import { templateRef, type Template } from "@/data"
 import { getLibrary, library, useLibrary, type FlickRecord, type Project } from "@/library"
 import { DEV_TOOLS, useDevState } from "@/dev/state"
 import { DevWidget } from "@/dev/dev-widget"
@@ -193,18 +192,26 @@ export default function App() {
     return () => mq.removeEventListener("change", apply)
   }, [appearance])
 
-  // clicking a template opens its page; Use template there opens a ready-made canvas
+  // clicking a template opens its page; Use as reference there hands its pattern to the chat
   const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null)
-  // templates saved from the editor, shown first in the gallery
-  const [savedTemplates, setSavedTemplates] = useState<Template[]>([])
   const openTemplate = (t: Template) => {
     setPreviewTemplate(t)
     setPage("Template")
     scroller.current?.scrollTo({ top: 0 })
   }
+  // templates never open in the editor: the chat gets the pattern (mechanic, variations, size, length,
+  // copy as a tone example, layout) and asks for the user's own brand and product
   const useTemplate = (t: Template) => {
-    setGeneration({ id: crypto.randomUUID(), prompt: t.prompt, size: t.size, ...(t.duration ? { duration: t.duration } : {}), references: 0, refs: [], startedAt: 0, video: t.video ?? 0, template: t })
+    const ref = templateRef(t)
+    const prompt = [
+      `Make a Flick like the “${t.title}” template (${t.mechanic}): ${t.description}`,
+      `Same pattern: ${ref.variants.length} variations viewers switch between (in the template: ${ref.variants.join(", ")}), ${t.size}, ${ref.duration} seconds, headline at the top, button below the middle, thumbnail strip at the bottom.`,
+      `Its copy is only an example of tone and length: headline “${t.headline}”, button “${t.cta}”. Write mine fresh.`,
+      `Use my own brand and product, not the template’s: ask me what they are, and for photos if you need them.`,
+    ].join("\n")
+    setGeneration({ id: crypto.randomUUID(), prompt, size: t.size, duration: ref.duration, references: 0, refs: [], startedAt: 0, video: 0, agent: true, fromTemplate: ref })
     setPage("Generate")
+    setTemplate(null)
   }
 
   // who's signed in: the email from sign-in, the rest from onboarding
@@ -430,23 +437,12 @@ export default function App() {
                   <p className="text-sm text-muted-foreground md:text-base">Describe it, add photos or videos, and make variations next.</p>
                 </div>
                 <PromptComposer
-                  credits={credits}
-                  onSpend={(n) => addCredits(-n)}
                   onGenerate={(g) => {
-                    const chatFirst = dev.aiChat && !template
-                    setGeneration((prev) => {
-                      // each new generation shows the next product set's reference video
-                      const next = prev ? REFERENCE_VIDEOS[(Math.max(0, REFERENCE_VIDEOS.indexOf(prev.video)) + 1) % REFERENCE_VIDEOS.length] : 0
-                      // with the chat on, nothing generates yet: the chat plans the Flick first
-                      // the chat asks where it runs and sets the size; until then a square, 8 s
-                      return { ...g, ...(chatFirst ? { size: "1080×1080", duration: 8 } : {}), id: crypto.randomUUID(), startedAt: chatFirst ? 0 : Date.now(), video: next, ...(chatFirst ? { agent: true } : {}) }
-                    })
+                    // nothing generates yet: the chat plans the Flick first, asks where it runs and sets the size (a square until then)
+                    setGeneration({ ...g, size: "1080×1080", duration: 8, id: crypto.randomUUID(), startedAt: 0, video: 0, agent: true })
                     setPage("Generate")
-                    // the editor keeps the template's details, so the home box starts fresh
                     setTemplate(null)
                   }}
-                  onGetCredits={() => setBuyOpen(true)}
-                  chat={dev.aiChat}
                   template={template}
                   onClearTemplate={() => setTemplate(null)}
                   prompt={prompt}
@@ -474,7 +470,7 @@ export default function App() {
                         references: r.refs.length,
                         refs: r.refs,
                         startedAt: 0,
-                        video: prev ? REFERENCE_VIDEOS[(Math.max(0, REFERENCE_VIDEOS.indexOf(prev.video)) + 1) % REFERENCE_VIDEOS.length] : 0,
+                        video: 0,
                         agent: true,
                         recipe: r.recipe,
                       }))
@@ -497,7 +493,7 @@ export default function App() {
 
             {/* Templates sheet, pulled up so the first row sits above the fold */}
             <section id="templates" className="relative scroll-mt-4 px-3 pb-3 md:px-4 md:pb-4">
-              <TemplateGallery onUse={openTemplate} saved={savedTemplates} />
+              <TemplateGallery onUse={openTemplate} />
             </section>
             </>
             )}
@@ -510,12 +506,7 @@ export default function App() {
           {/* the editor loads its project first */}
           <Loaded k={generation.id} ms={dev.pageLoadMs} s={chatPlanning(generation) ? <ChatSkeleton /> : <div className="flex h-full flex-col"><div className="flex h-14 shrink-0 items-center gap-3 border-b px-4"><Skeleton className="h-5 w-40 rounded-md" /><Skeleton className="ml-auto h-9 w-48 rounded-xl" /><Skeleton className="h-9 w-24 rounded-xl" /></div><EditorSkeleton /></div>}>
           <GenerationCanvas key={generation.id} generation={generation} onFormat={(size, duration) => setGeneration((g) => (g ? { ...g, size, ...(duration ? { duration } : {}) } : g))} onBack={() => setPage(generation.back === "Flick" && !flickId ? "Flicks" : (generation.back ?? "Create"))} onGetCredits={() => setBuyOpen(true)} onOpenFlick={openFlickPage}
-            onSaveTemplate={(t) => setSavedTemplates((list) => [t, ...list])}
             onDuplicate={(copy) => setGeneration((g) => (g ? { ...g, id: crypto.randomUUID(), copy, resume: undefined, sample: false, remixOf: undefined } : g))}
-            onHomeTemplates={() => {
-              setPage("Create")
-              setTimeout(() => document.getElementById("templates")?.scrollIntoView({ behavior: "smooth" }), 50)
-            }}
           />
           </Loaded>
         </div>

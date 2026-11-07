@@ -42,8 +42,7 @@ async function open(name, { real = false } = {}) {
     if (m && !state.projectId) state.projectId = m[1]
   })
   await p.goto(SITE + "?v=" + Date.now(), { waitUntil: "networkidle" })
-  const sw = p.getByRole("switch", { name: "AI chat mode" })
-  if ((await sw.getAttribute("aria-checked")) !== "true") await sw.click()
+  // the chat is the only flow now (the old "AI chat mode" switch is gone)
   const shot = async (label) => {
     state.shots++
     const f = `${String(state.shots).padStart(2, "0")}-${label.replace(/\W+/g, "-")}.png`

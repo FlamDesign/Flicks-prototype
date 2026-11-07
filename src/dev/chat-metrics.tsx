@@ -73,7 +73,7 @@ export function ChatMetricsDialog({ open, onOpenChange }: { open: boolean; onOpe
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const load = async () => {
-    if (!isLive()) return setError("Connect the AI server first (State manager, AI).")
+    if (!isLive()) return setError("Set up the AI server first (State manager, AI).")
     setLoading(true)
     setError("")
     try {

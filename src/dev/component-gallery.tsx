@@ -52,7 +52,6 @@ import type { Feed } from "@/components/editor/elements"
 import { SlidesStrip, type Slide, type SlideStatus } from "@/components/editor/slides-strip"
 import { useToast } from "@/components/ui-extra/toaster"
 import { GENERATED_VIDEOS, type CanvasElement } from "@/components/editor/elements"
-import { PromptChat, type HistoryItem } from "@/components/editor/prompt-chat"
 import { ReferenceThumb } from "@/components/prompt-composer"
 import { DevBadge } from "@/dev/state-manager"
 import { cn } from "@/lib/utils"
@@ -739,12 +738,6 @@ const ENTRIES: Entry[] = [
     render: () => <FeedsDemo />,
   },
   {
-    name: "Prompts panel",
-    kind: "Editor",
-    about: "Generation history as a chat: ready, generating and replaced results; the prompt box ready and dimmed while generating.",
-    render: () => <PromptsDemo />,
-  },
-  {
     name: "Slides strip",
     kind: "Editor",
     about: "Reference video and variations: ready, generating, not generated, needs regenerating (faded, red dot by the name), starting variation (solid play in the corner); hover shows the start toggle and options.",
@@ -782,7 +775,7 @@ function VersionHistoryDemo() {
 
 function FileTitleDemo({ title, naming }: { title: string; naming?: boolean }) {
   const [t, setT] = useState(title)
-  return <FileTitle title={t} naming={naming} setTitle={setT} size="1080×1920" sizeLabel="Vertical (9:16)" onHome={() => {}} onDuplicate={() => {}} onSaveTemplate={() => {}} onHistory={() => {}} onDelete={() => {}} />
+  return <FileTitle title={t} naming={naming} setTitle={setT} size="1080×1920" sizeLabel="Vertical (9:16)" onHome={() => {}} onDuplicate={() => {}} onHistory={() => {}} onDelete={() => {}} />
 }
 
 function LayersDemo() {
@@ -870,39 +863,6 @@ function SlidesDemo() {
   )
 }
 
-function PromptsDemo() {
-  const history: HistoryItem[] = [
-    { id: "1", slideId: "main", prompt: "Slow push-in on a red running sneaker on wet asphalt", refs: [], video: 0, startedAt: 1 },
-    { id: "2", slideId: "s1", prompt: "Same shoe in electric blue", refs: [], fromReference: true, video: 1, startedAt: 1 },
-    { id: "3", slideId: "s1", prompt: "Same shoe in electric blue, night city", refs: [], fromReference: true, video: 2, startedAt: 2 },
-    { id: "4", slideId: "s2", prompt: "White colourway on a tennis court", refs: [], fromReference: true, video: 3, startedAt: 3 },
-  ]
-  const names: Record<string, string> = { main: "Reference video", s1: "Variation 1", s2: "Variation 2" }
-  const composer = (
-    <div className="rounded-2xl border bg-background p-3 text-sm text-muted-foreground shadow-sm">What should change? The product, character, scene or a mix</div>
-  )
-  const props = {
-    history,
-    nameOf: (id: string) => names[id],
-    posterOf: (v: number) => GENERATED_VIDEOS[v % GENERATED_VIDEOS.length].poster,
-    isGenerating: (h: HistoryItem) => h.id === "4",
-    isCurrent: (h: HistoryItem) => h.id !== "2",
-    onSelect: () => {},
-    composer,
-  }
-  return (
-    <div className="flex gap-4">
-      <figure className="flex h-[560px] flex-col overflow-hidden rounded-xl ring-1 ring-foreground/10">
-        <div className="flex min-h-0 flex-1"><PromptChat {...props} target={{ id: "s2", name: "Variation 2", isReference: false }} busy /></div>
-        <figcaption className="border-t px-2.5 py-1.5 text-xs text-muted-foreground">Generating (prompt box dimmed)</figcaption>
-      </figure>
-      <figure className="flex h-[560px] flex-col overflow-hidden rounded-xl ring-1 ring-foreground/10">
-        <div className="flex min-h-0 flex-1"><PromptChat {...props} history={history.slice(0, 3)} target={{ id: "s1", name: "Variation 1", poster: GENERATED_VIDEOS[2].poster, isReference: false }} busy={false} /></div>
-        <figcaption className="border-t px-2.5 py-1.5 text-xs text-muted-foreground">Ready</figcaption>
-      </figure>
-    </div>
-  )
-}
 
 function ToastDemo() {
   const toast = useToast()

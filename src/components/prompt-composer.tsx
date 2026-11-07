@@ -4,7 +4,6 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Add01Icon,
   PlayIcon,
-  ArrowDown01Icon,
   SparklesIcon,
   Cancel01Icon,
   Loading03Icon,
@@ -15,32 +14,17 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { MOD } from "@/lib/keys"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { SIZES, SIZE_GROUPS, type Template } from "@/data"
-import { RatioGlyph } from "@/components/ratio-glyph"
+import type { Template } from "@/data"
 import { cn } from "@/lib/utils"
 import { useImageUploads } from "@/lib/uploads"
 import { useMediaAdd } from "@/components/media-picker"
 import { MentionTextarea, useMentionOptions, type MentionTextareaHandle } from "@/components/mention-input"
 import { blobUrl, type PickedMedia } from "@/lib/media"
 import { MediaViewer, type ViewerItem } from "@/components/media-viewer"
-import { videoCost } from "@/components/credits-card"
 
 /** A photo or video added to a prompt box. Videos are at most 15 seconds (longer ones are trimmed when added). */
 export type Reference = { id: string; name: string; url: string; loading: boolean; failed?: boolean; media?: "image" | "video"; poster?: string; duration?: number }
 
-
-/** Video lengths offered in the composer, in seconds. */
-const DURATIONS = [6, 8, 10, 12, 15]
 
 export function PromptComposer({
   template,
@@ -50,18 +34,9 @@ export function PromptComposer({
   size,
   setSize,
   pulse,
-  credits,
-  onSpend,
-  onGetCredits,
   onGenerate,
-  chat,
 }: {
-  /** the chat plans the Flick first: Start opens it, nothing is charged yet (not for templates) */
-  chat?: boolean
   onGenerate: (g: { prompt: string; size: string; duration: number; references: number; refs: Reference[] }) => void
-  credits: number
-  onSpend: (n: number) => void
-  onGetCredits: () => void
   template: Template | null
   onClearTemplate: () => void
   prompt: string
@@ -73,13 +48,9 @@ export function PromptComposer({
   const [refs, setRefs] = useState<Reference[]>([])
   const [sending, setSending] = useState(false)
   const [flash, setFlash] = useState(false)
-  const [sizeFlash, setSizeFlash] = useState(false)
-  // video length in seconds
-  const [duration, setDuration] = useState(8)
-  // the chat plans the Flick (not a template): it asks for the size itself
-  const askChat = !!chat && !template
+  // the length the chat starts from; it asks where the Flick runs and sets the size
+  const duration = 8
   const [dragging, setDragging] = useState(false)
-  const firstSize = useRef(true)
   const ref = useRef<MentionTextareaHandle>(null)
 
   useEffect(() => {
@@ -90,18 +61,6 @@ export function PromptComposer({
     return () => clearTimeout(id)
   }, [pulse])
 
-  // Highlight the size pill whenever the size changes (e.g. a template sets it)
-  useEffect(() => {
-    if (firstSize.current) {
-      firstSize.current = false
-      return
-    }
-    setSizeFlash(true)
-    const id = setTimeout(() => setSizeFlash(false), 1200)
-    return () => clearTimeout(id)
-  }, [size])
-
-  const sizeInfo = SIZES.find((s) => s.value === size)
   const uploading = refs.some((r) => r.loading)
   const canSend = (prompt.trim().length > 0 || !!template) && !uploading && !refs.some((r) => r.failed)
 
@@ -116,18 +75,10 @@ export function PromptComposer({
     // the image may still be in use by a generated video's prompt box, so its URL is kept
     setRefs((r) => r.filter((x) => x.id !== id))
 
-  // what this video costs: depends on its size and length
-  const COST = videoCost(size, duration)
-  // shown on Generate once there's something to generate
-  const planFirst = !!chat && !template
-  const showCost = !planFirst && (prompt.trim().length > 0 || !!template)
-  const short = credits < COST
 
   const send = () => {
     if (!canSend) return
-    if (short && !planFirst) return onGetCredits() // not enough credits: open Get credits instead
     setSending(true)
-    if (!planFirst) onSpend(COST)
     // brief spinner on the button, then hand off to the generation canvas
     setTimeout(() => {
       setSending(false)
@@ -213,91 +164,17 @@ export function PromptComposer({
 
           <div className="flex-1" />
 
-          {/* with the AI chat on, the chat asks where it runs and sets the size; length starts at 8 s */}
-          {!askChat && (
-          <>
-          {/* video length, 6 to 15 seconds */}
-          <DropdownMenu>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="gap-1.5 pl-3 pr-2 font-normal" aria-label={`Length: ${duration} seconds`}>
-                    <span className="text-muted-foreground">Length</span>
-                    <span className="font-medium tabular-nums">{duration}s</span>
-                    <HugeiconsIcon icon={ArrowDown01Icon} className="size-3.5 text-muted-foreground" />
-                  </Button>
-                </DropdownMenuTrigger>
-              </TooltipTrigger>
-              <TooltipContent>Choose length</TooltipContent>
-            </Tooltip>
-            <DropdownMenuContent align="end" className="w-40" onCloseAutoFocus={(e) => (e.preventDefault(), ref.current?.focus({ preventScroll: true }))}>
-              <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">Video length</DropdownMenuLabel>
-              <DropdownMenuRadioGroup value={String(duration)} onValueChange={(v) => setDuration(Number(v))}>
-                {DURATIONS.map((d) => (
-                  <DropdownMenuRadioItem key={d} value={String(d)} className="pr-2 data-[state=checked]:bg-foreground/5 [&_[data-slot=dropdown-menu-radio-item-indicator]]:hidden">
-                    <span className="tabular-nums">{d} seconds</span>
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <DropdownMenu>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "gap-1.5 pl-3 pr-2 font-normal transition-all duration-300",
-                      sizeFlash && "border-brand bg-brand/10 ring-2 ring-brand/30",
-                    )}
-                    aria-label={`Size: ${size} ${sizeInfo?.label ?? ""}`}
-                  >
-                    <span className="text-muted-foreground">Size</span>
-                    <span className="font-medium tabular-nums">{size}</span>
-                    <HugeiconsIcon icon={ArrowDown01Icon} className="size-3.5 text-muted-foreground" />
-                  </Button>
-                </DropdownMenuTrigger>
-              </TooltipTrigger>
-              <TooltipContent>Choose size</TooltipContent>
-            </Tooltip>
-            <DropdownMenuContent align="end" className="w-64" onCloseAutoFocus={(e) => (e.preventDefault(), ref.current?.focus({ preventScroll: true }))}>
-              <DropdownMenuRadioGroup value={size} onValueChange={setSize}>
-                {SIZE_GROUPS.map((g, gi) => (
-                  <DropdownMenuGroup key={g}>
-                    {gi > 0 && <DropdownMenuSeparator />}
-                    <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">{g}</DropdownMenuLabel>
-                    {SIZES.filter((s) => s.group === g).map((s) => (
-                      <DropdownMenuRadioItem key={s.value} value={s.value} className="gap-2.5 pr-2 data-[state=checked]:bg-foreground/5 [&_[data-slot=dropdown-menu-radio-item-indicator]]:hidden">
-                        <RatioGlyph size={s.value} className="text-muted-foreground" />
-                        <span className="tabular-nums">{s.value}</span>
-                        <span className="ml-auto text-xs text-muted-foreground">{s.label}</span>
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuGroup>
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          </>
-          )}
-
+          {/* no size or length here: the chat asks where the Flick runs and sets them */}
           <Tooltip>
             <TooltipTrigger asChild>
               <span tabIndex={canSend ? -1 : 0}>
-                <Button disabled={!canSend || sending} onClick={send} className={cn("gap-2 pl-3 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100", showCost ? "pr-1.5" : "pr-3")} aria-label={planFirst ? "Start" : showCost ? `Generate video, uses ${COST} credits` : "Generate video"}>
+                <Button disabled={!canSend || sending} onClick={send} className="gap-2 px-3 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100" aria-label="Start">
                   <HugeiconsIcon icon={sending ? Loading03Icon : SparklesIcon} className={cn("size-4", sending && "animate-spin")} />
-                  {planFirst ? (sending ? "Starting…" : "Start") : sending ? "Generating…" : "Generate"}
-                  {showCost && (
-                    <span className="flex items-center gap-1 rounded-full bg-primary-foreground/20 px-2 py-0.5 text-xs font-medium tabular-nums leading-none animate-in fade-in zoom-in-95">
-                      {COST}
-                    </span>
-                  )}
+                  {sending ? "Starting…" : "Start"}
                 </Button>
               </span>
             </TooltipTrigger>
-            <TooltipContent className="flex items-center gap-2">{uploading ? "Uploading images" : failedRefs ? "Retry or remove the images that didn’t upload" : planFirst ? "Plan it with the chat. No credits yet" : "Generate video"}{canSend && <Shortcut keys={[MOD, "↵"]} />}</TooltipContent>
+            <TooltipContent className="flex items-center gap-2">{uploading ? "Uploading images" : failedRefs ? "Retry or remove the images that didn’t upload" : "Plan it with the chat. No credits yet"}{canSend && <Shortcut keys={[MOD, "↵"]} />}</TooltipContent>
           </Tooltip>
         </div>
 

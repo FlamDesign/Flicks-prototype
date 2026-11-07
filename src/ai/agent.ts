@@ -1,13 +1,13 @@
 /**
  * The chat that plans and designs a Flick. Claude (through the AI server) decides what to ask and
- * what to build, calling the tools below; the editor carries them out. Without a connection, a
- * scripted stand-in calls the same tools, so the flow can always be demoed.
+ * what to build, calling the tools below; the editor carries them out. Without a connection, the
+ * chat shows "Couldn't connect to the AI server." and nothing else happens.
  */
 import { useCallback, useEffect, useRef, useState } from "react"
-import { AiError, aspectOf, cancelQueuedImages, keepable, generateImage, mockVideos, pollImage, imageBlock, library, shareable, sharedNow, type LibraryItem, isLive, readWebsite, siteImage, streamChat, type Block, type Message, type SiteRead, type Tool } from "@/ai/client"
+import { AiError, MESSAGES, aspectOf, cancelQueuedImages, keepable, generateImage, mockVideos, pollImage, imageBlock, library, shareable, sharedNow, type LibraryItem, isLive, readWebsite, siteImage, streamChat, type Block, type Message, type Tool } from "@/ai/client"
 import type { Paint, ShapeKind } from "@/components/editor/elements"
+import type { TemplateRef } from "@/data"
 import { shotPrompt, type Brand, type Design, type Plan, type PlanVariation, type Shot, type VideoMode } from "@/ai/design"
-import { mockReply } from "@/ai/mock"
 import { findSkill, SKILLS } from "@/ai/skills"
 import { loadSaved, save, saver, saveWaitingNow, webSource } from "@/ai/sync"
 import { blobUrl, probeVideo, sameUrl, stillsAt } from "@/lib/media"
@@ -44,8 +44,6 @@ export type ProjectState = {
   /** skills already read in this chat */
   skills_read: string[]
   images: ProjectImage[]
-  /** the sample product set the simulated videos come from (scripted demo only) */
-  sample_set: string
 }
 export type EditorApi = {
   state(): Omit<ProjectState, "images" | "skills_read">
@@ -86,10 +84,6 @@ export type EditorApi = {
   addImageToCanvas(url: string): string
   /** the review skill's checks: what passes, what to fix */
   review(): { pass: string[]; fail: string[] }
-  /** a demo website read, for the scripted chat */
-  sampleSite(url: string): SiteRead
-  /** a demo image for the scripted chat */
-  sampleImage(purpose: string, target?: string): string
 }
 
 /** an element as the chat describes it: positions are % of the frame (x, y = its anchor point) */
@@ -179,6 +173,8 @@ type Base = { id: string; at: number }
 export type Item = Base &
   (
     | { kind: "user"; text: string; images: string[] }
+    /** the template the project started from (Use as reference) */
+    | { kind: "template"; template: TemplateRef; images?: string[] }
     | { kind: "assistant"; text: string; streaming?: boolean; activity?: string; /** the user stopped it here (what it says, e.g. "Stopped · 2 images cancelled") */ stopped?: string }
     /** the page closed mid-turn: reopening offers to carry on */
     | { kind: "resume"; text?: string }
@@ -1027,7 +1023,12 @@ export const asksForSeveral = (q: string) =>
   !!pickRange(q) ||
   /\b(all|as many|one or more|several|multiple)\b[^.?!]*\b(apply|you like|you want|that fit|you need)\b|\b(pick|choose|select|tick|add)\s+(all|any|several|multiple|one or more|as many)\b|\bwhich ones\b|\(.*(pick|choose|select)\s+(any|several|multiple).*\)/i.test(q)
 
-export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { url: string; name: string }[]; autoStart?: boolean; projectId?: string }) {
+/**
+ * opts.fresh: a new project, so the first message (what the user typed on Create) is sent at once;
+ * false for a project opened from before (its saved chat is restored, or the chat waits).
+ * opts.template: the template the user picked with Use as reference (shown as a card; its pattern is in the first message).
+ */
+export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { url: string; name: string }[]; autoStart?: boolean; projectId?: string; fresh?: boolean; template?: TemplateRef }) {
   const apiRef = useRef(api)
   apiRef.current = api
   const [items, setItems] = useState<Item[]>([])
@@ -1051,7 +1052,6 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   const pending = useRef<{ toolId: string; itemId: string }[]>([])
   const abort = useRef<AbortController | null>(null)
   const started = useRef(false)
-  const live = useRef(isLive())
   // images the chat can use by id: what the user added, and what it generated
   const images = useRef<ProjectImage[]>([])
   /** library items the chat has seen in search results, by id */
@@ -1061,7 +1061,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     const img = { id: `img-${images.current.length + 1}`, name, url, from, ...(kind ? { kind } : {}) }
     images.current.push(img)
     // the user's own images are kept in the library too (and are then ready to share with Higgsfield)
-    if (from === "upload" && live.current) shareable(url, { name, project: apiRef.current.state().title, purpose: "upload" }).catch(() => {})
+    if (from === "upload") shareable(url, { name, project: apiRef.current.state().title, purpose: "upload" }).catch(() => {})
     return img
   }
 
@@ -1091,7 +1091,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         const stills = await stillsAt(url, [0.1, 0.5, 0.9].map((k) => k * duration), 768)
         const it: ProjectImage = { id: `vid-${images.current.filter((x) => x.kind === "video").length + 1}`, name: f.name, url, from: "upload", kind: "video", poster: URL.createObjectURL(stills[0]), width, height, duration }
         images.current.push(it)
-        if (live.current) {
+        {
           shareable(url, { name: f.name, project: apiRef.current.state().title, purpose: "upload" }).catch(() => {})
           shareable(it.poster!).catch(() => {})
         }
@@ -1180,11 +1180,9 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         if (lost.length) throw new Error(`Couldn't open ${lost.join(", ")} (added in an earlier visit and no longer in this browser). Add ${lost.length === 1 ? "it" : "them"} again.`)
         return u.filter((x): x is string => !!x)
       })
-    const made: Promise<ProjectImage> = live.current
-      ? refs()
-          .then((urls) => generateImage(prompt, aspect, undefined, (status) => patch(itemId, { status } as Partial<Item>), urls, { project: apiRef.current.state().title, variation: target, purpose }, { text: !!input.has_text, quality: purpose === "idea" ? "draft" : "final", onId: (job) => patch(itemId, { job } as Partial<Item>) }))
-          .then(done)
-      : new Promise((ok) => setTimeout(() => ok(done(apiRef.current.sampleImage(purpose === "sheet" || purpose === "look" || purpose === "edit" ? "idea" : purpose, target))), 1800 + Math.random() * 1200))
+    const made: Promise<ProjectImage> = refs()
+      .then((urls) => generateImage(prompt, aspect, undefined, (status) => patch(itemId, { status } as Partial<Item>), urls, { project: apiRef.current.state().title, variation: target, purpose }, { text: !!input.has_text, quality: purpose === "idea" ? "draft" : "final", onId: (job) => patch(itemId, { job } as Partial<Item>) }))
+      .then(done)
     made.catch(fail)
     // images the plan builds on come back with their id, so the next step can use them
     if (purpose === "look" || purpose === "edit" || purpose === "sheet")
@@ -1228,7 +1226,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     const blockedLine = `${host} blocks automated visits, so its pages can't be read here (don't try other pages on it). Use what web_search showed, try web_fetch for the page's text, or ask the user for product photos.`
     if (blockedHosts.current.has(host)) return blockedLine
     // an image address (a logo, a pack shot): kept as a project image instead of read as a page
-    if (live.current && /\.(png|jpe?g|webp|gif|avif|svg)(\?|#|$)/i.test(url)) {
+    if (/\.(png|jpe?g|webp|gif|avif|svg)(\?|#|$)/i.test(url)) {
       const itemId = add({ kind: "site", url, state: "working", images: [] })
       try {
         const blob = await siteImage(url)
@@ -1244,7 +1242,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     }
     const itemId = add({ kind: "site", url, state: "working", images: [] })
     try {
-      const r = live.current ? await readWebsite(url) : apiRef.current.sampleSite(url)
+      const r = await readWebsite(url)
       if (!r.ok) {
         patch(itemId, { state: "failed", reason: r.reason } as Partial<Item>)
         if (/blocks automated/.test(r.reason ?? "")) return blockedHosts.current.add(host), blockedLine
@@ -1255,7 +1253,6 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       const found = (r.images ?? []).slice(0, 8)
       const blobs = await Promise.all(
         found.map(async (src) => {
-          if (!live.current) return { src, blob: null as Blob | null, show: src }
           try {
             const blob = await siteImage(src)
             const show = URL.createObjectURL(blob)
@@ -1266,7 +1263,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           }
         }),
       )
-      const ok = blobs.filter((b): b is { src: string; blob: Blob | null; show: string } => !!b)
+      const ok = blobs.filter((b): b is { src: string; blob: Blob; show: string } => !!b)
       const kept = ok.map((b, i) => keep(b.show, `${r.site ?? "site"} image ${i + 1}`, "website"))
       patch(itemId, { state: "done", title: r.title, site: r.site, price: r.price, images: ok.map((b) => b.show) } as Partial<Item>)
       const facts = {
@@ -1283,7 +1280,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       const blocks: Block[] = [{ type: "text", text: `Read ${r.url}. ${JSON.stringify(facts)}\nThe images are kept with these ids (use_image can set them as thumbnails). The first ones are attached so you can see them.` }]
       for (const b of ok.slice(0, 4)) {
         try {
-          blocks.push(await imageBlock(b.blob ?? (await (await fetch(b.show)).blob())))
+          blocks.push(await imageBlock(b.blob))
         } catch {
           /* an image Claude can't see is still listed */
         }
@@ -1318,7 +1315,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   }
   /** while propose_concepts streams in: start a preview for each concept that's complete (only once what varies is settled) */
   const onToolJson = (id: string, name: string, json: string) => {
-    if (name !== "propose_concepts" || !live.current) return
+    if (name !== "propose_concepts") return
     const done = finishedItems(json, "concepts")
     if (!done.length) return
     const from = { basis: finishedValue(json, "variations_basis"), quote: finishedValue(json, "variations_quote") }
@@ -1399,7 +1396,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       // the user's own video: its first frame
       const mine = v.video_id ? images.current.find((x) => x.id === v.video_id)?.poster : undefined
       if (mine) return fill(i, mine)
-      if (source?.poster && live.current) {
+      if (source?.poster) {
         const extra = (v.image_ids ?? []).map((r) => images.current.find((x) => x.id === r)).filter((x): x is ProjectImage => !!x).slice(0, 2)
         return void Promise.all([source.poster, ...extra.map((x) => x.url)].map((u) => shareable(u).catch(() => null)))
           .then((urls) =>
@@ -1409,8 +1406,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       }
       if (v.image_ids?.length || v.video_id) return
       // with a storyboard, the frames stand in for Variation 1 and each variation is drawn on the first frame once it's cut
-      if (!source && (plan.reference.storyboard?.length ?? 0) >= 2 && live.current) return
-      if (!live.current) return void setTimeout(() => fill(i, apiRef.current.sampleImage("variation", String(i))), 900 + i * 500)
+      if (!source && (plan.reference.storyboard?.length ?? 0) >= 2) return
       Promise.all(refs.map((r) => shareable(r.url).catch(() => null)))
         .then((urls) =>
           generateImage((i === 0 ? plan.reference.prompt : `${plan.reference.prompt} ${v.prompt}`).trim(), aspectOf(state().flick_size), undefined, undefined, urls.filter((x): x is string => !!x), { project: state().title, variation: v.name, purpose: "plan preview" }, { quality: "draft" }),
@@ -1481,7 +1477,6 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     if (!frames.length || plan.variations[0]?.video_id) return
     const fill = (i: number, url: string) =>
       setItems((list) => list.map((x) => (x.id === itemId && x.kind === "plan" ? { ...x, frames: Object.assign([...(x.frames ?? [])], { [i]: url }) } : x)))
-    if (!live.current) return frames.forEach((_, i) => setTimeout(() => fill(i, apiRef.current.sampleImage("variation", String(i % Math.max(2, plan.variations.length)))), 700 + i * 450))
     const shot = plan.reference.shot
     const refIds = [plan.reference.first_frame_id, ...(plan.reference.image_ids ?? [])].filter((x): x is string => !!x)
     const own = images.current.filter((x) => x.kind !== "video" && (x.from === "upload" || x.from === "website" || x.from === "library"))
@@ -1514,7 +1509,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     const fill = (i: number, url: string) =>
       setItems((list) => list.map((x) => (x.id === itemId && x.kind === "plan" ? { ...x, previews: Object.assign([...(x.previews ?? [])], { [i]: url }) } : x)))
     plan.variations.forEach((v, i) => {
-      if (i === 0 || v.video_id || !live.current) return
+      if (i === 0 || v.video_id) return
       const extra = (v.image_ids ?? []).map((r) => images.current.find((x) => x.id === r)).filter((x): x is ProjectImage => !!x).slice(0, 2)
       const direction = (v.direction || v.prompt || "").trim()
       if (!direction) return
@@ -1578,7 +1573,6 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
               // a real image (a pack shot) shows as it is
               const given = o.image_id && images.current.find((x) => x.id === o.image_id)
               if (given) return fill(given.url)
-              if (!live.current) return void setTimeout(() => fill(apiRef.current.sampleImage("variation", String(i))), 800 + i * 500)
               previewFor(u.id, i, { image_prompt: o.image_prompt || `${String(input.question ?? "")}: ${o.label}. ${o.description ?? ""}` }).then(fill, () => {})
             })
           return WAIT
@@ -1589,7 +1583,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           return r
         }
         case "propose_concepts": {
-          if (live.current && !variationsSettled(fromOf(input), false)) return NOT_SETTLED
+          if (!variationsSettled(fromOf(input), false)) return NOT_SETTLED
           const list = ((input.concepts as Record<string, unknown>[]) ?? []).slice(0, 3)
           if (!list.length) return "Error: Give 1 to 3 concepts."
           const options: Choice[] = list.map((c) => ({
@@ -1605,8 +1599,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           // previews fill in as they arrive; most already started while Claude was still writing the concepts
           list.forEach((c, i) => {
             const fill = (url: string) => setItems((all) => all.map((x) => (x.id === itemId && x.kind === "question" ? { ...x, options: x.options.map((o, j) => (j === i ? { ...o, image: url } : o)) } : x)))
-            if (live.current) previewFor(u.id, i, c).then(fill, () => {})
-            else setTimeout(() => fill(apiRef.current.sampleImage("idea", undefined)), 1200 + i * 600)
+            previewFor(u.id, i, c).then(fill, () => {})
           })
           return WAIT
         }
@@ -1637,18 +1630,18 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           if (raw.variations[0].video_id) {
             if (!raw.reference.prompt) raw.reference = { ...raw.reference, prompt: "The user's own video." }
           } else {
-            if (live.current && !variationsSettled(fromOf(input), true)) return NOT_SETTLED
+            if (!variationsSettled(fromOf(input), true)) return NOT_SETTLED
             if (!raw.reference.prompt) return "Error: give the reference video's prompt (shot)."
             const ref = raw.reference
             const known = (x?: string) => !!x && images.current.some((i) => i.id === x)
             if (ref.mode === "edit" && !known(ref.source_video_id)) return "Error: 'edit' needs source_video_id: the user's video to change (a project video id)."
             if (ref.mode === "animate" && !known(ref.first_frame_id)) return "Error: 'animate' needs first_frame_id: the user's image (or your edit of it) to open on."
             // nothing to work from: suggest looks first, then make the video from the one the user approves
-            if (live.current && ref.mode === "reference" && !ref.image_ids?.length && !ref.video_ids?.length)
+            if (ref.mode === "reference" && !ref.image_ids?.length && !ref.video_ids?.length)
               return "Not shown: the reference video has nothing to work from. Suggest looks first (propose_concepts makes a preview image per concept; or generate_image purpose 'look'), let the user pick or approve one, then propose the plan with it in reference_image_ids."
             // the user's own product or people images must shape the reference video
             const theirs = images.current.filter((x) => x.kind !== "video" && (x.from === "upload" || x.from === "website" || x.from === "library"))
-            if (live.current && theirs.length && ref.mode === "reference" && !ref.image_ids?.some((x) => theirs.some((t) => t.id === x)) && !ref.video_ids?.length)
+            if (theirs.length && ref.mode === "reference" && !ref.image_ids?.some((x) => theirs.some((t) => t.id === x)) && !ref.video_ids?.length)
               return `Not shown: the reference video doesn't use the user's images, so the product wouldn't match. Put the product or person to keep in reference_image_ids (${theirs.slice(0, 8).map((x) => `${x.id} ${x.name}`).join(", ")}), or their sheet, then propose the plan again.`
           }
           // the look the user picked carries into the plan's design
@@ -1726,7 +1719,6 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           return looks.length ? looks : "Error: couldn't draw the Flick (is it built yet?)."
         }
         case "search_library": {
-          if (!live.current) return "The library needs the AI server; nothing is saved in the demo."
           add({ kind: "note", text: `Looked through your library for “${String(input.query ?? "")}”` })
           const all = await library()
           const words = String(input.query ?? "").toLowerCase().split(/\s+/).filter(Boolean)
@@ -1871,7 +1863,6 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     turning.current = true
     resumeDismissed.current = false
     setBusy(true)
-    live.current = isLive()
     abort.current = new AbortController()
     let replyId = ""
     try {
@@ -1899,7 +1890,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           const said = activityFrom(name, json)
           if (said) patch(itemId, { activity: said } as Partial<Item>)
         }
-        const ask = (r: typeof req) => (live.current ? streamChat(r, onText, abort.current!.signal, onTool, onJson) : mockReply(msgs.current, state(), onText))
+        if (!isLive()) throw new AiError("not_connected", MESSAGES.not_connected)
+        const ask = (r: typeof req) => streamChat(r, onText, abort.current!.signal, onTool, onJson)
         // if the API refuses how earlier searches or thinking were sent back, send them once more as plain notes
         const res = await ask(req).catch((e) => {
           if (e instanceof Error && /tool_result|thinking|signature/i.test(e.message)) return ask(cachedRequest(systemPrompt(now), msgs.current, now, true))
@@ -1975,10 +1967,16 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       if (aborted) {
         // what it had written stays, in the chat and in its memory, marked as stopped (so the two match)
         const said = (itemsRef.current.find((x) => x.id === replyId && x.kind === "assistant") as { text?: string } | undefined)?.text?.trim() ?? ""
-        if (said) msgs.current.push({ role: "assistant", content: [{ type: "text", text: `${said}\n\n(The user stopped this reply here.)` }] })
+        // stopped while its tools ran: the reply (with its tool calls) is already in memory, so every
+        // call gets a result saying so; otherwise the words it had written are kept, marked as stopped
+        const last = msgs.current.at(-1)
+        const open = last?.role === "assistant" && Array.isArray(last.content) ? last.content.filter((b): b is Extract<Block, { type: "tool_use" }> => b.type === "tool_use") : []
+        if (open.length) msgs.current.push({ role: "user", content: open.map((u) => ({ type: "tool_result" as const, tool_use_id: u.id, content: "The user stopped the reply here; this result is dropped." })) })
+        else if (said) msgs.current.push({ role: "assistant", content: [{ type: "text", text: `${said}\n\n(The user stopped this reply here.)` }] })
         const note = redirect.current ? "Stopped for your new message" : "Stopped"
         if (said) patch(replyId, { stopped: note, streaming: false } as Partial<Item>)
-        else setItems((list) => list.map((x) => (x.id === replyId ? { ...x, text: "", streaming: false, stopped: note } : x)))
+        else if (itemsRef.current.some((x) => x.id === replyId)) setItems((list) => list.map((x) => (x.id === replyId ? { ...x, text: "", streaming: false, stopped: note } : x)))
+        else add({ kind: "assistant", text: "", stopped: note })
       } else {
         // the request is still the last message: Retry sends it again
         setItems((list) => list.filter((x) => !(x.kind === "assistant" && x.streaming && !x.text)))
@@ -2175,7 +2173,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         const lastingUrl = async (id?: string) => {
           const im = id ? images.current.find((i) => i.id === id) : undefined
           if (!im) return undefined
-          if (/^https:\/\//.test(im.url) || !live.current) return im.url
+          if (/^https:\/\//.test(im.url)) return im.url
           const kept = await shareable(im.url, { project: state().title }).catch(() => undefined)
           if (kept) images.current = images.current.map((x) => (x.id === im.id ? { ...x, url: kept } : x))
           return kept ?? im.url
@@ -2190,7 +2188,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           elementsIn(text).flatMap((el) => el.images.slice(0, 3).map((im, i) => (images.current.find((x) => x.url === im.url) ?? keep(im.url, `${el.name} ${i + 1}`, "library", el.kind)).id))
         const withEls = (text: string, ids?: string[]) => [...new Set([...elementIds(text), ...(ids ?? [])])]
         // the user's own videos and thumbnails go in as they are (kept on the server, so they last)
-        const lasting = async (u?: string) => (u && live.current ? await shareable(u).catch(() => u) : u)
+        const lasting = async (u?: string) => (u ? await shareable(u).catch(() => u) : u)
         const own = await Promise.all(
           plan.variations.map(async (v) => {
             const vid = images.current.find((x) => x.id === v.video_id)
@@ -2248,7 +2246,6 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   const retryImage = (itemId: string) => {
     const it = items.find((x) => x.id === itemId)
     if (!it || it.kind !== "image") return
-    live.current = isLive()
     runImage({ prompt: it.prompt, purpose: it.purpose, variation: it.target, aspect_ratio: it.aspect }, itemId)
   }
 
@@ -2297,7 +2294,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   const restored = useRef<"no" | "loading" | "done">("no")
   const saveChat = useRef<((v: unknown) => void) | null>(null)
   useEffect(() => {
-    if (!opts.projectId || !live.current) return
+    if (!opts.projectId) return
     saveChat.current = saver(`chat-${opts.projectId}`, 1500, 6000)
   }, [opts.projectId])
   /** the chat as it stands: mid-turn, the reply being written is left out (it isn't in its memory yet) */
@@ -2342,7 +2339,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   useEffect(() => {
     if (started.current || !opts.autoStart || !opts.prompt?.trim()) return
     started.current = true
-    if (opts.projectId && live.current) {
+    if (opts.projectId) {
       restored.current = "loading"
       loadSaved<SavedChat>(`chat-${opts.projectId}`)
         .catch(() => null)
@@ -2375,11 +2372,11 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
             // the page closed mid-turn, with the user's message (or a step's results) unanswered
             resumeDismissed.current = !!saved.resumeDismissed
             setItems(saved.msgs.at(-1)?.role === "user" && !pending.current.length && !saved.resumeDismissed ? [...list, { id: crypto.randomUUID(), kind: "resume" } as Item] : list)
-          } else begin()
+          } else if (opts.fresh !== false) begin()
         })
       return
     }
-    begin()
+    if (opts.fresh !== false) begin()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const begin = () => {
@@ -2393,7 +2390,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           return null
         }
       }),
-    ).then((files) => send(opts.prompt!.trim(), files.filter((f): f is File => !!f), elementsIn(opts.prompt!)))
+    ).then((files) => send(opts.prompt!.trim(), files.filter((f): f is File => !!f), elementsIn(opts.prompt!), opts.template ? add({ kind: "template", template: opts.template }) : undefined))
   }
 
   /** a project image's address by id (for the plan's preview) */

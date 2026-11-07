@@ -61,6 +61,10 @@ export const SIZES: Size[] = [
 
 export const INDUSTRIES = ["Home & living", "Travel", "Fashion", "Footwear", "Luxury", "Sports & fitness", "Electronics", "Retail", "Food & beverage", "Automotive", "Beauty"]
 
+/** what the chat is told about a template the user picked with Use as reference: the pattern, never the sample brand or its video */
+export type TemplateRef = { id: string; title: string; mechanic: Mechanic; description: string; size: string; duration: number; variants: string[]; headline: string; cta: string; image?: string }
+export const templateRef = (t: Template): TemplateRef => ({ id: t.id, title: t.title, mechanic: t.mechanic, description: t.description, size: t.size, duration: t.duration ?? 8, variants: t.variants.map((v) => v.label), headline: t.headline, cta: t.cta, image: t.image })
+
 export type Template = {
   id: string
   title: string

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { InputGroupInput } from "@/components/ui/input-group"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { PauseIcon, PlayIcon, SparklesIcon, ArrowDown01Icon, Clock01Icon, Copy01Icon, Delete02Icon, Home01Icon, LayoutTopIcon, PencilEdit01Icon, PencilEdit02Icon, ViewIcon } from "@hugeicons/core-free-icons"
+import { PauseIcon, PlayIcon, SparklesIcon, ArrowDown01Icon, Clock01Icon, Copy01Icon, Delete02Icon, Home01Icon, PencilEdit01Icon, PencilEdit02Icon, ViewIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -21,7 +21,6 @@ export function FileTitle({
   duration,
   onHome,
   onDuplicate,
-  onSaveTemplate,
   onHistory,
   onDelete,
 }: {
@@ -35,7 +34,6 @@ export function FileTitle({
   duration?: number
   onHome: () => void
   onDuplicate: () => void
-  onSaveTemplate: () => void
   onHistory: () => void
   onDelete: () => void
 }) {
@@ -122,10 +120,6 @@ export function FileTitle({
           <DropdownMenuItem onSelect={onDuplicate}>
             <HugeiconsIcon icon={Copy01Icon} className="size-4" />
             Duplicate
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={onSaveTemplate}>
-            <HugeiconsIcon icon={LayoutTopIcon} className="size-4" />
-            Save as template
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={onHistory}>
             <HugeiconsIcon icon={Clock01Icon} className="size-4" />

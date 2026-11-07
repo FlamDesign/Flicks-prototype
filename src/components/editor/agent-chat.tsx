@@ -119,6 +119,8 @@ export function AgentItemView({ item, agent, ctx }: { item: Item; agent: Agent; 
       return <Assets item={item} agent={agent} />
     case "brand":
       return <BrandTable item={item} />
+    case "template":
+      return <TemplateCard item={item} />
     case "plan":
       // once approved, the storyboard folds to one row
       return item.state === "approved" ? <ApprovedPlan item={item} agent={agent} ctx={ctx} /> : <PlanCard item={item} agent={agent} ctx={ctx} />
@@ -186,10 +188,10 @@ function ErrorText({ text: raw0 }: { text: string }) {
     : /overloaded|529|rate|429/i.test(text)
       ? "The chat is busy right now. Try again in a moment."
       : /credit balance is too low|billing/i.test(text)
-        ? "The AI account is out of credit. Ask your admin to top it up, then press Retry."
+        ? "The chat’s account is out of credit. Ask your admin to top it up, then press Retry."
         : /daily_limit/i.test(text)
-        ? "Today’s limit for the AI is reached. It resets tomorrow."
-        : "Something went wrong talking to the AI. Try again."
+        ? "Today’s chat limit is reached. It resets tomorrow."
+        : "Something went wrong in the chat. Try again."
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-1">
       <p>{plain}</p>
@@ -889,6 +891,24 @@ function FileThumb({ file, url, className }: { file: File; url: string; classNam
 }
 
 /** the brand it found, as a clear table: only the rows it has */
+/** The template the project started from (Use as reference on a template page): the pattern the chat follows, with the user's own brand and product. */
+function TemplateCard({ item }: { item: Extract<Item, { kind: "template" }> }) {
+  const t = item.template
+  return (
+    <div className="ml-10 flex max-w-[85%] items-center gap-3 self-end rounded-2xl rounded-br-md bg-muted p-2 pr-3.5">
+      {t.image && <img src={t.image} alt="" className="size-14 shrink-0 rounded-xl object-cover ring-1 ring-foreground/10" />}
+      <div className="min-w-0 text-sm">
+        <p className="text-xs text-muted-foreground">From template</p>
+        <p className="truncate font-medium">{t.title}</p>
+        <p className="truncate text-xs text-muted-foreground">
+          {t.mechanic !== "Variants" && `${t.mechanic} · `}
+          {t.variants.length} variations · {t.size} · {t.duration}s
+        </p>
+      </div>
+    </div>
+  )
+}
+
 function BrandTable({ item }: { item: Extract<Item, { kind: "brand" }> }) {
   const b = item.brand
   const colours = (

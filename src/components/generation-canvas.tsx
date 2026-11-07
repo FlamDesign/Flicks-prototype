@@ -1,4 +1,3 @@
-import { elementsIn } from "@/lib/elements"
 import { Spinner } from "@/components/ui/spinner"
 import { useEffect, useRef, useState } from "react"
 import { PendingButton } from "@/components/page-skeletons"
@@ -7,15 +6,14 @@ import { Copy01Icon, Delete02Icon, MinusSignIcon, PlusSignIcon, SparklesIcon, Bu
 import { useCanvasView, MIN_ZOOM, MAX_ZOOM } from "@/components/editor/use-canvas-view"
 import { videoCost } from "@/components/credits-card"
 import type { Reference } from "@/components/prompt-composer"
-import { TEMPLATES, type Template } from "@/data"
+import type { TemplateRef } from "@/data"
 import { MAX_VARIATIONS, SlidesStrip, slideName, type Slide, type SlideStatus } from "@/components/editor/slides-strip"
-import { SlidePrompt } from "@/components/editor/slide-prompt"
 import { focusPromptBox, PromptChat, refsOf, type HistoryItem } from "@/components/editor/prompt-chat"
 import { FeedsPanel, FeedsTitle } from "@/components/editor/feeds-panel"
 import { VideoLightbox } from "@/components/editor/video-lightbox"
 import { ExportControl } from "@/components/editor/export-flick"
 import { VersionHistoryPanel } from "@/components/editor/version-history"
-import { TemplateSection, type Issue } from "@/components/flick-sections"
+import type { Issue } from "@/components/flick-sections"
 import { library, useLibrary, type Checkpoint } from "@/library"
 import { onboarding, useOnboarding } from "@/onboarding/onboarding"
 import { FileTitle, ModeSwitch, VideoToggle } from "@/components/editor/editor-topbar"
@@ -52,8 +50,8 @@ export type Generation = {
   refs?: Reference[]
   startedAt: number
   video: number
-  /** opened from a template: everything is already generated and the reference video is fixed */
-  template?: Template
+  /** started from a template with Use as reference: what the chat is told about it */
+  fromTemplate?: TemplateRef
   /** a duplicate of another Flick: its name and everything on its canvas */
   copy?: { title: string; snap: unknown }
   /** started from Assets with Use in Flicks: that video is the reference video, already made */
@@ -80,8 +78,6 @@ export function GenerationCanvas({
   onBack,
   onGetCredits,
   onOpenFlick,
-  onSaveTemplate,
-  onHomeTemplates,
   onDuplicate,
   onFormat,
 }: {
@@ -93,9 +89,7 @@ export function GenerationCanvas({
   /** open a Flick this project exported (from Version history) */
   onOpenFlick: (flickId: string) => void
   /** adds a template saved from this project */
-  onSaveTemplate: (t: Template) => void
   /** home, scrolled to the templates */
-  onHomeTemplates: () => void
   /** opens a copy of this project as a new one */
   onDuplicate: (copy: { title: string; snap: Snap }) => void
 }) {
@@ -125,11 +119,7 @@ export function GenerationCanvas({
   const VIDEO_COST = videoCost(generation.size, generation.duration ?? 8)
 
   // Slides: the main video plus its variations (at least two, up to five)
-  const tpl = generation.template
-  // a template the user saved from the editor: the whole project, ready to edit
-  const savedSnap = (generation.copy?.snap ?? generation.resume?.snap ?? tpl?.saved) as Snap | undefined
-  // built-in templates come with a fixed reference video (copies keep it)
-  const fixedRef = !!tpl && !tpl.saved
+  const savedSnap = (generation.copy?.snap ?? generation.resume?.snap) as Snap | undefined
   const [slides, setSlides] = useState<Slide[]>(() => {
     const main: Slide = {
       id: "main",
@@ -137,8 +127,8 @@ export function GenerationCanvas({
       prompt: "",
       refs: [],
       video: generation.video,
-      // with the chat, the reference video waits for the plan
-      startedAt: generation.agent ? undefined : generation.startedAt,
+      // the reference video waits for the chat's storyboard (from Assets it's the user's video, already made)
+      startedAt: generation.fromAsset ? generation.startedAt : undefined,
       used: { prompt: generation.prompt, refs: generation.refs ?? [], fromReference: false },
     }
     // reopened: finished videos count as made long ago; a real video still being made keeps going
@@ -154,15 +144,7 @@ export function GenerationCanvas({
         { ...main, startedAt: 1 },
         ...[1, 2].map((n) => ({ id: crypto.randomUUID(), n, prompt: "", refs: [], video: inSet(generation.video, n), startedAt: 1, used: { prompt: VARIATION_PROMPTS[n - 1], refs: [], fromReference: true } })),
       ]
-    if (!tpl) return [main, { id: crypto.randomUUID(), n: 1 }, { id: crypto.randomUUID(), n: 2 }]
-    // template: reference video plus one ready variation per template variant (startedAt 1 = finished long ago)
-    return [
-      { ...main, startedAt: 1 },
-      ...tpl.variants.slice(0, 3).map((v, i) => {
-        const prompt = `${tpl.prompt}, featuring the ${v.label.toLowerCase()}`
-        return { id: crypto.randomUUID(), n: i + 1, name: v.label, prompt: "", refs: [], video: inSet(generation.video ?? 0, i + 1), startedAt: 1, used: { prompt, refs: [], fromReference: true } }
-      }),
-    ]
+    return [main, { id: crypto.randomUUID(), n: 1 }, { id: crypto.randomUUID(), n: 2 }]
   })
   const [active, setActive] = useState("main")
   // every generation, as a chat on the left (seeded from whatever is already made)
@@ -182,8 +164,8 @@ export function GenerationCanvas({
   // next variation number; numbers are never reused
   const nextN = useRef(Math.max(0, ...slides.map((s) => s.n ?? 0)) + 1)
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null)
-  // a new Flick is named from its prompt (simulated AI); a template's copy is the template name and when it was made
-  const [title, setTitle] = useState(() => generation.copy?.title ?? generation.resume?.title ?? (generation.template ? `${generation.template.title}_${stamp()}` : ""))
+  // a new project is named from its prompt until the chat names it; one from a template after the template
+  const [title, setTitle] = useState(() => generation.copy?.title ?? generation.resume?.title ?? (generation.fromTemplate ? `From ${generation.fromTemplate.title}` : ""))
   const naming = !title
   useEffect(() => {
     if (title) return
@@ -273,11 +255,6 @@ export function GenerationCanvas({
           { id: crypto.randomUUID(), kind: "button", variant: "pill", text: BUTTON_TEXT, x: 50, y: 52, align: "center" },
           // its strip is already there, so opening it doesn't count as a change
           { ...newStrip(2, "horizontal", ratio), id: crypto.randomUUID() },
-        ]
-      : tpl
-      ? [
-          { id: crypto.randomUUID(), kind: "text", variant: "heading", text: tpl.headline, x: 50, y: 16, align: "center" },
-          { id: crypto.randomUUID(), kind: "button", variant: "pill", text: tpl.cta, x: 50, y: 66, align: "center" },
         ]
       : [],
   )
@@ -499,67 +476,10 @@ export function GenerationCanvas({
     setEditing(null)
   }
 
-  // what a generation sends: the typed prompt, or (regenerating without typing) the last one sent
-  // @mentioned elements bring their images along as references
-  const sentOf = (s?: Slide) => {
-    const base = s?.prompt?.trim() ? { prompt: s.prompt, refs: s.refs ?? [] } : { prompt: s?.used?.prompt ?? "", refs: s?.used?.refs ?? [] }
-    const extra = elementsIn(base.prompt).flatMap((el) => el.images.slice(0, 3).map((im, i): Reference => ({ id: `${el.id}-${i}`, name: `${el.name} ${i + 1}`, url: im.url, loading: false, media: "image" })))
-    return { ...base, refs: [...base.refs, ...extra.filter((x) => !base.refs.some((r) => r.url === x.url))] }
-  }
-  // variations step through the reference video's product set
-  const nextVideo = useRef(tpl ? slides.length : 1)
-  const generate = (id: string) => {
-    if (dev.credits < VIDEO_COST) return onGetCredits()
-    setDev((d) => ({ credits: d.credits - VIDEO_COST }))
-    // each generation shows the next sample video
-    const video = inSet(generation.video ?? 0, nextVideo.current++)
-    const startedAt = Date.now()
-    const s0 = slides.find((s) => s.id === id)
-    const sent = sentOf(s0)
-    setHistory((h) => [
-      ...h,
-      { id: crypto.randomUUID(), slideId: id, prompt: sent.prompt, refs: refsOf(sent.refs), fromReference: id !== "main", video, startedAt },
-    ])
-    // remember what this video was made from, for the full-screen details
-    setSlides((list) =>
-      list.map((s) =>
-        // sent: the prompt box clears, the history keeps it
-        s.id === id ? { ...s, video, startedAt, prompt: "", refs: [], used: { prompt: sent.prompt, refs: sent.refs, fromReference: id !== "main" } } : s,
-      ),
-    )
-  }
-  // regenerate the reference video and every variation already made from it: the variations
-  // queue up and start once the new reference video is ready
-  const made = slides.filter((s) => s.id !== "main" && s.startedAt)
-  const regenerateAll = () => {
-    const cost = VIDEO_COST * (1 + made.length)
-    if (dev.credits < cost) return onGetCredits()
-    setDev((d) => ({ credits: d.credits - cost }))
-    const now = Date.now()
-    const items: HistoryItem[] = []
-    setSlides(
-      slides.map((s) => {
-        if (s.id !== "main" && !s.startedAt) return s
-        const video = inSet(generation.video ?? 0, nextVideo.current++)
-        const startedAt = s.id === "main" ? now : now + ms + 1
-        const sent = sentOf(s)
-        items.push({ id: crypto.randomUUID(), slideId: s.id, prompt: sent.prompt, refs: refsOf(sent.refs), fromReference: s.id !== "main", video, startedAt, batch: s.id !== "main" })
-        return {
-          ...s,
-          video,
-          // variations start right after the reference video, so they're made from the new one
-          startedAt,
-          prompt: "",
-          refs: [],
-          used: { prompt: sent.prompt, refs: sent.refs, fromReference: s.id !== "main" },
-        }
-      }),
-    )
-    setHistory((h) => [...h, ...items])
-  }
+  // variations step through the sample video set (sample videos only)
+  const nextVideo = useRef(1)
   // a variation made before the reference video was last regenerated needs regenerating too
   const stale = (s: Slide) => s.id !== "main" && !!s.startedAt && !!slides[0].startedAt && s.startedAt < slides[0].startedAt && mainDone
-  const [confirmRegen, setConfirmRegen] = useState(false)
   // the prompt box stays open while videos generate: a new prompt for a video that's still being
   // made starts it again with that prompt. Only variations wait for Variation 1 to exist, since
   // they're made from it.
@@ -569,13 +489,10 @@ export function GenerationCanvas({
   const hadMain = useRef(false)
   if (mainDone) hadMain.current = true
   const firstRun = !hadMain.current && !mainDone
-  const requestGenerate = (id: string) => {
-    // regenerating the reference video affects every variation already made from it: ask first
-    if (id === "main" && slides.some((s) => s.id !== "main" && s.startedAt)) return setConfirmRegen(true)
-    generate(id)
-  }
   /* ---------- the chat that plans the Flick (started from Create with the chat on) ---------- */
-  const agentMode = !!generation.agent
+  // every project is a chat project; one opened from before the chat (or copied) starts with an idle chat
+  const agentMode = true
+  const fresh = !generation.resume && !generation.copy && !generation.sample && !generation.fromAsset
   const [brand, setBrand] = useState<Brand | undefined>()
   // tools can run before React re-renders: they read the latest slides from here
   const liveRef = useRef(false)
@@ -899,7 +816,6 @@ export function GenerationCanvas({
       design: describeDesign(elementsNow.current, (id) => feedsNow.current.find((f) => f.id === id)?.name, { ratio, thumbs: (includeRef ? slidesNow.current : slidesNow.current.slice(1)).filter((x) => x.id === "main" || x.startedAt).map(nameOfSlide) }),
       // the variation the Flick opens on
       starts_on: nameOfSlide(slidesNow.current.find((x) => x.id === start) ?? slidesNow.current[0]),
-      sample_set: videoAt(generation.video)?.set ?? "sunglasses",
     }),
     async shot(variation) {
       // the Flick as viewers see it: a frame of this variation’s video with the design on top
@@ -1458,41 +1374,8 @@ export function GenerationCanvas({
       keepImage(url, "image")
       return "Added the image to the canvas."
     },
-    sampleSite(url) {
-      // the demo "reads" a product page with the sample set's product photos
-      const set = videoAt(generation.video)?.set ?? "sunglasses"
-      const pick = { sunglasses: ["u1", "u2", "u3", "u4", "u5", "u6"], boots: ["u8", "u9", "u10"], dress: ["u11", "u12"] }[set as "sunglasses"] ?? ["u1", "u2", "u3"]
-      const imgs = SAMPLE_UPLOADS.filter((u) => pick.includes(u.id))
-      const names = imgs.map((u) => u.name.replace(/\.[a-z]+$/, "").replace(/-/g, " "))
-      let host = "example.com"
-      try {
-        host = new URL(/^https?:/.test(url) ? url : `https://${url}`).hostname.replace(/^www\./, "")
-      } catch {
-        /* keep the placeholder */
-      }
-      return {
-        ok: true,
-        url,
-        site: host,
-        title: `${names[0]} | ${host}`,
-        description: "Sample product page (demo).",
-        price: "$189",
-        theme_color: "#09090b",
-        products: imgs.map((u, i) => ({ name: names[i], price: `$${179 + i * 10}`, images: [u.src] })),
-        images: imgs.map((u) => u.src),
-        text: `Demo page for ${host}: ${names.join(", ")}.`,
-      }
-    },
-    sampleImage(purpose, target) {
-      // the plan's stills in the demo: the sample set's variations, in order
-      if (purpose === "variation") return videoAt(inSet(generation.video ?? 0, Number(target) + 1)).poster
-      const sl = target ? findSlide(target) : undefined
-      if (sl?.video !== undefined) return videoAt(wrapVideo(sl.video)).poster
-      void purpose
-      return videoAt(generation.video ?? 0).poster
-    },
   }
-  const agent = useAgent(agentApi, { projectId: generation.id, prompt: agentMode ? generation.prompt : undefined, imageUrls: agentMode ? (generation.refs ?? []).filter((r) => !r.failed).map((r) => ({ url: r.url, name: r.name })) : [], autoStart: agentMode })
+  const agent = useAgent(agentApi, { projectId: generation.id, prompt: agentMode ? generation.prompt : undefined, imageUrls: agentMode ? (generation.refs ?? []).filter((r) => !r.failed).map((r) => ({ url: r.url, name: r.name })) : [], autoStart: agentMode, fresh, template: generation.fromTemplate })
   const live = isLive(useAiConfig())
   liveRef.current = live
   // real videos: only in projects made with the AI chat, with the AI server connected; every video
@@ -1521,7 +1404,6 @@ export function GenerationCanvas({
   }, [needsReview, mainNow.startedAt])
   const changeRef = () => {
     select("main")
-    setComposeMode("chat")
     setChatHidden(false)
     agentCtx.focusComposer()
     toast({ title: "Tell the chat what to change", description: "It makes Variation 1 again; you review it before the others are made." })
@@ -1675,8 +1557,7 @@ export function GenerationCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allMade, batch])
   // the composer in chat mode: talk to the chat, or write a video's prompt yourself
-  const [composeMode, setComposeMode] = useState<"chat" | "prompt">("chat")
-  const chatting = agentMode && (composeMode === "chat" || !slides[0].startedAt)
+  const chatting = true
   // planning: nothing generated yet, so no editor tools; just the chat and a live preview
   const planning = agentMode && !slides[0].startedAt
   const samplePosters = [1, 2, 3, 4, 5].map((i) => videoAt(inSet(generation.video ?? 0, i)).poster)
@@ -1685,8 +1566,7 @@ export function GenerationCanvas({
     credits: dev.credits,
     addToCanvas: (u) => void agentApi.addImageToCanvas(u),
     focusComposer: () => {
-      setComposeMode("chat")
-      document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Message"]')?.focus()
+        document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Message"]')?.focus()
     },
     ratio,
     posters: samplePosters.slice(0, Math.max(2, agent.plan?.variations.length ?? 3)),
@@ -1772,7 +1652,7 @@ export function GenerationCanvas({
     toast(`Restored ${v.name || `version ${n}`}`)
     return slidesBack
   }
-  const [panel, setPanel] = useState<"history" | "template" | null>(null)
+  const [panel, setPanel] = useState<"history" | null>(null)
 
   // the project saves as you work, so it's in Projects with everything as you left it
   const { copy: _copy, resume: _resume, sample: _sample, back: _back, remixOf: _remixOf, ...base } = generation
@@ -1791,7 +1671,7 @@ export function GenerationCanvas({
   // new generation from Create are the user's work from the start.
   const startSig = useRef<string | null>(null)
   if (startSig.current === null && !firstRun) startSig.current = sig
-  const dirtyFromStart = agentMode || (!generation.template && !generation.resume && !generation.copy)
+  const dirtyFromStart = fresh
   const dirty = dirtyFromStart || (startSig.current !== null && sig !== startSig.current)
   useEffect(() => {
     if (!title || deleted.current || !dirty) return
@@ -1885,7 +1765,6 @@ export function GenerationCanvas({
           duration={generation.duration ?? 8}
           onHome={() => (title && dirty && saveProject(), onBack())}
           onDuplicate={() => onDuplicate({ title: `${title} copy`, snap: snapNow() })}
-          onSaveTemplate={() => setPanel("template")}
           onHistory={() => setPanel("history")}
           onDelete={() => setConfirmDelete(true)}
         />
@@ -1912,41 +1791,6 @@ export function GenerationCanvas({
         </div>
       </header>
 
-      {/* file menu: Save as template */}
-      <Dialog open={panel === "template"} onOpenChange={(o) => !o && setPanel(null)}>
-        <DialogContent className="sm:max-w-md" data-keep-selection>
-          <DialogHeader>
-            <DialogTitle>Save as template</DialogTitle>
-          </DialogHeader>
-          <TemplateSection
-            title={title}
-            thumbs={slides.filter((x) => x.video !== undefined && x.startedAt).map((x) => x.thumb ?? videoAt(x.video!).poster)}
-            onSave={(d) => {
-              setPanel(null)
-              const variants = included.map((x, i) => ({ label: nameOf(x), color: ["#f59e0b", "#71717a", "#0ea5e9", "#22c55e", "#ef4444", "#a855f7"][i % 6] }))
-              onSaveTemplate({
-                id: crypto.randomUUID(),
-                title: d.name,
-                description: d.description,
-                mechanic: "Variants",
-                industry: "Your templates",
-                size: generation.size,
-                sizes: [generation.size],
-                brand: "",
-                headline: "",
-                cta: "",
-                icon: generation.template?.icon ?? (TEMPLATES[0].icon as Template["icon"]),
-                bg: ["#3f3f46", "#a1a1aa"],
-                variants,
-                prompt: slides[0].used?.prompt || generation.prompt,
-                image: d.thumb,
-                saved: snapNow(),
-              })
-              toast({ title: `“${d.name}” saved to templates`, description: "Find it in Your templates on Create.", action: { label: "View templates", onClick: onHomeTemplates } })
-            }}
-          />
-        </DialogContent>
-      </Dialog>
       {/* file menu: Version history */}
       {panel === "history" && (
         <VersionHistoryPanel
@@ -2290,26 +2134,6 @@ export function GenerationCanvas({
         />
 
         {/* regenerating the reference video: variations will need regenerating too */}
-        <Dialog open={confirmRegen} onOpenChange={setConfirmRegen}>
-          <DialogContent className="sm:max-w-sm" data-keep-selection>
-            <DialogHeader>
-              <DialogTitle>Regenerate Variation 1?</DialogTitle>
-              <DialogDescription>
-                {made.length === 1 ? "Your variation was made from this video. Regenerate it too so it matches." : `Your ${made.length} variations were made from this video. Regenerate them too so they match.`}
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="sm:flex-col sm:items-stretch">
-              <Button onClick={() => (setConfirmRegen(false), generate("main"))} className="justify-between">
-                Variation 1 only
-                <span className="opacity-80">{VIDEO_COST}</span>
-              </Button>
-              <Button variant="secondary" onClick={() => (setConfirmRegen(false), regenerateAll())} className="justify-between">
-                Reference and {made.length === 1 ? "variation" : `${made.length} variations`}
-                <span className="text-muted-foreground">{VIDEO_COST * (1 + made.length)}</span>
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
 
         {/* confirm before deleting a variation */}
         <Dialog open={!!confirmRemove} onOpenChange={(o) => !o && setConfirmRemove(null)}>
@@ -2361,14 +2185,6 @@ export function GenerationCanvas({
             onCollapse={() => setChatHidden(true)}
             {...(agentMode && {
               title: "Chat",
-              badge: (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className={cn("rounded-full px-1.5 py-0.5 text-xs font-medium", live ? "bg-brand/10 text-brand" : "bg-muted text-muted-foreground")}>{live ? "Live" : "Demo"}</span>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">{live ? "Live: the chat plans and designs, and makes the images and videos" : "Scripted demo. Connect AI in dev tools to go live."}</TooltipContent>
-                </Tooltip>
-              ),
               // questions waiting for an answer dock above the composer instead
               extra: threadGroups(agent.items.filter((it) => !isDocked(it, agent.pendingIds)), agent, agentCtx),
               // the chat is the only way to ask for a video: asking goes through the Make card, so nothing is made by accident
@@ -2387,27 +2203,7 @@ export function GenerationCanvas({
                     brand={!!brand}
                   />
                 </div>
-              ) : // a template's reference video is fixed, so it has no prompt
-              fixedRef && activeIndex === 0 ? (
-                <p className="rounded-2xl bg-card p-3 text-sm text-muted-foreground ring-1 ring-foreground/5">Variation 1 comes with this template. Pick a variation to write its prompt.</p>
-              ) : (
-                <SlidePrompt
-              key={activeSlide.id}
-              label={nameOf(activeSlide)}
-              status={activeStatus}
-              prompt={activeSlide.prompt ?? ""}
-              refs={activeSlide.refs ?? []}
-              setPrompt={(prompt) => patchSlide(activeSlide.id, { prompt })}
-              setRefs={(fn) => setSlides((list) => list.map((s) => (s.id === activeSlide.id ? { ...s, refs: fn(s.refs ?? []) } : s)))}
-              fixedRef={activeIndex === 0 ? undefined : { url: videoAt(slides[0].video!).poster, name: nameOf(slides[0]) }}
-              disabled={busyReason}
-              onGenerate={() => requestGenerate(activeSlide.id)}
-              onOpenFixed={status(slides[0]) === "done" ? () => setPreview("main") : undefined}
-              cost={VIDEO_COST}
-              mentionVariations={slides.map((x) => ({ name: nameOf(x), poster: x.video !== undefined ? videoAt(wrapVideo(x.video))?.poster : undefined }))}
-              brand={!!brand}
-            />
-              )
+              ) : null
             }
           />
         )}

@@ -2,7 +2,8 @@
  * Talking to the Flicks AI server (server/worker.ts): Claude chat, streamed, and Higgsfield images.
  * Images and videos (720p) come from Higgsfield.
  * The server address comes from the build (VITE_AI_URL) or dev tools; the passcode is typed in dev
- * tools and kept only on this device. With no address or passcode, the chat runs its scripted demo.
+ * tools and kept only on this device. Without them, or when the server can't be reached, the chat
+ * shows "Couldn't connect to the AI server." (NOT_CONNECTED).
  */
 import { useSyncExternalStore } from "react"
 
@@ -47,7 +48,7 @@ export const aiConfig = {
   },
 }
 export const useAiConfig = () => useSyncExternalStore(aiConfig.subscribe, aiConfig.get)
-/** live AI is on when there's somewhere to call and a passcode to call it with */
+/** the server is set up on this device: an address and a passcode to call it with */
 export const isLive = (c: AiConfig = config) => !!(c.url.trim() && c.passcode.trim())
 
 const base = () => config.url.trim().replace(/\/+$/, "")
@@ -73,16 +74,19 @@ export class AiError extends Error {
     super(noNames(message))
   }
 }
-const MESSAGES: Record<string, string> = {
-  wrong_passcode: "The passcode isn't right. Check it in dev tools.",
-  origin_not_allowed: "The AI server doesn't accept requests from this site.",
+/** one message for every way of not reaching the server: not set up on this device, refused, or unreachable */
+export const NOT_CONNECTED = "Couldn’t connect to the AI server."
+export const MESSAGES: Record<string, string> = {
+  not_connected: NOT_CONNECTED,
+  wrong_passcode: NOT_CONNECTED,
+  origin_not_allowed: NOT_CONNECTED,
   daily_limit: "Today's AI limit is reached. Try again tomorrow.",
   no_references: "This video has no reference images or video to stay true to.",
   storage_full: "Today's storage writes are used up, so uploads can't be kept until 4 pm Pacific (midnight UTC). Chat and generation still work.",
   claude_not_set_up: "The AI server has no chat key yet.",
   images_not_set_up: "The AI server has no image key yet.",
-  server_not_set_up: "The AI server isn't set up yet (no passcode).",
-  network: "Couldn't reach the AI server. Check your connection and try again.",
+  server_not_set_up: NOT_CONNECTED,
+  network: NOT_CONNECTED,
 }
 async function fail(res: Response): Promise<never> {
   const body = (await res.json().catch(() => ({}))) as { error?: string; message?: string; what?: string }

@@ -15,7 +15,7 @@ import { CanvasStage } from "@/components/editor/canvas-stage";
 import type { Slide } from "@/components/editor/slides-strip";
 import { cn } from "@/lib/utils";
 
-/** Template page: try the Flick live, then Use template. */
+/** Template page: try the Flick live, then Use as reference (the chat follows its pattern with your own product). */
 export function TemplatePreview({
   t,
   onBack,
@@ -67,8 +67,9 @@ export function TemplatePreview({
           </div>
 
           <Button size="lg" className="w-full" onClick={() => onUse(t)}>
-            Use template
+            Use as reference
           </Button>
+          <p className="text-xs text-muted-foreground">Opens the chat with this pattern: the variations, size and layout. Your own brand and product go in.</p>
         </aside>
       </div>
 

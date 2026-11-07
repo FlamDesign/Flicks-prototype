@@ -31,7 +31,7 @@ export function AiConnection() {
       <div className="flex items-center justify-between">
         <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Connection</h4>
         <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", isLive(c) ? "bg-brand/10 text-brand" : "bg-muted text-muted-foreground")}>
-          {isLive(c) ? "Live AI" : "Scripted demo"}
+          {isLive(c) ? "Set up" : "Not set up"}
         </span>
       </div>
       <div className="space-y-1.5">
@@ -72,7 +72,7 @@ export function AiConnection() {
           Today: {test.h.used.chats} of {test.h.caps.chats} chat replies, {test.h.used.images} of {test.h.caps.images} images.
         </p>
       )}
-      <p className="text-xs text-muted-foreground">Without an address and passcode, the chat runs a scripted demo with sample images. Setup steps are in server/README.md.</p>
+      <p className="text-xs text-muted-foreground">Without an address and passcode the chat can’t start: it shows “Couldn’t connect to the AI server.” Setup steps are in server/README.md.</p>
     </section>
   )
 }
