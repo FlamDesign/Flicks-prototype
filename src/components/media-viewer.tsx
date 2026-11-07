@@ -27,14 +27,30 @@ const formatOf = (m: ViewerMedia) => {
   return ext && ext.length <= 4 && ext !== m.name.toUpperCase() ? (ext === "JPEG" ? "JPG" : ext) : m.kind === "video" ? "MP4" : "PNG"
 }
 
-/** Saves a file under a given name. */
-export function download(src: string, name: string) {
+const click = (href: string, name: string) => {
   const a = document.createElement("a")
-  a.href = src
+  a.href = href
   a.download = name
   document.body.appendChild(a)
   a.click()
   a.remove()
+}
+
+/**
+ * Saves a file under a given name. A file on another origin (the AI server) is fetched first and
+ * saved from memory: browsers ignore the download name on cross-origin links and open the file instead.
+ */
+export async function download(src: string, name: string) {
+  if (/^(blob:|data:)/.test(src) || src.startsWith(location.origin)) return click(src, name)
+  try {
+    const blob = await (await fetch(src)).blob()
+    const url = URL.createObjectURL(blob)
+    click(url, name)
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  } catch {
+    // a host that refuses cross-origin reads: the file opens in a new tab instead
+    window.open(src, "_blank", "noopener")
+  }
 }
 
 /**
