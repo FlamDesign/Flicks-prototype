@@ -319,7 +319,7 @@ const SECTIONS: Section[] = [
         <UL
           items={[
             "Rename.",
-            "Duplicate: opens a copy as a new project with the whole canvas copied (variations, elements, feeds, settings) and shows a “Duplicated” toast.",
+            "Duplicate: opens a copy as a new project (“X copy”) with the whole canvas copied (variations, elements, feeds, settings) and the conversation with it, at its last safe point: everything up to the chat’s last finished reply; an open question, a storyboard waiting for approval or a half-written reply is left out, and a video still being made is left unmade in the copy. The chat is told it is now working on the copy, so new work goes under the copy’s name and the original is untouched. The same happens from Duplicate in Projects (the conversation follows a moment after the row appears).",
             "Version history: a side sheet on the right (see Projects and Flicks).",
             "Delete (with confirmation; Flicks exported from it stay in Flicks).",
           ]}

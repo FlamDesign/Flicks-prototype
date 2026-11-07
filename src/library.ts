@@ -1,6 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { FLICKS, PROJECTS, type Flick } from "@/data"
 import { GENERATED_VIDEOS, inSet, videoAt } from "@/components/editor/elements"
+import { safeSnap } from "@/ai/copy-chat"
 
 /**
  * Projects and Flicks. A project is an editable draft; exporting it makes a Flick, which is fixed:
@@ -139,7 +140,8 @@ export const library = {
   duplicateProject(id: string) {
     const p = state.projects.find((x) => x.id === id)
     if (!p) return
-    const copy: Project = { ...p, id: uid("p"), name: `${p.name} copy`, editedAt: Date.now(), versions: [], exports: [] }
+    // videos still being made are left unmade in the copy, so it carries no running work
+    const copy: Project = { ...p, id: uid("p"), name: `${p.name} copy`, editedAt: Date.now(), versions: [], exports: [], snap: p.snap ? safeSnap(p.snap as { slides: [] }) : p.snap }
     set((s) => {
       const i = s.projects.findIndex((x) => x.id === id)
       return { ...s, projects: [...s.projects.slice(0, i + 1), copy, ...s.projects.slice(i + 1)] }

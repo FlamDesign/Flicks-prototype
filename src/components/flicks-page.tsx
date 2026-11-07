@@ -16,6 +16,7 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 import { useToast } from "@/components/ui-extra/toaster"
 import { SIZES, formatEdited, fullDate } from "@/data"
 import { flickLink, library, useExportProgress, useLibrary, type FlickRecord, type Project } from "@/library"
+import { copyChat } from "@/ai/copy-chat"
 import { useAds } from "@/ads/ads"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
@@ -54,6 +55,8 @@ export function ProjectsPage({ onOpen, onCreate }: { onOpen: (p: Project) => voi
             icon: Copy01Icon,
             onSelect: () => {
               const copy = library.duplicateProject(it.id)
+              // its conversation follows, at its last safe point (a moment later; the row is there at once)
+              if (copy) copyChat(it.id, copy.id, copy.name).catch(() => {})
               toast({ title: `“${it.name} copy” added to Projects`, action: copy ? { label: "Undo", onClick: () => library.deleteProject(copy.id) } : undefined })
             },
           },

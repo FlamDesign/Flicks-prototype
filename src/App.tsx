@@ -23,6 +23,7 @@ import { WelcomeGiftDialog, WELCOME_CREDITS } from "@/components/welcome-gift-pa
 import { type Generation } from "@/components/generation-canvas"
 import { templateRef, type Template } from "@/data"
 import { getLibrary, library, useLibrary, type FlickRecord, type Project } from "@/library"
+import { copyChat, safeSnap } from "@/ai/copy-chat"
 import { DEV_TOOLS, useDevState } from "@/dev/state"
 import { DevWidget } from "@/dev/dev-widget"
 import { OpenAnalytics } from "@/analytics/open-analytics"
@@ -514,7 +515,12 @@ export default function App() {
           {/* the editor loads its project first */}
           <Loaded k={generation.id} ms={dev.pageLoadMs} s={chatPlanning(generation) ? <ChatSkeleton /> : <div className="flex h-full flex-col"><div className="flex h-14 shrink-0 items-center gap-3 border-b px-4"><Skeleton className="h-5 w-40 rounded-md" /><Skeleton className="ml-auto h-9 w-48 rounded-xl" /><Skeleton className="h-9 w-24 rounded-xl" /></div><EditorSkeleton /></div>}>
           <GenerationCanvas key={generation.id} generation={generation} onFormat={(size, duration) => setGeneration((g) => (g ? { ...g, size, ...(duration ? { duration } : {}) } : g))} onBack={() => setPage(generation.back === "Flick" && !flickId ? "Flicks" : (generation.back ?? "Create"))} onGetCredits={() => setBuyOpen(true)} onOpenFlick={openFlickPage}
-            onDuplicate={(copy) => setGeneration((g) => (g ? { ...g, id: crypto.randomUUID(), copy, resume: undefined, sample: false, remixOf: undefined } : g))}
+            onDuplicate={async (copy) => {
+              // the conversation comes along, at its last safe point; videos still being made are left unmade
+              const id = crypto.randomUUID()
+              await copyChat(generation.id, id, copy.title).catch(() => {})
+              setGeneration((g) => (g ? { ...g, id, copy: { ...copy, snap: safeSnap(copy.snap) }, resume: undefined, sample: false, remixOf: undefined } : g))
+            }}
           />
           </Loaded>
         </div>
