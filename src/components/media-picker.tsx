@@ -366,9 +366,16 @@ function Tile({ x, on, onToggle, onOpen, onDuration }: { x: MediaItem; on: boole
             </TooltipTrigger>
             <TooltipContent>Full screen</TooltipContent>
           </Tooltip>
-          <span aria-hidden className={cn("pointer-events-none grid size-5 place-items-center rounded-full border-2 border-white/90 shadow-sm transition-opacity", on ? "bg-brand text-brand-foreground opacity-100" : "bg-black/20 opacity-0 group-hover/tile:opacity-100")}>
-            {on && <HugeiconsIcon icon={Tick02Icon} className="size-3" strokeWidth={3} />}
-          </span>
+          {/* the select mark: the same size as the button beside it, and a click on it selects */}
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-pressed={on}
+            aria-label={`${on ? "Unselect" : "Select"} ${x.name}`}
+            className={cn("grid size-6 place-items-center rounded-full border-2 border-white/90 shadow-sm outline-none transition-opacity focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring", on ? "bg-brand text-brand-foreground opacity-100" : "bg-black/30 opacity-0 hover:bg-black/50 group-hover/tile:opacity-100")}
+          >
+            {on && <HugeiconsIcon icon={Tick02Icon} className="size-3.5" strokeWidth={3} />}
+          </button>
         </>
       }
     >
@@ -376,7 +383,7 @@ function Tile({ x, on, onToggle, onOpen, onDuration }: { x: MediaItem; on: boole
       {x.kind === "video" && !x.poster && <span aria-hidden className="shimmer absolute inset-0" />}
       {x.kind === "video" && !x.poster && <video src={`${x.url}#t=0.1`} muted playsInline preload="metadata" crossOrigin="anonymous" onLoadedMetadata={probe} className="absolute inset-0 size-full object-cover" />}
       {x.kind === "video" && x.poster && x.duration === undefined && <video src={`${x.url}#t=0.1`} muted playsInline preload="metadata" crossOrigin="anonymous" onLoadedMetadata={probe} className="hidden" />}
-      <button type="button" onClick={onToggle} aria-pressed={on} aria-label={`${on ? "Unselect" : "Select"} ${x.name}`} className="absolute inset-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+      <button type="button" tabIndex={-1} onClick={onToggle} aria-hidden className="absolute inset-0 rounded-xl outline-none" />
     </MediaTile>
   )
 }
