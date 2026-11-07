@@ -466,7 +466,7 @@ export async function posterOf(videoUrl: string): Promise<string | undefined> {
 /* ---------- library ---------- */
 
 /** an image or video made through the AI server; `file` is our own copy, once it's saved */
-export type LibraryItem = { id: string; kind: "image" | "video"; prompt: string; model: string; created: number; saved: boolean; file?: string; project?: string; variation?: string; purpose?: string; refs?: string[]; bytes?: number; type?: string; /** where the saved copy came from (a model's output address) */ source?: string }
+export type LibraryItem = { id: string; kind: "image" | "video"; prompt: string; model: string; created: number; saved: boolean; file?: string; project?: string; variation?: string; purpose?: string; refs?: string[]; bytes?: number; type?: string; /** where the saved copy came from (a model's output address) */ source?: string; /** deleted from Assets: kept only to name what other work was made from */ hidden?: boolean }
 export const library = async () => ((await (await call("/library")).json()) as { items: LibraryItem[] }).items
 /** removes an item from the library (Assets); the server keeps the file, so Flicks using it keep working */
 export const hideFromLibrary = async (id: string) => void (await call(`/library/${id}`, { method: "DELETE" }))

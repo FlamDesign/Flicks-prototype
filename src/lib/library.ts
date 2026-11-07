@@ -12,18 +12,20 @@ export const APP_COPY = /^(Uploaded (image|video)|.+ image \d+)$/
 export const DRAFT = /preview|idea|option|draft|look|frame|sheet/i
 
 export const isVideo = (x: LibraryItem) => x.kind === "video" || (x.type ?? "").startsWith("video/")
+/** saved and not deleted from Assets: what the lists show (a deleted item still names what was made from it) */
+const listed = (x: LibraryItem) => !!x.file && !x.hidden
 /** the user's own file (a photo or clip they added) */
-export const isUpload = (x: LibraryItem) => !!x.file && (x.purpose === "upload" || (x.model === "upload" && !x.purpose)) && !APP_COPY.test(x.prompt ?? "")
+export const isUpload = (x: LibraryItem) => listed(x) && (x.purpose === "upload" || (x.model === "upload" && !x.purpose)) && !APP_COPY.test(x.prompt ?? "")
 /** a finished video made for the user (not a preview, thumbnail or working copy) */
-export const isFinalVideo = (x: LibraryItem) => !!x.file && isVideo(x) && x.model !== "upload" && x.purpose !== "app" && !DRAFT.test(x.purpose ?? "")
+export const isFinalVideo = (x: LibraryItem) => listed(x) && isVideo(x) && x.model !== "upload" && x.purpose !== "app" && !DRAFT.test(x.purpose ?? "")
 /** a thumbnail made for a variation (the only generated image shown in Assets and the pickers) */
-export const isThumbnail = (x: LibraryItem) => !!x.file && !isVideo(x) && x.model !== "upload" && x.purpose === "thumbnail"
+export const isThumbnail = (x: LibraryItem) => listed(x) && !isVideo(x) && x.model !== "upload" && x.purpose === "thumbnail"
 /** a finished image made for the user: a thumbnail or final picture (previews, looks, frames and canvases stay out) */
-export const isFinalImage = (x: LibraryItem) => !!x.file && !isVideo(x) && x.model !== "upload" && (x.purpose === "thumbnail" || x.purpose === "edit")
+export const isFinalImage = (x: LibraryItem) => listed(x) && !isVideo(x) && x.model !== "upload" && (x.purpose === "thumbnail" || x.purpose === "edit")
 
 /** the name shown for an item: an upload's file name, else what it was made for */
 export const nameOf = (x: LibraryItem) =>
-  isUpload(x) || x.model === "upload" ? x.prompt || (isVideo(x) ? "Upload.mp4" : "Upload") : [x.project, x.variation, x.purpose].filter(Boolean).join(" · ") || (isVideo(x) ? "Video" : "Image")
+  x.model === "upload" ? x.prompt || (isVideo(x) ? "Upload.mp4" : "Upload") : [x.project, x.variation, x.purpose].filter(Boolean).join(" · ") || (isVideo(x) ? "Video" : "Image")
 
 /** A reference an item was made from, as shown with it. */
 export type LibraryRef = { kind: "image" | "video"; name: string; src: string; source: "Uploaded" | "Generated" }

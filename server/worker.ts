@@ -16,7 +16,7 @@
  *   PUT  /store/:key      saves it (JSON, whole value replaced)
  *   GET  /library         every image and video made here, newest first (each kept on our side once it finishes)
  *   POST /library/import  keeps copies of finished images or videos the app still has links to
- *   DELETE /library/:id   hides an item from the library (Assets); its file stays, so Flicks using it keep working
+ *   DELETE /library/:id   marks an item hidden (deleted from Assets); its record and file stay, so Flicks and references keep working
  *   POST /read            reads a public web page for the chat: product, prices, images, colours, text
  *   GET  /img?u=          a website's image, passed through (sites often refuse to be shown elsewhere)
  *
@@ -447,8 +447,9 @@ export default {
           items.sort((a, b) => b.created - a.created)
           libraryCache = { at: Date.now(), items }
         }
-        // deleted from Assets: left out (the record and file stay, so Flicks using it keep working)
-        const body = JSON.stringify({ items: items.filter((x) => !x.hidden).map((x) => ({ ...x, file: x.saved ? `${url.origin}/file/${x.id}` : undefined })) })
+        // deleted from Assets: still listed, flagged hidden (the app keeps it out of lists but can
+        // still name it where a video was made from it); the record and file stay
+        const body = JSON.stringify({ items: items.map((x) => ({ ...x, file: x.saved ? `${url.origin}/file/${x.id}` : undefined })) })
         ctx?.waitUntil(caches.default.put(libraryUrl, new Response(body, { headers: { "content-type": "application/json", "cache-control": `public, max-age=${LIBRARY_CACHE_MS / 1000}` } })).catch(() => {}))
         return new Response(body, { headers: { ...cors, "content-type": "application/json" } })
       }

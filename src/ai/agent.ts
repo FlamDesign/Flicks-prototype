@@ -1725,7 +1725,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           const all = await library()
           const words = String(input.query ?? "").toLowerCase().split(/\s+/).filter(Boolean)
           const found = all
-            .filter((x) => x.saved && (!input.kind || x.kind === input.kind))
+            .filter((x) => x.saved && !x.hidden && (!input.kind || x.kind === input.kind))
             .filter((x) => words.every((w) => `${x.prompt} ${x.project ?? ""} ${x.variation ?? ""} ${x.purpose ?? ""}`.toLowerCase().includes(w)))
             .slice(0, Math.min(Number(input.limit) || 12, 30))
           libSeen.current = new Map([...libSeen.current, ...found.map((x) => [x.id, x] as const)])
