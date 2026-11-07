@@ -17,7 +17,9 @@ import {
   Tick02Icon,
 } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
+import { EmptyState } from "@/components/empty-state"
 import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -64,7 +66,7 @@ import {
   type Span,
   type Totals,
 } from "./data"
-import { Donut, LinesChart, Legend, type Line } from "./charts"
+import { ChartTip, Donut, LinesChart, Legend, type Line } from "./charts"
 
 /**
  * Analytics: views, interactions (switches and clicks), clicks, average watch time and, on ad pages, spend,
@@ -115,19 +117,15 @@ export function AnalyticsPage({ data, target }: { data: Dataset; target?: Analyt
         ) : (
           <>
             <PageHeader title="Analytics" actions={<Updated at={data.updatedAt} />} />
-            <div role="tablist" aria-label="Analytics views" className="mt-5 flex gap-1 border-b">
-              {TABS.map((t) => (
-                <button
-                  key={t.id}
-                  role="tab"
-                  aria-selected={tab === t.id}
-                  onClick={() => setTab(t.id)}
-                  className={cn("-mb-px border-b-2 px-3 pb-2.5 pt-1 text-sm focus-ring", tab === t.id ? "border-brand font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
+            <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="mt-5 border-b">
+              <TabsList variant="line" aria-label="Analytics views" className="mb-1">
+                {TABS.map((t) => (
+                  <TabsTrigger key={t.id} value={t.id} className="px-3">
+                    {t.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
           </>
         )}
 
@@ -148,7 +146,7 @@ export function AnalyticsPage({ data, target }: { data: Dataset; target?: Analyt
           }
         >
         {!data.flicks.length ? (
-          <EmptyState />
+          <NoNumbers />
         ) : open?.kind === "flick" ? (
           <FlickView key={open.id} data={data} meta={data.flicks.find((f) => f.id === open.id)!} filter={filter} setCountry={setCountry} go={go} />
         ) : open?.kind === "campaign" ? (
@@ -1098,19 +1096,18 @@ function CountriesCard({ data, rows, country, setCountry }: { data: Dataset; row
 
 function CountryTip({ x, y, name, t }: { x: number; y: number; name: string; t: Totals }) {
   return (
-    <div role="tooltip" className="pointer-events-none fixed z-50 min-w-36 rounded-xl bg-popover px-3 py-2 text-popover-foreground shadow-lg ring-1 ring-foreground/10" style={{ left: Math.min(window.innerWidth - 220, x + 14), top: y + 14 }}>
-      <p className="mb-1 text-xs text-muted-foreground">{name}</p>
-      {[
-        ["views", fmtInt(t.views)],
-        ["interactions", fmtInt(interactions(t))],
-        ...(t.spend > 0 ? [["spend", fmtUsd(t.spend)]] : []),
-      ].map(([l, v]) => (
-        <p key={l} className="flex gap-2 text-xs">
-          <span className="font-semibold tabular-nums">{v}</span>
-          <span className="text-muted-foreground">{l}</span>
-        </p>
-      ))}
-    </div>
+    <ChartTip
+      tip={{
+        x,
+        y,
+        title: name,
+        rows: [
+          { label: "views", value: fmtInt(t.views) },
+          { label: "interactions", value: fmtInt(interactions(t)) },
+          ...(t.spend > 0 ? [{ label: "spend", value: fmtUsd(t.spend) }] : []),
+        ],
+      }}
+    />
   )
 }
 
@@ -1316,7 +1313,7 @@ function CampaignsTab({ data, filter, setCountry, go }: ViewProps) {
             Open campaign to see all {ps.length} placements
           </Button>
         )}
-        {!ps.length && <p className="px-2 py-1.5 text-sm text-muted-foreground">No placements yet.</p>}
+        {!ps.length && <EmptyState size="sm" className="py-4" title="No placements yet" />}
       </div>
     )
   }
@@ -1450,13 +1447,9 @@ function EarlyNote() {
   )
 }
 
-function EmptyState() {
+function NoNumbers() {
   return (
-    <div className="mt-6 flex flex-col items-center gap-2 rounded-2xl border border-dashed px-6 py-16 text-center">
-      <HugeiconsIcon icon={ChartLineData01Icon} className="size-6 text-muted-foreground" />
-      <p className="font-medium">No numbers yet</p>
-      <p className="max-w-sm text-sm text-muted-foreground">Export a Flick and share its link, embed it, or serve it in ads. Views, interactions and watch time show here as people watch.</p>
-    </div>
+    <EmptyState size="sm" className="mt-6 py-16" title="No numbers yet" text="Export a Flick and share its link, embed it, or serve it in ads. Views, interactions and watch time show here as people watch." />
   )
 }
 

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { shapeLabel, type CanvasElement } from "@/components/editor/elements"
 import { cn } from "@/lib/utils"
+import { EmptyState } from "@/components/empty-state"
 
 const ICON = { text: TextFontIcon, button: TouchInteraction01Icon, image: Image02Icon, strip: CarouselHorizontalIcon, shape: ShapesIcon } as const
 
@@ -49,7 +50,7 @@ export function LayersPanel({
     if (!el.hidden) setSelected(selected.filter((id) => id !== el.id))
   }
 
-  if (!elements.length) return <p className="px-1 py-2 text-sm text-muted-foreground">Nothing on the canvas yet.</p>
+  if (!elements.length) return <EmptyState size="sm" className="py-6" title="No elements yet" text="Add text, a button or an image from the rail." />
 
   return (
     <div className="flex flex-col gap-2">

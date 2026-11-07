@@ -19,6 +19,7 @@ import {
 } from "@hugeicons/core-free-icons"
 import { LayersPanel } from "@/components/editor/layers-panel"
 import { Button } from "@/components/ui/button"
+import { EmptyState } from "@/components/empty-state"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -350,7 +351,7 @@ function ImageList({
 
       <p className="px-1 text-xs text-muted-foreground">Recent uploads</p>
       {uploads.length === 0 ? (
-        <p className="rounded-xl border border-dashed px-3 py-6 text-center text-xs text-muted-foreground">No uploads yet</p>
+        <EmptyState size="sm" className="py-6" title="No uploads yet" />
       ) : (
         <ul className="grid grid-cols-2 gap-2">
           {uploads.map((u) => (
@@ -502,7 +503,7 @@ function PickerList({ picker, uploads, setUploads }: { picker: Picker; uploads: 
       </Button>
       <p className="px-1 text-xs text-muted-foreground">Your uploads</p>
       {uploads.length === 0 ? (
-        <p className="rounded-xl border border-dashed px-3 py-6 text-center text-xs text-muted-foreground">No uploads yet</p>
+        <EmptyState size="sm" className="py-6" title="No uploads yet" />
       ) : (
         <ul className="grid grid-cols-2 gap-2">
           {uploads.map((u) => {

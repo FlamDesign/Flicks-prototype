@@ -15,8 +15,8 @@ function useWidth<T extends HTMLElement>() {
 }
 
 /** One floating tooltip: values lead, labels follow; rows keyed with a short line of the series color. */
-type Tip = { x: number; y: number; title: string; rows: { label: string; value: string; color?: string; dashed?: boolean }[] }
-function Tooltip({ tip }: { tip: Tip | null }) {
+export type Tip = { x: number; y: number; title: string; rows: { label: string; value: string; color?: string; dashed?: boolean }[] }
+export function ChartTip({ tip }: { tip: Tip | null }) {
   if (!tip) return null
   const left = Math.min(window.innerWidth - 220, tip.x + 14)
   return createPortal(
@@ -96,7 +96,7 @@ export function BarList({
           </div>
         </li>
       ))}
-      <Tooltip tip={tip} />
+      <ChartTip tip={tip} />
     </ul>
   )
 }
@@ -173,7 +173,7 @@ export function Donut({
           </li>
         ))}
       </ul>
-      <Tooltip tip={tip} />
+      <ChartTip tip={tip} />
     </div>
   )
 }
@@ -256,7 +256,7 @@ export function LinesChart({ lines, labels, format, axisFormat = format, height 
           </g>
         )}
       </svg>
-      <Tooltip tip={tip} />
+      <ChartTip tip={tip} />
     </div>
   )
 }

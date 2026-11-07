@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { useLibrary } from "@/library"
 import { useAds } from "@/ads/ads"
 import { useEmbeds } from "@/embeds/embeds"
+import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
 import { buildDataset, sum, variantStats } from "./data"
 import { OpenAnalytics } from "./open-analytics"
@@ -62,9 +63,7 @@ export function PlaceAnalyticsCard({ kind, id }: { kind: "placement" | "embed"; 
                     {Math.round((v.shown / shownTotal) * views).toLocaleString("en-US")} <span className="text-xs text-muted-foreground">· {Math.round((v.shown / shownTotal) * 100)}%</span>
                   </span>
                 </div>
-                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div className={cn("h-full rounded-full", v.i === meta.start ? "bg-brand" : "bg-brand/50")} style={{ width: `${(v.shown / max) * 100}%` }} />
-                </div>
+                <Progress value={(v.shown / max) * 100} aria-label={`${v.name} share`} className={cn("mt-1.5 h-1.5", v.i === meta.start ? "[&_[data-slot=progress-indicator]]:bg-brand" : "[&_[data-slot=progress-indicator]]:bg-brand/50")} />
               </div>
             </li>
           ))}

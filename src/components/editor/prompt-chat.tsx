@@ -57,7 +57,7 @@ export function PromptChat({
   title = "Prompts",
   badge,
   extra = [],
-  emptyText = "Prompts for Variation 1 and each other variation show up here.",
+  emptyText = "Ask for a change: a headline, a color, another variation.",
   head,
 }: {
   /** replaces "Creating for" above the composer */

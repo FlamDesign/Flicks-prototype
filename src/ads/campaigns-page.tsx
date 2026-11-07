@@ -5,6 +5,7 @@ import { createPortal } from "react-dom"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Add01Icon, Alert02Icon, ArrowUpRight01Icon, Copy01Icon, Delete02Icon, InformationCircleIcon, LockIcon, GitForkIcon, MoreHorizontalIcon, PencilEdit01Icon, Tick02Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
+import { EmptyState } from "@/components/empty-state"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
@@ -179,14 +180,18 @@ function CampaignList({ onOpen, onNew }: { onOpen: (id: string) => void; onNew: 
   const { campaigns, placements } = useAds()
   if (!campaigns.length)
     return (
-      <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-20 text-center">
-        <p className="text-sm font-medium">No campaigns yet</p>
-        <p className="max-w-sm text-sm text-muted-foreground">A campaign holds placements: fixed-size slots, each with a tag you run in your DSP. Put a Flick in a placement and it serves wherever the tag runs.</p>
-        <Button size="sm" className="mt-3 gap-1.5" onClick={onNew}>
-          <HugeiconsIcon icon={Add01Icon} className="size-4" />
-          New campaign
-        </Button>
-      </div>
+      <EmptyState
+        size="sm"
+        className="py-20"
+        title="No campaigns yet"
+        text="A campaign holds placements: fixed-size slots, each with a tag you run in your DSP. Put a Flick in a placement and it serves wherever the tag runs."
+        action={
+          <Button size="sm" className="gap-1.5" onClick={onNew}>
+            <HugeiconsIcon icon={Add01Icon} className="size-4" />
+            New campaign
+          </Button>
+        }
+      />
     )
   return (
     <div className="overflow-hidden rounded-2xl ring-1 ring-foreground/10">
@@ -321,14 +326,18 @@ function CampaignView({ id, actionsEl, onOpen, onDeleted }: { id: string; action
           ))}
         </ul>
       ) : (
-        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-16 text-center">
-          <p className="text-sm font-medium">No placements yet</p>
-          <p className="max-w-sm text-sm text-muted-foreground">Add one for each size you’ll run. Each gets its own tag.</p>
-          <Button size="sm" className="mt-3 gap-1.5" onClick={() => setAdding(true)}>
-            <HugeiconsIcon icon={Add01Icon} className="size-4" />
-            New placement
-          </Button>
-        </div>
+        <EmptyState
+          size="sm"
+          className="py-16"
+          title="No placements yet"
+          text="Add one for each size you’ll run. Each gets its own tag."
+          action={
+            <Button size="sm" className="gap-1.5" onClick={() => setAdding(true)}>
+              <HugeiconsIcon icon={Add01Icon} className="size-4" />
+              New placement
+            </Button>
+          }
+        />
       )}
 
       <NewPlacementDialog open={adding} onOpenChange={setAdding} campaignId={id} onCreated={(p) => onOpen(p.id)} />
@@ -362,7 +371,7 @@ function CampaignView({ id, actionsEl, onOpen, onDeleted }: { id: string; action
             <Button variant="outline" onClick={() => setConfirm(false)}>
               Cancel
             </Button>
-            <PendingButton variant="destructive" onClick={() => (ads.deleteCampaign(id), setConfirm(false), onDeleted(), toast("Campaign deleted"))}>
+            <PendingButton variant="destructive" onClick={() => (ads.deleteCampaign(id), setConfirm(false), onDeleted(), toast(`“${c.name}” deleted`))}>
               Delete
             </PendingButton>
           </DialogFooter>
@@ -575,7 +584,7 @@ function PlacementView({
             <Button variant="outline" onClick={() => setConfirm(false)}>
               Cancel
             </Button>
-            <PendingButton variant="destructive" onClick={() => (ads.deletePlacement(p.id), setConfirm(false), onDeleted(p.campaignId), toast("Placement deleted"))}>
+            <PendingButton variant="destructive" onClick={() => (ads.deletePlacement(p.id), setConfirm(false), onDeleted(p.campaignId), toast(`“${p.name}” deleted`))}>
               Delete
             </PendingButton>
           </DialogFooter>

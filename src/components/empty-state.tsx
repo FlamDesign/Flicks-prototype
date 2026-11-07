@@ -50,16 +50,31 @@ function Art({ kind }: { kind: EmptyArt }) {
   )
 }
 
-/** shadcn Empty with a drawing, a title, a line and one action */
-export function EmptyState({ art, title, text, action, className }: { art: EmptyArt; title: string; text: string; action?: React.ReactNode; className?: string }) {
+/**
+ * shadcn Empty with a drawing, a title, a line and one action. size "sm" is the same shape without
+ * the drawing, for panels and lists inside a page (a dashed box, a title and a line).
+ */
+export function EmptyState({ art, title, text, action, className, size = "md" }: { art?: EmptyArt; title: string; text?: string; action?: React.ReactNode; className?: string; size?: "sm" | "md" }) {
+  if (size === "sm")
+    return (
+      <Empty className={cn("border border-dashed py-8", className)}>
+        <EmptyHeader>
+          <EmptyTitle className="text-sm">{title}</EmptyTitle>
+          {text && <EmptyDescription>{text}</EmptyDescription>}
+        </EmptyHeader>
+        {action && <EmptyContent>{action}</EmptyContent>}
+      </Empty>
+    )
   return (
     <Empty className={cn("border py-14", className)}>
       <EmptyHeader>
-        <EmptyMedia className="animate-in fade-in-0 zoom-in-95 duration-500">
-          <Art kind={art} />
-        </EmptyMedia>
+        {art && (
+          <EmptyMedia className="animate-in fade-in-0 zoom-in-95 duration-500">
+            <Art kind={art} />
+          </EmptyMedia>
+        )}
         <EmptyTitle>{title}</EmptyTitle>
-        <EmptyDescription>{text}</EmptyDescription>
+        {text && <EmptyDescription>{text}</EmptyDescription>}
       </EmptyHeader>
       {action && <EmptyContent>{action}</EmptyContent>}
     </Empty>

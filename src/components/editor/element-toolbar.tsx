@@ -29,6 +29,7 @@ import {
   SquareUnlock02Icon,
 } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
+import { Toggle } from "@/components/ui/toggle"
 import { Slider } from "@/components/ui/slider"
 import { Input } from "@/components/ui/input"
 import { InputGroupInput } from "@/components/ui/input-group"
@@ -413,9 +414,9 @@ function ImageFill({ label, src, fit, onFit, onChoose, onRemove }: { label: stri
               ["contain", "Fit"],
             ] as const
           ).map(([f, name]) => (
-            <Button key={f} size="xs" variant="ghost" aria-pressed={fit === f} onClick={() => onFit(f)} className={cn("flex-1 rounded-md", fit === f && "bg-background shadow-sm hover:bg-background")}>
+            <Toggle key={f} size="sm" pressed={fit === f} onClick={() => onFit(f)} className={cn("h-6 flex-1 rounded-md px-2 text-xs", fit === f && "bg-background shadow-sm hover:bg-background aria-pressed:bg-background")}>
               {name}
-            </Button>
+            </Toggle>
           ))}
         </div>
         <div className="flex gap-2">
@@ -783,19 +784,20 @@ function Tool({
   children,
   ...props
 }: { label: string; pressed?: boolean; children: React.ReactNode } & React.ComponentProps<typeof Button>) {
+  const { onClick, disabled } = props
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label={label}
-          aria-pressed={pressed}
-          className={cn("size-8 shrink-0", pressed && "bg-muted text-foreground", className)}
-          {...props}
-        >
-          {children}
-        </Button>
+        {pressed === undefined ? (
+          <Button variant="ghost" size="icon-sm" aria-label={label} className={cn("size-8 shrink-0", className)} {...props}>
+            {children}
+          </Button>
+        ) : (
+          // a setting that is on or off: the preset Toggle
+          <Toggle pressed={pressed} aria-label={label} disabled={disabled} onClick={onClick} className={cn("size-8 shrink-0 px-0 text-muted-foreground aria-pressed:text-foreground", className)}>
+            {children}
+          </Toggle>
+        )}
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>

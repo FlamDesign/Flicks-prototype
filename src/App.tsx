@@ -518,6 +518,7 @@ export default function App() {
         </div>
       )}
       <ExportWatcher onOpen={openFlickPage} />
+      <SyncWatcher />
       <CoachLayer />
       {devLayer}
     </Toaster>
@@ -527,6 +528,17 @@ export default function App() {
 }
 
 /** Flicks preparing in the background: when one finishes, mark it ready and say so, with View Flick. */
+/** the server couldn't be reached when the app opened: one toast, so the user knows their work stays in this browser */
+function SyncWatcher() {
+  const toast = useToast()
+  useEffect(() => {
+    const on = () => toast({ title: "Couldn’t reach the AI server", description: "Your projects and Flicks are kept in this browser until it’s back; the chat can’t start." })
+    window.addEventListener("flam:sync-failed", on)
+    return () => window.removeEventListener("flam:sync-failed", on)
+  }, [toast])
+  return null
+}
+
 function ExportWatcher({ onOpen }: { onOpen: (id: string) => void }) {
   const { flicks } = useLibrary()
   const toast = useToast()

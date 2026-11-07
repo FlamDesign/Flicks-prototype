@@ -208,6 +208,8 @@ export function startSync() {
       }
     } catch (e) {
       console.warn("Couldn't load saved projects", e)
+      // the app keeps working from this browser's copy; the pages say so once
+      window.dispatchEvent(new CustomEvent("flam:sync-failed"))
     }
     ready = true
   }

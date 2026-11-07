@@ -242,7 +242,7 @@ export function FlickPage({
           <AddToEmbed flick={flickRef(f)} onOpenEmbed={(id) => (setAdding(null), onOpenEmbed(id))} />
         </DialogContent>
       </Dialog>
-      <DeleteFlickDialog flick={confirmDelete ? f : null} inUse={inUse} onClose={() => setConfirmDelete(false)} onDeleted={() => (toast("Flick deleted"), onBack())} />
+      <DeleteFlickDialog flick={confirmDelete ? f : null} inUse={inUse} onClose={() => setConfirmDelete(false)} onDeleted={() => (toast(`“${f.name}” deleted`), onBack())} />
     </div>
   )
 }
@@ -330,9 +330,7 @@ function Analytics({ f, onAnalytics }: { f: FlickRecord; onAnalytics: () => void
                     {v.views.toLocaleString("en-US")} <span className="text-xs text-muted-foreground">· {Math.round((v.views / total) * 100)}%</span>
                   </span>
                 </div>
-                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div className={cn("h-full rounded-full", i === f.start ? "bg-brand" : "bg-brand/50")} style={{ width: `${(v.views / max) * 100}%` }} />
-                </div>
+                <Progress value={(v.views / max) * 100} aria-label={`${v.name} share of views`} className={cn("mt-1.5 h-1.5", i === f.start ? "[&_[data-slot=progress-indicator]]:bg-brand" : "[&_[data-slot=progress-indicator]]:bg-brand/50")} />
               </div>
             </li>
           ))}

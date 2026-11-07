@@ -193,7 +193,7 @@ const SECTIONS: Section[] = [
               <B>Account menu:</B> Account, Credits, Ad Balance, Help Center (opens in a new tab), Theme (light, dark, system), Log out.
             </>,
             <>
-              <B>Notifications:</B> stacked toasts at the top center. Newest in front, older ones peek behind; hover to spread them out. Each closes after 5
+              <B>Notifications:</B> stacked toasts at the top center (if the AI server can\u2019t be reached when the app opens, one says projects and Flicks are kept in this browser until it is back). Empty states inside a page use the small EmptyState (a dashed box with a title and a line, no drawing); page-level ones have the drawing. Newest in front, older ones peek behind; hover to spread them out. Each closes after 5
               seconds, paused while hovered. A toast can carry a description and one action.
             </>,
           ]}
@@ -975,7 +975,7 @@ const SECTIONS: Section[] = [
           "Short, plain copy. One idea per line. No repeated headings.",
           "Primary color only for the main action on a surface (Generate, Export, Remix). Everything else is secondary or ghost.",
           "Icon-only controls always carry a tooltip with their label.",
-          "Destructive actions confirm (delete project or Flick, delete variation). Quick, reversible ones don't (delete an element, hide a layer).",
+          "Deleting something that is only yours (a project, from Projects or the editor; a saved element; a video in Assets) happens at once with Undo in the toast. Deleting or replacing something that is live somewhere (a Flick, a placement, an embed, a campaign, the Flick in a live placement) confirms first, with the name in the title and what stops working in one line. Toast titles name the thing: \u201c\u2018Holiday 2026\u2019 deleted\u201d.",
           "Snapping and locks always have an escape: Alt turns snapping off, Shift locks fully.",
           "Nothing should flicker: snaps and locks use hysteresis; outlines and radii update in the same frame as the change.",
           "Preset rules (checked by scripts/check-ui.sh): black, white and token opacities only on the ladder 10, 20, 30, 50, 70, 90; keyboard focus on custom controls is the one focus-ring utility (ring-3 ring-ring/30, the same as Button and Input), menu-style rows use focus-visible:bg-muted instead; status and count chips are Badge subtle (never a hand-made span); floating panels on bg-popover are rounded-2xl, panels and sections rounded-2xl, media tiles rounded-xl, thumbnails at or under 48px rounded-lg, tiny swatches rounded-sm or rounded-md; Buttons use their preset sizes (lg, default, sm, xs) with no h-* override; icons inside Buttons take the preset size (size-4, size-3 in icon-xs); strokeWidth is the default, 2 for emphasis, 3 only on tick marks under 16px; section headings are h2 text-sm font-medium and pages have one h1 through PageHeader; rows hover with bg-muted, already tinted surfaces with bg-muted/50; disabled is opacity-50 (the Start button keeps its own flat look); snap guides use the --guide token; scrims are black at 20% or 50%.",

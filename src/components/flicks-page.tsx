@@ -17,6 +17,7 @@ import { useToast } from "@/components/ui-extra/toaster"
 import { SIZES, formatEdited, fullDate } from "@/data"
 import { flickLink, library, useExportProgress, useLibrary, type FlickRecord, type Project } from "@/library"
 import { useAds } from "@/ads/ads"
+import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
 
 type Item = { id: string; name: string; size: string; at: number; image: string; exporting?: { from: number; until: number }; details?: string[] }
@@ -108,7 +109,7 @@ export function FlicksPage({ onOpen, onRemix, onProjects }: { onOpen: (f: FlickR
         ]}
         empty={{ title: "No Flicks yet", text: "Export a project to make a Flick.", action: <Button size="sm" variant="outline" onClick={onProjects}>Go to Projects</Button> }}
       />
-      <DeleteFlickDialog flick={pendingDelete} inUse={inUse} onClose={() => setPendingDelete(null)} onDeleted={() => toast("Flick deleted")} />
+      <DeleteFlickDialog flick={pendingDelete} inUse={inUse} onClose={() => setPendingDelete(null)} onDeleted={() => toast(`“${pendingDelete?.name ?? "Flick"}” deleted`)} />
     </>
   )
 }
@@ -325,9 +326,7 @@ function ExportingOverlay({ exporting }: { exporting: { from: number; until: num
         <Spinner className="size-3.5" />
         Preparing… {Math.round(p * 100)}%
       </span>
-      <span className="h-1 overflow-hidden rounded-full bg-foreground/10">
-        <span className="block h-full rounded-full bg-brand transition-[width] duration-200" style={{ width: `${p * 100}%` }} />
-      </span>
+      <Progress value={p * 100} aria-label="Export progress" className="h-1 [&_[data-slot=progress-indicator]]:bg-brand" />
     </div>
   )
 }

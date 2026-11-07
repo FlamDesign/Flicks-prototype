@@ -4,6 +4,7 @@ import { CardsSkeleton, Loading, PendingButton, RowsSkeleton } from "@/component
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Alert02Icon, PlayIcon, Search01Icon, Wallet01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
+import { EmptyState } from "@/components/empty-state"
 import { Input } from "@/components/ui/input"
 import { InputGroupInput } from "@/components/ui/input-group"
 import { Label } from "@/components/ui/label"
@@ -545,6 +546,8 @@ export function ServeInAds({ flick, onOpenPlacement }: { flick: FlickRef; onOpen
   const { placements, campaigns } = useAds()
   const toast = useToast()
   const [adding, setAdding] = useState(false)
+  // replacing a Flick that is live in a placement asks first (the tag keeps serving; the old Flick stays in its history)
+  const [replacing, setReplacing] = useState<Placement | null>(null)
   const same = placements.filter((p) => p.size === flick.size)
   const campaignOf = (id: string) => campaigns.find((c) => c.id === id)?.name
   const done = (p: Placement, made: boolean) =>
@@ -581,7 +584,7 @@ export function ServeInAds({ flick, onOpenPlacement }: { flick: FlickRef; onOpen
                       View
                     </Button>
                   ) : (
-                    <Button variant="outline" size="sm" onClick={() => (ads.setFlick(p.id, flick), done(p, false))}>
+                    <Button variant="outline" size="sm" onClick={() => (p.flick ? setReplacing(p) : (ads.setFlick(p.id, flick), done(p, false)))}>
                       {p.flick ? "Replace" : "Add"}
                     </Button>
                   )}
@@ -590,7 +593,7 @@ export function ServeInAds({ flick, onOpenPlacement }: { flick: FlickRef; onOpen
             })}
           </ul>
         ) : (
-          <p className="rounded-2xl border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">No placements in {flick.size} yet.</p>
+          <EmptyState size="sm" className="py-6" title={`No placements in ${flick.size} yet`} />
         )}
       </section>
 
@@ -598,6 +601,29 @@ export function ServeInAds({ flick, onOpenPlacement }: { flick: FlickRef; onOpen
         New placement for this Flick
       </Button>
 
+      <Dialog open={!!replacing} onOpenChange={(o) => !o && setReplacing(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Replace “{replacing?.flick?.name}” in {replacing?.name}?</DialogTitle>
+            <DialogDescription>The tag stays the same and serves “{flick.name}” from the next impression. The earlier Flick stays in the placement’s history.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReplacing(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!replacing) return
+                ads.setFlick(replacing.id, flick)
+                done(replacing, false)
+                setReplacing(null)
+              }}
+            >
+              Replace
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <NewPlacementDialog open={adding} onOpenChange={setAdding} flick={flick} onCreated={(p) => done(p, true)} />
     </div>
   )

@@ -3,11 +3,11 @@ import { InputGroupInput } from "@/components/ui/input-group"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { PauseIcon, PlayIcon, ArrowDown01Icon, Clock01Icon, Copy01Icon, Delete02Icon, Home01Icon, PencilEdit01Icon, PencilEdit02Icon, ViewIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Kbd } from "@/components/ui/kbd"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { cn } from "@/lib/utils"
 
 const MAX_SHOWN = 16
 
@@ -142,43 +142,28 @@ export function FileTitle({
   )
 }
 
-/** Design / Preview switch with a sliding highlight. */
+/** Design / Preview switch: the preset Tabs, each with its tooltip and the P shortcut. */
 export function ModeSwitch({ mode, onChange }: { mode: "design" | "preview"; onChange: (m: "design" | "preview") => void }) {
   const items = [
     { m: "design", label: "Design", icon: PencilEdit02Icon, hint: "Edit the canvas" },
     { m: "preview", label: "Preview", icon: ViewIcon, hint: "See it as viewers do" },
   ] as const
   return (
-    <div role="radiogroup" aria-label="Mode" className="relative flex rounded-xl bg-muted p-0.5">
-      {/* sliding highlight */}
-      <span
-        aria-hidden
-        className="absolute inset-y-0.5 left-0.5 w-[calc(50%-2px)] rounded-lg bg-background shadow-sm ring-1 ring-foreground/10 transition-transform duration-200 ease-out"
-        style={{ transform: mode === "preview" ? "translateX(100%)" : undefined }}
-      />
-      {items.map(({ m, label, icon, hint }) => (
-        <Tooltip key={m}>
-          <TooltipTrigger asChild>
-            <Button
-              role="radio"
-              aria-checked={mode === m}
-              aria-label={label}
-              variant="ghost"
-              size="sm"
-              onClick={() => onChange(m)}
-              className={cn(
-                "relative h-8 gap-1.5 rounded-lg px-3 text-muted-foreground hover:bg-transparent",
-                mode === m && "text-foreground hover:text-foreground",
-              )}
-            >
-              <HugeiconsIcon icon={icon} className="size-4" />
-              {label}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent className="flex items-center gap-2">{hint}<Kbd>P</Kbd></TooltipContent>
-        </Tooltip>
-      ))}
-    </div>
+    <Tabs value={mode} onValueChange={(v) => onChange(v as "design" | "preview")}>
+      <TabsList aria-label="Mode">
+        {items.map(({ m, label, icon, hint }) => (
+          <Tooltip key={m}>
+            <TooltipTrigger asChild>
+              <TabsTrigger value={m} aria-label={label} className="px-3">
+                <HugeiconsIcon icon={icon} className="size-4" />
+                {label}
+              </TabsTrigger>
+            </TooltipTrigger>
+            <TooltipContent className="flex items-center gap-2">{hint}<Kbd>P</Kbd></TooltipContent>
+          </Tooltip>
+        ))}
+      </TabsList>
+    </Tabs>
   )
 }
 

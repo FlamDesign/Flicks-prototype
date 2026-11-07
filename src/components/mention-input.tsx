@@ -10,6 +10,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useMediaAdd } from "@/components/media-picker"
 import { ELEMENT_KINDS, cleanName, elements, useElements, type ElementKind, type FlickElement } from "@/lib/elements"
 import { cn } from "@/lib/utils"
+import { useToast } from "@/components/ui-extra/toaster"
 
 /** Something a prompt can @-mention. `label` is what follows the @ in the text. */
 export type MentionOption = {
@@ -251,6 +252,7 @@ export const MentionTextarea = forwardRef<
 
 /** Make or edit an element: a name, what it is, and its images (picked like any reference). */
 export function ElementDialog({ open, edit, name: initial, onClose, onSaved }: { open: boolean; edit?: FlickElement; name?: string; onClose: () => void; onSaved?: (name: string) => void }) {
+  const toast = useToast()
   const [name, setName] = useState("")
   const [kind, setKind] = useState<ElementKind>("product")
   const [images, setImages] = useState<{ url: string; name: string }[]>([])
@@ -317,7 +319,15 @@ export function ElementDialog({ open, edit, name: initial, onClose, onSaved }: {
         </div>
         <DialogFooter className="sm:justify-between">
           {edit ? (
-            <Button variant="ghost" className="text-destructive" onClick={() => (elements.remove(edit.id), onClose())}>
+            <Button
+              variant="ghost"
+              className="text-destructive"
+              onClick={() => {
+                const undo = elements.remove(edit.id)
+                onClose()
+                toast({ title: `“${edit.name}” deleted`, action: { label: "Undo", onClick: undo } })
+              }}
+            >
               <HugeiconsIcon icon={Delete02Icon} className="size-4" />
               Delete
             </Button>

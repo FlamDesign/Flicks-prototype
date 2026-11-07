@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { Loading, PendingButton, RowsSkeleton } from "@/components/page-skeletons"
 import { Button } from "@/components/ui/button"
+import { EmptyState } from "@/components/empty-state"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -136,7 +137,7 @@ export function AddToEmbed({ flick, onOpenEmbed, onDone }: { flick: FlickRef; on
             })}
           </ul>
         ) : (
-          <p className="rounded-2xl border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">No embeds in {flick.size} yet.</p>
+          <EmptyState size="sm" className="py-6" title={`No embeds in ${flick.size} yet`} />
         )}
         </Loading>
       </section>

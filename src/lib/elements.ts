@@ -43,7 +43,13 @@ export const elements = {
     if (el.id && list.some((x) => x.id === el.id)) set(list.map((x) => (x.id === el.id ? { ...x, ...el, name } : x)))
     else set([{ ...el, name, id: crypto.randomUUID(), created: Date.now() }, ...list])
   },
-  remove: (id: string) => set(list.filter((x) => x.id !== id)),
+  /** removes it; the returned function puts it back (for Undo) */
+  remove(id: string) {
+    const i = list.findIndex((x) => x.id === id)
+    const gone = list[i]
+    set(list.filter((x) => x.id !== id))
+    return () => gone && !list.some((x) => x.id === id) && set([...list.slice(0, i), gone, ...list.slice(i)])
+  },
   /** what the server saved replaces what's here (merged by id, the server's copy winning) */
   load(saved: FlickElement[]) {
     const ids = new Set(saved.map((x) => x.id))

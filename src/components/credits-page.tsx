@@ -5,6 +5,7 @@ import { SparklesIcon } from "@hugeicons/core-free-icons"
 import { PageShell, StatCard, StatAction, ListCard, InvoicesCard, Pager, downloadInvoice } from "@/components/page-kit"
 import { DateFilter, inDateFilter, type DateFilterValue } from "@/components/ui-extra/date-filter"
 import { Button } from "@/components/ui/button"
+import { EmptyState } from "@/components/empty-state"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { VIDEO_COST, videoCost } from "@/components/credits-card"
@@ -176,7 +177,7 @@ function UsageHistory({ activity }: { activity: Activity[] }) {
             ))}
           </ul>
         ) : (
-          <p className="py-10 text-center text-sm text-muted-foreground">No activity found.</p>
+          <EmptyState size="sm" className="py-10" title="No activity yet" text="Credits you add and spend show here." />
         )}
         </Loading>
         <Pager page={page} pages={pages} total={rows.length} size={HISTORY_PAGE} onPage={setPage} />

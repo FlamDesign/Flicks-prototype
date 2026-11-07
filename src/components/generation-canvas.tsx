@@ -1,6 +1,5 @@
 import { Spinner } from "@/components/ui/spinner"
 import { useEffect, useRef, useState } from "react"
-import { PendingButton } from "@/components/page-skeletons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Copy01Icon, Delete02Icon, MinusSignIcon, PlusSignIcon, SparklesIcon, BubbleChatIcon } from "@hugeicons/core-free-icons"
 import { useCanvasView, MIN_ZOOM, MAX_ZOOM } from "@/components/editor/use-canvas-view"
@@ -169,7 +168,6 @@ export function GenerationCanvas({
   // Preview hides every panel and plays the Flick on the canvas as viewers get it
   const [mode, setMode] = useState<"design" | "preview">("design")
   const previewing = mode === "preview"
-  const [confirmDelete, setConfirmDelete] = useState(false)
   const toast = useToast()
   // a fresh duplicate says so once it opens
   const announced = useRef(false)
@@ -185,7 +183,7 @@ export function GenerationCanvas({
     }
     if (!generation.copy) return
     announced.current = true
-    toast({ title: "Duplicated", description: `You’re now editing “${generation.copy.title}”.` })
+    toast({ title: `“${generation.copy.title}” added to Projects`, description: "You’re editing the copy now." })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const [preview, setPreview] = useState<string | null>(null)
@@ -1381,7 +1379,6 @@ export function GenerationCanvas({
   /** Variation 1 approved: the waiting variations start. From the chat's own tool (`byChat`) or the build card's button, which the chat hears about */
   const approveRef = (byChat = false) => {
     commitSlides(slidesNow.current.map((x, i) => (i === 0 ? { ...x, approvedRef: x.startedAt } : x)))
-    toast({ title: "Making the variations", description: "From Variation 1, which you approved." })
     if (!byChat) agent.notify("(App: the user approved Variation 1 with the button; the variations are being made from it. Nothing to reply.)", false)
   }
   // Variation 1 is in and waiting for review: wake the chat, once per version, so it looks and asks
@@ -1399,7 +1396,8 @@ export function GenerationCanvas({
     select("main")
     setChatHidden(false)
     agentCtx.focusComposer()
-    toast({ title: "Tell the chat what to change", description: "It makes Variation 1 again; you review it before the others are made." })
+    // the chat asks, in the chat, what to change (it proposes the remake as a Make card)
+    agent.notify("(App: the user pressed Change it on the Variation 1 review. Ask in one line what should change in Variation 1; when they answer, propose the remake with set_variation regenerate. Nothing else.)")
   }
   const jobs = useRef(new Set<string>())
   useEffect(() => {
@@ -1758,7 +1756,13 @@ export function GenerationCanvas({
           onHome={() => (title && dirty && saveProject(), onBack())}
           onDuplicate={() => onDuplicate({ title: `${title} copy`, snap: snapNow() })}
           onHistory={() => setPanel("history")}
-          onDelete={() => setConfirmDelete(true)}
+          // gone at once, with Undo in the toast, the same as on the Projects page (its Flicks stay)
+          onDelete={() => {
+            deleted.current = true
+            const undo = library.deleteProject(generation.id)
+            onBack()
+            toast({ title: `“${title || "Untitled project"}” deleted`, description: "Its Flicks stay.", action: { label: "Undo", onClick: undo } })
+          }}
         />
         {planning && (
           <div className="pointer-events-none absolute inset-x-0 flex justify-center">
@@ -1795,25 +1799,6 @@ export function GenerationCanvas({
         />
       )}
 
-      {/* delete */}
-      <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
-        <DialogContent className="sm:max-w-sm" data-keep-selection>
-          <DialogHeader>
-            <DialogTitle>Delete “{title}”?</DialogTitle>
-            <DialogDescription>
-              {project?.exports.length ? "Flicks exported from this project will not be deleted. " : ""}This can’t be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmDelete(false)}>
-              Cancel
-            </Button>
-            <PendingButton variant="destructive" onClick={() => (setConfirmDelete(false), (deleted.current = true), library.deleteProject(generation.id), onBack(), toast("Project deleted"))}>
-              Delete
-            </PendingButton>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
 
 
@@ -2159,7 +2144,7 @@ export function GenerationCanvas({
         {/* prompts and generation history, as a chat, on the right of the canvas */}
         {!previewing && (
           <PromptChat
-            history={history}
+            history={[]} /* the chat is the history now; the old prompt log (history) is kept for the lightbox only */
             nameOf={(id) => {
               const s = slides.find((x) => x.id === id)
               return s && nameOf(s)

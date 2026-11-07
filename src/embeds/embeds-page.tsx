@@ -5,6 +5,7 @@ import { createPortal } from "react-dom"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Add01Icon, ArrowUpRight01Icon, Copy01Icon, Delete02Icon, GitForkIcon, LockIcon, MoreHorizontalIcon, PencilEdit01Icon, Tick02Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
+import { EmptyState } from "@/components/empty-state"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
@@ -83,9 +84,13 @@ export function EmbedsPage({ openEmbed, onRemixFlick, onOpenFlick }: { openEmbed
                     {e.flick ? <img loading="lazy" decoding="async" src={e.flick.image} alt="" className="absolute inset-0 size-full object-cover" /> : <span className="text-xs text-muted-foreground">No Flick yet</span>}
                     <span className="absolute bottom-2 left-2 rounded-md bg-black/50 px-1.5 py-0.5 text-xs font-medium tabular-nums text-white backdrop-blur-sm">{e.size}</span>
                   </span>
+                  {/* the same card as a placement in a campaign: name, status with a dot, numbers */}
                   <span className="flex flex-col gap-1 px-1 pb-1">
                     <span className="truncate text-sm font-medium">{e.name}</span>
-                    <span className="truncate text-xs text-muted-foreground">{e.flick ? e.flick.name : "Empty"}</span>
+                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <span className={cn("size-1.5 rounded-full", e.flick ? "bg-brand" : "bg-muted-foreground/50")} />
+                      {e.flick ? `Live · ${e.flick.name}` : "No Flick"}
+                    </span>
                     <span className="text-xs tabular-nums text-muted-foreground">{compact(e.views)} views</span>
                   </span>
                 </button>
@@ -93,13 +98,17 @@ export function EmbedsPage({ openEmbed, onRemixFlick, onOpenFlick }: { openEmbed
             ))}
           </ul>
         ) : (
-          <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed px-6 py-16 text-center">
-            <p className="text-sm font-medium">No embeds yet</p>
-            <p className="max-w-sm text-sm text-muted-foreground">Make an embed, add its code to your website once, then change the Flick in it from here whenever you like.</p>
-            <Button size="sm" className="mt-2" onClick={() => setCreating(true)}>
-              New embed
-            </Button>
-          </div>
+          <EmptyState
+            size="sm"
+            className="py-16"
+            title="No embeds yet"
+            text="Make an embed, add its code to your website once, then change the Flick in it from here whenever you like."
+            action={
+              <Button size="sm" onClick={() => setCreating(true)}>
+                New embed
+              </Button>
+            }
+          />
         )}
       </div>
 
@@ -246,7 +255,7 @@ function EmbedView({ e, actionsEl, onDeleted, onRemixFlick, onOpenFlick }: { e: 
             <Button variant="outline" onClick={() => setConfirm(false)}>
               Cancel
             </Button>
-            <PendingButton variant="destructive" onClick={() => (embeds.delete(e.id), setConfirm(false), onDeleted(), toast("Embed deleted"))}>
+            <PendingButton variant="destructive" onClick={() => (embeds.delete(e.id), setConfirm(false), onDeleted(), toast(`“${e.name}” deleted`))}>
               Delete
             </PendingButton>
           </DialogFooter>
