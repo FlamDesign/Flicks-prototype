@@ -59,7 +59,7 @@ export function HelpCenter() {
   const main = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    document.title = "Flicks Help Center";
+    document.title = "Help Center · Flicks";
     const mq = matchMedia("(prefers-color-scheme: dark)");
     const theme = () =>
       document.documentElement.classList.toggle("dark", mq.matches);
@@ -625,7 +625,7 @@ function Player({
             />
           ))}
 
-          {/* what this step is about, outlined in the primary colour (the rest dims a little) */}
+          {/* what this step is about, outlined in the primary color (the rest dims a little) */}
           {target?.x !== undefined && target.w !== undefined && (
             <div
               key={`ring-${step}-${run}`}

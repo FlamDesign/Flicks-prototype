@@ -20,7 +20,6 @@ import { FileTitle, ModeSwitch, VideoToggle } from "@/components/editor/editor-t
 import { useToast } from "@/components/ui-extra/toaster"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { recipeOf } from "@/recipes"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { SIZES } from "@/data"
@@ -164,15 +163,9 @@ export function GenerationCanvas({
   // next variation number; numbers are never reused
   const nextN = useRef(Math.max(0, ...slides.map((s) => s.n ?? 0)) + 1)
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null)
-  // a new project is named from its prompt until the chat names it; one from a template after the template
-  const [title, setTitle] = useState(() => generation.copy?.title ?? generation.resume?.title ?? (generation.fromTemplate ? `From ${generation.fromTemplate.title}` : ""))
-  const naming = !title
-  useEffect(() => {
-    if (title) return
-    const t = setTimeout(() => setTitle((v) => v || (generation.recipe ? `${recipeOf(generation.recipe.id)?.name ?? "Recipe"}_${stamp()}` : titleFromPrompt(generation.prompt))), 1200)
-    return () => clearTimeout(t)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  // a new project is "Untitled project" until the chat names it (with the storyboard)
+  const [title, setTitle] = useState(() => generation.copy?.title ?? generation.resume?.title ?? "")
+  useEffect(() => void (document.title = `${title || "Untitled project"} · Flicks`), [title])
   // Preview hides every panel and plays the Flick on the canvas as viewers get it
   const [mode, setMode] = useState<"design" | "preview">("design")
   const previewing = mode === "preview"
@@ -454,7 +447,7 @@ export function GenerationCanvas({
   useEffect(() => {
     const onDown = (e: PointerEvent) => {
       const t = e.target as HTMLElement
-      // the eyedropper's click samples a colour; it doesn't deselect
+      // the eyedropper's click samples a color; it doesn't deselect
       if (document.body.dataset.picking) return
       if (t.closest?.("[data-el],[role=toolbar],[data-slot=popover-content],[role=menu],[role=dialog],[data-keep-selection]")) return
       setSelected([])
@@ -848,7 +841,7 @@ export function GenerationCanvas({
       if (slidesNow.current[0].startedAt) return "Error: the videos are already made; the size can't change now."
       const len = seconds ? Math.max(4, Math.min(15, Math.round(seconds))) : undefined
       onFormat?.(`${w}×${h}`, len)
-      return `Size set to ${w}×${h}${len ? `, ${len} s` : ""}. Videos are made in ${videoAspectOf(`${w}×${h}`)} (the closest shape the video model makes) and cover the frame, centred; a little may be cropped at the edges.`
+      return `Size set to ${w}×${h}${len ? `, ${len} s` : ""}. Videos are made in ${videoAspectOf(`${w}×${h}`)} (the closest shape the video model makes) and cover the frame, centered; a little may be cropped at the edges.`
     },
     approveReference() {
       const main = slidesNow.current[0]
@@ -867,7 +860,7 @@ export function GenerationCanvas({
       const cost = VIDEO_COST * toMake
       if (dev.credits < cost) {
         onGetCredits()
-        return `Error: This needs ${cost.toLocaleString("en-US")} credits and you have ${dev.credits.toLocaleString("en-US")}. Get credits, then press Generate all again.`
+        return `Error: This needs ${cost.toLocaleString("en-US")} credits and you have ${dev.credits.toLocaleString("en-US")}. Get credits, then approve the storyboard again.`
       }
       setDev((d) => ({ credits: d.credits - cost }))
       const now = Date.now()
@@ -1351,7 +1344,7 @@ export function GenerationCanvas({
       for (const e of els) {
         if (e.kind !== "button" || e.variant === "icon" || e.variant === "link") continue
         const c = contrast(e.color ?? defaultInk(e), e.bg ?? defaultFill(e))
-        if (c !== undefined) check(c >= 3, "Button text is readable", `Button ${label(e)} text contrast is ${c.toFixed(1)}:1; needs 3:1. Change its text or background colour.`)
+        if (c !== undefined) check(c >= 3, "Button text is readable", `Button ${label(e)} text contrast is ${c.toFixed(1)}:1; needs 3:1. Change its text or background color.`)
         const linked = e.linkFeed ? shown.every((x) => x.feeds?.[e.linkFeed!]?.trim()) : !!e.link?.trim()
         check(linked, "Every button has a link", `Button ${label(e)} has no link${e.linkFeed ? " on some variations" : ""}.`)
       }
@@ -1514,7 +1507,7 @@ export function GenerationCanvas({
   }, [live, agentMode, slides])
   /**
    * Stops a video that isn't being made yet: one waiting for the OK on Variation 1 is simply removed,
-   * one in the queue is cancelled with the provider. Either way it's refunded. One that has started
+   * one in the queue is canceled with the provider. Either way it's refunded. One that has started
    * can't be stopped (the provider refuses), and the toast says so.
    */
   const cancelVideo = async (slideId: string) => {
@@ -1523,12 +1516,12 @@ export function GenerationCanvas({
     const name = slideName(sl, slidesNow.current.indexOf(sl))
     if (sl.job.id) {
       const r = await cancelJob(sl.job.id)
-      if (!r.cancelled) {
+      if (!r.canceled) {
         toast({ title: `${name} is already being made`, description: "A video can't be stopped once it has started." })
         return
       }
     }
-    // reset before the job's check sees it was cancelled, so it isn't counted as a failure
+    // reset before the job's check sees it was canceled, so it isn't counted as a failure
     const now = slidesNow.current.find((x) => x.id === slideId)
     if (!now) return
     commitSlides(slidesNow.current.map((x) => (x.id === slideId ? { ...x, job: undefined, startedAt: undefined, video: undefined, prompt: x.used?.prompt, used: undefined } : x)))
@@ -1582,7 +1575,7 @@ export function GenerationCanvas({
         const failed = !s.job && !isMadeVideo(s.video) && s.failed ? s.failed.reason : undefined
         return { name: nameOf(s), state: st, src: v?.mp4 || undefined, poster: v?.poster, since: s.job?.since ?? s.startedAt, ms: s.job ? undefined : ms, status: s.job?.status, stop: stoppable ? () => void cancelVideo(s.id) : undefined, failed, retry: failed ? () => retryVideo(s.id) : undefined }
       }),
-    review: { needed: needsReview, approve: () => approveRef(), change: () => changeRef() },
+    review: { needed: needsReview, approve: () => approveRef(), change: () => changeRef(), count: slides.filter((x) => x.job?.status === "waiting").length, cost: slides.filter((x) => x.job?.status === "waiting").length * VIDEO_COST },
     proposals: () => proposals.map((p) => ({ id: p.id, name: p.name, change: p.change ?? p.prompt, cost: p.cost, make: () => void makeProposed(p.id), dismiss: () => dropProposed(p.id) })),
     issues: () => publishIssues.filter((x) => !x.blocking).map((x) => x.text),
     progress: () => {
@@ -1758,7 +1751,6 @@ export function GenerationCanvas({
       <header className="relative flex h-14 shrink-0 items-center gap-3 border-b px-3 md:px-4">
         <FileTitle
           title={title}
-          naming={naming}
           setTitle={setTitle}
           size={generation.size}
           sizeLabel={sizeInfo?.label}
@@ -1779,7 +1771,7 @@ export function GenerationCanvas({
           <VideoToggle playing={videoPlaying} disabled={!done} onToggle={() => setVideoPlaying((p) => !p)} />
           <ModeSwitch mode={mode} onChange={(m) => setPreviewMode(m === "preview")} />
           <ExportControl
-            title={title || "Untitled Flick"}
+            title={title || "Untitled project"}
             issues={publishIssues}
             poster={poster}
             count={included.length}
@@ -1873,7 +1865,7 @@ export function GenerationCanvas({
           onAddShape={(id) => {
             const def = SHAPES.find((x) => x.id === id) ?? SHAPES[0]
             const w = def.ar >= 4 ? 40 : 30
-            // new shapes start grey; lines and arrows as a grey stroke
+            // new shapes start gray; lines and arrows as a gray stroke
             add({ kind: "shape", shape: def.shape, w, h: (w * ratio) / def.ar, ar: def.ar, lock: def.ar < 4, fill: def.filled ? SHAPE_GREY : "transparent", stroke: SHAPE_GREY, strokeWidth: def.filled ? 0 : 8, radius: def.shape === "rect" ? 12 : 0, ...(def.points ? { points: def.points } : {}) })
           }}
           onAddLayout={(els) => (setElements((e) => [...e, ...els]), setSelected(els.map((e) => e.id)))}
@@ -1964,7 +1956,7 @@ export function GenerationCanvas({
               />
             </div>
           )}
-          {/* prompts hidden: a labelled button at the canvas's right edge brings them back */}
+          {/* prompts hidden: a labeled button at the canvas's right edge brings them back */}
           {chatHidden && !previewing && (
             <Button
               data-no-pan
@@ -2198,7 +2190,7 @@ export function GenerationCanvas({
                   <QuickReplies agent={agent} ctx={agentCtx} />
                   <AgentComposer
                     agent={agent}
-                    placeholder={agent.waiting ? "Or reply directly…" : slides[0].startedAt ? "Ask for a change: a headline, a colour, another variation. Type @ to mention" : undefined}
+                    placeholder={agent.waiting ? "Or reply directly…" : slides[0].startedAt ? "Ask for a change: a headline, a color, another variation. Type @ to mention a photo or variation" : undefined}
                     variations={slides[0].startedAt ? slides.map((x) => ({ name: nameOf(x), poster: x.video !== undefined ? videoAt(wrapVideo(x.video))?.poster : undefined })) : undefined}
                     brand={!!brand}
                   />
@@ -2240,32 +2232,10 @@ function ZoomTool({ label, onClick, disabled, children }: { label: string; onCli
   )
 }
 
-/** short stamp for names: "Oct 8 20:42" */
-function stamp(d = new Date()) {
-  const month = d.toLocaleString("en-US", { month: "short" })
-  return `${month} ${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
-}
-
-const SKIP = new Set(
-  "a an the and or of in on at to for with from by into onto across through over under near is are be as it its this that slow fast quick push-in push pull-out pan zoom tilt dolly orbit close-up closeup wide shot shots camera cinematic video scene footage featuring showing shows".split(" "),
-)
-/** What an existing Flick's two variations were made from. */
 /** a video the chat asked for, waiting for the user's Make */
 type VideoProposal = { id: string; slideId: string; name: string; prompt: string; change?: string; keep_seconds?: number; cost: number; at: number }
 
-const VARIATION_PROMPTS = ["Same scene, the second colourway", "Same scene, the third colourway, warmer light"]
-
-/** Stands in for the AI naming step: the first few meaningful words of the prompt, title-cased. */
-function titleFromPrompt(prompt: string) {
-  const words = prompt
-    .split(/[,.;:\n]/)[0]
-    .split(/\s+/)
-    .map((w) => w.replace(/[^\p{L}\p{N}'-]/gu, ""))
-    .filter((w) => w && !SKIP.has(w.toLowerCase()))
-    .slice(0, 3)
-  const name = words.map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase()).join(" ")
-  return name || "Untitled Flick"
-}
+const VARIATION_PROMPTS = ["Same scene, the second colorway", "Same scene, the third colorway, warmer light"]
 
 function useClock(deadlines: number[]) {
   const [now, setNowState] = useState(() => Date.now())

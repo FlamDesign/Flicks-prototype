@@ -49,7 +49,7 @@ import { cn } from "@/lib/utils"
 
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"]
 const VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm"]
-/** saved before uploads were labelled: the chat's website images and unnamed working copies */
+/** saved before uploads were labeled: the chat's website images and unnamed working copies */
 const APP_COPY = /^(Uploaded (image|video)|.+ image \d+)$/
 /** previews and option images aren't final work: left out of Generated */
 const DRAFT = /preview|idea|option|draft|look/i

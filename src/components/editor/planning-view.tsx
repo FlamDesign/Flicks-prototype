@@ -40,7 +40,7 @@ export function PlanSteps({ step }: { step: Step }) {
 }
 
 /**
- * Before anything is generated: just the conversation, centred, like a chat app.
+ * Before anything is generated: just the conversation, centered, like a chat app.
  * Questions dock above the composer; image requests and the plan sit in the conversation. The Flick
  * itself appears in the editor once the plan is approved.
  */

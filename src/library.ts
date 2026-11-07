@@ -125,7 +125,7 @@ export const library = {
   saveProject(p: Partial<Project> & { id: string }) {
     set((s) => {
       const old = s.projects.find((x) => x.id === p.id)
-      const next: Project = { versions: [], exports: [], name: "Untitled Flick", size: "1080×1080", image: "", video: 0, ...old, ...p, editedAt: p.editedAt ?? Date.now() }
+      const next: Project = { versions: [], exports: [], name: "Untitled project", size: "1080×1080", image: "", video: 0, ...old, ...p, editedAt: p.editedAt ?? Date.now() }
       return { ...s, projects: old ? s.projects.map((x) => (x.id === p.id ? next : x)) : [next, ...s.projects] }
     })
   },

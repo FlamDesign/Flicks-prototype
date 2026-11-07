@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { PAGE, PageHeader } from "@/components/page-kit"
 import { Spinner } from "@/components/ui/spinner"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -50,6 +50,7 @@ export function FlickPage({
   const [adding, setAdding] = useState<"ads" | "embed" | null>(null)
   const toast = useToast()
   const f = flicks.find((x) => x.id === id)
+  useEffect(() => void (document.title = f ? `${f.name} · Flicks` : "Flicks"), [f])
   const [editLink, setEditLink] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   // dev tools: views coming in
@@ -236,7 +237,7 @@ export function FlickPage({
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Add to embed</DialogTitle>
-            <DialogDescription>Create an embed to show Flicks on your website. You can replace Flick later.</DialogDescription>
+            <DialogDescription>Create an embed to show this Flick on your website. You can replace the Flick later.</DialogDescription>
           </DialogHeader>
           <AddToEmbed flick={flickRef(f)} onOpenEmbed={(id) => (setAdding(null), onOpenEmbed(id))} />
         </DialogContent>

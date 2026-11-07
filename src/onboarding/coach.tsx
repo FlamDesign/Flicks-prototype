@@ -15,7 +15,7 @@ type Box = { left: number; top: number; width: number; height: number }
  * One coach mark at a time, over everything: a tour stop (dots, Skip, Back, Next), a "Show me"
  * spotlight, or a one-time tip (Got it). The tour and spotlights dim the page and cut a soft hole
  * around each target (it glides from stop to stop); tips light their target without dimming.
- * A card carries an optional looping illustration. With no target on screen it waits (or centres, in the editor).
+ * A card carries an optional looping illustration. With no target on screen it waits (or centers, in the editor).
  */
 export function CoachLayer() {
   const ob = useOnboarding()
@@ -76,7 +76,7 @@ export function CoachLayer() {
 
   if (!coach || !mode) return null
   const has = boxes.length > 0
-  // the tour belongs to the editor; tips need their target; a spotlight centres if its target never shows
+  // the tour belongs to the editor; tips need their target; a spotlight centers if its target never shows
   if (!has && !(mode === "tour" && inEditor) && !(mode === "spot" && waited)) return null
 
   function close() {

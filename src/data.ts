@@ -7,7 +7,7 @@ import wildHaven from "@/assets/templates/wild-haven.jpg"
 import linea from "@/assets/templates/linea.jpg"
 import sportPoster from "@/assets/video/poster-3.jpg"
 import bootRain from "@/assets/video/shoe-1-wheat.jpg"
-import bootColours from "@/assets/uploads/boot-black-classic.jpg"
+import bootColors from "@/assets/uploads/boot-black-classic.jpg"
 import bootDetail from "@/assets/uploads/boot-pro-brown.jpg"
 import gownRust from "@/assets/video/dress-1-rust.jpg"
 import gownOmbre from "@/assets/video/dress-2-ombre.jpg"
@@ -90,7 +90,7 @@ export type Template = {
   duration?: number
   /** the card's shape in the templates grid (e.g. "3/4"); square when unset */
   cardRatio?: string
-  /** the card's headline colour: light on a dark card, dark on a light one */
+  /** the card's headline color: light on a dark card, dark on a light one */
   cardInk?: "light" | "dark"
   /** the brand as written (e.g. "Paramount+"), on the card */
   brandName?: string
@@ -319,7 +319,7 @@ const TEMPLATE_BASE: Template[] = [
   {
     id: "sport-lens",
     title: "Sport Lens Switch",
-    description: "Runners tap a lens colour and the video switches with it.",
+    description: "Runners tap a lens color and the video switches with it.",
     mechanic: "Variants",
     industry: "Sports & fitness",
     size: "300×250",
@@ -353,9 +353,9 @@ const TEMPLATE_BASE: Template[] = [
     video: 5,
   },
   {
-    id: "boot-colours",
-    title: "Boot Colourways",
-    description: "One boot, every colourway: shoppers tap to switch.",
+    id: "boot-colors",
+    title: "Boot Colorways",
+    description: "One boot, every colorway: shoppers tap to switch.",
     mechanic: "Variants",
     industry: "Footwear",
     size: "250×250",
@@ -367,7 +367,7 @@ const TEMPLATE_BASE: Template[] = [
     bg: ["#f5f5f4", "#d6d3d1"],
     variants: [{ label: "Black", color: "#18181b" }, { label: "Brown", color: "#7c2d12" }, { label: "Wheat", color: "#d97706" }],
     prompt: "Classic 6-inch boot turning on a clean studio set, switching between black, brown and wheat leather",
-    image: bootColours,
+    image: bootColors,
     video: 5,
   },
   {
@@ -479,7 +479,7 @@ export const SAMPLE_TEMPLATES: Template[] = TEMPLATE_BASE.filter((t) => t.image)
   const size = TEMPLATE_SIZES[t.id] ?? t.size
   return { ...t, size, sizes: [size] }
 })
-/** the order cards appear in: mixed shapes and colours so the masonry reads well */
+/** the order cards appear in: mixed shapes and colors so the masonry reads well */
 const TEMPLATE_ORDER = ["real-coach", "real-amazon", "brand-gap", "real-ulta", "real-geico", "brand-modelo", "real-sony", "real-wwe2k", "brand-diageo", "real-lovesac", "real-homedepot", "brand-little-caesars", "real-amex", "real-paramount", "brand-general-mills", "real-redbull"]
 /** every template is a real Flick (16 brands), each a complete project with its own videos */
 export const TEMPLATES: Template[] = [...BRAND_TEMPLATES.map((t) => ({ ...t, ...(REAL_CARDS[t.id] ? { image: REAL_CARDS[t.id].card, cardRatio: REAL_CARDS[t.id].cardRatio, cardInk: REAL_CARDS[t.id].cardInk, brandName: REAL_CARDS[t.id].name, cardHeadline: REAL_CARDS[t.id].line } : {}) })), ...REAL_TEMPLATES].sort(
@@ -504,7 +504,7 @@ export const FLICKS: Flick[] = [
   { id: "f6", name: "Roast of the month", size: "1080×1920", editedAt: ago(12 * DAY), image: coffee, campaign: "Always-on retail", video: 5 },
   { id: "f9", name: "Rain-ready boots launch", size: "1920×1080", editedAt: ago(2 * DAY), image: bootRain, campaign: "Spring launch", video: 5, projectId: "p5" },
   { id: "f10", name: "Summer gown edit", size: "1080×1080", editedAt: ago(4 * DAY), image: gownRust, video: 8, projectId: "p6" },
-  { id: "f11", name: "Boot colourways", size: "300×250", editedAt: ago(9 * DAY), image: bootColours, video: 5 },
+  { id: "f11", name: "Boot colorways", size: "300×250", editedAt: ago(9 * DAY), image: bootColors, video: 5 },
   { id: "f12", name: "Sport lens switch", size: "1080×1920", editedAt: ago(15 * DAY), image: sportPoster, video: 0 },
 ]
 

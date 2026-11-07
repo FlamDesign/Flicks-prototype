@@ -54,8 +54,8 @@ reference video, billed by its length, so they cost about the same.
 Prompt recipes:
 - **Concept preview or look:** "<scene from the concept>, <shot size and angle>, <light>, <style>,
   photographic, no text". One per concept.
-- **Thumbnail:** "<the product in this variation>, centred, three-quarter view, on a plain <neutral
-  or brand colour> background, soft studio light, sharp focus, square, no text". Same background,
+- **Thumbnail:** "<the product in this variation>, centered, three-quarter view, on a plain <neutral
+  or brand color> background, soft studio light, sharp focus, square, no text". Same background,
   angle and light for every variation; only the product changes, and the difference shows at 60 pixels.
 - **Canvas image (badge, background, extra product):** describe exactly what and where it sits;
   transparent or plain background; no text unless asked.

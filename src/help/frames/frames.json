@@ -26,7 +26,7 @@
   },
   {
    "file": "start-4",
-   "caption": "The editor opens and makes your reference video. It names the project for you.",
+   "caption": "The chat plans the Flick and, once you approve the storyboard, makes Variation 1. It names the project for you.",
    "x": 38.9,
    "y": 55.5,
    "w": 49.4,
@@ -70,7 +70,7 @@
   },
   {
    "file": "assets-2",
-   "caption": "Click Use in Flicks to start a new project with it as the reference video.",
+   "caption": "Click Use in Flicks to start a new project with it as Variation 1.",
    "x": 81.3,
    "y": 94.5,
    "w": 18.8,
@@ -80,7 +80,7 @@
  "variations": [
   {
    "file": "variations-1",
-   "caption": "Below the canvas: the reference video, then your variations. Click + to add one.",
+   "caption": "Below the canvas: Variation 1, then the other variations. Click + to add one.",
    "x": 53,
    "y": 90.2,
    "w": 3.8,

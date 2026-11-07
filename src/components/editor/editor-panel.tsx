@@ -206,7 +206,7 @@ export function EditorPanel({
 // Plain outlined rows, Canva-style: each row is the style itself
 const row = "h-auto w-full whitespace-normal rounded-xl border-foreground/10 px-3 font-normal hover:border-foreground/20"
 
-/** every shape as a tile drawn in the text colour; a tap adds it */
+/** every shape as a tile drawn in the text color; a tap adds it */
 function ShapeList({ disabled, onAdd }: { disabled: boolean; onAdd: (id: string) => void }) {
   return (
     // a little padding so the tiles' outlines aren't cut by the scrolling panel's edge
@@ -460,7 +460,7 @@ function useUploader(setUploads: React.Dispatch<React.SetStateAction<Upload[]>>,
   return { upload, retry }
 }
 
-/** An upload that failed: the image greyed with a red tint, retry in the middle, remove in the corner. */
+/** An upload that failed: the image grayed with a red tint, retry in the middle, remove in the corner. */
 function FailedTile({ u, onRetry, onRemove }: { u: Upload; onRetry: () => void; onRemove: () => void }) {
   return (
     <div className="relative">

@@ -46,7 +46,7 @@ const MADE_FROM: { prompts: string[]; refs: AssetRef[] }[] = [
   {
     prompts: [
       "Athlete in black tee against a sunlit concrete wall, slow push-in, gold-lens sport sunglasses, then a street run at golden hour",
-      "Wide shot of the city at dawn, the runner enters frame from the left, lenses flash as he passes the camera, slow motion on the turn, then cut to a tight close-up of the frames with the skyline reflected in the lenses. Keep the colour warm and the grain subtle, like a film commercial from the nineties. End on the product held up to the light.",
+      "Wide shot of the city at dawn, the runner enters frame from the left, lenses flash as he passes the camera, slow motion on the turn, then cut to a tight close-up of the frames with the skyline reflected in the lenses. Keep the color warm and the grain subtle, like a film commercial from the nineties. End on the product held up to the light.",
     ],
     refs: [up(2), up(0)],
   },
@@ -204,7 +204,7 @@ export function AssetsPage({ onCreate, onUse }: { onCreate: () => void; onUse: (
           art="media"
           title="No videos yet"
           text="Every video you generate shows up here, with the prompt and references it was made from."
-          action={<Button size="sm" onClick={onCreate}>Create a video</Button>}
+          action={<Button size="sm" onClick={onCreate}>Create</Button>}
         />
       ) : shown.length === 0 && filtering ? (
         <EmptyState

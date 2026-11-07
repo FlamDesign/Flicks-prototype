@@ -62,7 +62,7 @@ export const GENERATED_VIDEOS: SampleVideo[] = [
  * Real videos made with the AI server join the list (set "made", so samples never pick them) and are
  * remembered on this device, so a project that uses one still finds it after a reload.
  */
-/** A plain grey frame for a video this device no longer has (see videoAt). */
+/** A plain gray frame for a video this device no longer has (see videoAt). */
 export const MISSING_POSTER = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="16" height="16" fill="#d6d3d1"/></svg>')
 const MADE_KEY = "flam.videos"
 try {
@@ -78,7 +78,7 @@ export function addMadeVideo(v: { name: string; size: string; mp4: string; poste
     localStorage.setItem(MADE_KEY, JSON.stringify(made))
   } catch {
     // storage full (stills are large): keep every video's link, and stills for the newest 10 only,
-    // so a project still finds its videos after a reload (older ones show a grey frame)
+    // so a project still finds its videos after a reload (older ones show a gray frame)
     try {
       localStorage.setItem(MADE_KEY, JSON.stringify(made.map((x, i) => (i < made.length - 10 ? { ...x, poster: "" } : x))))
     } catch {
@@ -92,7 +92,7 @@ export const wrapVideo = (i: number) => (i >= REAL_BASE ? i : i % GENERATED_VIDE
 export const isMadeVideo = (i?: number) => i !== undefined && GENERATED_VIDEOS[i]?.set === "made"
 
 /**
- * The video at `i`, or a grey stand-in when it's gone: a made video can be missing after a reload
+ * The video at `i`, or a gray stand-in when it's gone: a made video can be missing after a reload
  * if this device couldn't keep it (storage full or cleared), and a project must still open.
  */
 export const videoAt = (i?: number): SampleVideo =>
@@ -115,7 +115,7 @@ export const inSet = (base: number, step: number) => {
   return ids[(Math.max(0, ids.indexOf(base)) + step) % ids.length]
 }
 
-/** Horizontal anchor: x is the element's left edge, centre or right edge. */
+/** Horizontal anchor: x is the element's left edge, center or right edge. */
 export type Align = "left" | "center" | "right"
 
 export type TextVariant = "heading" | "subheading" | "body" | "caption" | "label"
@@ -173,7 +173,7 @@ type BaseElement =
       y: number
       bg?: string // "transparent" allowed
       radius?: number // % of the largest possible radius (100 = pill)
-      border?: string // border colour
+      border?: string // border color
       borderWidth?: number // px at 1080 wide; 0 = none
       w?: number // % of frame width, set once the button is resized
       h?: number // % of frame height
@@ -203,8 +203,8 @@ type BaseElement =
       id: string
       kind: "shape"
       shape: ShapeKind
-      x: number // centre (by align), % of frame width
-      y: number // centre, % of frame height
+      x: number // center (by align), % of frame width
+      y: number // center, % of frame height
       w: number // % of frame width
       h: number // % of frame height
       ar: number // the shape's natural width / height
@@ -216,7 +216,7 @@ type BaseElement =
       points?: number // stars: points; polygons: sides
       d?: string // "path": SVG path data in a 100×100 box, stretched to the shape's box
       opacity?: number // 0 to 1
-      fillImage?: string // a picture filling the shape (over the fill colour)
+      fillImage?: string // a picture filling the shape (over the fill color)
       fillFit?: "cover" | "contain"
       rotation?: number // degrees, clockwise
     }
@@ -229,7 +229,7 @@ type BaseElement =
       layout: "horizontal" | "vertical" | "free"
       size: number // thumbnail width in cqw (thumbnails are square, whatever the frame's shape)
       gap: number // px at 1080 wide
-      highlight: string // active thumbnail outline colour
+      highlight: string // active thumbnail outline color
       highlightWidth: number // px at 1080 wide
       bg: string // thumbnail background (shows until a video is ready); its opacity also sets how faded the other thumbnails are
       radius: number // % of the largest possible radius
@@ -239,7 +239,7 @@ type BaseElement =
     }
 
 export type ShapeKind = "rect" | "ellipse" | "triangle" | "star" | "polygon" | "line" | "arrow" | "heart" | "play" | "path"
-/** a solid colour (hex, or "transparent"), or a gradient (the chat can set these; the editor offers solid colours) */
+/** a solid color (hex, or "transparent"), or a gradient (the chat can set these; the editor offers solid colors) */
 export type Paint = string | { type: "linear" | "radial"; angle?: number; stops: { color: string; at: number }[] }
 export const isGradient = (p: Paint | undefined): p is Exclude<Paint, string> => !!p && typeof p === "object"
 /** elements sized as a box (width and height), not by their content */
@@ -259,7 +259,7 @@ export const SHAPES: { id: string; shape: ShapeKind; label: string; ar: number; 
   { id: "line", shape: "line", label: "Line", ar: 12, filled: false },
   { id: "arrow", shape: "arrow", label: "Arrow", ar: 6, filled: false },
 ]
-/** the colour new shapes start in */
+/** the color new shapes start in */
 export const SHAPE_GREY = "#a8a29e"
 export const shapeLabel = (s: ShapeKind, points?: number) =>
   s === "path" ? "Custom shape" : s === "star" ? `${points ?? 5}-point star` : s === "polygon" ? (({ 3: "Triangle", 4: "Diamond", 5: "Pentagon", 6: "Hexagon", 8: "Octagon" }) as Record<number, string>)[points ?? 6] ?? `${points}-sided shape` : (SHAPES.find((x) => x.shape === s)?.label ?? "Shape")
@@ -406,7 +406,7 @@ export const FONTS: FontOption[] = FONT_GROUPS.flatMap((g) => g.fonts)
 export const BUTTON_SIZE = 3.2 // default button font size in cqw
 export const DEFAULT_BOLD: Record<TextVariant, boolean> = { heading: true, subheading: false, body: false, caption: false, label: true }
 
-/** Colour swatches for text and button fills. */
+/** Color swatches for text and button fills. */
 export const SWATCHES = ["#ffffff", "#f4f4f5", "#a1a1aa", "#3f3f46", "#09090b", "#f59e0b", "#ea580c", "#dc2626", "#db2777", "#7c3aed", "#2563eb", "#0891b2", "#16a34a", "#65a30d"]
 
 /** Text styles. Sizes are in cqw (percent of the frame width) so they scale with any format. */
@@ -473,7 +473,7 @@ type LayoutPart = { kind: "text"; variant: TextVariant } | { kind: "button"; var
 type LayoutDef = { id: string; name: string; parts: LayoutPart[]; at: number; align: Align }
 const LAYOUT_DEFS: LayoutDef[] = [
   { id: "hero", name: "Bottom left hero", align: "left", at: 78, parts: [{ kind: "text", variant: "label" }, { kind: "text", variant: "heading" }, { kind: "button", variant: "pill" }] },
-  { id: "story", name: "Centred story", align: "center", at: 50, parts: [{ kind: "text", variant: "heading" }, { kind: "text", variant: "body" }, { kind: "button", variant: "rounded" }] },
+  { id: "story", name: "Centered story", align: "center", at: 50, parts: [{ kind: "text", variant: "heading" }, { kind: "text", variant: "body" }, { kind: "button", variant: "rounded" }] },
   { id: "title", name: "Top left title", align: "left", at: 13, parts: [{ kind: "text", variant: "heading" }, { kind: "text", variant: "subheading" }] },
   { id: "promo", name: "Top right promo", align: "right", at: 16, parts: [{ kind: "text", variant: "label" }, { kind: "text", variant: "subheading" }, { kind: "text", variant: "caption" }] },
   { id: "cta", name: "Bottom call to action", align: "center", at: 87, parts: [{ kind: "text", variant: "caption" }, { kind: "button", variant: "light" }] },
@@ -499,7 +499,7 @@ function stack(parts: LayoutPart[], at: number, align: Align): CanvasElement[] {
   })
 }
 
-/** Colours a style renders with by default, so the toolbar swatches match the canvas. */
+/** Colors a style renders with by default, so the toolbar swatches match the canvas. */
 export function defaultInk(el: Extract<CanvasElement, { kind: "text" | "button" }>) {
   if (el.kind === "text") return "#ffffff"
   return BUTTON_STYLES.find((b) => b.variant === el.variant)!.className.includes("text-zinc-950") ? "#09090b" : "#ffffff"
@@ -527,7 +527,7 @@ export function defaultBorder(el: Extract<CanvasElement, { kind: "button" }>) {
   return { width: 0, color: "#ffffff" }
 }
 
-/** Default thumbnail strip, centred near the bottom of the frame for `count` thumbnails. */
+/** Default thumbnail strip, centered near the bottom of the frame for `count` thumbnails. */
 export function newStrip(count: number, layout: "horizontal" | "vertical" = "horizontal", ratio = 9 / 16): Omit<Extract<CanvasElement, { kind: "strip" }>, "id"> {
   const size = layout === "horizontal" ? 12 : 10
   const gap = 16
@@ -539,7 +539,7 @@ export function newStrip(count: number, layout: "horizontal" | "vertical" = "hor
     gap,
     highlight: "#ffffff",
     highlightWidth: 6,
-    bg: "#a1a1aab3", // grey at 70%
+    bg: "#a1a1aab3", // gray at 70%
     radius: 20,
     // thumbnails are square: `size` cqw tall, which is size * ratio in % of frame height
     x: layout === "horizontal" ? (100 - span) / 2 : 100 - size - 5,
@@ -547,7 +547,7 @@ export function newStrip(count: number, layout: "horizontal" | "vertical" = "hor
   }
 }
 
-/** Keeps a strip inside the frame when its layout changes: centres it along its new direction and shrinks it if needed. */
+/** Keeps a strip inside the frame when its layout changes: centers it along its new direction and shrinks it if needed. */
 export function fitStrip(el: Extract<CanvasElement, { kind: "strip" }>, layout: "horizontal" | "vertical", count: number, ratio: number) {
   const g = el.gap / 10.8
   const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))

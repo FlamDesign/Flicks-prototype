@@ -194,7 +194,7 @@ export function ToolbarGrip({ onDragStart, onReset }: { onDragStart: (e: React.P
 }
 
 /**
- * Changing alignment moves the element's anchor (x is its left, centre or right point).
+ * Changing alignment moves the element's anchor (x is its left, center or right point).
  * Work out the new x so the box itself doesn't move, and pin its width so the text
  * aligns inside the same box instead of the box sliding around.
  */
@@ -337,8 +337,8 @@ function FontControls({ el, onChange }: { el: TextLike; onChange: (p: Partial<Ca
         </Tool>
       </div>
 
-      {/* Colour */}
-      <ColorPicker label="Text colour" value={el.color ?? defaultInk(el)} onChange={(color) => onChange({ color } as Partial<CanvasElement>)}>
+      {/* Color */}
+      <ColorPicker label="Text color" value={el.color ?? defaultInk(el)} onChange={(color) => onChange({ color } as Partial<CanvasElement>)}>
         <span className="flex flex-col items-center leading-none">
           <span className="text-sm font-semibold">A</span>
           <span className="mt-0.5 h-1 w-4 rounded-full ring-1 ring-foreground/20" style={{ background: swatchBg(el.color ?? defaultInk(el)) }} />
@@ -374,7 +374,7 @@ function ButtonControls({
   const fit = el.bgFit ?? "cover"
   return (
     <>
-      <ColorPicker label="Button colour" allowTransparent value={fill} onChange={(bg) => onChange({ bg } as Partial<CanvasElement>)}>
+      <ColorPicker label="Button color" allowTransparent value={fill} onChange={(bg) => onChange({ bg } as Partial<CanvasElement>)}>
         <span className="size-4 rounded-[5px] ring-1 ring-foreground/20" style={{ background: swatchBg(fill) }} />
       </ColorPicker>
 
@@ -495,7 +495,7 @@ function StripControls({
       <Divider />
 
       <StrokePopover label="Active highlight" width={el.highlightWidth} color={el.highlight} onChange={(highlightWidth, highlight) => set({ highlightWidth, highlight })} />
-      <ColorPicker label="Background colour" allowTransparent value={el.bg} onChange={(bg) => set({ bg })}>
+      <ColorPicker label="Background color" allowTransparent value={el.bg} onChange={(bg) => set({ bg })}>
         <span className="size-4 rounded-[5px] ring-1 ring-foreground/20" style={{ background: swatchBg(el.bg) }} />
       </ColorPicker>
       <RadiusPopover id={el.id} value={el.radius} onChange={(radius) => set({ radius })} />
@@ -529,13 +529,13 @@ function ImageControls({ el, onChange, onReplace }: { el: ImageEl; onChange: (p:
   )
 }
 
-/** a paint as CSS, for swatches: the colour, or the gradient the chat set */
+/** a paint as CSS, for swatches: the color, or the gradient the chat set */
 const paintCss = (p: Paint) =>
   isGradient(p)
     ? `${p.type === "radial" ? "radial-gradient(circle" : `linear-gradient(${p.angle ?? 180}deg`}, ${[...p.stops].sort((a, b) => a.at - b.at).map((x) => `${x.color} ${x.at}%`).join(", ")})`
     : swatchBg(p || "transparent")
 
-/** Shapes, with the same controls as buttons: fill colour (solid here; the chat can set gradients), border, corners, a picture fill and the proportions lock. */
+/** Shapes, with the same controls as buttons: fill color (solid here; the chat can set gradients), border, corners, a picture fill and the proportions lock. */
 function ShapeControls({ el, onChange, onChooseImage }: { el: ShapeEl; onChange: (p: Partial<CanvasElement>) => void; onChooseImage: () => void }) {
   const set = (p: Partial<ShapeEl>) => onChange(p as Partial<CanvasElement>)
   const open = el.shape === "line" || el.shape === "arrow"
@@ -543,7 +543,7 @@ function ShapeControls({ el, onChange, onChooseImage }: { el: ShapeEl; onChange:
   return (
     <>
       {!open && (
-        <ColorPicker label={isGradient(el.fill) ? "Shape colour (a gradient: pick a colour to replace it)" : "Shape colour"} allowTransparent value={solid(el.fill, SHAPE_GREY)} onChange={(fill) => set({ fill })}>
+        <ColorPicker label={isGradient(el.fill) ? "Shape color (a gradient: pick a color to replace it)" : "Shape color"} allowTransparent value={solid(el.fill, SHAPE_GREY)} onChange={(fill) => set({ fill })}>
           <span className="size-4 rounded-[5px] ring-1 ring-foreground/20" style={{ background: paintCss(el.fill) }} />
         </ColorPicker>
       )}
@@ -623,7 +623,7 @@ function Swatches({ value, onChange, allowTransparent }: { value: string; onChan
   )
 }
 
-/** Button border: thickness plus colour. */
+/** Button border: thickness plus color. */
 function BorderPopover({ el, onChange }: { el: Extract<CanvasElement, { kind: "button" }>; onChange: (p: Partial<CanvasElement>) => void }) {
   const def = defaultBorder(el)
   return (
@@ -636,7 +636,7 @@ function BorderPopover({ el, onChange }: { el: Extract<CanvasElement, { kind: "b
   )
 }
 
-/** Thickness (px at 1080 wide) plus colour, used for button borders and the strip's active highlight. */
+/** Thickness (px at 1080 wide) plus color, used for button borders and the strip's active highlight. */
 function StrokePopover({ label, width, color, onChange }: { label: string; width: number; color: string; onChange: (width: number, color: string) => void }) {
   const pop = useColorPopover()
   return (

@@ -53,7 +53,7 @@ Trust the form: never ask again for what it gave.
    with that image as first_frame_id and the user's image as last_frame_id.
 3. Text in the image can blur once it moves: offer to take the text out of the image (an edit) and put
    it back as editable text on the canvas.
-4. Suggest what changes between variations (colours, backgrounds, seasons, offers): each is an edit of
+4. Suggest what changes between variations (colors, backgrounds, seasons, offers): each is an edit of
    the first video. The video length is the one the user picked.
 
 ## Clips to Flick

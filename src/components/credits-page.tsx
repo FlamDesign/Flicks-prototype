@@ -95,15 +95,15 @@ export function CreditsPage({ onGetCredits, onAutoReload, email }: { onGetCredit
       }
     >
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Balance" value={credits.toLocaleString("en-US")} note={`About ${Math.floor(credits / VIDEO_COST).toLocaleString("en-US")} video generations`} />
+        <StatCard label="Balance" value={credits.toLocaleString("en-US")} note={`About ${Math.floor(credits / VIDEO_COST).toLocaleString("en-US")} videos`} />
         <StatCard
           label="Auto-reload"
           value={dev.autoReload ? "On" : "Off"}
           valueClassName={dev.autoReload ? "text-brand" : undefined}
-          note={dev.autoReload ? `Below $${dev.autoReloadAt}, add $${dev.autoReloadTo}` : "Top up when low"}
+          note={dev.autoReload ? `Under ${(dev.autoReloadAt * 10).toLocaleString("en-US")} credits, add ${(dev.autoReloadTo * 10).toLocaleString("en-US")} ($${dev.autoReloadTo})` : "Top up when low"}
           action={<StatAction onClick={onAutoReload}>{dev.autoReload ? "Edit" : "Set up"}</StatAction>}
         />
-        <StatCard label="Used" tag="Last 30 days" value={used.toLocaleString("en-US")} note={`${spent30.length.toLocaleString("en-US")} video generations`} />
+        <StatCard label="Used" tag="Last 30 days" value={used.toLocaleString("en-US")} note={`${spent30.length.toLocaleString("en-US")} videos`} />
         <StatCard label="Added" tag="This month" value={addedThisMonth.toLocaleString("en-US")} note="Including bonus credits" />
       </div>
 

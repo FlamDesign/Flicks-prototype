@@ -80,11 +80,12 @@ export const MESSAGES: Record<string, string> = {
   not_connected: NOT_CONNECTED,
   wrong_passcode: NOT_CONNECTED,
   origin_not_allowed: NOT_CONNECTED,
-  daily_limit: "Today's AI limit is reached. Try again tomorrow.",
+  // "Dev:" lines are the AI server's own limits and keys (never the user's credits): shown as a dev note
+  daily_limit: "Dev: today's limit on the AI server is reached. It resets at midnight UTC.",
   no_references: "This video has no reference images or video to stay true to.",
   storage_full: "Today's storage writes are used up, so uploads can't be kept until 4 pm Pacific (midnight UTC). Chat and generation still work.",
-  claude_not_set_up: "The AI server has no chat key yet.",
-  images_not_set_up: "The AI server has no image key yet.",
+  claude_not_set_up: "Dev: the AI server has no chat key yet.",
+  images_not_set_up: "Dev: the AI server has no image key yet.",
   server_not_set_up: NOT_CONNECTED,
   network: NOT_CONNECTED,
 }
@@ -94,7 +95,7 @@ async function fail(res: Response): Promise<never> {
   // which daily limit: images, videos or the chat itself (they reset at midnight UTC)
   if (code === "daily_limit" && body.what) {
     const what = body.what === "images" ? "image" : body.what === "videos" ? "video" : body.what === "chat" ? "chat" : body.what
-    throw new AiError(`daily_limit_${body.what}`, `Today's ${what} limit is reached. It resets at midnight UTC.`)
+    throw new AiError(`daily_limit_${body.what}`, `Dev: today's ${what} limit on the AI server is reached. It resets at midnight UTC.`)
   }
   throw new AiError(code, MESSAGES[code] ?? body.message ?? `The AI server answered ${res.status}.`)
 }
@@ -268,7 +269,7 @@ export async function generateImage(prompt: string, aspect: string, signal?: Abo
 
 /** images being made right now (job ids), so Stop can cancel the ones still queued */
 const imageJobs = new Set<string>()
-const cancelledJobs = new Set<string>()
+const canceledJobs = new Set<string>()
 /** waits for an image job (also one started before a reload) */
 export async function pollImage(id: string, signal?: AbortSignal, onStatus?: (status: string) => void): Promise<string> {
   imageJobs.add(id)
@@ -284,7 +285,7 @@ export async function pollImage(id: string, signal?: AbortSignal, onStatus?: (st
       onStatus?.(s.status)
       if (s.status === "completed" && s.url) return s.url
       if (s.status === "completed") throw new AiError("image_failed", "The image finished but came back empty. Try again.")
-      if ((s.status === "failed" || s.status === "canceled" || s.status === "cancelled") && cancelledJobs.has(id)) throw new AiError("stopped", "Stopped.")
+      if ((s.status === "failed" || s.status === "canceled" || s.status === "cancelled") && canceledJobs.has(id)) throw new AiError("stopped", "Stopped.")
       if (s.status === "failed" || s.status === "canceled" || s.status === "cancelled") throw new AiError("image_failed", "The image didn't generate. Try again.")
       if (s.status === "nsfw") throw new AiError("image_blocked", "This image was blocked. Try a different description.")
       wait = Math.min(wait * 1.25, 3000)
@@ -297,21 +298,21 @@ export async function pollImage(id: string, signal?: AbortSignal, onStatus?: (st
 
 /**
  * Cancels a job that hasn't started yet (images and videos). Once one has started it can't be stopped:
- * `started` says so. Nothing is charged for a cancelled job.
+ * `started` says so. Nothing is charged for a canceled job.
  */
-export async function cancelJob(id: string): Promise<{ cancelled: boolean; started?: boolean }> {
+export async function cancelJob(id: string): Promise<{ canceled: boolean; started?: boolean }> {
   try {
     const r = (await (await steady(`/cancel/${id}`, { method: "POST" })).json()) as { cancelled?: boolean; started?: boolean }
-    if (r.cancelled) cancelledJobs.add(id)
-    return { cancelled: !!r.cancelled, started: r.started }
+    if (r.cancelled) canceledJobs.add(id)
+    return { canceled: !!r.cancelled, started: r.started }
   } catch {
-    return { cancelled: false }
+    return { canceled: false }
   }
 }
 /** Stop: cancels every image still waiting to start; the ones already being made finish */
 export async function cancelQueuedImages() {
   const r = await Promise.all([...imageJobs].map(cancelJob))
-  return { cancelled: r.filter((x) => x.cancelled).length, started: r.filter((x) => !x.cancelled).length }
+  return { canceled: r.filter((x) => x.canceled).length, started: r.filter((x) => !x.canceled).length }
 }
 
 /* ---------- sharing images ---------- */

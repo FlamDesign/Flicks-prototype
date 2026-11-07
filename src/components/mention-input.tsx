@@ -37,7 +37,7 @@ export function useMentionOptions(o: { refs?: { url: string; name: string; video
     })
     const named: MentionOption[] = els.map((e) => ({ key: `el-${e.id}`, label: e.name, group: "Elements", thumb: e.images[0]?.url, hint: `${ELEMENT_KINDS.find((k) => k.value === e.kind)?.label ?? "Element"} · ${e.images.length} image${e.images.length === 1 ? "" : "s"}`, element: e }))
     const vars: MentionOption[] = (o.variations ?? []).map((v, i) => ({ key: `var-${i}`, label: v.name, group: "Variations", thumb: v.poster, hint: `Variation ${i + 1}` }))
-    const brand: MentionOption[] = o.brand ? [{ key: "brand", label: "Brand", group: "Brand", hint: "Colours, font and tone" }] : []
+    const brand: MentionOption[] = o.brand ? [{ key: "brand", label: "Brand", group: "Brand", hint: "Colors, font and tone" }] : []
     // a name already taken earlier in the list keeps the first meaning
     const seen = new Set<string>()
     return [...own, ...named, ...vars, ...brand].filter((x) => x.label && !seen.has(x.label.toLowerCase()) && seen.add(x.label.toLowerCase()))

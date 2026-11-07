@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
-/** Pan offset (px, from the centred position) and zoom (1 = fit to the area). */
+/** Pan offset (px, from the centered position) and zoom (1 = fit to the area). */
 export type CanvasView = { x: number; y: number; s: number }
 
 export const MIN_ZOOM = 0.25
@@ -12,21 +12,21 @@ const clamp = (s: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, s))
  * Pan and zoom for the canvas.
  * Trackpad: two-finger scroll pans, pinch zooms. Mouse: wheel zooms, middle button drags to pan.
  * Touch screens: two fingers pan and pinch. Zoom keeps the point under the cursor in place.
- * `viewport` receives the gestures; `area` is the box the frame is centred in.
+ * `viewport` receives the gestures; `area` is the box the frame is centered in.
  */
 export function useCanvasView(viewport: React.RefObject<HTMLElement | null>, area: React.RefObject<HTMLElement | null>) {
   const [view, setView] = useState<CanvasView>(FIT)
   const live = useRef(view)
   live.current = view
 
-  /** zoom to `next`, keeping the screen point (cx, cy) fixed; defaults to the area's centre */
+  /** zoom to `next`, keeping the screen point (cx, cy) fixed; defaults to the area's center */
   const zoomTo = useCallback(
     (next: number, cx?: number, cy?: number) => {
       const r = area.current?.getBoundingClientRect()
       if (!r) return
       setView((v) => {
         const s = clamp(next)
-        // the point relative to the area's centre
+        // the point relative to the area's center
         const px = (cx ?? r.left + r.width / 2) - (r.left + r.width / 2)
         const py = (cy ?? r.top + r.height / 2) - (r.top + r.height / 2)
         const k = s / v.s

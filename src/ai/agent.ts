@@ -122,7 +122,7 @@ export type ElementSpec = {
   radius?: number
   hidden?: boolean
   underline?: boolean
-  /** buttons: border colour and width (px at 1080 wide) */
+  /** buttons: border color and width (px at 1080 wide) */
   border?: string
   border_width?: number
   /** images: fill or fit their box; buttons and shapes: how their picture fills them */
@@ -145,7 +145,7 @@ export type ElementSpec = {
 
 /* ---------- what shows in the chat ---------- */
 
-/** how a question's answers show: words, cards, colour palettes, layout previews or thumbnail styles */
+/** how a question's answers show: words, cards, color palettes, layout previews or thumbnail styles */
 export type Display = "chips" | "cards" | "palettes" | "layouts" | "thumbnails" | "pictures" | "sizes" | "concepts"
 /** where the user is in making the Flick */
 export type Step = "idea" | "look" | "plan" | "build"
@@ -175,7 +175,7 @@ export type Item = Base &
     | { kind: "user"; text: string; images: string[] }
     /** the template the project started from (Use as reference) */
     | { kind: "template"; template: TemplateRef; images?: string[] }
-    | { kind: "assistant"; text: string; streaming?: boolean; activity?: string; /** the user stopped it here (what it says, e.g. "Stopped · 2 images cancelled") */ stopped?: string }
+    | { kind: "assistant"; text: string; streaming?: boolean; activity?: string; /** the user stopped it here (what it says, e.g. "Stopped · 2 images canceled") */ stopped?: string }
     /** the page closed mid-turn: reopening offers to carry on */
     | { kind: "resume"; text?: string }
     | { kind: "question"; toolId: string; question: string; options: Choice[]; display: Display; step?: Step; multi: boolean; custom: boolean; answer?: string; purpose?: string; /** the answer is typed (a brand name, a link): a field that's ready to type in, with this hint, above any other options */ typeFirst?: string; /** how many to pick, when the wording says ("pick 2 to 4") */ range?: { min: number; max: number } }
@@ -209,7 +209,7 @@ const variationSchema = {
     direction: { type: "string", description: "What the user sees on the storyboard instead of the prompt (prompts are never shown): one plain, vivid line of direction, under 15 words, no camera jargon and no [Image n]. Variation 1: what the video shows ('The bottle catches golden light as it's poured over ice'); the others: what's different ('Same pour, with the Gold Label bottle')." },
     image_ids: { type: "array", items: { type: "string" }, description: "Project image ids (or a product sheet) showing exactly how this variation's changed thing looks; in its prompt they are [Image 1], [Image 2]… in this order" },
     prompt: { type: "string", description: "Only what changes from the reference video, naming its inputs: e.g. 'Replace the boot with the black boot from [Image 1].' Every variation is an edit of the approved reference video (same shot, camera, people and timing), so describe the change only. One or two sentences." },
-    keep_seconds: { type: "number", description: "Only when the change comes later in the video and the start must stay identical (a tour with a shared opening, a reveal with the same lead-in): how many seconds from the start stay exactly as in Variation 1. The app then pins the opening (timecodes, the first frame as a reference). The user judges the result; never remake a video on your own. Leave it out when the change runs through the whole video (a colour, a product, a setting)." },
+    keep_seconds: { type: "number", description: "Only when the change comes later in the video and the start must stay identical (a tour with a shared opening, a reveal with the same lead-in): how many seconds from the start stay exactly as in Variation 1. The app then pins the opening (timecodes, the first frame as a reference). The user judges the result; never remake a video on your own. Leave it out when the change runs through the whole video (a color, a product, a setting)." },
     video_id: { type: "string", description: "Only when the user gave a finished video for this variation: its project video id. It's used as it is: nothing is generated for it, and its prompt can be empty." },
     thumbnail_id: { type: "string", description: "Only when the user gave a thumbnail image for this variation: its project image id. It's placed as the thumbnail; don't make one." },
     label: { type: "string", description: "Optional on-screen label for this variation, e.g. 'Gold lenses'" },
@@ -232,9 +232,9 @@ const designSchema = {
     show_label: { type: "boolean" },
     layout: { type: "string", enum: ["top", "center", "bottom"] },
     align: { type: "string", enum: ["left", "center", "right"] },
-    text_color: { type: "string", description: "Hex colour" },
-    button_color: { type: "string", description: "Hex colour" },
-    button_text_color: { type: "string", description: "Hex colour" },
+    text_color: { type: "string", description: "Hex color" },
+    button_color: { type: "string", description: "Hex color" },
+    button_text_color: { type: "string", description: "Hex color" },
     button_style: { type: "string", enum: ["pill", "rounded", "sharp", "light", "outline", "glass"] },
     font: { type: "string", description: "A font name, e.g. DM Sans, Inter, Montserrat, Playfair Display, Oswald" },
     thumbnails: {
@@ -244,7 +244,7 @@ const designSchema = {
         position: { type: "string", enum: ["bottom", "top", "left", "right"] },
         shape: { type: "string", enum: ["square", "rounded", "circle"] },
         size: { type: "string", enum: ["small", "medium", "large"] },
-        highlight_color: { type: "string", description: "Hex colour of the ring on the active thumbnail" },
+        highlight_color: { type: "string", description: "Hex color of the ring on the active thumbnail" },
       },
     },
   },
@@ -257,7 +257,7 @@ const choiceSchema = {
       properties: {
         label: { type: "string", description: "1 to 4 words" },
         description: { type: "string", description: "One short line" },
-        colors: { type: "array", items: str, description: "Hex colours, for palettes: primary, accent, text" },
+        colors: { type: "array", items: str, description: "Hex colors, for palettes: primary, accent, text" },
         design: { ...designSchema, description: "For layouts and thumbnails: the design this answer applies (layout, align, button_style, thumbnails…)" },
         size: { type: "string", description: "For sizes: width×height in pixels, e.g. '300×250'" },
         image_prompt: { type: "string", description: "For pictures: a visual description of this answer (setting, light, mood, styling); the app makes a quick picture of it with the user's product" },
@@ -331,7 +331,7 @@ export const TOOLS: Tool[] = [
   {
     name: "ask_user",
     description:
-      "Ask the user one short question with tappable answers; the choice comes back as the result. display picks how the answers look: 'chips' (words), 'cards' (a label and a line each), 'palettes' (colour swatches; give colors), 'layouts' (mini Flick previews; give design with layout, align, button_style and thumbnails), 'thumbnails' (thumbnail strip styles; give design.thumbnails), 'pictures' (a picture per answer; give image_prompt; use it for anything the user judges by eye: setting, mood, light, styling, people, props), 'sizes' (frame shapes drawn to scale; give size; with purpose 'size' the picked or typed size is applied to the Flick). Visual answers update the live preview as soon as they're picked. step tags where the user is: idea, look or plan.",
+      "Ask the user one short question with tappable answers; the choice comes back as the result. display picks how the answers look: 'chips' (words), 'cards' (a label and a line each), 'palettes' (color swatches; give colors), 'layouts' (mini Flick previews; give design with layout, align, button_style and thumbnails), 'thumbnails' (thumbnail strip styles; give design.thumbnails), 'pictures' (a picture per answer; give image_prompt; use it for anything the user judges by eye: setting, mood, light, styling, people, props), 'sizes' (frame shapes drawn to scale; give size; with purpose 'size' the picked or typed size is applied to the Flick). Visual answers update the live preview as soon as they're picked. step tags where the user is: idea, look or plan.",
     input_schema: {
       type: "object",
       properties: {
@@ -348,7 +348,7 @@ export const TOOLS: Tool[] = [
   },
   {
     name: "set_format",
-    description: "Set the Flick's size (width×height in pixels) and, only if the user asked, its length. Use it when the user names a size in their own words; a size question (purpose 'size') applies the answer by itself. Videos are made in the closest available shape and cover the frame, centred.",
+    description: "Set the Flick's size (width×height in pixels) and, only if the user asked, its length. Use it when the user names a size in their own words; a size question (purpose 'size') applies the answer by itself. Videos are made in the closest available shape and cover the frame, centered.",
     input_schema: { type: "object", properties: { size: { type: "string", description: "e.g. '300×250' or '728×90'" }, seconds: { type: "number", description: "The total length, 4 to 15; only when the user asked for a length. 'Make it 5 seconds long' means 5 in total, not 5 more; add to the current length only when the user says 'longer by' or 'add'." } }, required: ["size"] },
   },
   {
@@ -362,7 +362,7 @@ export const TOOLS: Tool[] = [
   },
   {
     name: "set_brand",
-    description: "Record the brand kit: name, colours, font, tone, plus short notes from its guidelines (logo rules, do and don't) and the pages you took it from. Shows a brand card with its sources and styles the design. Call it as soon as you've found or been given the brand, before concepts.",
+    description: "Record the brand kit: name, colors, font, tone, plus short notes from its guidelines (logo rules, do and don't) and the pages you took it from. Shows a brand card with its sources and styles the design. Call it as soon as you've found or been given the brand, before concepts.",
     input_schema: {
       type: "object",
       properties: {
@@ -461,7 +461,7 @@ export const TOOLS: Tool[] = [
   {
     name: "read_website",
     description:
-      "Read a web page (a product page, a brand's site) through the app's server: returns the title, description, price, products with prices and colours, brand colour, logo, the page's text and its images (kept as project images; the first few attached so you can see them). The user never leaves the app.",
+      "Read a web page (a product page, a brand's site) through the app's server: returns the title, description, price, products with prices and colors, brand color, logo, the page's text and its images (kept as project images; the first few attached so you can see them). The user never leaves the app.",
     input_schema: { type: "object", properties: { url: { type: "string", description: "The page's address" } }, required: ["url"] },
   },
   {
@@ -494,7 +494,7 @@ export const TOOLS: Tool[] = [
   },
   {
     name: "update_design",
-    description: "Change the on-screen design after the plan is approved: headline, subheading, button text, colours, button style, font, thumbnails (position, shape, size, highlight). Only send what changes.",
+    description: "Change the on-screen design after the plan is approved: headline, subheading, button text, colors, button style, font, thumbnails (position, shape, size, highlight). Only send what changes.",
     input_schema: designSchema,
   },
   {
@@ -547,22 +547,22 @@ export const TOOLS: Tool[] = [
   {
     name: "add_element",
     description:
-      "Add any text, button, image or shape to the canvas (on every variation). Shapes (rect with radius, ellipse, triangle, star with 4 to 8 points, polygon, line, arrow, heart, play button) take fill and stroke as a colour or a gradient, stroke_width, points, opacity, width and height: use them for badges, stickers, backdrops behind text, dividers, frames and pointers, under the text they support (add them first or say so). shape 'path' with d draws any other shape (seal, ribbon, tag, speech bubble, burst, chevron, tick, blob). rotation turns text, images and shapes. You decide the layout and how many elements it needs (design skill). Text styles: heading, subheading, body, caption, label. Button styles: pill, rounded, sharp, arrow, light, lightSharp, outline, outlineSharp, glass, block, link, icon (an image-only round button: give image_id). Images: image_id of a project image (uploaded, from a website or generated; a logo, a product shot). Place it with position (top, upper, center, lower, bottom) and align (left, center, right), or exact x and y (% of the frame; x is the left edge, centre or right edge by align, y the middle). width: % of the frame (images, or a text box that wraps). size: font size in % of frame width (heading is 8, body 3.4). Keep clear of other elements and the thumbnail strip (see design). Returns the new element's id.",
+      "Add any text, button, image or shape to the canvas (on every variation). Shapes (rect with radius, ellipse, triangle, star with 4 to 8 points, polygon, line, arrow, heart, play button) take fill and stroke as a color or a gradient, stroke_width, points, opacity, width and height: use them for badges, stickers, backdrops behind text, dividers, frames and pointers, under the text they support (add them first or say so). shape 'path' with d draws any other shape (seal, ribbon, tag, speech bubble, burst, chevron, tick, blob). rotation turns text, images and shapes. You decide the layout and how many elements it needs (design skill). Text styles: heading, subheading, body, caption, label. Button styles: pill, rounded, sharp, arrow, light, lightSharp, outline, outlineSharp, glass, block, link, icon (an image-only round button: give image_id). Images: image_id of a project image (uploaded, from a website or generated; a logo, a product shot). Place it with position (top, upper, center, lower, bottom) and align (left, center, right), or exact x and y (% of the frame; x is the left edge, center or right edge by align, y the middle). width: % of the frame (images, or a text box that wraps). size: font size in % of frame width (heading is 8, body 3.4). Keep clear of other elements and the thumbnail strip (see design). Returns the new element's id.",
     input_schema: {
       type: "object",
       properties: {
         type: { type: "string", enum: ["text", "button", "image", "shape"] },
         shape: { type: "string", enum: ["rect", "ellipse", "triangle", "star", "polygon", "line", "arrow", "heart", "play", "path"], description: "Shapes: which one (play is a round play button; path is any shape you draw with d). image_id fills a shape with a picture" },
         d: { type: "string", description: "Shape 'path': SVG path data drawn in a 100×100 box (0,0 top-left), stretched to the shape's width and height. Any shape: a seal badge, ribbon, tag, speech bubble, burst, blob, chevron, check, brackets, a wave" },
-        fill: { description: "A hex colour, 'transparent', or a gradient: {type: 'linear' or 'radial', angle (degrees, CSS style: 90 = left to right), stops: [{color, at (0 to 100)}]}", anyOf: [{ type: "string" }, { type: "object", properties: { type: { type: "string", enum: ["linear", "radial"] }, angle: { type: "number" }, stops: { type: "array", items: { type: "object", properties: { color: { type: "string" }, at: { type: "number" } }, required: ["color", "at"] } } }, required: ["type", "stops"] }] },
-        stroke: { description: "A hex colour, 'transparent', or a gradient: {type: 'linear' or 'radial', angle (degrees, CSS style: 90 = left to right), stops: [{color, at (0 to 100)}]}", anyOf: [{ type: "string" }, { type: "object", properties: { type: { type: "string", enum: ["linear", "radial"] }, angle: { type: "number" }, stops: { type: "array", items: { type: "object", properties: { color: { type: "string" }, at: { type: "number" } }, required: ["color", "at"] } } }, required: ["type", "stops"] }] },
+        fill: { description: "A hex color, 'transparent', or a gradient: {type: 'linear' or 'radial', angle (degrees, CSS style: 90 = left to right), stops: [{color, at (0 to 100)}]}", anyOf: [{ type: "string" }, { type: "object", properties: { type: { type: "string", enum: ["linear", "radial"] }, angle: { type: "number" }, stops: { type: "array", items: { type: "object", properties: { color: { type: "string" }, at: { type: "number" } }, required: ["color", "at"] } } }, required: ["type", "stops"] }] },
+        stroke: { description: "A hex color, 'transparent', or a gradient: {type: 'linear' or 'radial', angle (degrees, CSS style: 90 = left to right), stops: [{color, at (0 to 100)}]}", anyOf: [{ type: "string" }, { type: "object", properties: { type: { type: "string", enum: ["linear", "radial"] }, angle: { type: "number" }, stops: { type: "array", items: { type: "object", properties: { color: { type: "string" }, at: { type: "number" } }, required: ["color", "at"] } } }, required: ["type", "stops"] }] },
         stroke_width: { type: "number", description: "Shapes: outline or line width in px at 1080 wide (0 = none)" },
         height: { type: "number", description: "Shapes: height in % of the frame height (width sets it by the shape's proportions when left out)" },
         points: { type: "number", description: "Stars: points; polygons: sides (3 to 12)" },
         opacity: { type: "number", description: "Shapes: 0 to 1" },
         layer: { type: "string", enum: ["front", "back"], description: "'back' puts it behind every other element (backdrops behind text); default front" },
         underline: { type: "boolean", description: "Text and buttons" },
-        border: { type: "string", description: "Buttons: border colour (hex)" },
+        border: { type: "string", description: "Buttons: border color (hex)" },
         border_width: { type: "number", description: "Buttons: border width, px at 1080 wide (0 = none)" },
         fit: { type: "string", enum: ["cover", "contain"], description: "Images: fill (cover) or fit (contain) their box. Buttons and shapes with a picture (image_id): how it fills them" },
         crop: { type: "object", description: "Images: % cut from each side (0 to 45)", properties: { top: { type: "number" }, right: { type: "number" }, bottom: { type: "number" }, left: { type: "number" } } },
@@ -578,8 +578,8 @@ export const TOOLS: Tool[] = [
         y: { type: "number" },
         width: { type: "number" },
         size: { type: "number" },
-        color: { type: "string", description: "Hex text colour" },
-        background: { type: "string", description: "Hex button colour" },
+        color: { type: "string", description: "Hex text color" },
+        background: { type: "string", description: "Hex button color" },
         font: str,
         bold: { type: "boolean" },
         italic: { type: "boolean" },
@@ -600,8 +600,8 @@ export const TOOLS: Tool[] = [
         text: str,
         style: str,
         image_id: str,
-        fill: { description: "A hex colour, 'transparent', or a gradient: {type: 'linear' or 'radial', angle (degrees, CSS style: 90 = left to right), stops: [{color, at (0 to 100)}]}", anyOf: [{ type: "string" }, { type: "object", properties: { type: { type: "string", enum: ["linear", "radial"] }, angle: { type: "number" }, stops: { type: "array", items: { type: "object", properties: { color: { type: "string" }, at: { type: "number" } }, required: ["color", "at"] } } }, required: ["type", "stops"] }] },
-        stroke: { description: "A hex colour, 'transparent', or a gradient: {type: 'linear' or 'radial', angle (degrees, CSS style: 90 = left to right), stops: [{color, at (0 to 100)}]}", anyOf: [{ type: "string" }, { type: "object", properties: { type: { type: "string", enum: ["linear", "radial"] }, angle: { type: "number" }, stops: { type: "array", items: { type: "object", properties: { color: { type: "string" }, at: { type: "number" } }, required: ["color", "at"] } } }, required: ["type", "stops"] }] },
+        fill: { description: "A hex color, 'transparent', or a gradient: {type: 'linear' or 'radial', angle (degrees, CSS style: 90 = left to right), stops: [{color, at (0 to 100)}]}", anyOf: [{ type: "string" }, { type: "object", properties: { type: { type: "string", enum: ["linear", "radial"] }, angle: { type: "number" }, stops: { type: "array", items: { type: "object", properties: { color: { type: "string" }, at: { type: "number" } }, required: ["color", "at"] } } }, required: ["type", "stops"] }] },
+        stroke: { description: "A hex color, 'transparent', or a gradient: {type: 'linear' or 'radial', angle (degrees, CSS style: 90 = left to right), stops: [{color, at (0 to 100)}]}", anyOf: [{ type: "string" }, { type: "object", properties: { type: { type: "string", enum: ["linear", "radial"] }, angle: { type: "number" }, stops: { type: "array", items: { type: "object", properties: { color: { type: "string" }, at: { type: "number" } }, required: ["color", "at"] } } }, required: ["type", "stops"] }] },
         stroke_width: { type: "number" },
         height: { type: "number" },
         points: { type: "number" },
@@ -609,14 +609,14 @@ export const TOOLS: Tool[] = [
         layer: { type: "string", enum: ["front", "back", "forward", "backward"] },
         rotation: { type: "number" },
         underline: { type: "boolean", description: "Text and buttons" },
-        border: { type: "string", description: "Buttons: border colour (hex)" },
+        border: { type: "string", description: "Buttons: border color (hex)" },
         border_width: { type: "number", description: "Buttons: border width, px at 1080 wide (0 = none)" },
         fit: { type: "string", enum: ["cover", "contain"], description: "Images: fill (cover) or fit (contain) their box. Buttons and shapes with a picture (image_id): how it fills them" },
         crop: { type: "object", description: "Images: % cut from each side (0 to 45)", properties: { top: { type: "number" }, right: { type: "number" }, bottom: { type: "number" }, left: { type: "number" } } },
         lock: { type: "boolean", description: "Images and shapes: keep proportions when resized" },
         layout: { type: "string", enum: ["row", "column", "free"], description: "Thumbnail strip" },
         gap: { type: "number", description: "Thumbnail strip: space between thumbnails, px at 1080 wide" },
-        highlight_color: { type: "string", description: "Thumbnail strip: ring colour on the active thumbnail" },
+        highlight_color: { type: "string", description: "Thumbnail strip: ring color on the active thumbnail" },
         highlight_width: { type: "number", description: "Thumbnail strip: ring width, px at 1080 wide" },
         fade: { type: "number", description: "Thumbnail strip: opacity of the other thumbnails, 0.1 to 1" },
         thumbnails: { type: "array", items: { type: "object", properties: { x: { type: "number" }, y: { type: "number" } }, required: ["x", "y"] }, description: "Thumbnail strip, free layout: each thumbnail's top-left corner, % of the frame, in variation order (e.g. next to each product)" },
@@ -838,15 +838,15 @@ How the app works (the mechanics, not what to ask):
 - Pictures over words: when a question is about something the user judges by eye (setting, mood, light, styling, people, props), ask with display 'pictures' and an image_prompt per answer (up to 4); the app draws each with their product.
 - Placement and size go in one batch (any size options: the app shows the right sizes for the placement answer).
 - Changes after the build. A change to the person, product, setting or shot of the videos is a proposed remake of Variation 1 (set_variation on "reference" with the new prompt, regenerate true; the app's card asks the user), never a new storyboard; they review the new Variation 1 and the others are remade from it. propose_plan after a build is only for a different Flick altogether, and then the canvas stays as it is (the app keeps the design, logo and everything placed; don't add or re-place anything). "Go back", "revert", "use the earlier/original video": restore_version brings the canvas and the videos back as they were (nothing to make afterwards), or set_variation use_earlier puts a variation's earlier finished video back; both are free. Never say an earlier video can't be brought back.
-- Links: each variation links to its own product page (that flavour, colour or model), never a range or variety page, unless the user gives one. Fill every variation's link from your research (set them in the storyboard or with set_variation). Never ask for links with a question; if any are still missing, mention it once, at the hand-over, and the user can give them in the chat or in the Feeds panel.
+- Links: each variation links to its own product page (that flavour, color or model), never a range or variety page, unless the user gives one. Fill every variation's link from your research (set them in the storyboard or with set_variation). Never ask for links with a question; if any are still missing, mention it once, at the hand-over, and the user can give them in the chat or in the Feeds panel.
 - The storyboard card shows only the storyboard frames; approving it makes the first video (Variation 1). The variations, copy and links you set are applied with it and the user can change them later. While it's being made (a few minutes), make the thumbnails and set the copy once, then end the turn with one short line; don't look at the Flick or adjust the layout yet (there's only a stand-in frame). The app wakes you when Variation 1 is ready: look once (view_flick), fix only clear clashes, then end with one line asking the user to play it and press Make the variations in the build card, or say what to change. That button is the approval; never ask it with ask_user. If the user says in words they're happy with it, call approve_variation_1. While videos are being made, send no progress updates (the build card shows progress); speak again when the app wakes you. When the state has sample_videos, the videos are test samples that won't show the product: don't judge what's in them, remake them or explain them; carry on as if they were right. Images you made yourself (concept previews, looks) are already described in their results: don't view them again before the storyboard. You never start a video. Every video needs the user's explicit approval in the app: Approve on the storyboard, Make the variations after Variation 1, Make on a card the app shows when you propose one (set_variation regenerate, add_variation), or Try again on a failed tile. When the user asks for a change to a video, propose it (set_variation with the new prompt and regenerate true) and say in one line what the card will make; don't ask them to confirm in words, the card is the question. If they then approve in words, make_proposed_video. After a failure, never retry on your own.
 - Storyboard: propose_plan shows the storyboard card; call it "the storyboard" to the user, never "the plan". Every one gives storyboard frames (the reference video as 3 or 4 frames: what happens, how it's framed; the app draws a quick still per frame) and a direction per variation. The user never sees prompts, only directions, frames and the on-screen copy; when they edit a direction, it reaches the video as their direction. Don't quote prompts to the user either: describe the idea.
 - Concepts: propose_concepts shows up to 3 concepts as cards with preview images; use it before every plan unless the user already gave a full concept or asked to skip ideas.
 - Videos the user adds (vid-1, vid-2...) arrive as three stills (start, middle, end) with their length (15 seconds at most; longer ones were trimmed). Say what happens in each. Decide from the context what each upload is for, and say it in a line: a video to change (plan reference_mode "edit", source_video_id), a video or image to follow for style, characters or the product (reference_video_ids / reference_image_ids), or an image to bring to life as it is (reference_mode "animate", first_frame_id). Ask only when it's truly unclear.
 - Mentions: the user can type @ to point at things. @Image 1 / @Video 1 are that message's own files in order; @<element name> is a saved element (a product, character, logo or style saved once with its images, listed in saved_elements); it arrives with its images, kept as project images, and a [Mentions: ...] line maps each @name to image ids: use exactly those ids (reference_image_ids, a variation's image_ids, generate_image reference_image_ids). @<variation name> means that variation, @Brand the brand kit. You can suggest saved elements by name ("use @Samba OG?").
 - Questions: ask_user shows tappable answers. display "chips" for words; "layouts", "palettes" or "thumbnails" for visual choices; step "idea", "look" or "plan" moves the progress bar. Several ask_user calls in one reply show together. request_assets asks for files.
-- Web: web_search finds pages; web_fetch reads a page or PDF (text) that appeared in the conversation or in search results; read_website reads a product page for its products, prices, colours and images (and keeps the images for the project). Only read addresses the user gave or a search returned: never guess a page's address. An image address (a logo file) given to read_website is kept as a project image. Use them on your own whenever a brand or product is hinted.
-- Brand: set_brand records the brand (name, colours, font, voice).
+- Web: web_search finds pages; web_fetch reads a page or PDF (text) that appeared in the conversation or in search results; read_website reads a product page for its products, prices, colors and images (and keeps the images for the project). Only read addresses the user gave or a search returned: never guess a page's address. An image address (a logo file) given to read_website is kept as a project image. Use them on your own whenever a brand or product is hinted.
+- Brand: set_brand records the brand (name, colors, font, voice).
 - Images: generate_image (with reference_image_ids to keep the user's images, has_text for readable words), view_image to look at any project image, use_image to place one. The app picks how it's made from these (models skill). When the user gave nothing to work from, suggest looks first: concept previews (propose_concepts) and generate_image purpose "look" make reference images; the picked or approved one goes into the plan's reference_image_ids. To change a user's photo before animating it, generate_image purpose "edit" with that photo in reference_image_ids, then plan reference_mode "animate" with the result as first_frame_id.
 - Sheets: make_sheet makes a product sheet or character sheet (several views on a clean background) from the user's images, so a product or person stays the same in every video. Make one when a product or person must stay consistent across videos, or when there's only one photo of it; use it in reference_image_ids and variations' image_ids. Ask the user to approve it (ask_user) when getting it right matters (a hero product, a face).
 - Videos: the reference video is Variation 1 (the first video in state.videos, role "reference"): it is in the Flick like the others, with its own name, label, thumbnail and link, and the other variations are made from it. It is made first, one of three ways (reference_mode): "reference" (default) stays true to reference_image_ids and reference_video_ids (product, characters, style); "edit" changes the user's own video (source_video_id); "animate" brings the user's image to life as it is (first_frame_id). There is no prompt-only video: with nothing given, suggest looks first. Write the reference prompt as shot (subject, action, camera, setting, keep) and name inputs by position: [Image 1], [Image 2]… for reference_image_ids, [Video 1]… for reference_video_ids, "the video" for the one being edited. When the user has product or people images, the reference video must use them; a plan without them is refused. The user always reviews it (reference_review in the project state); variations are made only after they approve, each one an edit of the latest reference video: same shot, camera, people and timing, with only its change (its prompt says the change, naming its image_ids as [Image 1]…). See the models skill. When the reference is ready the app wakes you (see the storyboard line above); if they want changes, regenerate the reference with set_variation (variation "reference", regenerate true) and they review the new one.
@@ -854,6 +854,7 @@ How the app works (the mechanics, not what to ask):
 - The plan: propose_plan is the approval before any video credits are spent. It carries the reference video prompt (that video is Variation 1, the first in the list, not an extra one), each variation (name, prompt, label, price, link, and headline, subheading or button text only when they differ) and the design. The user edits it and presses Generate all; the app then makes every video and places the design and thumbnail strip.
 - Feeds: on-screen text that differs per variation is a feed. The project state lists every feed, what uses it, each variation's value and any issues. Change them with vary_field, same_for_all, set_variation and rename_feed; update_design can't change text that differs per variation. Fix reported issues in the same turn.
 - After the build: update_design, set_variation, add_variation, add_element, edit_element and remove_element change the Flick. The design list gives each element's id, type, text and position. run review_flick after the build and after big changes, and fix every failure, including what you see in its picture. view_flick shows any variation as viewers see it: use it after design changes and whenever the user says something looks off, and fix what you see (text over a busy area, covering the product or a face, crowding, the strip over the action). A screenshot the user pastes is their canvas: edit from it.
+- Spelling: US English in everything you write and every headline, button or label you set (color, favorite, center), unless the user writes in another language or asks otherwise.
 - Never end a reply by saying you'll do something next: call the tool in the same reply. End a turn only with a question for the user (ask_user, request_assets, propose_plan) or when the work is done.
 
 ${always.map((x) => `# Skill: ${x.name}\n${x.body}`).join("\n\n---\n\n")}
@@ -1202,14 +1203,14 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     const views =
       kind === "character"
         ? "a character reference sheet of the person in the images: full body front, three-quarter and side views, plus a head-and-shoulders close-up, same face, hair, body and outfit in every view"
-        : "a product reference sheet of the product in the images: front, three-quarter, side and back views, plus a close-up of the label or key detail, identical shape, colours, materials and markings in every view"
+        : "a product reference sheet of the product in the images: front, three-quarter, side and back views, plus a close-up of the label or key detail, identical shape, colors, materials and markings in every view"
     return runImage({
       purpose: "sheet",
       sheet_kind: kind,
       name: `${name} ${kind} sheet`,
       aspect_ratio: "16:9",
       reference_image_ids: ids,
-      prompt: `${views}. Evenly spaced on a plain light grey studio background, soft even light, no text, no labels, no props.${input.notes ? ` ${String(input.notes)}` : ""}`,
+      prompt: `${views}. Evenly spaced on a plain light gray studio background, soft even light, no text, no labels, no props.${input.notes ? ` ${String(input.notes)}` : ""}`,
     })
   }
 
@@ -2249,14 +2250,14 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     runImage({ prompt: it.prompt, purpose: it.purpose, variation: it.target, aspect_ratio: it.aspect }, itemId)
   }
 
-  /** Stop: the reply ends, and images that haven't started are cancelled (nothing is charged for those) */
+  /** Stop: the reply ends, and images that haven't started are canceled (nothing is charged for those) */
   const stop = () => {
     abort.current?.abort()
-    void cancelQueuedImages().then(({ cancelled }) => {
-      if (!cancelled) return
+    void cancelQueuedImages().then(({ canceled }) => {
+      if (!canceled) return
       setItems((list) => {
         const at = [...list].reverse().find((x) => x.kind === "assistant" && x.stopped)
-        return at ? list.map((x) => (x === at ? { ...x, stopped: `${(x as { stopped?: string }).stopped} · ${cancelled} image${cancelled > 1 ? "s" : ""} cancelled` } : x)) : list
+        return at ? list.map((x) => (x === at ? { ...x, stopped: `${(x as { stopped?: string }).stopped} · ${canceled} image${canceled > 1 ? "s" : ""} canceled` } : x)) : list
       })
     })
   }

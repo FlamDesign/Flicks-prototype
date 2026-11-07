@@ -95,7 +95,7 @@ export function EmbedsPage({ openEmbed, onRemixFlick, onOpenFlick }: { openEmbed
         ) : (
           <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed px-6 py-16 text-center">
             <p className="text-sm font-medium">No embeds yet</p>
-            <p className="max-w-sm text-sm text-muted-foreground">Make an embed, add embed code to your website once, then change the Flick in it from here whenever you like.</p>
+            <p className="max-w-sm text-sm text-muted-foreground">Make an embed, add its code to your website once, then change the Flick in it from here whenever you like.</p>
             <Button size="sm" className="mt-2" onClick={() => setCreating(true)}>
               New embed
             </Button>
@@ -240,7 +240,7 @@ function EmbedView({ e, actionsEl, onDeleted, onRemixFlick, onOpenFlick }: { e: 
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Delete “{e.name}”?</DialogTitle>
-            <DialogDescription>Embed will stop working on your website. This can’t be undone.</DialogDescription>
+            <DialogDescription>Its code stops working on your website. This can’t be undone.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirm(false)}>

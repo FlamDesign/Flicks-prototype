@@ -16,9 +16,9 @@ type Style = {
   /** heading and body fonts (editor fonts) */
   heading: string
   body: string
-  /** button colours and shape */
+  /** button colors and shape */
   button: { bg: string; ink: string; variant: "pill" | "rounded" | "sharp" | "outline" }
-  /** the brand-level line above the title, and its colour */
+  /** the brand-level line above the title, and its color */
   label: string
   labelColor: string
   /** the tap thumbnails: a row bottom right, or a column on the right */
@@ -169,7 +169,7 @@ const REAL: Real[] = [
     style: { heading: "Oswald", body: "Inter", button: { bg: "#f96302", ink: "#ffffff", variant: "sharp" }, label: "Your living room, styled", labelColor: "#fdba74", strip: "column", highlight: "#f96302", logo: { file: "logo.webp", w: 14, ar: 370 / 247 }, headingUpper: true },
     products: [
       { name: "Leather", title: "Warm leather lounge", subtitle: "Mid-century leather sofa and chair set", price: "$1,023.95", cta: "Shop the look", link: "https://homedepot.com/p/HOMESTOCK-74-5-in-W-Square-Arm-Leather-Straight-Leather-Mid-Century-2-Piece-Sofa-Chair-in-Tan-Brown-for-Living-Room-Set-89452HD/324675215", color: "#92400e" },
-      { name: "Modern", title: "Dark modern den", subtitle: "102 in. charcoal sectional for movie night", price: "$2,162.10", cta: "Shop the look", link: "https://www.homedepot.com/p/Simpli-Home-Morrison-Mid-Century-102-in-Straight-Arm-Woven-Blend-Fabric-Rectangle-Left-Sectional-Sofa-in-Charcoal-Grey-AXCSECMOL-CG/330780902", color: "#3f3f46" },
+      { name: "Modern", title: "Dark modern den", subtitle: "102 in. charcoal sectional for movie night", price: "$2,162.10", cta: "Shop the look", link: "https://www.homedepot.com/p/Simpli-Home-Morrison-Mid-Century-102-in-Straight-Arm-Woven-Blend-Fabric-Rectangle-Left-Sectional-Sofa-in-Charcoal-Gray-AXCSECMOL-CG/330780902", color: "#3f3f46" },
       { name: "Light", title: "Light and airy", subtitle: "Soft boucle sofa in a sunny beige", price: "$721.70", cta: "Shop the look", link: "https://www.homedepot.com/p/CHRISTOPHER-KNIGHT-HOME-Orinthal-82-in-Modern-Boucle-Fabric-Upholstered-Round-Arm-Rectangle-3-seater-Sofa-Beige-118762/333947747", color: "#e7dccb" },
     ],
   },

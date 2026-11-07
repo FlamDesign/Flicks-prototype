@@ -106,7 +106,7 @@ function Clip({ look, video, round = 12, className, style }: { look: (typeof LOO
   )
 }
 
-/** A label pill centred on x. `style` animates the pill itself, so centring never fights the animation. */
+/** A label pill centered on x. `style` animates the pill itself, so centring never fights the animation. */
 function Chip({ cx, y, children, className, style }: { cx: number; y: number; children: ReactNode; className?: string; style?: CSSProperties }) {
   return (
     <div className="absolute -translate-x-1/2" style={{ left: u(cx), top: u(y) }}>

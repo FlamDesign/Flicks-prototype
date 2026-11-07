@@ -87,7 +87,7 @@ export function FlicksPage({ onOpen, onRemix, onProjects }: { onOpen: (f: FlickR
         title="Flicks"
         warm={() => void import("@/components/flick-page")}
         description="Flicks ready to share, embed in website or serve in ads."
-        searchLabel="Search flicks"
+        searchLabel="Search Flicks"
         dateLabel="Created"
         items={flicks.map((f) => ({
           id: f.id,
@@ -217,7 +217,7 @@ function LibraryList({
         ) : (
           <EmptyState
             art={filtered ? "search" : title === "Flicks" ? "flicks" : "projects"}
-            title={filtered ? `No ${title.toLowerCase()} match` : empty.title}
+            title={filtered ? `No ${title === "Flicks" ? "Flicks" : "projects"} match` : empty.title}
             text={filtered ? "Try another search, date or size." : empty.text}
             action={
               filtered ? (

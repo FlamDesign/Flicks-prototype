@@ -14,7 +14,7 @@ export const asset = (name: string) => {
 
 export type BrandSet = "gap" | "diageo" | "little-caesars" | "general-mills" | "modelo"
 
-/** file prefix, set, size, and each video's colour/product word (third part of the name, used for variant names) */
+/** file prefix, set, size, and each video's color/product word (third part of the name, used for variant names) */
 const BRANDS: { prefix: string; set: BrandSet; size: string; parts: string[] }[] = [
   { prefix: "gap", set: "gap", size: "1080×1080", parts: ["denim", "brown", "burgundy"] },
   { prefix: "diageo", set: "diageo", size: "1080×1080", parts: ["tanqueray", "black label", "don julio"] },

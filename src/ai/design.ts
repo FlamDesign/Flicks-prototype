@@ -122,7 +122,7 @@ const H = { label: 4.5, headline: 9, subheading: 6, price: 6, cta: 9 }
 
 /**
  * The Flick's on-screen design: label, headline, subheading, price and CTA, stacked at the top,
- * centre or bottom, plus the thumbnail strip. Label and price use feeds (a value per variation);
+ * center or bottom, plus the thumbnail strip. Label and price use feeds (a value per variation);
  * the button's link uses the link feed.
  */
 export function buildDesign(
@@ -213,11 +213,11 @@ export function patchDesign(els: CanvasElement[], d: Design, brand?: Brand, opts
     if (role === "subheading" && d.subheading !== undefined && d.subheading !== el.text) (next = { ...next, text: d.subheading } as typeof next), changed.push("subheading")
     if (el.kind === "button" && (role === "cta" || !role)) {
       if (d.cta && d.cta !== el.text) (next = { ...next, text: d.cta } as typeof next), changed.push("button text")
-      if (bg) (next = { ...next, bg } as typeof next), changed.push("button colour")
-      if (fg) (next = { ...next, color: fg } as typeof next), changed.push("button text colour")
+      if (bg) (next = { ...next, bg } as typeof next), changed.push("button color")
+      if (fg) (next = { ...next, color: fg } as typeof next), changed.push("button text color")
       if (d.button_style && BUTTONS[d.button_style]) (next = { ...next, variant: BUTTONS[d.button_style] } as typeof next), changed.push("button style")
     }
-    if (el.kind === "text" && ink) (next = { ...next, color: ink } as typeof next), changed.push("text colour")
+    if (el.kind === "text" && ink) (next = { ...next, color: ink } as typeof next), changed.push("text color")
     if (font) (next = { ...next, font } as typeof next), changed.push("font")
     return next
   })
@@ -363,7 +363,7 @@ export function freeY(others: CanvasElement[], el: CanvasElement, ratio: number,
   return { y: el.y, moved: false, overlaps: true }
 }
 
-/** WCAG contrast between two hex colours (alpha ignored); undefined when either isn't a colour */
+/** WCAG contrast between two hex colors (alpha ignored); undefined when either isn't a color */
 export function contrast(a?: string, b?: string) {
   const lum = (h?: string) => {
     if (!h || !HEX.test(h)) return undefined

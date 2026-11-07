@@ -8,7 +8,7 @@ import { asset, type BrandSet } from "@/templates/brand-assets"
  * Brand templates built from real campaign assets (Omnicom pitch Flicks): each opens as a complete
  * project. The reference video is included in the Flick, so viewers switch between all three
  * products. Five feeds change per product: title, subtitle, price, CTA copy and CTA link.
- * Fonts are the closest editor fonts to each brand's type; colours come from the brand assets.
+ * Fonts are the closest editor fonts to each brand's type; colors come from the brand assets.
  */
 
 export type Product = { name: string; title: string; subtitle: string; price: string; cta: string; link: string; thumb: string; color: string }
@@ -26,7 +26,7 @@ const FEED_NAMES: [keyof Ids, string, Feed["type"]][] = [
 export const SQUARE = 1
 export const TALL = 1080 / 1920
 
-/** an image element centred at x, y, `w` % of the frame wide, keeping the image's shape */
+/** an image element centered at x, y, `w` % of the frame wide, keeping the image's shape */
 export const image = (id: string, src: string, x: number, y: number, w: number, ar: number, ratio: number): CanvasElement => ({
   id,
   kind: "image",

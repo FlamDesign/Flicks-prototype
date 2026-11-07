@@ -40,7 +40,7 @@ export const EMAILS: EmailDef[] = [
     preheader: "Make video ads people play with. Here’s how to start.",
     blocks: [
       { t: "h", text: "Welcome to Flicks, {{first_name}}" },
-      { t: "p", text: "Flicks are video ads people play with. Viewers tap to switch the colour, the product or the scene, and every version plays from the same video." },
+      { t: "p", text: "Flicks are video ads people play with. Viewers tap to switch the color, the product or the scene, and every version plays from the same video." },
       {
         t: "list",
         numbered: true,
@@ -84,7 +84,7 @@ export const EMAILS: EmailDef[] = [
     blocks: [
       { t: "h", text: "Make your first Flick" },
       { t: "p", text: "The quickest start is a template: a finished Flick with its videos, text and buttons already in place. Swap in your product and copy, then export." },
-      { t: "image", src: "{{template_image_url}}", alt: "A Flick template: the same shoe in four colours", w: 520, h: 293 },
+      { t: "image", src: "{{template_image_url}}", alt: "A Flick template: the same shoe in four colors", w: 520, h: 293 },
       { t: "btn", label: "Browse templates", url: "{{templates_url}}" },
       { t: "link", label: "Or start from a prompt", url: "{{app_url}}" },
     ],
@@ -121,9 +121,9 @@ export const EMAILS: EmailDef[] = [
       {
         t: "list",
         items: [
-          { title: "Keep variations close", text: "Change one thing at a time (the colour, the model or the scene) so switching feels instant and the choice is clear." },
+          { title: "Keep variations close", text: "Change one thing at a time (the color, the model or the scene) so switching feels instant and the choice is clear." },
           { title: "Use feeds for prices and links", text: "Add a feed once and give each variation its own price, title and shop link. Text and buttons update as viewers switch." },
-          { title: "Make thumbnails easy to tell apart", text: "Crop close on what changes, like the colour, so viewers see the difference at a glance." },
+          { title: "Make thumbnails easy to tell apart", text: "Crop close on what changes, like the color, so viewers see the difference at a glance." },
         ],
       },
       { t: "btn", label: "Open Flicks", url: "{{app_url}}" },

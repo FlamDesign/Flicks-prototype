@@ -56,7 +56,7 @@ export const RECIPES: Recipe[] = [
     media: M("product-swap", ["White", "Red", "Sage"]),
     steps: [
       ["Add your video", "Any product video, up to 15 seconds."],
-      ["Pick what to swap in", "Your product photos, or let the AI suggest from your range."],
+      ["Pick what to swap in", "Your product photos, or let the chat suggest from your range."],
       ["Viewers tap to switch", "One Flick, every product in the same shot."],
     ],
   },
@@ -70,7 +70,7 @@ export const RECIPES: Recipe[] = [
     media: M("recast", ["Ava", "Leo", "June"]),
     steps: [
       ["Add your video", "Someone on camera, up to 15 seconds."],
-      ["Choose who to cast", "Your own photos, or casts the AI suggests for your audience."],
+      ["Choose who to cast", "Your own photos, or casts the chat suggests for your audience."],
       ["Viewers tap to switch", "Same moves, a face for every audience."],
     ],
   },
@@ -84,7 +84,7 @@ export const RECIPES: Recipe[] = [
     media: M("scene-shift", ["Coast", "Snow", "City"]),
     steps: [
       ["Add your video", "Any scene, up to 15 seconds."],
-      ["Pick new places", "Your reference photos, or scenes the AI suggests."],
+      ["Pick new places", "Your reference photos, or scenes the chat suggests."],
       ["Viewers tap to switch", "The same shot, anywhere you like."],
     ],
   },

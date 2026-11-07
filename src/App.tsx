@@ -165,9 +165,9 @@ export default function App() {
   const [appearance, setAppearanceNow] = useState<Appearance>(() => {
     try {
       const a = localStorage.getItem("flam.appearance")
-      return a === "dark" || a === "auto" || a === "light" ? a : "light"
+      return a === "dark" || a === "auto" || a === "light" ? a : "auto"
     } catch {
-      return "light"
+      return "auto"
     }
   })
   // switching theme cross-fades the whole page
@@ -182,7 +182,7 @@ export default function App() {
   const scroller = useRef<HTMLDivElement>(null)
 
   // Auto follows the OS setting and updates live when it changes (applied before paint, so the
-  // theme cross-fade captures the new colours)
+  // theme cross-fade captures the new colors)
   useLayoutEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)")
     const apply = () =>
@@ -231,6 +231,12 @@ export default function App() {
 
   // a page shows its skeleton briefly when opened, as if loading (State manager › Page load time)
   const loadKey = `${navCount}:${page}:${adsTarget ?? ""}:${embedTarget ?? ""}:${flickId ?? ""}`
+  // the browser tab names the page ("Projects · Flicks"); the editor, the Flick page and Help set their own
+  useEffect(() => {
+    if (page === "Generate" || page === "Flick") return
+    const name = page === "Template" ? previewTemplate?.title : page
+    document.title = name && page !== "Create" ? `${name} · Flicks` : "Flicks"
+  }, [page, previewTemplate])
   // dev tools float on every screen
   // links from the Help Center open the app on the sample project, or start the tour there
   useEffect(() => {

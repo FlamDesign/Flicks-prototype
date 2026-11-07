@@ -6,7 +6,7 @@ import { GeneratingGradient } from "@/components/editor/generation-progress"
 import { Input } from "@/components/ui/input"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowExpand01Icon, Delete02Icon, MoreHorizontalIcon, PlusSignIcon, SparklesIcon } from "@hugeicons/core-free-icons"
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -127,7 +127,7 @@ export function SlidesStrip({
 
   return (
     <div data-tour="strip" data-keep-selection className="shrink-0 border-t bg-background">
-      {/* centred; scrolls sideways once the slides don't fit */}
+      {/* centered; scrolls sideways once the slides don't fit */}
       <div className="overflow-x-auto">
       <div className="mx-auto flex w-max items-start gap-3 px-4 pb-2.5 pt-3 md:px-6">
         <Thumb
@@ -225,7 +225,7 @@ function Label({ label, active, onRename, placeholder }: { label: string; active
           if (e.key === "Enter") e.currentTarget.blur()
           if (e.key === "Escape") (setDraft(label), setEditing(false))
         }}
-        aria-label="Video name"
+        aria-label="Variation name"
         className="h-5 w-28 rounded-md bg-background px-1 text-center text-xs font-medium outline-none ring-2 ring-ring/50"
       />
     )
@@ -265,7 +265,7 @@ function Thumb({
   menu,
 }: {
   /** the card's menu (… button or right-click) */
-  menu?: { include?: { on: boolean; set: (on: boolean) => void }; setStart?: () => void; startHint?: string; removeHint?: string }
+  menu?: { setStart?: () => void; startHint?: string; removeHint?: string }
   /** click the label to rename (variations only) */
   onRename?: (name: string) => void
   /** the name shown when none is typed, as the input's placeholder */
@@ -404,17 +404,11 @@ function Thumb({
                     <HugeiconsIcon icon={ArrowExpand01Icon} className="size-4" />
                     Full screen
                   </DropdownMenuItem>
-                  {menu.include && <DropdownMenuSeparator />}
                 </>
-              )}
-              {menu.include && (
-                <DropdownMenuCheckboxItem checked={menu.include.on} onCheckedChange={(on) => menu.include!.set(!!on)}>
-                  Include in Flick
-                </DropdownMenuCheckboxItem>
               )}
               {(onRemove || menu.removeHint) && (
                 <>
-                  {(status === "done" || menu.include) && <DropdownMenuSeparator />}
+                  {status === "done" && <DropdownMenuSeparator />}
                   <DropdownMenuItem variant="destructive" disabled={!onRemove} onSelect={() => onRemove?.()}>
                     <HugeiconsIcon icon={Delete02Icon} className="size-4" />
                     <span className="flex flex-col">

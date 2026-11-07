@@ -163,7 +163,7 @@ const interaction = (render: (p: { disabled?: boolean; "aria-pressed"?: boolean;
   { label: "Disabled", node: render({ disabled: true }) },
 ]
 
-/* ---------- the catalogue ---------- */
+/* ---------- the catalog ---------- */
 
 type Entry = { name: string; kind: "UI" | "Editor" | "Feedback" | "Ads"; about: string; render: () => React.ReactNode }
 
@@ -586,7 +586,7 @@ const ENTRIES: Entry[] = [
   {
     name: "Generating background",
     kind: "Editor",
-    about: "Behind the design while a video generates: light tints of the chart colours drifting slowly, with a soft band of light passing across. The design stays editable on top. Thumbnails add a small spinner.",
+    about: "Behind the design while a video generates: light tints of the chart colors drifting slowly, with a soft band of light passing across. The design stays editable on top. Thumbnails add a small spinner.",
     render: () => (
       <div className="flex items-end gap-3">
         <div className="relative aspect-video w-72 overflow-hidden rounded-xl ring-1 ring-foreground/10"><GeneratingGradient sweep /></div>
@@ -691,7 +691,7 @@ const ENTRIES: Entry[] = [
         states={[
           { label: "Short name", node: <FileTitleDemo title="Maison Living" /> },
           { label: "Long name (truncated at 16)", node: <FileTitleDemo title="Summer collection launch campaign" /> },
-          { label: "Naming (from prompt)", node: <FileTitleDemo title="" naming /> },
+          { label: "Untitled (until the chat names it)", node: <FileTitleDemo title="" /> },
         ]}
       />
     ),
@@ -720,7 +720,7 @@ const ENTRIES: Entry[] = [
     about: "The one uploader: recipe forms, the chat's asset requests and the picker. Empty, it names what it takes and its limits; filled, it shows tiles with remove and an Add tile. Drop files on it or click to browse.",
     render: () => (
       <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
-        <Dropzone items={[]} onBrowse={() => {}} onFiles={() => {}} accept="video" title="Drop your video here" hint="MP4, MOV or WebM · up to 15 s" />
+        <Dropzone items={[]} onBrowse={() => {}} onFiles={() => {}} accept="video" title="Drop your video here" hint="MP4, MOV or WebM · up to 15s" />
         <Dropzone items={[{ id: "1", name: "White", kind: "video", poster: "recipes/product-swap/a.jpg", meta: "0:05" }, { id: "2", name: "Still", kind: "image", url: "recipes/make-it-move/still.jpg" }]} onBrowse={() => {}} onFiles={() => {}} onRemove={() => {}} accept="media" max={5} hint="photos or videos" />
       </div>
     ),
@@ -773,9 +773,9 @@ function VersionHistoryDemo() {
   )
 }
 
-function FileTitleDemo({ title, naming }: { title: string; naming?: boolean }) {
+function FileTitleDemo({ title }: { title: string }) {
   const [t, setT] = useState(title)
-  return <FileTitle title={t} naming={naming} setTitle={setT} size="1080×1920" sizeLabel="Vertical (9:16)" onHome={() => {}} onDuplicate={() => {}} onHistory={() => {}} onDelete={() => {}} />
+  return <FileTitle title={t} setTitle={setT} size="1080×1920" sizeLabel="Vertical (9:16)" onHome={() => {}} onDuplicate={() => {}} onHistory={() => {}} onDelete={() => {}} />
 }
 
 function LayersDemo() {
@@ -1053,7 +1053,7 @@ function ChatCardsDemo() {
       label: "Questions, docked (1 of 2)",
       node: (
         <QuestionDeck
-          agent={{ ...fakeAgent, pendingIds: ["dq1", "dq2"], items: [it({ id: "dq1", kind: "question", toolId: "q1", question: "What should change between variations?", options: [{ label: "Colours", description: "Same scene, a new colourway each" }, { label: "Products" }, { label: "Scenes" }, { label: "Decide for me" }], display: "chips", multi: false, custom: true }), it({ id: "dq2", kind: "question", toolId: "q2", question: "Where will it run?", options: [{ label: "Ads" }, { label: "Website" }], display: "chips", multi: false, custom: true })] } as typeof fakeAgent}
+          agent={{ ...fakeAgent, pendingIds: ["dq1", "dq2"], items: [it({ id: "dq1", kind: "question", toolId: "q1", question: "What should change between variations?", options: [{ label: "Colors", description: "Same scene, a new colorway each" }, { label: "Products" }, { label: "Scenes" }, { label: "Decide for me" }], display: "chips", multi: false, custom: true }), it({ id: "dq2", kind: "question", toolId: "q2", question: "Where will it run?", options: [{ label: "Ads" }, { label: "Website" }], display: "chips", multi: false, custom: true })] } as typeof fakeAgent}
           ctx={chatCtx}
         />
       ),
@@ -1062,7 +1062,7 @@ function ChatCardsDemo() {
     { label: "Question, answered", node: <AgentItemView item={it({ kind: "question", toolId: "q", question: "Where will this Flick run?", options: [{ label: "Ads" }], display: "chips", multi: false, custom: true, answer: "Ads" })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Images request", node: <AgentItemView item={it({ kind: "assets", toolId: "a", message: "Add product photos or your logo.", kinds: ["product", "logo"] })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Look: layouts (visual answers)", node: <AgentItemView item={it({ kind: "question", toolId: "l", question: "Which layout fits?", display: "layouts", step: "look", multi: false, custom: false, options: [{ label: "Bold bottom", design: { layout: "bottom", thumbnails: { position: "bottom" } } }, { label: "Editorial", design: { layout: "bottom", align: "left", button_style: "sharp", thumbnails: { position: "right", shape: "square", size: "small" } } }, { label: "Clean top", design: { layout: "top", button_style: "light", thumbnails: { shape: "circle" } } }] })} agent={fakeAgent} ctx={chatCtx} /> },
-    { label: "Look: palettes", node: <AgentItemView item={it({ kind: "question", toolId: "c", question: "And the colours?", display: "palettes", step: "look", multi: false, custom: false, options: [{ label: "Ink", colors: ["#09090b", "#a1a1aa", "#ffffff"] }, { label: "Sunset", colors: ["#ea580c", "#fdba74", "#ffffff"] }, { label: "Ocean", colors: ["#2563eb", "#93c5fd", "#ffffff"] }] })} agent={fakeAgent} ctx={chatCtx} /> },
+    { label: "Look: palettes", node: <AgentItemView item={it({ kind: "question", toolId: "c", question: "And the colors?", display: "palettes", step: "look", multi: false, custom: false, options: [{ label: "Ink", colors: ["#09090b", "#a1a1aa", "#ffffff"] }, { label: "Sunset", colors: ["#ea580c", "#fdba74", "#ffffff"] }, { label: "Ocean", colors: ["#2563eb", "#93c5fd", "#ffffff"] }] })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Build, videos made in place (directions under the waiting ones)", node: <AgentItemView item={it({ kind: "build", count: 3 })} agent={{ ...fakeAgent, items: [it({ kind: "plan", toolId: "p", plan: { ...demoPlan, variations: [...demoPlan.variations, { name: "Ember", prompt: "Same scene, ember lenses.", direction: "Ember lenses, warm tint" }] }, state: "approved" })] } as typeof fakeAgent} ctx={buildCtx} /> },
     {
       label: "Docked approvals (above the composer): Variation 1 review, a proposed remake",
@@ -1115,7 +1115,7 @@ function ChatCardsDemo() {
     { label: "Image, making", node: <AgentItemView item={it({ kind: "image", prompt: "Gold lens close-up", purpose: "thumbnail", target: "Gold", state: "working" })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Image, added", node: <AgentItemView item={it({ kind: "image", prompt: "Gold lens close-up", purpose: "thumbnail", target: "Gold", state: "done", url: GENERATED_VIDEOS[1].poster, placed: true })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Following guides", node: <AgentItemView item={it({ kind: "skill", names: ["flicks", "brief"] })} agent={fakeAgent} ctx={chatCtx} /> },
-    { label: "Review, to fix", node: <AgentItemView item={it({ kind: "review", pass: 7, fail: ["Gold: headline is 7 words; keep it to 5 for this size.", "Button text is hard to read on its colour."] })} agent={fakeAgent} ctx={chatCtx} /> },
+    { label: "Review, to fix", node: <AgentItemView item={it({ kind: "review", pass: 7, fail: ["Gold: headline is 7 words; keep it to 5 for this size.", "Button text is hard to read on its color."] })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Review, passed", node: <AgentItemView item={it({ kind: "review", pass: 9, fail: [] })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Note", node: <AgentItemView item={it({ kind: "note", text: "Changed the button text." })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Error", node: <AgentItemView item={it({ kind: "error", text: "Couldn't reach the AI server." })} agent={fakeAgent} ctx={chatCtx} /> },

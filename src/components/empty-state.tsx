@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils"
 
 /**
  * Small line drawings for empty states (approved custom art, like the coach illustrations). Drawn
- * in the text colour with one primary accent, so they follow light and dark mode.
+ * in the text color with one primary accent, so they follow light and dark mode.
  */
 export type EmptyArt = "projects" | "flicks" | "media" | "search" | "templates"
 

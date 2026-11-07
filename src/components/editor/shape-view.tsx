@@ -79,7 +79,7 @@ function gradient(p: Exclude<Paint, string>, id: string) {
 }
 
 /**
- * A shape element, drawn as SVG in its box's real pixels. Fill and stroke take a colour or (from the
+ * A shape element, drawn as SVG in its box's real pixels. Fill and stroke take a color or (from the
  * chat) a gradient; the stroke width is in px at 1080 wide, like the other elements' borders.
  */
 export function ShapeView({ el }: { el: ShapeEl }) {
@@ -113,7 +113,7 @@ export function ShapeView({ el }: { el: ShapeEl }) {
               {stroke.def}
             </defs>
           )}
-          {/* a picture fills the shape over its colour (cover or fit, centred) */}
+          {/* a picture fills the shape over its color (cover or fit, centered) */}
           {el.fillImage && !open && (
             <defs>
               <pattern id={`${uid}-img`} patternUnits="userSpaceOnUse" width={size.w} height={size.h}>

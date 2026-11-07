@@ -316,7 +316,7 @@ export function EditorSkeleton() {
 }
 
 /** The editor while a project made with the chat opens and the chat is still planning: the header
- *  with the plan steps, then the conversation centred (no rail, canvas or prompts panel). */
+ *  with the plan steps, then the conversation centered (no rail, canvas or prompts panel). */
 export function ChatSkeleton() {
   return (
     <div className="flex h-full flex-col" aria-busy="true" aria-label="Loading">

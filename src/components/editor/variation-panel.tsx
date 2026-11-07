@@ -62,10 +62,6 @@ export function VariationPanel({
   const settings = !isReference || included
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1 pb-4 pt-1">
-      {isReference && !included && (
-        <p className="px-1 text-sm text-muted-foreground">Not shown to viewers. To include it in the Flick, use the menu on its thumbnail.</p>
-      )}
-
       {stale && (
         <div role="status" className="flex flex-col gap-2 rounded-xl bg-brand/10 p-3 text-sm ring-1 ring-brand/25">
           <p className="flex items-center gap-1.5 font-medium text-brand">
@@ -319,7 +315,7 @@ export function NewFeed({
   }
   return (
     <div className="flex flex-col gap-2 rounded-xl bg-background p-2 shadow-sm ring-1 ring-foreground/10">
-      {/* what kind of value: labelled, so the choice is obvious */}
+      {/* what kind of value: labeled, so the choice is obvious */}
       {!fixedType && (
         <div role="radiogroup" aria-label="Feed type" className="grid grid-cols-2 gap-0.5 rounded-lg bg-muted p-0.5">
           {(

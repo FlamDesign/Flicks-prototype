@@ -11,8 +11,8 @@ The project state's `design` lists every element with a short id and all its pro
 names you write with; `layer` 1 is the back. Hidden elements are listed with `hidden: true`.
 
 ## Positions and units
-- x and y are % of the frame. y is the element's middle. x is its left edge, centre or right edge
-  by its `align` (images and shapes: their centre).
+- x and y are % of the frame. y is the element's middle. x is its left edge, center or right edge
+  by its `align` (images and shapes: their center).
 - width is % of the frame width; height is % of the frame height.
 - Text and button `size` is the font size in % of the frame width (heading about 8, body 3.4).
 - Border, stroke, gap and highlight widths are px at 1080 wide.
@@ -29,7 +29,7 @@ names you write with; `layer` 1 is the back. Hidden elements are listed with `hi
   crop (top, right, bottom, left, % cut), radius, lock (keep proportions), rotation.
 - **Shape**: rect (radius), ellipse, triangle, polygon (points = sides), star (points), heart, play,
   line, arrow, and path (any shape: d is SVG path data in a 100×100 box). fill and stroke take a
-  colour or a gradient; stroke_width, opacity, width, height, lock, rotation; a picture fill
+  color or a gradient; stroke_width, opacity, width, height, lock, rotation; a picture fill
   (image_id) with fit.
 - Every element: `layer` (front, back, forward, backward) and `hidden`.
 
@@ -44,7 +44,7 @@ One thumbnail per variation; viewers tap them to switch. Change it with edit_ele
   only when the user asks for it or the layout calls for it; otherwise keep a row or column.
 - Keep thumbnails at least 7% of the frame width so they're easy to tap, off faces and the product,
   and inside the frame (the app pulls them back in and says so).
-- update_design's `thumbnails` sets quick presets (position, shape, size, highlight colour).
+- update_design's `thumbnails` sets quick presets (position, shape, size, highlight color).
 
 ## Several elements at once (arrange_elements)
 move (dx, dy), align (left, center, right, top, middle, bottom; to the selection or the frame),

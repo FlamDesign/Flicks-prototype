@@ -30,7 +30,7 @@ export type AgentCtx = {
   posters: string[]
   brand?: Brand
   /** Variation 1 is ready and waiting for the user's OK before the variations are made */
-  review?: { needed: boolean; approve: () => void; change: () => void }
+  review?: { needed: boolean; approve: () => void; change: () => void; /** the variations waiting on it, and what they cost together */ count?: number; cost?: number }
   /** videos the chat proposed, waiting for the user's Make (nothing is made without it) */
   proposals?: () => { id: string; name: string; change: string; cost: number; make: () => void; dismiss: () => void }[]
   /** the build's steps, read live */
@@ -188,13 +188,18 @@ function ErrorText({ text: raw0 }: { text: string }) {
     : /overloaded|529|rate|429/i.test(text)
       ? "The chat is busy right now. Try again in a moment."
       : /credit balance is too low|billing/i.test(text)
-        ? "The chat’s account is out of credit. Ask your admin to top it up, then press Retry."
+        ? "Dev: the AI server’s chat account is out of credit. Contact support, then press Retry."
         : /daily_limit/i.test(text)
-        ? "Today’s chat limit is reached. It resets tomorrow."
-        : "Something went wrong in the chat. Try again."
+          ? "Dev: today’s chat limit on the AI server is reached. It resets at midnight UTC."
+          : "Something went wrong in the chat. Try again."
+  // a dev note: the AI server's own limits and keys, not something the user can fix in the app
+  const dev = plain.startsWith("Dev: ")
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-1">
-      <p>{plain}</p>
+      <p>
+        {dev && <span className="mr-1.5 rounded-md bg-foreground/10 px-1.5 py-0.5 text-xs font-medium text-muted-foreground">Dev</span>}
+        {dev ? plain.slice(5) : plain}
+      </p>
       {raw && (
         <>
           <button type="button" onClick={() => setOpen((o) => !o)} className="self-start text-xs text-muted-foreground underline-offset-2 outline-none hover:underline focus-visible:underline">
@@ -409,7 +414,7 @@ function stepRows(items: Item[]): StepRow[] {
           <div className="grid grid-cols-4 gap-1.5">
             {sheets.map((y) => (
               <span key={y.id} className="relative block aspect-square overflow-hidden rounded-md ring-1 ring-foreground/10">
-                {y.state === "failed" ? <span className="absolute inset-0 grid place-items-center bg-muted text-xs text-muted-foreground">Failed</span> : <PictureSlot src={y.state === "done" ? y.url : undefined} />}
+                {y.state === "failed" ? <span className="absolute inset-0 grid place-items-center bg-muted text-xs text-muted-foreground">Didn't generate</span> : <PictureSlot src={y.state === "done" ? y.url : undefined} />}
               </span>
             ))}
           </div>
@@ -844,7 +849,7 @@ function Assets({ item, agent, bare }: { item: Extract<Item, { kind: "assets" }>
         accept="media"
         max={8}
         size={bare ? "md" : "sm"}
-        hint={[item.kinds.length ? `For: ${item.kinds.join(", ")}` : "", "Photos, or videos up to 15 s"].filter(Boolean).join(" · ")}
+        hint={[item.kinds.length ? `For: ${item.kinds.join(", ")}` : "", "Photos, or videos up to 15s"].filter(Boolean).join(" · ")}
         items={[
           ...files.map((f) => ({ id: url(f), name: f.name, url: url(f), kind: f.type.startsWith("video/") ? ("video" as const) : ("image" as const) })),
           ...preparing.map((p) => ({ id: p.key, name: p.name, poster: p.poster, kind: "video" as const, preparing: true })),
@@ -911,7 +916,7 @@ function TemplateCard({ item }: { item: Extract<Item, { kind: "template" }> }) {
 
 function BrandTable({ item }: { item: Extract<Item, { kind: "brand" }> }) {
   const b = item.brand
-  const colours = (
+  const colors = (
     [
       ["Main", b.primary_color],
       ["Second", b.secondary_color],
@@ -920,11 +925,11 @@ function BrandTable({ item }: { item: Extract<Item, { kind: "brand" }> }) {
   ).filter((c): c is [string, string] => !!c[1] && /^#/.test(c[1]))
   const rows: [string, React.ReactNode][] = []
   if (b.logo) rows.push(["Logo", <img src={b.logo} alt={`${b.name ?? "Brand"} logo`} decoding="async" className="h-8 max-w-32 rounded object-contain" />])
-  if (colours.length)
+  if (colors.length)
     rows.push([
-      "Colours",
+      "Colors",
       <span className="flex flex-wrap gap-x-3 gap-y-1.5">
-        {colours.map(([n, c]) => (
+        {colors.map(([n, c]) => (
           <span key={n} className="flex items-center gap-1.5">
             <span className="size-4 rounded-full ring-1 ring-foreground/15" style={{ background: c }} />
             <span className="font-mono text-xs uppercase">{c}</span>
@@ -1114,7 +1119,7 @@ function Storyboard({ frames, stills, ratio, name }: { frames: NonNullable<Plan[
  */
 
 /**
- * After Generate all: the videos are made in place. Each variation shows its plan still under the
+ * After the storyboard is approved: the videos are made in place. Each variation shows its plan still under the
  * generating look with its progress, then turns into its video; the rest of the build ticks off below.
  */
 function BuildCard({ ctx, agent }: { ctx: AgentCtx; agent: Agent }) {
@@ -1186,14 +1191,14 @@ export function ApprovalDock({ agent, ctx, poster }: { agent: Agent; ctx: AgentC
           {poster && <img src={poster} alt="" decoding="async" className="size-10 shrink-0 rounded-lg object-cover ring-1 ring-foreground/10" />}
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium leading-snug">Variation 1 is ready. Happy with it?</p>
-            <p className="text-xs text-muted-foreground">The others are made from it{ctx.videoCost ? ` · ${ctx.videoCost} credits each` : ""}.</p>
+            <p className="text-xs text-muted-foreground">The others are made from it{ctx.review!.count ? ` · ${ctx.review!.count} videos · ${(ctx.review!.cost ?? 0).toLocaleString("en-US")} credits` : ctx.videoCost ? ` · ${ctx.videoCost} credits each` : ""}.</p>
           </div>
           <div className="ml-auto flex gap-1.5">
             <Button size="sm" variant="ghost" onClick={ctx.review!.change} disabled={agent.busy}>
               Change it
             </Button>
             <Button size="sm" onClick={ctx.review!.approve} disabled={agent.busy}>
-              Make the variations
+              Make the variations{ctx.review!.cost ? ` · ${ctx.review!.cost.toLocaleString("en-US")}` : ""}
             </Button>
           </div>
         </div>
@@ -1209,7 +1214,7 @@ export function ApprovalDock({ agent, ctx, poster }: { agent: Agent; ctx: AgentC
               Not now
             </Button>
             <Button size="sm" onClick={p.make}>
-              Make · {p.cost} credits
+              Make · {p.cost}
             </Button>
           </div>
         </div>
@@ -1264,7 +1269,7 @@ function BuildTile({ video: v, still, ratio, waiting, direction }: { video: Buil
             {v.retry && (
               <span className="absolute inset-x-1.5 bottom-1.5 flex flex-col items-stretch gap-1">
                 <span className="truncate text-center text-xs font-medium text-destructive" title={`${v.failed} Credits refunded.`}>
-                  Failed
+                  Didn't generate
                 </span>
                 <Button size="xs" variant="secondary" onClick={v.retry}>
                   Try again
@@ -1274,14 +1279,14 @@ function BuildTile({ video: v, still, ratio, waiting, direction }: { video: Buil
             <span className={cn("absolute inset-x-1.5 bottom-1.5 flex min-w-0 items-center gap-1 truncate rounded-md bg-background/85 px-1.5 py-0.5 text-xs tabular-nums text-muted-foreground backdrop-blur", v.retry && "hidden")}>
               {v.state === "generating" ? (
                 <>
-                  {pct !== undefined ? `${pct}%` : `${STATUS[v.status ?? ""] ?? "generating"} · ${secs < 60 ? `${secs}s` : `${Math.floor(secs / 60)}m`}`}
+                  {pct !== undefined ? `Generating · ${pct}%` : `${STATUS[v.status ?? ""] ?? "Generating"} · ${secs < 60 ? `${secs}s` : `${Math.floor(secs / 60)}m`}`}
                 </>
               ) : v.failed ? (
                 <span className="truncate text-destructive" title={v.failed}>
                   Didn't generate
                 </span>
               ) : waiting ? (
-                "After your OK"
+                "Waiting for your OK"
               ) : (
                 "Up next"
               )}
@@ -1307,7 +1312,8 @@ function BuildTile({ video: v, still, ratio, waiting, direction }: { video: Buil
   )
 }
 
-const STATUS: Record<string, string> = { starting: "starting", queued: "in the queue", in_progress: "generating", completed: "finishing" }
+/** one ladder of words for a video being made, used on the build tile, the canvas and the chat: Up next, Waiting for your OK, Generating, Ready, Didn't generate */
+const STATUS: Record<string, string> = { starting: "Generating", queued: "Up next", in_progress: "Generating", completed: "Generating" }
 /** seconds since an image started, ticking */
 function Elapsed({ since }: { since: number }) {
   const [, tick] = useState(0)
@@ -1355,7 +1361,7 @@ function ImageCard({ item, ctx, agent }: { item: Extract<Item, { kind: "image" }
         )}
       </span>
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className="text-sm font-medium">{item.state === "working" ? `${what}: ${STATUS[item.status ?? ""] ?? "making it"}…` : item.state === "failed" ? "Image failed" : what}</span>
+        <span className="text-sm font-medium">{item.state === "working" ? `${what}: ${item.status === "queued" ? "up next" : "generating"}…` : item.state === "failed" ? "Image failed" : what}</span>
         <span className={cn("text-xs text-muted-foreground", item.state !== "failed" && "truncate")}>
           {item.state === "failed" ? noNames(item.error ?? "") : item.purpose === "view" ? "As viewers see it" : item.state === "done" && item.placed ? "Added to the Flick" : item.state === "working" && item.startedAt ? <Elapsed since={item.startedAt} /> : "Ready to add"}
         </span>
@@ -1531,8 +1537,8 @@ export function SizeFrame({ size, className }: { size?: string; className?: stri
 /** the sizes for where it runs, by its answer: Flam's ad sizes, the shapes videos are made in, or link shapes */
 const SIZES_FOR: Record<"ads" | "banner" | "link", [string, string][]> = {
   ads: [["Medium rectangle", "300×250"], ["Large rectangle", "336×280"], ["Square", "250×250"], ["Mobile interstitial", "320×480"], ["Mobile landscape", "480×320"], ["Half page", "300×600"], ["Square 1:1", "1080×1080"], ["Horizontal 16:9", "1920×1080"], ["Vertical 9:16", "1080×1920"]],
-  banner: [["Ultra wide 21:9", "2520×1080"], ["Wide 16:9", "1920×1080"], ["Landscape 4:3", "1440×1080"], ["Square 1:1", "1080×1080"], ["Portrait 3:4", "1080×1440"], ["Tall 9:16", "1080×1920"]],
-  link: [["Square 1:1", "1080×1080"], ["Wide 16:9", "1920×1080"], ["Tall 9:16", "1080×1920"]],
+  banner: [["Ultra wide 21:9", "2520×1080"], ["Wide 16:9", "1920×1080"], ["Landscape 4:3", "1440×1080"], ["Square 1:1", "1080×1080"], ["Portrait 3:4", "1080×1440"], ["Vertical 9:16", "1080×1920"]],
+  link: [["Square 1:1", "1080×1080"], ["Wide 16:9", "1920×1080"], ["Vertical 9:16", "1080×1920"]],
 }
 /** a size question asked with where it runs: its options follow that answer */
 function withSizes<T extends Deckable>(q: T, items: Item[]): T {

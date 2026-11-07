@@ -236,7 +236,7 @@ const TESTS = {
     check(run, checks, "a video change shows the Make card and starts nothing", !!a.make && !/\d+%|queued|generating|starting/.test(a.building.join(" ")), `card: ${a.make}`)
     if (a.make) {
       run.log("pressing Make on the proposal")
-      await run.p.getByRole("button", { name: /^Make · \d+ credits$/ }).first().click()
+      await run.p.getByRole("button", { name: /^Make · \d+$/ }).first().click()
       await drive(run, {}, (v) => !v.busy && !v.make && !/\d+%|queued|generating|starting/.test(v.building.join(" ")), { timeout: 12 * 60_000, label: "duck remake" })
       await run.shot("after-duck-remake")
     }
@@ -245,7 +245,7 @@ const TESTS = {
     await run.shot("after-v1-change-ask")
     check(run, checks, "a Variation 1 change shows the Make card (no new storyboard, nothing started)", !!a.make && !a.approve, `card: ${a.make}, storyboard: ${a.approve}`)
     if (a.make) {
-      await run.p.getByRole("button", { name: /^Make · \d+ credits$/ }).first().click()
+      await run.p.getByRole("button", { name: /^Make · \d+$/ }).first().click()
       let rv = 0
       const fin = await drive(run, { onReview: async () => ((rv++, await run.shot("review-after-remake")), false) }, (v) => done(v) && !v.review && !/\d+%|queued|generating|starting/.test(v.building.join(" ")), { timeout: 25 * 60_000, label: "beach remake" })
       check(run, checks, "the remade Variation 1 asked for review, then the variations were remade", rv > 0 && !!fin)
@@ -406,7 +406,7 @@ const TESTS = {
     const w = await look(p)
     const text = await p.evaluate(() => document.body.innerText)
     check(again, checks, "no Continue card on a finished project", !w.resume)
-    check(again, checks, "the videos are back (no generating, no Up next)", !/\d+%|queued|generating|Up next|After your OK/.test(w.building.join(" ")), w.building.slice(0, 6).join(" | "))
+    check(again, checks, "the videos are back (no generating, no Up next)", !/\d+%|queued|generating|Up next|Waiting for your OK/.test(w.building.join(" ")), w.building.slice(0, 6).join(" | "))
     check(again, checks, "chat history is back", (chat1?.items?.length ?? 0) > 0 && /Variation 1|variations/i.test(text))
     check(again, checks, "suggestions under the composer", w.suggestions)
     again.state.projectId = run.state.projectId

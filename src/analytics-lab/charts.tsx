@@ -15,7 +15,7 @@ function useWidth<T extends HTMLElement>() {
   return [ref, w] as const
 }
 
-/** One floating tooltip: values lead, labels follow; rows keyed with a short line of the series colour. */
+/** One floating tooltip: values lead, labels follow; rows keyed with a short line of the series color. */
 type Tip = { x: number; y: number; title: string; rows: { label: string; value: string; color?: string; dashed?: boolean }[] }
 function Tooltip({ tip }: { tip: Tip | null }) {
   if (!tip) return null
@@ -149,7 +149,7 @@ export function Legend({ items }: { items: { label: string; color: string; line?
   )
 }
 
-/** Horizontal bars, labelled directly: name on the left, value on the right. Hover shows the detail. */
+/** Horizontal bars, labeled directly: name on the left, value on the right. Hover shows the detail. */
 export function BarList({
   items,
   format,

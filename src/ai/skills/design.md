@@ -1,6 +1,6 @@
 ---
 name: design
-description: The on-screen design: elements, hierarchy, layout per size, type, colour, contrast, buttons, thumbnails and copy, following the brand.
+description: The on-screen design: elements, hierarchy, layout per size, type, color, contrast, buttons, thumbnails and copy, following the brand.
 when: When choosing the look, writing the plan's on-screen text, and before any design change.
 ---
 
@@ -13,8 +13,8 @@ five elements, and a sale can want a burst badge, a price tag and a strikethroug
 - **Shapes** (add_element type "shape"): rectangles (with rounding), circles, triangles, polygons,
   stars, hearts, play buttons, lines and arrows, and **any shape you draw** with shape "path" and
   d (SVG path data in a 100×100 box): seal badges, ribbons, price tags, speech bubbles, bursts,
-  chevrons, ticks, corner brackets, waves, blobs. Fill and stroke take a colour or a **gradient**
-  (linear or radial): use the brand's colours for gradients, and keep text on top readable.
+  chevrons, ticks, corner brackets, waves, blobs. Fill and stroke take a color or a **gradient**
+  (linear or radial): use the brand's colors for gradients, and keep text on top readable.
   Use shapes for badges, sale stickers, backdrops behind text (layer "back"), frames, dividers,
   underlines, pointers and highlights.
 - **Rotation:** text, images and shapes can turn (rotation in degrees). A badge or sticker at -8 to
@@ -28,7 +28,7 @@ five elements, and a sale can want a burst badge, a price tag and a strikethroug
 - Don't change anything the user didn't ask for, unless the prompt requires it.
 
 ## Brand first
-1. Follow the brand's guidelines (fonts, colours, logo rules, tone).
+1. Follow the brand's guidelines (fonts, colors, logo rules, tone).
 2. Not given, but a brand you know: look up its guidelines.
 3. No brand info: choose what's best for the agreed style, aiming for the best visual design overall.
 
@@ -41,7 +41,7 @@ Who (logo or label) → what and why (headline) → how to act (button).
 - **Total copy:** about 5 to 10 words on screen, plus the button.
 
 ## Layout rules (these always hold, whatever the layout)
-- **Grouped, not scattered:** the copy reads as one or two clear groups, aligned to an edge or centred.
+- **Grouped, not scattered:** the copy reads as one or two clear groups, aligned to an edge or centered.
   A badge or sticker can sit apart, on purpose.
 - **Safe margins:** text at least 5% in from every edge; 8% at the top and bottom of 9:16.
 - **Never over the subject:** place text where the video is calm and empty, never over the product
@@ -56,12 +56,12 @@ Who (logo or label) → what and why (headline) → how to act (button).
   can be smaller but stay legible.
 - Sentence case for headlines. No full stop unless it's a statement for effect.
 
-## Colour and contrast
-- Brand colours plus white or black; at most two accent colours.
-- **Text on video:** white (or the brand's light colour) on darker footage, near-black on light
+## Color and contrast
+- Brand colors plus white or black; at most two accent colors.
+- **Text on video:** white (or the brand's light color) on darker footage, near-black on light
   footage. Aim for a contrast ratio of 4.5:1 for normal text and 3:1 for large text and the button
   against the video. If the footage is busy, add a soft shade behind the text block.
-- **Button:** the brand's main colour, with text in white or black (whichever contrasts more).
+- **Button:** the brand's main color, with text in white or black (whichever contrasts more).
 
 ## Button styles
 | Style | Suits |
@@ -89,7 +89,7 @@ Who (logo or label) → what and why (headline) → how to act (button).
 - Short, as in ads. **Headline:** a benefit, promise or hook, 2 to 6 words. Bigger formats can carry
   a subheading or a short line more. **Button:** a verb that matches the goal, 1 to 3 words
   ("Get the app", "Book a seat", "Shop Gold"); name the variation when it differs.
-- Badges and stickers: 1 to 3 words ("New", "20% off", "Only 50 left", "Fan favourite").
+- Badges and stickers: 1 to 3 words ("New", "20% off", "Only 50 left", "Fan favorite").
 - **Variation names:** short and clear, one word preferred, at most 14 characters.
 - **Prices:** exact, with currency; never invented.
 - **Category lines** when they apply: alcohol, "Please drink responsibly."; no health, finance or

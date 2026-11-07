@@ -34,7 +34,7 @@ export function Dropzone({
   max?: number
   /** the main line when empty, e.g. "Drop your video here" */
   title?: string
-  /** limits and tips, e.g. "MP4, MOV or WebM · up to 15 s" */
+  /** limits and tips, e.g. "MP4, MOV or WebM · up to 15s" */
   hint?: string
   className?: string
   size?: "sm" | "md" | "lg"

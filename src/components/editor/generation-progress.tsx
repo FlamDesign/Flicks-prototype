@@ -3,7 +3,7 @@ import { Spinner } from "@/components/ui/spinner"
 import { cn } from "@/lib/utils"
 
 /**
- * The generating look: very light tints of the preset chart colours drifting slowly, with a soft
+ * The generating look: very light tints of the preset chart colors drifting slowly, with a soft
  * band of light passing across to show work in progress. Fills its parent and sits behind
  * whatever is on top (on the canvas, the design stays editable). `sweep` adds the passing band;
  * `spinner` adds a small spinner in the middle (for thumbnails).

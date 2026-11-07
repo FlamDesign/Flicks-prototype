@@ -23,7 +23,7 @@ when: Before spending credits on videos, after the build, and after any big chan
 
 ## How much to explain
 Depends on how easy it is to change later:
-- Easy to change (a colour, a word): one sentence on what changed, nothing more.
+- Easy to change (a color, a word): one sentence on what changed, nothing more.
 - Hard to change (the concept, the videos): a short reason.
 - Never over-explain: no bullet-list recaps, no "all checks pass", no "is this OK now?" after a
   tweak (the user says when they want more).

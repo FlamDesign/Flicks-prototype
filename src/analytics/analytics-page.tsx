@@ -93,6 +93,9 @@ const tabOf = (o: AnalyticsTarget): Tab => (o.kind === "campaign" || o.kind === 
 type Exportable = { name: string; rows: TRow[] }
 const ExportCtx = createContext<{ current: Exportable | null } | null>(null)
 
+/** a noun in running text: lowercase, except the product name */
+const lower = (noun: string) => (/^Flicks?$/.test(noun) ? noun : noun.toLowerCase())
+
 export function AnalyticsPage({ data, target }: { data: Dataset; target?: AnalyticsTarget | null }) {
   // opened from a Flick, campaign, placement or embed page: all time, so the numbers match that page
   const [filter, setFilter] = useState<Filter>({ range: { preset: target ? "all" : "7" }, country: "all" })
@@ -367,7 +370,7 @@ function MetricStrip({ rows, span, filter, set, sel, items }: { rows: Row[]; spa
   const [mid, setMid] = useState(set[0].id)
   const [asTable, setAsTable] = useState(false)
   const m = set.find((x) => x.id === mid) ?? set[0]
-  // each tile has its own colour from the chart palette; the chart draws in the chosen tile's colour
+  // each tile has its own color from the chart palette; the chart draws in the chosen tile's color
   const colorOf = (id: string) => SERIES[Math.max(0, set.findIndex((x) => x.id === id)) % SERIES.length]
   const mc = colorOf(m.id)
   const c = filter.country
@@ -719,7 +722,7 @@ function ListTable({
           {rows.length > 8 && (
             <div className="relative w-full sm:w-64">
               <HugeiconsIcon icon={Search01Icon} className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Search ${noun.toLowerCase()}`} className="h-8 pl-8" aria-label={`Search ${noun.toLowerCase()}`} />
+              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Search ${lower(noun)}`} className="h-8 pl-8" aria-label={`Search ${lower(noun)}`} />
             </div>
           )}
           {filters.map((f) => (
@@ -746,7 +749,7 @@ function ListTable({
         </div>
       )}
       {!sorted.length ? (
-        <p className="py-6 text-center text-sm text-muted-foreground">No {noun.toLowerCase()} match. {(needle || Object.values(vals).some((v) => v && v !== "all")) && "Try clearing the search or filters."}</p>
+        <p className="py-6 text-center text-sm text-muted-foreground">No {lower(noun)} match. {(needle || Object.values(vals).some((v) => v && v !== "all")) && "Try clearing the search or filters."}</p>
       ) : (
         <div className="-mx-2 overflow-x-auto">
           <table className="w-full text-sm" style={{ minWidth: 300 + cols.length * 104 }}>
@@ -873,7 +876,7 @@ function ListTable({
   )
 }
 
-/** In a row: add it to the chart (shows on hover) or, once added, its colour with a way to remove it. */
+/** In a row: add it to the chart (shows on hover) or, once added, its color with a way to remove it. */
 function CompareToggle({ sel, item }: { sel: Selection; item: Pickable }) {
   const on = sel.has(item.id)
   const blocked = !on && sel.full

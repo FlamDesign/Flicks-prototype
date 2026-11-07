@@ -42,7 +42,7 @@ the model treats them as new instructions and the variations stop matching.
   decides on any remake; never remake on your own. Without
   keep_seconds the model redraws the whole clip and the opening drifts.
   Prefer swaps that run through the whole video (one room per variation from the first frame, a
-  colour, a product) when the brief allows: they match far more reliably than a shared opening.
+  color, a product) when the brief allows: they match far more reliably than a shared opening.
 
 ## What video models get wrong
 Mention the ones that apply, in plain words at the end of the prompt.
@@ -71,7 +71,7 @@ show them; never other brands' logos unless the user asks.
 - **Products or people that must stay the same:** make a sheet (make_sheet) and pass it as a
   reference, and in variations' image_ids.
 - **Variations:** always edits of the approved reference. Give each variation image_ids when you
-  have images of its change (each colour's product photo, or its sheet).
+  have images of its change (each color's product photo, or its sheet).
 
 ## Show the style first
 Before videos are generated, the user sees the look: their own images, a concept preview, or a

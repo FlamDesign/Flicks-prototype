@@ -61,7 +61,7 @@ export function CommandPalette({
         <CommandGroup heading="Actions">
           <CommandItem onSelect={run(onNew)}>
             <HugeiconsIcon icon={Add01Icon} />
-            <span className="flex-1">New video</span>
+            <span className="flex-1">Create</span>
             <Shortcut keys={["N"]} />
           </CommandItem>
           <CommandItem onSelect={run(onToggleTheme)}>

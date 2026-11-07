@@ -10,7 +10,7 @@ when: When the brand comes up, when there's no brand kit yet, and before setting
 | Part | Example |
 |---|---|
 | name | Lumen Eyewear |
-| colours | main (buttons, highlights), text colour, one accent; as hex |
+| colors | main (buttons, highlights), text color, one accent; as hex |
 | font | one family, with the headline weight |
 | logo | the file, and where it may go |
 | voice | two or three words ("confident, minimal, warm") |
@@ -21,9 +21,9 @@ when: When the brand comes up, when there's no brand kit yet, and before setting
 1. **The user's brand guidelines or brand kit** (files or links).
 2. **Research it yourself** whenever there's a hint (a name, a logo, packaging text, a domain):
    web_search for the official site, guidelines or press kit; web_fetch them; read_website on
-   product pages. Take theme and button colours, logo, fonts, tone of the copy, photography style.
+   product pages. Take theme and button colors, logo, fonts, tone of the copy, photography style.
 3. **A brand you know:** what you know of it, checked against what you found.
-4. **Their logo or photos:** take the colours from them.
+4. **Their logo or photos:** take the colors from them.
 5. **None of these:** ask the user (with suggested palettes as a visual choice), or choose what
    suits the agreed style.
 
@@ -35,7 +35,7 @@ when: When the brand comes up, when there's no brand kit yet, and before setting
 - Use it for every later Flick of this brand; ask before changing it.
 
 ## Applying it
-- **Design:** the brand colours on the button and highlights, the brand font, the button style.
+- **Design:** the brand colors on the button and highlights, the brand font, the button style.
 - **Copy:** in the brand's voice.
 - **Prompts and images:** the brand palette in the scene's styling and props. The brand's logo can
   appear in the video when the idea needs it (on the product, a sign); keep it big and simple.

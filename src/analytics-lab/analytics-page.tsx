@@ -415,7 +415,7 @@ function useSelection(): Selection {
   const [sel, setSel] = useState<Sel[]>([])
   return {
     sel,
-    // a row keeps its colour while it's ticked; the colour follows the row, not its position
+    // a row keeps its color while it's ticked; the color follows the row, not its position
     toggle: (x) => setSel((s) => (s.some((y) => y.id === x.id) ? s.filter((y) => y.id !== x.id) : s.length >= MAX_SEL ? s : [...s, { ...x, color: SERIES.find((c) => !s.some((y) => y.color === c))! }])),
     clear: () => setSel([]),
   }

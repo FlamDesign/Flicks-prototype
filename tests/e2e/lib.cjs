@@ -108,7 +108,7 @@ async function look(p) {
     const tryAgain = !!btn(/^Try again$/)
     const building = [...document.querySelectorAll("figcaption")].map((f) => f.innerText.trim()).filter(Boolean)
     // a video the chat proposed, waiting for Make
-    const make = btn(/^Make · \d+ credits$/)?.closest('[role="group"]')?.getAttribute("aria-label") ?? null
+    const make = btn(/^Make · \d+$/)?.closest('[role="group"]')?.getAttribute("aria-label") ?? null
     const credits = [...document.querySelectorAll("*")].find((e) => e.childElementCount === 0 && /^\d[\d,]* credits$/.test((e.textContent ?? "").trim()))?.textContent?.trim() ?? null
     const lastReply = [...document.querySelectorAll("[data-reply]")].at(-1)?.innerText?.slice(0, 300) ?? null
     return { question, assets, approve, review, resume, suggestions, busy, errors: [...new Set(errors)], chip, tryAgain, building, make, credits, lastReply }
@@ -185,13 +185,13 @@ async function drive(run, policy, until, { timeout = 8 * 60_000, label = "" } = 
     if (v.review) {
       if (policy.onReview && (await policy.onReview(v))) continue
       log("review: Make the variations")
-      await p.getByRole("button", { name: "Make the variations" }).last().click()
+      await p.getByRole("button", { name: /^Make the variations/ }).last().click()
       continue
     }
     if (v.make) {
       if (policy.onMake && (await policy.onMake(v))) continue
       log(`proposed video (${v.make}): pressing Make`)
-      await p.getByRole("button", { name: /^Make · \d+ credits$/ }).first().click()
+      await p.getByRole("button", { name: /^Make · \d+$/ }).first().click()
       continue
     }
   }

@@ -39,7 +39,7 @@ function Lab() {
   const data = useMemo(() => buildDataset(lib.flicks, adsState.placements, embedState.embeds, adsState.campaigns, mode === "loading" ? "normal" : mode), [lib.flicks, adsState.placements, adsState.campaigns, embedState.embeds, mode])
 
   useEffect(() => {
-    document.title = "Flicks · Analytics (experiment)"
+    document.title = "Analytics (experiment) · Flicks"
     const mq = matchMedia("(prefers-color-scheme: dark)")
     const apply = () => document.documentElement.classList.toggle("dark", appearance === "dark" || (appearance === "auto" && mq.matches))
     apply()

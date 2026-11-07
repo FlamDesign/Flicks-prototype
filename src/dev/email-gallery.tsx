@@ -266,7 +266,7 @@ const RULES: { title: string; items: string[] }[] = [
     items: [
       "600px max width, fluid below it; stacks to one column on phones. Buttons go full width on phones and are 48px tall.",
       "Table layout with inline styles; VML buttons for Outlook on Windows; Arial fallback in Outlook.",
-      "16px body text, 26px line height; colours meet 4.5:1 contrast in light and dark mode.",
+      "16px body text, 26px line height; colors meet 4.5:1 contrast in light and dark mode.",
       "Dark mode via prefers-color-scheme (Apple Mail, iOS, Outlook for Mac) and [data-ogsc] (Outlook.com); a white logo swaps in.",
     ],
   },

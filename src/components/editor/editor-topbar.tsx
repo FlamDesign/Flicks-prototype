@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { InputGroupInput } from "@/components/ui/input-group"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { PauseIcon, PlayIcon, SparklesIcon, ArrowDown01Icon, Clock01Icon, Copy01Icon, Delete02Icon, Home01Icon, PencilEdit01Icon, PencilEdit02Icon, ViewIcon } from "@hugeicons/core-free-icons"
+import { PauseIcon, PlayIcon, ArrowDown01Icon, Clock01Icon, Copy01Icon, Delete02Icon, Home01Icon, PencilEdit01Icon, PencilEdit02Icon, ViewIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -14,7 +14,6 @@ const MAX_SHOWN = 16
 /** Left side of the editor top bar: back, the project's name (click to rename) with its file menu, and the size. */
 export function FileTitle({
   title,
-  naming,
   setTitle,
   size,
   sizeLabel,
@@ -26,7 +25,6 @@ export function FileTitle({
 }: {
   title: string
   /** the name is still being generated from the prompt */
-  naming?: boolean
   setTitle: (t: string) => void
   size: string
   sizeLabel?: string
@@ -46,7 +44,7 @@ export function FileTitle({
     input.current?.select()
   }, [editing])
   const save = () => {
-    setTitle(draft.trim() || "Untitled Flick")
+    setTitle(draft.trim() || "Untitled project")
     setEditing(false)
   }
   const shown = title.length > MAX_SHOWN ? `${title.slice(0, MAX_SHOWN).trimEnd()}…` : title
@@ -55,22 +53,17 @@ export function FileTitle({
     <div className="flex min-w-0 flex-1 items-center gap-1">
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button variant="ghost" size="icon-sm" aria-label="Home" onClick={onHome}>
+          <Button variant="ghost" size="icon-sm" aria-label="Back" onClick={onHome}>
             <HugeiconsIcon icon={Home01Icon} className="size-4" />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>Home</TooltipContent>
+        <TooltipContent>Back</TooltipContent>
       </Tooltip>
       <span aria-hidden className="text-muted-foreground/50">
         /
       </span>
 
-      {naming && !editing ? (
-        <span className="flex h-8 items-center gap-1.5 px-2 text-sm text-muted-foreground" aria-live="polite">
-          <HugeiconsIcon icon={SparklesIcon} className="size-3.5 animate-pulse text-brand" />
-          <span className="animate-pulse">Naming…</span>
-        </span>
-      ) : editing ? (
+      {editing ? (
         <InputGroupInput
           ref={input}
           value={draft}

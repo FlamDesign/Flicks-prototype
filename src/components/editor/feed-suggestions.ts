@@ -10,7 +10,7 @@ export const FEED_SUGGESTIONS: Record<Feed["type"], FeedSuggestion[]> = {
     { name: "price", example: "$129" },
     { name: "offer", example: "20% off today" },
     { name: "headline", example: "Light that follows you" },
-    { name: "colour", example: "Brass" },
+    { name: "color", example: "Brass" },
   ],
   link: [
     { name: "product-page", example: "shop.com/arc-lamp" },

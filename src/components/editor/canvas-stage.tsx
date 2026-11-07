@@ -253,7 +253,7 @@ export function CanvasStage({
       window.addEventListener("pointerup", () => window.removeEventListener("pointermove", moveTrack), { once: true })
       return
     }
-    // snapping: edges and centres of the dragged box against the frame and every other element
+    // snapping: edges and centers of the dragged box against the frame and every other element
     const boxOf = (id: string) => {
       const r = stage.current!.querySelector(`[data-el="${id}"]`)?.getBoundingClientRect()
       return r && { l: r.left - rect.left, t: r.top - rect.top, r: r.right - rect.left, b: r.bottom - rect.top }
@@ -315,7 +315,7 @@ export function CanvasStage({
     window.addEventListener("pointerup", up)
   }
 
-  // turning by a corner: the angle follows the pointer around the element's centre, catching every 45°
+  // turning by a corner: the angle follows the pointer around the element's center, catching every 45°
   const [turning, setTurning] = useState(false)
   const onRotate = (e: React.PointerEvent, el: CanvasElement, box: { l: number; t: number; w: number; h: number }, corner: Corner) => {
     e.stopPropagation()
@@ -368,7 +368,7 @@ export function CanvasStage({
     document.body.classList.add("turning")
     const start = { x: e.clientX, y: e.clientY }
     const align = alignOf(el)
-    // centre-anchored elements grow on both sides, so a corner drag counts double
+    // center-anchored elements grow on both sides, so a corner drag counts double
     const kx = align === "center" ? 2 : 1
     const snapshot = el
     const min = buttonMin(box)
@@ -383,7 +383,7 @@ export function CanvasStage({
     const lockResize = makeAxisLock()
     // the image-shape snap holds once caught (in screen px)
     const shapeSnap = makeStickySnap()
-    // snapping while resizing: the moving edge lands on other elements' edges and centres, or the frame's
+    // snapping while resizing: the moving edge lands on other elements' edges and centers, or the frame's
     const rel = { l: b.left - rect.left, r: b.right - rect.left, t: b.top - rect.top, b: b.bottom - rect.top }
     const others = elements
       .filter((x) => !x.hidden && x.id !== el.id)
@@ -445,7 +445,7 @@ export function CanvasStage({
             else W = (b.width * H) / b.height
           } else if (onlyY && !ev.altKey) H = shapeSnap(H, W / snapshot.ar)
         } else if (onlyY && imgRatio && !ev.altKey) H = Math.max(minH, shapeSnap(H, W * imgRatio))
-        // move the anchor (x is the left/centre/right point by alignment, y the vertical centre) to pin the far edge
+        // move the anchor (x is the left/center/right point by alignment, y the vertical center) to pin the far edge
         const gw = W - b.width
         const gh = H - b.height
         const dirX = corner === "e" ? 1 : corner === "w" ? -1 : 0
@@ -477,7 +477,7 @@ export function CanvasStage({
         // unlocked: snap to the image's own aspect ratio when close
         const natural = (w * (rect.width / rect.height)) / snapshot.ar
         if (!snapshot.lock && !ev.shiftKey && !ev.altKey && !onlyX) h = (shapeSnap((h / 100) * rect.height, (natural / 100) * rect.height) / rect.height) * 100
-        // the opposite corner stays put (Alt grows from the centre): move the centre by half the growth, along the element's own turn
+        // the opposite corner stays put (Alt grows from the center): move the center by half the growth, along the element's own turn
         if (ev.altKey) update(el.id, { w, h })
         else {
           const gx = (((w - snapshot.w) / 100) * rect.width * sx) / 2
@@ -913,7 +913,7 @@ function StripView({ el, ratio, thumbs, active, editable, picked }: { el: StripE
             width: `${el.size}cqw`,
             height: `${h}cqw`,
             borderRadius: `${radius}cqw`,
-            // the background colour's opacity fades the other thumbnails; the colour itself stays solid
+            // the background color's opacity fades the other thumbnails; the color itself stays solid
             background: solid,
             opacity: i === active ? 1 : alpha,
             outline: i === active && el.highlightWidth > 0 ? `${el.highlightWidth / 10.8}cqw solid ${el.highlight}` : undefined,
@@ -1095,7 +1095,7 @@ function ElementView({
         )}
         style={{
           ...fontStyle(el),
-          // the background image sits over the fill colour (the style's own colour unless one is picked)
+          // the background image sits over the fill color (the style's own color unless one is picked)
           backgroundColor: el.bg,
           ...(el.bgImage
             ? { backgroundImage: `url(${el.bgImage})`, backgroundSize: el.bgFit ?? "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat" }
@@ -1266,7 +1266,7 @@ export const FEED_ICON = BracesIcon
  * A feed tab on the top edge of a selected text, button or link box (like a label on the outline).
  * No feed: a small { }. With no feeds yet, one click makes one (text, label or link; then text-2…);
  * with feeds, it offers New feed or one to link to. Linked: just the feed's name, with a menu:
- * Open Feeds panel, New feed, Link to another Feed, Unlink. (Deleting a feed happens in the Feeds panel.)
+ * Open Feeds panel, New feed, Link to another feed, Unlink. (Deleting a feed happens in the Feeds panel.)
  * Values are meant to be typed on the canvas, variation by variation; the side panel opens only on demand.
  */
 function FeedTab({
@@ -1367,7 +1367,7 @@ function FeedTab({
               <HugeiconsIcon icon={Add01Icon} className="size-4" />
               New feed
             </DropdownMenuItem>
-            {linkTo("Link to another Feed")}
+            {linkTo("Link to another feed")}
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={unlink}>
               <HugeiconsIcon icon={Unlink04Icon} className="size-4" />

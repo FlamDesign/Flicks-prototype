@@ -55,7 +55,7 @@ export function DevWidget({ onStateManager, onComponents, onPrd, onEmails, onReq
     const h = el?.offsetHeight ?? 40
     return { x: Math.min(Math.max(MARGIN, x), window.innerWidth - w - MARGIN), y: Math.min(Math.max(MARGIN, y), window.innerHeight - h - MARGIN) }
   }
-  // default: bottom centre; and back on screen when the window shrinks
+  // default: bottom center; and back on screen when the window shrinks
   useEffect(() => {
     const place = () =>
       setPos((p) => {

@@ -1,7 +1,7 @@
 import frameData from "./frames/frames.json"
 
 /** One step of a walkthrough: a real screenshot of the app, what to do, and where the click lands (% of the frame). */
-/** x, y: the centre of what to click; w, h: its size (all % of the frame) */
+/** x, y: the center of what to click; w, h: its size (all % of the frame) */
 export type Frame = { src: string; caption: string; x?: number; y?: number; w?: number; h?: number }
 export type Guide = {
   id: string
@@ -27,7 +27,7 @@ const TEXT: GuideText[] = [
     id: "start",
     group: "Basics",
     title: "Make your first video",
-    summary: "Describe a video on Create and Flicks makes it. That first video is the reference video for your project.",
+    summary: "Describe a video on Create and Flicks makes it. That first video is Variation 1 of your project.",
     tips: [
       "Say what’s in it, where, the camera move and the light. “Slow push-in, golden hour” does more than “nice shot”.",
       "Size is where it will run: 1080×1920 for stories and reels, 1080×1080 for feeds, 1920×1080 for the web.",
@@ -49,7 +49,7 @@ const TEXT: GuideText[] = [
     id: "assets",
     group: "Basics",
     title: "Start from Assets",
-    summary: "Every video you generate is kept in Assets. Use one as the reference video of a new project.",
+    summary: "Every video you generate is kept in Assets. Use one as Variation 1 of a new project.",
     tips: ["Filter Assets by date or size.", "The video’s prompt and details are shown when you open it."],
     tryIt: "app",
     related: ["start"],
@@ -58,11 +58,11 @@ const TEXT: GuideText[] = [
     id: "variations",
     group: "Editor",
     title: "Create variations",
-    summary: "Variations are versions of the reference video viewers can switch between: colours, models or scenes.",
+    summary: "Variations are versions of Variation 1 viewers can switch between: colors, models or scenes.",
     tips: [
       "Describe only what changes: “the same scene, in sapphire lenses”.",
       "Make 2 to 5. You need at least 2 to export.",
-      "Regenerating the reference video marks older variations with a red dot. Regenerate those so they match.",
+      "Remaking Variation 1 marks the other variations with a red dot. Make them again so they match.",
     ],
     tryIt: "sample",
     related: ["starting", "thumbnails"],
@@ -72,7 +72,7 @@ const TEXT: GuideText[] = [
     group: "Editor",
     title: "Choose where the Flick starts",
     summary: "The starting variation is the one viewers see first.",
-    tips: ["The reference video is only shown to viewers if you include it as a variation."],
+    tips: ["Variation 1 is in the Flick like every other variation."],
     tryIt: "sample",
     related: ["variations"],
   },
@@ -90,7 +90,7 @@ const TEXT: GuideText[] = [
     group: "Editor",
     title: "Link a button",
     summary: "A button can open a link when viewers tap it.",
-    tips: ["Link it to a feed to send each variation somewhere different, like that colour’s product page."],
+    tips: ["Link it to a feed to send each variation somewhere different, like that color’s product page."],
     tryIt: "sample",
     related: ["feeds"],
   },
@@ -108,7 +108,7 @@ const TEXT: GuideText[] = [
     group: "Editor",
     title: "Thumbnails",
     summary: "The thumbnail strip lets viewers switch variations. Each variation needs a thumbnail image.",
-    tips: ["Use a crop that tells colourways apart at a glance.", "An included reference video needs a thumbnail too."],
+    tips: ["Use a crop that tells colorways apart at a glance.", "Variation 1 needs a thumbnail too."],
     tryIt: "sample",
     related: ["variations", "preview"],
   },

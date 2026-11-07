@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 
-/** in place of a picture a project doesn't have yet: one plain tint of the theme's brand colour */
+/** in place of a picture a project doesn't have yet: one plain tint of the theme's brand color */
 export function CoverPlaceholder({ className }: { small?: boolean; className?: string }) {
   return <span aria-hidden className={cn("absolute inset-0 bg-brand/10", className)} />
 }

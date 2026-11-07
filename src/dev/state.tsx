@@ -140,8 +140,8 @@ export const FIELDS: Field[] = [
     ],
   },
   { key: "autoReload", tab: "Credits", group: "Auto-reload", label: "Enabled", type: "boolean" },
-  { key: "autoReloadAt", tab: "Credits", group: "Auto-reload", label: "When credits drop below", type: "number", prefix: "$", min: 100, max: 1000 },
-  { key: "autoReloadTo", tab: "Credits", group: "Auto-reload", label: "Add", type: "number", prefix: "$", min: 100, max: 1000 },
+  { key: "autoReloadAt", tab: "Credits", group: "Auto-reload", label: "When the balance is under (dollars)", type: "number", prefix: "$", min: 100, max: 1000 },
+  { key: "autoReloadTo", tab: "Credits", group: "Auto-reload", label: "Add (dollars)", type: "number", prefix: "$", min: 100, max: 1000 },
   {
     key: "generations",
     tab: "History",

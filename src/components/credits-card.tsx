@@ -34,7 +34,7 @@ export const resolutionFor = (size: string) => {
 }
 export const videoCost = (size: string, seconds = 8) => Math.ceil(USD_PER_SECOND[resolutionFor(size)] * seconds * CREDITS_PER_USD - 1e-9)
 
-/** A typical video (vertical, 8 seconds), for balance hints like "About 20 video generations". */
+/** A typical video (vertical, 8 seconds), for balance hints like "About 20 videos". */
 export const VIDEO_COST = videoCost("1080×1920", 8)
 const LOW_BALANCE = VIDEO_COST * 2
 
@@ -330,13 +330,16 @@ function AutoTopUpDialog({
   value: AutoTopUp
   onSave: (v: AutoTopUp) => void
 }) {
-  const [threshold, setThreshold] = useState(String(value.threshold))
-  const [target, setTarget] = useState(String(value.target))
-  const t = Number(threshold)
-  const g = Number(target)
-  const inRange = (raw: string, n: number) => raw !== "" && n >= AUTO_MIN && n <= AUTO_MAX
-  const tErr = !inRange(threshold, t) ? `Enter ${usd(AUTO_MIN)} to ${usd(AUTO_MAX)}` : undefined
-  const gErr = !inRange(target, g) ? `Enter ${usd(AUTO_MIN)} to ${usd(AUTO_MAX)}` : undefined
+  // the fields take credits; the setting is kept in dollars (credit packs are whole dollars)
+  const [threshold, setThreshold] = useState(String(value.threshold * CREDITS_PER_USD))
+  const [target, setTarget] = useState(String(value.target * CREDITS_PER_USD))
+  const t = Number(threshold) / CREDITS_PER_USD
+  const g = Number(target) / CREDITS_PER_USD
+  const lo = AUTO_MIN * CREDITS_PER_USD
+  const hi = AUTO_MAX * CREDITS_PER_USD
+  const inRange = (raw: string, n: number) => raw !== "" && n >= AUTO_MIN && n <= AUTO_MAX && Number.isInteger(n)
+  const tErr = !inRange(threshold, t) ? `Enter ${lo.toLocaleString("en-US")} to ${hi.toLocaleString("en-US")} credits, in steps of ${CREDITS_PER_USD}` : undefined
+  const gErr = !inRange(target, g) ? `Enter ${lo.toLocaleString("en-US")} to ${hi.toLocaleString("en-US")} credits, in steps of ${CREDITS_PER_USD}` : undefined
   const ok = !tErr && !gErr
   const changed = t !== value.threshold || g !== value.target
 
@@ -354,12 +357,12 @@ function AutoTopUpDialog({
       <DialogContent className="gap-6 sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>{value.enabled ? "Auto-reload" : "Turn on auto-reload?"}</DialogTitle>
-          <DialogDescription>Automatically buy more credits when you’re running low.</DialogDescription>
+          <DialogDescription>Buys more credits for you when you’re running low. {CREDITS_PER_USD} credits are $1.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5">
-          <MoneyField id="reload-at" label="When credits drop below:" value={threshold} onChange={setThreshold} error={tErr} />
-          <MoneyField id="reload-to" label="Add:" value={target} onChange={setTarget} error={gErr} />
+          <CreditsField id="reload-at" label="When your balance is under" value={threshold} onChange={setThreshold} error={tErr} hint={!tErr ? `About ${videos(Number(threshold)).toLocaleString("en-US")} videos left` : undefined} />
+          <CreditsField id="reload-to" label="Add" value={target} onChange={setTarget} error={gErr} hint={!gErr ? `${usd(g)} · about ${videos(Number(target)).toLocaleString("en-US")} videos` : undefined} />
         </div>
 
         <DialogFooter className="items-center sm:justify-between">
@@ -394,38 +397,47 @@ function AutoTopUpDialog({
   )
 }
 
-function MoneyField({
+/** a number of credits, with its price (or what it's worth in videos) under it */
+function CreditsField({
   id,
   label,
   value,
   onChange,
   error,
+  hint,
 }: {
   id: string
   label: string
   value: string
   onChange: (v: string) => void
   error?: string
+  hint?: string
 }) {
   return (
     <div className="space-y-2">
       <Label htmlFor={id} className="font-normal">{label}</Label>
       <div className="relative">
-        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm">$</span>
         <Input
           id={id}
           inputMode="numeric"
           value={value}
           onChange={(e) => onChange(e.target.value.replace(/[^0-9]/g, ""))}
           aria-invalid={!!error}
-          aria-describedby={error ? `${id}-error` : undefined}
-          className="pl-[1.3rem] tabular-nums"
+          aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
+          className="pr-16 tabular-nums"
         />
+        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">credits</span>
       </div>
-      {error && (
+      {error ? (
         <p id={`${id}-error`} className="text-xs text-destructive">
           {error}
         </p>
+      ) : (
+        hint && (
+          <p id={`${id}-hint`} className="text-xs text-muted-foreground">
+            {hint}
+          </p>
+        )
       )}
     </div>
   )

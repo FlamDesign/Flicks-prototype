@@ -325,7 +325,7 @@ export function LoginPage({
   )
 }
 
-/** The Google mark from the shadcn sign-in blocks (single colour, follows the text). */
+/** The Google mark from the shadcn sign-in blocks (single color, follows the text). */
 function GoogleLogo({ className }: { className?: string }) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden className={className}>

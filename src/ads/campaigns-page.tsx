@@ -611,7 +611,7 @@ function PlacementView({
         <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
           <Stat label="Impressions" value={compact(p.impressions)} />
           <Stat label="Spend" value={usd(p.spend)} />
-          <Stat label="Avg. CPM" value={avgCpm(p.spend, p.impressions)} />
+          <Stat label="Avg CPM" value={avgCpm(p.spend, p.impressions)} />
           <Stat label="CTR" value={ctr(p.clicks, p.impressions)} />
         </div>
 
@@ -663,7 +663,7 @@ function PlacementView({
                 <h2 className="flex-1 text-sm font-medium text-foreground">History</h2>
                 <span className={num}>Impressions</span>
                 <span className={num}>Spend</span>
-                <span className={num}>Avg. CPM</span>
+                <span className={num}>Avg CPM</span>
                 <span className={cn(num, "w-14")}>CTR</span>
                 <span className="hidden w-[68px] shrink-0 @2xl:block" />
               </div>

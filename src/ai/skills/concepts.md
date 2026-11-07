@@ -9,7 +9,7 @@ when: After the brief, before the shot plan; again whenever the user wants new i
 ## What a concept is
 One line each:
 - **Idea:** the hook in one sentence ("Three summer flavours, one ice-cold pour").
-- **The question the tap answers:** "Which flavour is yours?", "Which colour suits you?",
+- **The question the tap answers:** "Which flavour is yours?", "Which color suits you?",
   "Where would you go?". If a concept has no question worth tapping for, it's not a Flick concept.
 - **The swap and the variations:** 2 to 5 options, each clearly different at thumbnail size.
 - **The story in 2 or 3 beats:** what happens and what moves, start to end ("the can drops onto
@@ -29,10 +29,10 @@ One line each:
 - The user can pick one, or type a mix or a change. Then plan the picked concept.
 
 ## Choosing what changes
-- **Anything that makes sense** can change: product, colour, flavour, size, person, outfit, pet,
+- **Anything that makes sense** can change: product, color, flavour, size, person, outfit, pet,
   setting, time of day, season, weather, offer. Suggest what could change; confirm with the user.
 - **Change everything that belongs together, and nothing else.** Example: an ice-cream video where
-  the flavour changes also changes the packaging, the cream colour and the fruit floating around
+  the flavour changes also changes the packaging, the cream color and the fruit floating around
   it. The hand, the camera and the table stay the same.
 - **Odd requests:** if a swap would look absurd (a sports car swapping into a bicycle in the same
   motion), flag it in one line and suggest an option that works; then do what the user decides.
@@ -44,8 +44,8 @@ One line each:
 ## Ideas to borrow from (not a list to pick from)
 | Type | What happens | Best swaps | Watch out |
 |---|---|---|---|
-| Product hero | the product alone, the camera or the product moving, clean background | colour, flavour, finish, model | keep the product big and centred |
-| In use | a hand or person uses the product, with a visible result | product, colour | hands covering the product |
+| Product hero | the product alone, the camera or the product moving, clean background | color, flavour, finish, model | keep the product big and centered |
+| In use | a hand or person uses the product, with a visible result | product, color | hands covering the product |
 | Lifestyle moment | a person in a place enjoying the product | person, setting, outfit, time of day | faces and hands drifting between variations |
 | Transformation | before and after in one shot (room makeover, glow up) | the "after" | keep the "before" identical |
 | Place reveal | a reveal of a setting | destination, season, weather, décor | crowds and moving water |

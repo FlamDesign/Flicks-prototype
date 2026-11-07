@@ -24,7 +24,7 @@ export function briefAt(items: Item[], agent: Agent, ctx: AgentCtx): BriefEntry[
   const brand = [...items].reverse().find((x): x is Extract<Item, { kind: "brand" }> => x.kind === "brand")?.brand
   if (brand?.name || brand?.primary_color) {
     const colors = [brand.primary_color, brand.secondary_color, brand.text_color].filter((c): c is string => !!c && /^#/.test(c))
-    out.push({ key: "brand", label: "Brand", value: [brand.name, brand.font].filter(Boolean).join(" · ") || "Colours", colors, images: brand.logo ? [brand.logo] : undefined })
+    out.push({ key: "brand", label: "Brand", value: [brand.name, brand.font].filter(Boolean).join(" · ") || "Colors", colors, images: brand.logo ? [brand.logo] : undefined })
   }
   let size: string | undefined
   for (const it of items) {
@@ -64,7 +64,7 @@ export const briefSig = (entries: BriefEntry[]) => new Map(entries.map((e) => [e
 /** "What mood should it have?" → "Mood"; long questions keep their first few words */
 function shortQuestion(q: string) {
   const t = q.replace(/[?.!]+$/, "").trim()
-  const by = [[/^where\b/i, "Setting"], [/^when\b/i, "Timing"], [/^who\b/i, "People"], [/\bmood\b/i, "Mood"], [/\blight/i, "Light"], [/\bcolou?r/i, "Colours"], [/\blayout\b/i, "Layout"], [/\bvariations?\b|\bchange between\b/i, "What changes"], [/\b(opening|first) frame\b|\bopen(s|ing)? on\b/i, "Opening frame"], [/\b(last|final|end(ing)?) frame\b/i, "Final frame"], [/\bthumbnails?\b/i, "Thumbnails"], [/\bproducts?\b/i, "Products"], [/\bcast\b|\bpeople\b|\bcharacters?\b/i, "Cast"], [/\bscenes?\b/i, "Scenes"]] as const
+  const by = [[/^where\b/i, "Setting"], [/^when\b/i, "Timing"], [/^who\b/i, "People"], [/\bmood\b/i, "Mood"], [/\blight/i, "Light"], [/\bcolou?r/i, "Colors"], [/\blayout\b/i, "Layout"], [/\bvariations?\b|\bchange between\b/i, "What changes"], [/\b(opening|first) frame\b|\bopen(s|ing)? on\b/i, "Opening frame"], [/\b(last|final|end(ing)?) frame\b/i, "Final frame"], [/\bthumbnails?\b/i, "Thumbnails"], [/\bproducts?\b/i, "Products"], [/\bcast\b|\bpeople\b|\bcharacters?\b/i, "Cast"], [/\bscenes?\b/i, "Scenes"]] as const
   const hit = by.find(([re]) => re.test(t))
   if (hit) return hit[1]
   if (/^(is|are|does|do|should|shall|can|will|would)\b/i.test(t)) return "Your answer"

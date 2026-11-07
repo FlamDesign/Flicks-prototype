@@ -26,7 +26,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSub,
@@ -160,7 +159,6 @@ export function AppSidebar({
               Appearance
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent sideOffset={8} className="w-48">
-              <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">Theme</DropdownMenuLabel>
               <DropdownMenuRadioGroup value={appearance} onValueChange={(v) => onAppearanceChange(v as Appearance)}>
                 {APPEARANCES.map((a) => (
                   <DropdownMenuRadioItem key={a.value} value={a.value} onSelect={(e) => e.preventDefault()}>

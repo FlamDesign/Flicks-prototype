@@ -14,7 +14,7 @@ Anyone who makes video for people to watch can use Flicks: brands, agencies, cre
 - **Variation:** one version of the video (2 to 5 per Flick, default 3).
 - **Reference video:** the first video, made before its variations; the variations copy its motion,
   camera and timing. It's optional: a Flick can also start from the user's own master video.
-- **The swap:** what changes between variations (a product, a colour, a person, a scene, an offer).
+- **The swap:** what changes between variations (a product, a color, a person, a scene, an offer).
 - **Thumbnail strip:** the row of thumbnails viewers tap to switch; one thumbnail per video.
 - **Feed:** on-screen text or a link that differs per variation (price, label, link, button text).
 
@@ -35,7 +35,7 @@ a finished, good result matters more.
 6. **One obvious action.** The button is the most visible thing after the swap.
 
 ## What makes a Flick fail (check at every step)
-- Text overlapping, cropped or hard to read; poor layout or design; poor colour choices.
+- Text overlapping, cropped or hard to read; poor layout or design; poor color choices.
 - Variations whose frames don't match (the camera or motion differs between versions).
 - Weak direction: a confusing story, the wrong moment, or a static video where nothing happens.
 - Lots of jump cuts.

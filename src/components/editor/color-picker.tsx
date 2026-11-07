@@ -15,12 +15,12 @@ export const swatchBg = (c: string) => `linear-gradient(${c}, ${c}), ${CHECKER}`
 type HSVA = { h: number; s: number; v: number; a: number } // h 0–360, s/v/a 0–1
 
 /**
- * Colour picker panel: saturation/brightness area, hue and transparency sliders, hex and opacity fields.
+ * Color picker panel: saturation/brightness area, hue and transparency sliders, hex and opacity fields.
  * Values are hex strings: #rrggbb, or #rrggbbaa when partly transparent. "transparent" is read as 0% opacity.
  */
 /**
  * Open state for a popover holding a ColorPanel: it steps out of the way while the eyedropper
- * is picking (so you can see what you're sampling) and comes back once a colour is picked.
+ * is picking (so you can see what you're sampling) and comes back once a color is picked.
  */
 export function useColorPopover() {
   const [open, setOpen] = useState(false)
@@ -44,7 +44,7 @@ export function useColorPopover() {
 
 export function ColorPanel({ value, onChange, onPicking }: { value: string; onChange: (v: string) => void; onPicking?: (active: boolean) => void }) {
   const [c, setC] = useState<HSVA>(() => parse(value))
-  // follow outside changes (swatches, another element) without losing the hue on greys
+  // follow outside changes (swatches, another element) without losing the hue on grays
   useEffect(() => {
     if (toHex(c) !== normalise(value)) setC((prev) => ({ ...parse(value), ...(parse(value).s === 0 ? { h: prev.h } : {}) }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -81,7 +81,7 @@ export function ColorPanel({ value, onChange, onPicking }: { value: string; onCh
         background="linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)"
         thumb={`hsl(${c.h} 100% 50%)`}
       />
-      {/* Transparency: fully transparent to the actual colour */}
+      {/* Transparency: fully transparent to the actual color */}
       <Track
         label="Opacity"
         value={c.a}
@@ -96,7 +96,7 @@ export function ColorPanel({ value, onChange, onPicking }: { value: string; onCh
             <Button
               variant="outline"
               size="icon-sm"
-              aria-label="Pick colour from canvas"
+              aria-label="Pick color from canvas"
               className="size-8 shrink-0"
               onClick={async () => {
                 onPicking?.(true)
@@ -117,7 +117,7 @@ export function ColorPanel({ value, onChange, onPicking }: { value: string; onCh
           <span className="size-4 shrink-0 rounded-[4px] ring-1 ring-foreground/15" style={{ background: swatchBg(toHex(c)) }} />
           <span className="text-muted-foreground">#</span>
           <InputGroupInput
-            aria-label="Hex colour"
+            aria-label="Hex color"
             value={hex}
             maxLength={6}
             spellCheck={false}
@@ -239,7 +239,7 @@ function Track({ label, value, onChange, background, thumb }: { label: string; v
   )
 }
 
-/* ---------- colour maths ---------- */
+/* ---------- color maths ---------- */
 
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
 
@@ -287,7 +287,7 @@ function rgbToHsv(r: number, g: number, b: number) {
 type EyeDropperCtor = new () => { open: () => Promise<{ sRGBHex: string }> }
 
 /**
- * Picks a colour from anywhere on screen with the browser eyedropper.
+ * Picks a color from anywhere on screen with the browser eyedropper.
  * Where that isn't supported, the next click on the canvas samples the video frame under the pointer.
  */
 async function pickFromScreen(): Promise<string | null> {
@@ -296,7 +296,7 @@ async function pickFromScreen(): Promise<string | null> {
     try {
       return toHexString((await new ED().open()).sRGBHex)
     } catch {
-      return null // cancelled with Esc
+      return null // canceled with Esc
     }
   }
   return new Promise((resolve) => {

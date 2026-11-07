@@ -310,7 +310,7 @@ export function ReferenceViewer({ refs, index, onIndex, onClose }: { refs: Refer
     ...(r.media === "video" ? { kind: "video" as const, src: r.url, poster: r.poster } : { kind: "image" as const, src: r.url }),
     name: r.name,
     details: [
-      ["Type", r.media === "video" ? `Video${r.duration ? ` · ${r.duration.toFixed(1)}s` : ""}` : "Photo"],
+      ["Type", r.media === "video" ? `Video${r.duration ? ` · ${r.duration.toFixed(1)}s` : ""}` : "Image"],
       ["Format", (r.name.split(".").pop() ?? "png").toUpperCase().replace("JPEG", "JPG")],
     ],
   }))
