@@ -579,7 +579,7 @@ function Said({ text: said, streaming }: { text: string; streaming?: boolean }) 
     )
   const bold = (s: string) => s.split(/(\*\*[^*]+\*\*)/g).map((p, i) => (p.startsWith("**") && p.endsWith("**") ? <strong key={i} className="font-medium">{p.slice(2, -2)}</strong> : p))
   return (
-    <div className={cn("mr-6 flex flex-col gap-2.5 px-1 text-sm leading-relaxed", streaming && "stream-fade")}>
+    <div data-reply className={cn("mr-6 flex flex-col gap-2.5 px-1 text-sm leading-relaxed", streaming && "stream-fade")}>
       {text.split(/\n{2,}/).map((para, i) =>
         /^\s*[-•] /m.test(para) ? (
           <ul key={i} className="flex list-disc flex-col gap-1 pl-4">

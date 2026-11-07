@@ -13,17 +13,19 @@ function file(name) {
   return { name, type, b64: fs.readFileSync(path.join(FILES, name)).toString("base64") }
 }
 
-async function open(name) {
+/** real: videos are really made (at 480p, tagged as test work); otherwise sample clips stand in */
+async function open(name, { real = false } = {}) {
   const out = path.join(__dirname, "runs", name)
   fs.mkdirSync(out, { recursive: true })
   const b = await chromium.launch({ proxy: { server: process.env.HTTPS_PROXY } })
   const ctx = await b.newContext({ viewport: { width: 1440, height: 950 }, ignoreHTTPSErrors: true })
-  await ctx.addInitScript((pc) => {
+  await ctx.addInitScript(({ pc, real }) => {
     try {
       localStorage.setItem("flam.ai", JSON.stringify({ passcode: pc }))
-      localStorage.setItem("flam.mockVideos", "1")
+      if (real) localStorage.setItem("flam.testVideos", "1")
+      else localStorage.setItem("flam.mockVideos", "1")
     } catch {}
-  }, process.env.FP)
+  }, { pc: process.env.FP, real })
   const p = await ctx.newPage()
   const t0 = Date.now()
   const lines = []
@@ -48,7 +50,7 @@ async function open(name) {
     await p.screenshot({ path: path.join(out, f) }).catch(() => {})
     log("screenshot", f)
   }
-  return { b, p, log, shot, state, out, t0 }
+  return { b, p, ctx, log, shot, state, out, t0 }
 }
 
 /** drops files on an element (as if dragged in from the desktop) */
@@ -106,7 +108,11 @@ async function look(p) {
     const chip = [...document.querySelectorAll("header *")].find((e) => e.childElementCount === 0 && /\d+×\d+ · \d+s/.test(e.textContent ?? ""))?.textContent ?? null
     const tryAgain = !!btn(/^Try again$/)
     const building = [...document.querySelectorAll("figcaption")].map((f) => f.innerText.trim()).filter(Boolean)
-    return { question, assets, approve, review, resume, suggestions, busy, errors: [...new Set(errors)], chip, tryAgain, building }
+    // a video the chat proposed, waiting for Make
+    const make = btn(/^Make · \d+ credits$/)?.closest('[role="group"]')?.getAttribute("aria-label") ?? null
+    const credits = [...document.querySelectorAll("*")].find((e) => e.childElementCount === 0 && /^\d[\d,]* credits$/.test((e.textContent ?? "").trim()))?.textContent?.trim() ?? null
+    const lastReply = [...document.querySelectorAll("[data-reply]")].at(-1)?.innerText?.slice(0, 300) ?? null
+    return { question, assets, approve, review, resume, suggestions, busy, errors: [...new Set(errors)], chip, tryAgain, building, make, credits, lastReply }
   })
 }
 
@@ -131,7 +137,7 @@ async function drive(run, policy, until, { timeout = 8 * 60_000, label = "" } = 
   while (Date.now() < end) {
     await p.waitForTimeout(1500)
     const v = await look(p)
-    const sig = JSON.stringify({ q: v.question?.text, a: v.approve, r: v.review, s: v.suggestions, b: v.busy, e: v.errors, c: v.chip, as: v.assets, re: v.resume, t: v.tryAgain })
+    const sig = JSON.stringify({ q: v.question?.text, a: v.approve, r: v.review, s: v.suggestions, b: v.busy, e: v.errors, c: v.chip, as: v.assets, re: v.resume, t: v.tryAgain, m: v.make })
     if (sig !== last) log(`view ${label}`, sig.slice(0, 400)), (last = sig)
     if (await until(v)) return v
     if (policy.onTick && (await policy.onTick(v))) continue
@@ -183,6 +189,12 @@ async function drive(run, policy, until, { timeout = 8 * 60_000, label = "" } = 
       await p.getByRole("button", { name: "Make the variations" }).last().click()
       continue
     }
+    if (v.make) {
+      if (policy.onMake && (await policy.onMake(v))) continue
+      log(`proposed video (${v.make}): pressing Make`)
+      await p.getByRole("button", { name: /^Make · \d+ credits$/ }).first().click()
+      continue
+    }
   }
   log(`TIMEOUT ${label}`)
   return null
@@ -207,10 +219,23 @@ async function projectName(run) {
   }, { id, pc: process.env.FP })
 }
 
+/** every image and video request this project sent to the server: the prompt and what it was made from */
+async function requests(run, name) {
+  return run.p.evaluate(async ({ name, pc }) => {
+    const r = await (await fetch("https://flicks-ai.flick-prototype.workers.dev/requests", { headers: { "x-flicks-pass": pc } })).json()
+    return (r.items ?? []).filter((x) => x.job?.project === name).map((x) => ({ at: x.at, path: x.path, variation: x.job?.variation, purpose: x.job?.purpose, status: x.status, prompt: x.payload?.prompt, image_urls: x.payload?.image_urls, video_url: x.payload?.video_url, image_url: x.payload?.image_url, resolution: x.payload?.resolution })).sort((a, b) => a.at - b.at)
+  }, { name, pc: process.env.FP }).catch(() => [])
+}
+
 async function finish(run, result) {
   await run.shot("final")
   const chat = await savedChat(run)
+  const name = await projectName(run).catch(() => null)
+  const reqs = name ? await requests(run, name) : []
+  fs.writeFileSync(path.join(run.out, "requests.json"), JSON.stringify(reqs, null, 2))
   const summary = {
+    project: name,
+    requests: reqs.length,
     ...result,
     seconds: Math.round((Date.now() - run.t0) / 1000),
     projectId: run.state.projectId,
@@ -225,4 +250,4 @@ async function finish(run, result) {
   return summary
 }
 
-module.exports = { open, drop, look, say, drive, file, finish, savedChat, projectName }
+module.exports = { open, drop, look, say, drive, file, finish, savedChat, projectName, requests }
