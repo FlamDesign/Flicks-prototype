@@ -429,7 +429,11 @@ export default {
 
       if (req.method === "GET" && url.pathname === "/library") {
         // reading two thousand records one by one takes seconds, so the list is kept for a short
-        // while in this worker's memory; every library write here drops it
+        // while: in this worker's memory and in the edge cache (shared by the workers near the
+        // user); every library write drops both
+        libraryUrl = `${url.origin}/library`
+        const edge = await caches.default.match(libraryUrl).catch(() => undefined)
+        if (edge) return new Response(edge.body, { headers: { ...cors, "content-type": "application/json", "x-library-cache": "edge" } })
         let items = libraryCache && Date.now() - libraryCache.at < LIBRARY_CACHE_MS ? libraryCache.items : undefined
         if (!items) {
           const keys: string[] = []
@@ -444,7 +448,9 @@ export default {
           libraryCache = { at: Date.now(), items }
         }
         // deleted from Assets: left out (the record and file stay, so Flicks using it keep working)
-        return json({ items: items.filter((x) => !x.hidden).map((x) => ({ ...x, file: x.saved ? `${url.origin}/file/${x.id}` : undefined })) }, 200, cors)
+        const body = JSON.stringify({ items: items.filter((x) => !x.hidden).map((x) => ({ ...x, file: x.saved ? `${url.origin}/file/${x.id}` : undefined })) })
+        ctx?.waitUntil(caches.default.put(libraryUrl, new Response(body, { headers: { "content-type": "application/json", "cache-control": `public, max-age=${LIBRARY_CACHE_MS / 1000}` } })).catch(() => {}))
+        return new Response(body, { headers: { ...cors, "content-type": "application/json" } })
       }
 
       const hide = url.pathname.match(/^\/library\/([\w-]{20,64})$/)
@@ -640,9 +646,13 @@ async function take(env: Env, key: string, cap: number) {
 type LibraryRecord = { created: number; id: string; saved?: boolean; hidden?: boolean }
 const LIBRARY_CACHE_MS = 20_000
 let libraryCache: { at: number; items: LibraryRecord[] } | undefined
+let libraryUrl: string | undefined
 
 async function put(env: Env, key: string, value: string | ArrayBuffer, opts?: KVNamespacePutOptions) {
-  if (key.startsWith("lib:")) libraryCache = undefined
+  if (key.startsWith("lib:")) {
+    libraryCache = undefined
+    if (libraryUrl) await caches.default.delete(libraryUrl).catch(() => {})
+  }
   if (!env.USAGE) return true
   try {
     await env.USAGE.put(key, value, opts)
