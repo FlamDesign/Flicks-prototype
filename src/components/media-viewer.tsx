@@ -178,7 +178,7 @@ export function MediaViewer({
 
 function Media({ m }: { m: ViewerMedia }) {
   return m.kind === "video" ? (
-    <VideoPlayer src={m.src} webm={m.webm} poster={m.poster} />
+    <VideoPlayer dock src={m.src} webm={m.webm} poster={m.poster} />
   ) : (
     <img loading="lazy" decoding="async" src={m.src} alt={m.name} className="max-h-full max-w-full rounded-lg object-contain shadow-2xl" />
   )

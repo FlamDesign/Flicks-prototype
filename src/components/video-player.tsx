@@ -15,12 +15,15 @@ const clock = (s: number) => {
  * The viewer's video player: plays muted on open and loops. Click the video (or Space / K) to pause,
  * M to mute. Controls sit on a soft gradient at the bottom and fade out
  * after a moment of no pointer movement while playing; they stay while paused.
+ * Docked (`dock`): the player fills its column, the video sits in the middle and the seeker and
+ * controls stay fixed at the bottom, full width, always shown.
  */
 export function VideoPlayer({
   src,
   webm,
   poster,
   fill,
+  dock,
   startMuted = true,
   loop = true,
   className,
@@ -30,6 +33,8 @@ export function VideoPlayer({
   poster?: string
   /** fill the parent (object-contain) instead of sizing to the video */
   fill?: boolean
+  /** fill the parent as a column: the video above, the seeker and controls fixed at the bottom */
+  dock?: boolean
   startMuted?: boolean
   loop?: boolean
   className?: string
@@ -41,6 +46,19 @@ export function VideoPlayer({
   const [volume, setVolume] = useState(1)
   const [time, setTime] = useState(0)
   const [duration, setDuration] = useState(0)
+  // docked: the video's box is worked out from its shape and the stage's size (max-width and
+  // max-height alone let the box go wider than the picture, leaving black bars inside it)
+  const stage = useRef<HTMLDivElement>(null)
+  const [ratio, setRatio] = useState<number>()
+  const [stageSize, setStageSize] = useState<{ w: number; h: number }>()
+  useEffect(() => {
+    const el = stage.current
+    if (!dock || !el) return
+    const ro = new ResizeObserver(([e]) => setStageSize({ w: e.contentRect.width, h: e.contentRect.height }))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [dock])
+  const fitted = dock && ratio && stageSize ? (stageSize.w / stageSize.h > ratio ? { height: stageSize.h, width: stageSize.h * ratio } : { width: stageSize.w, height: stageSize.w / ratio }) : undefined
   const [active, setActive] = useState(true)
   const [scrubbing, setScrubbing] = useState(false)
   const idle = useRef<number | undefined>(undefined)
@@ -96,7 +114,7 @@ export function VideoPlayer({
     setTime(t)
   }
 
-  const shown = !playing || active || scrubbing
+  const shown = dock || !playing || active || scrubbing
 
   return (
     <div
@@ -112,42 +130,54 @@ export function VideoPlayer({
         else return
         wake()
       }}
-      className={cn("group/player relative flex overflow-hidden rounded-lg bg-black shadow-2xl focus-ring", fill && "absolute inset-0 rounded-none shadow-none", !shown && "cursor-none", className)}
-    >
-      <video
-        ref={vid}
-        poster={poster}
-        autoPlay
-        muted={startMuted}
-        loop={loop}
-        playsInline
-        onClick={toggle}
-        onPlay={() => setPlaying(true)}
-        onPause={() => setPlaying(false)}
-        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
-        onDurationChange={(e) => setDuration(e.currentTarget.duration)}
-        className={cn("block", fill ? "size-full object-contain" : "max-h-[calc(100dvh-7.5rem)] max-w-full")}
-      >
-        {webm && <source src={webm} type="video/webm" />}
-        <source src={src} type="video/mp4" />
-      </video>
-
-      {/* paused: a big play button in the middle */}
-      {!playing && (
-        <button
-          type="button"
-          aria-label="Play"
-          onClick={toggle}
-          className="absolute left-1/2 top-1/2 grid size-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-black/50 text-white ring-1 ring-white/20 backdrop-blur-md transition hover:scale-105 hover:bg-black/70"
-        >
-          <HugeiconsIcon icon={PlayIcon} className="size-7 translate-x-0.5 fill-current" />
-        </button>
+      className={cn(
+        "group/player relative flex overflow-hidden rounded-lg bg-black shadow-2xl focus-ring",
+        fill && "absolute inset-0 rounded-none shadow-none",
+        dock && "h-full w-full flex-col rounded-none bg-transparent shadow-none",
+        !shown && "cursor-none",
+        className,
       )}
+    >
+      {/* docked: the video and its pause button in a column above the bar; otherwise the bar lies over the video */}
+      <Stage dock={dock} ref={stage}>
+        <video
+          ref={vid}
+          poster={poster}
+          autoPlay
+          muted={startMuted}
+          loop={loop}
+          playsInline
+          onClick={toggle}
+          onPlay={() => setPlaying(true)}
+          onPause={() => setPlaying(false)}
+          onLoadedMetadata={(e) => (setDuration(e.currentTarget.duration), setRatio(e.currentTarget.videoWidth / e.currentTarget.videoHeight || undefined))}
+          onDurationChange={(e) => setDuration(e.currentTarget.duration)}
+          style={fitted}
+          className={cn("block", fill ? "size-full object-contain" : dock ? "max-h-full max-w-full rounded-lg object-contain shadow-2xl" : "max-h-[calc(100dvh-7.5rem)] max-w-full")}
+        >
+          {webm && <source src={webm} type="video/webm" />}
+          <source src={src} type="video/mp4" />
+        </video>
+
+        {/* paused: a big play button in the middle */}
+        {!playing && (
+          <button
+            type="button"
+            aria-label="Play"
+            onClick={toggle}
+            className="absolute left-1/2 top-1/2 grid size-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-black/50 text-white ring-1 ring-white/20 backdrop-blur-md transition hover:scale-105 hover:bg-black/70"
+          >
+            <HugeiconsIcon icon={PlayIcon} className="size-7 translate-x-0.5 fill-current" />
+          </button>
+        )}
+      </Stage>
 
       {/* controls */}
       <div
         className={cn(
-          "absolute inset-x-0 bottom-0 flex flex-col gap-1 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-3 pb-2 pt-10 text-white transition-opacity duration-200",
+          dock
+            ? "flex shrink-0 flex-col gap-2 pt-4 text-white"
+            : "absolute inset-x-0 bottom-0 flex flex-col gap-1 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-3 pb-2 pt-10 text-white transition-opacity duration-200",
           shown ? "opacity-100" : "pointer-events-none opacity-0",
         )}
       >
@@ -189,6 +219,17 @@ export function VideoPlayer({
         </div>
       </div>
     </div>
+  )
+}
+
+/** docked: a box for the video that takes the column's height above the bar; otherwise nothing extra */
+function Stage({ dock, ref, children }: { dock?: boolean; ref: React.RefObject<HTMLDivElement | null>; children: React.ReactNode }) {
+  return dock ? (
+    <div ref={ref} className="relative flex min-h-0 min-w-0 flex-1 items-center justify-center">
+      {children}
+    </div>
+  ) : (
+    <>{children}</>
   )
 }
 
