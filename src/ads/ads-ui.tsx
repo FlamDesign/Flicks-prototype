@@ -133,7 +133,7 @@ export function AddFundsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
           </p>
         </div>
 
-        <div className="flex flex-col gap-2 rounded-2xl bg-muted/60 p-3 text-sm">
+        <div className="flex flex-col gap-2 rounded-2xl bg-muted/70 p-3 text-sm">
           {dev.adBalance < 0 && (
             <div className="flex justify-between">
               <span className="text-muted-foreground">Settles what’s owed first</span>
@@ -188,7 +188,7 @@ export function RatesDialog({ open, onOpenChange }: { open: boolean; onOpenChang
             </thead>
             <tbody>
               {CPM_RATES.map((r) => (
-                <tr key={r.code} className={cn("border-t border-foreground/5", r.code === mine && "bg-brand/5 font-medium")}>
+                <tr key={r.code} className={cn("border-t border-foreground/10", r.code === mine && "bg-brand/10 font-medium")}>
                   <td className="px-3 py-2">
                     {r.country}
                     {r.code === mine && <span className="ml-2 text-xs font-normal text-muted-foreground">You’re here</span>}
@@ -196,7 +196,7 @@ export function RatesDialog({ open, onOpenChange }: { open: boolean; onOpenChang
                   <td className="px-3 py-2 text-right tabular-nums">{usd(r.cpm)}</td>
                 </tr>
               ))}
-              <tr className={cn("border-t border-foreground/5", mine === "OTHER" && "bg-brand/5 font-medium")}>
+              <tr className={cn("border-t border-foreground/10", mine === "OTHER" && "bg-brand/10 font-medium")}>
                 <td className="px-3 py-2">All other countries</td>
                 <td className="px-3 py-2 text-right tabular-nums">{usd(OTHER_CPM)}</td>
               </tr>
@@ -339,7 +339,7 @@ export function NewPlacementDialog({
           <div className="flex flex-col gap-2">
             <Label htmlFor="pl-size">Size</Label>
             {flick ? (
-              <p className="flex h-9 items-center gap-2 rounded-2xl bg-muted/60 px-3 text-sm tabular-nums">
+              <p className="flex h-9 items-center gap-2 rounded-2xl bg-muted/70 px-3 text-sm tabular-nums">
                 <RatioGlyph size={flick.size} className="text-muted-foreground" />
                 {flick.size}
                 <span className="text-muted-foreground">· this Flick’s size</span>
@@ -470,7 +470,7 @@ export function ReplaceFlickDialog({
                       onClick={() => setPick(f.id)}
                       aria-pressed={pick === f.id}
                       className={cn(
-                        "flex w-full flex-col gap-1.5 rounded-xl p-1.5 text-left outline-none ring-1 ring-foreground/10 transition hover:ring-foreground/25 focus-visible:ring-2 focus-visible:ring-ring",
+                        "flex w-full flex-col gap-1.5 rounded-xl p-1.5 text-left ring-1 ring-foreground/10 transition hover:ring-foreground/30 focus-ring",
                         pick === f.id && "ring-2 ring-brand hover:ring-brand",
                       )}
                     >
@@ -519,7 +519,7 @@ export function ReplaceFlickDialog({
             </DialogDescription>
           </DialogHeader>
           {previewing && (
-            <div className="rounded-2xl bg-muted/60 p-3">
+            <div className="rounded-2xl bg-muted/70 p-3">
               <LiveFlick key={previewing.id} flick={previewing} tall />
             </div>
           )}
@@ -560,9 +560,9 @@ export function ServeInAds({ flick, onOpenPlacement }: { flick: FlickRef; onOpen
       </p>
 
       <section className="flex flex-col gap-2">
-        <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Placements in {flick.size}</h3>
+        <h3 className="text-sm font-medium">Placements in {flick.size}</h3>
         {same.length ? (
-          <ul className="flex flex-col divide-y divide-foreground/5 rounded-2xl ring-1 ring-foreground/10">
+          <ul className="flex flex-col divide-y divide-foreground/10 rounded-2xl ring-1 ring-foreground/10">
             {same.map((p) => {
               const here = p.flick?.id === flick.id
               return (
@@ -609,7 +609,7 @@ export function ServeInAds({ flick, onOpenPlacement }: { flick: FlickRef; onOpen
  */
 export function FlickStage({ flick, videos, start }: { flick: FlickRef; videos?: number[]; start?: number }) {
   return (
-    <div className="h-[clamp(280px,56vh,520px)] w-full rounded-xl bg-muted p-4 ring-1 ring-foreground/5 sm:p-6">
+    <div className="h-[clamp(280px,56vh,520px)] w-full rounded-xl bg-muted p-4 ring-1 ring-foreground/10 sm:p-6">
       <div className="flex size-full items-center justify-center" style={{ containerType: "size" }}>
         <LiveFlick flick={flick} videos={videos} start={start} fit />
       </div>

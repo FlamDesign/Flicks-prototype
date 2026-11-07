@@ -255,7 +255,7 @@ function Card({ it, when, whenTitle, onOpen, menu, warm }: { it: Item; when: str
             onOpen()
           }}
           onKeyDown={(e) => e.target === e.currentTarget && (e.key === "Enter" || e.key === " ") && (e.preventDefault(), onOpen())}
-          className="group mb-6 cursor-pointer outline-none"
+          className="group mb-6 cursor-pointer rounded-2xl focus-ring"
         >
           <MediaTile
             src={it.image}
@@ -270,7 +270,7 @@ function Card({ it, when, whenTitle, onOpen, menu, warm }: { it: Item; when: str
               <p className="truncate text-sm font-medium">{it.name}</p>
               <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <span title={whenTitle}>{when}</span>
-                <span className="text-muted-foreground/40">·</span>
+                <span className="text-muted-foreground/50">·</span>
                 <span className="tabular-nums">{it.size}</span>
               </p>
             </div>

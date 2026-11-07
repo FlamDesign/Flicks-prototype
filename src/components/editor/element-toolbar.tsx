@@ -115,7 +115,7 @@ export function ElementToolbar({
     <div
       role="toolbar"
       aria-label="Element options"
-      className="flex h-11 max-w-full items-center gap-1 overflow-x-auto rounded-xl bg-popover px-1.5 text-popover-foreground shadow-lg ring-1 ring-foreground/10"
+      className="flex h-11 max-w-full items-center gap-1 overflow-x-auto rounded-2xl bg-popover px-1.5 text-popover-foreground shadow-lg ring-1 ring-foreground/10"
       onPointerDown={(e) => e.stopPropagation()}
     >
       {grip}
@@ -123,7 +123,7 @@ export function ElementToolbar({
         // icon buttons: just the image and where it goes
         <>
           <IconTip label="Replace icon image">
-            <Button variant="ghost" size="sm" onClick={onPickImage} className="h-8 shrink-0 gap-1.5 px-2.5 font-normal">
+            <Button variant="ghost" onClick={onPickImage} className="shrink-0 gap-1.5 px-2.5 font-normal">
               <HugeiconsIcon icon={Exchange01Icon} className="size-4" />
               Replace
             </Button>
@@ -140,7 +140,7 @@ export function ElementToolbar({
             // one thumbnail picked: its image
             <>
               <IconTip label={thumb.src ? `Change ${thumb.name} thumbnail` : `Add ${thumb.name} thumbnail`}>
-                <Button variant="ghost" size="sm" onClick={thumb.onChoose} className="h-8 gap-2 pl-1 pr-2.5 font-normal">
+                <Button variant="ghost" onClick={thumb.onChoose} className="gap-2 pl-1 pr-2.5 font-normal">
                   <span className="grid size-6 place-items-center overflow-hidden rounded-md bg-muted ring-1 ring-foreground/10">
                     {thumb.src ? <img loading="lazy" decoding="async" src={thumb.src} alt="" className="size-full object-cover" /> : <HugeiconsIcon icon={ImageAdd01Icon} className="size-3.5 text-muted-foreground" />}
                   </span>
@@ -258,7 +258,7 @@ export function FontPicker({ font, onPick }: { font: string; onPick: (name: stri
     <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setQ("") }}>
       <IconTip label={`Font: ${font}`}>
         <PopoverTrigger asChild>
-          <Button variant="ghost" size="sm" aria-label={`Font: ${font}`} className="h-8 w-[136px] shrink-0 justify-between gap-1 px-2.5 font-normal ring-1 ring-foreground/10">
+          <Button variant="ghost" aria-label={`Font: ${font}`} className="w-[136px] shrink-0 justify-between gap-1 px-2.5 font-normal ring-1 ring-foreground/10">
             <span className="truncate" style={{ fontFamily: FONTS.find((f) => f.name === font)?.stack }}>
               {font}
             </span>
@@ -375,7 +375,7 @@ function ButtonControls({
   return (
     <>
       <ColorPicker label="Button color" allowTransparent value={fill} onChange={(bg) => onChange({ bg } as Partial<CanvasElement>)}>
-        <span className="size-4 rounded-[5px] ring-1 ring-foreground/20" style={{ background: swatchBg(fill) }} />
+        <span className="size-4 rounded-md ring-1 ring-foreground/20" style={{ background: swatchBg(fill) }} />
       </ColorPicker>
 
       <BorderPopover el={el} onChange={onChange} />
@@ -399,7 +399,7 @@ function ImageFill({ label, src, fit, onFit, onChoose, onRemove }: { label: stri
       <IconTip label={label}>
         <PopoverTrigger asChild>
           <Button variant="ghost" size="icon-sm" aria-label={label} className="size-8 p-1">
-            <img loading="lazy" decoding="async" src={src} alt="" className="size-full rounded-[5px] object-cover ring-1 ring-foreground/20" />
+            <img loading="lazy" decoding="async" src={src} alt="" className="size-full rounded-md object-cover ring-1 ring-foreground/20" />
           </Button>
         </PopoverTrigger>
       </IconTip>
@@ -496,7 +496,7 @@ function StripControls({
 
       <StrokePopover label="Active highlight" width={el.highlightWidth} color={el.highlight} onChange={(highlightWidth, highlight) => set({ highlightWidth, highlight })} />
       <ColorPicker label="Background color" allowTransparent value={el.bg} onChange={(bg) => set({ bg })}>
-        <span className="size-4 rounded-[5px] ring-1 ring-foreground/20" style={{ background: swatchBg(el.bg) }} />
+        <span className="size-4 rounded-md ring-1 ring-foreground/20" style={{ background: swatchBg(el.bg) }} />
       </ColorPicker>
       <RadiusPopover id={el.id} value={el.radius} onChange={(radius) => set({ radius })} />
     </>
@@ -509,7 +509,7 @@ function ImageControls({ el, onChange, onReplace }: { el: ImageEl; onChange: (p:
   return (
     <>
       <IconTip label="Replace image">
-        <Button variant="ghost" size="sm" onClick={onReplace} className="h-8 shrink-0 gap-1.5 px-2.5 font-normal">
+        <Button variant="ghost" onClick={onReplace} className="shrink-0 gap-1.5 px-2.5 font-normal">
           <HugeiconsIcon icon={Exchange01Icon} className="size-4" />
           Replace
         </Button>
@@ -544,7 +544,7 @@ function ShapeControls({ el, onChange, onChooseImage }: { el: ShapeEl; onChange:
     <>
       {!open && (
         <ColorPicker label={isGradient(el.fill) ? "Shape color (a gradient: pick a color to replace it)" : "Shape color"} allowTransparent value={solid(el.fill, SHAPE_GREY)} onChange={(fill) => set({ fill })}>
-          <span className="size-4 rounded-[5px] ring-1 ring-foreground/20" style={{ background: paintCss(el.fill) }} />
+          <span className="size-4 rounded-md ring-1 ring-foreground/20" style={{ background: paintCss(el.fill) }} />
         </ColorPicker>
       )}
       <StrokePopover label={open ? "Line" : "Border"} width={el.strokeWidth} color={solid(el.stroke, SHAPE_GREY)} onChange={(strokeWidth, stroke) => set({ strokeWidth: open ? Math.max(1, strokeWidth) : strokeWidth, stroke })} />
@@ -604,7 +604,7 @@ function Swatches({ value, onChange, allowTransparent }: { value: string; onChan
           aria-label="Transparent"
           aria-pressed={v === "transparent" || v.endsWith("00") && v.length === 9}
           onClick={() => onChange("transparent")}
-          className="size-6 rounded-md p-0 ring-1 ring-foreground/15 hover:opacity-90"
+          className="size-6 rounded-md p-0 ring-1 ring-foreground/20 hover:opacity-90"
           style={{ background: CHECKER }}
         />
       )}
@@ -615,7 +615,7 @@ function Swatches({ value, onChange, allowTransparent }: { value: string; onChan
           aria-label={c}
           aria-pressed={v === c}
           onClick={() => onChange(c)}
-          className={cn("size-6 rounded-md p-0 ring-1 ring-foreground/15 hover:opacity-90", v === c && "ring-2 ring-brand ring-offset-1 ring-offset-popover")}
+          className={cn("size-6 rounded-md p-0 ring-1 ring-foreground/20 hover:opacity-90", v === c && "ring-2 ring-brand ring-offset-1 ring-offset-popover")}
           style={{ background: c }}
         />
       ))}
@@ -645,8 +645,8 @@ function StrokePopover({ label, width, color, onChange }: { label: string; width
         <TooltipTrigger asChild>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="icon-sm" aria-label={label} className="size-8">
-              <span className="relative size-4 rounded-[5px]" style={{ background: CHECKER }}>
-                <span className="absolute inset-0 rounded-[5px] ring-1 ring-foreground/20" style={{ boxShadow: `inset 0 0 0 ${width ? 3 : 0}px ${color}` }} />
+              <span className="relative size-4 rounded-md" style={{ background: CHECKER }}>
+                <span className="absolute inset-0 rounded-md ring-1 ring-foreground/20" style={{ boxShadow: `inset 0 0 0 ${width ? 3 : 0}px ${color}` }} />
               </span>
             </Button>
           </PopoverTrigger>

@@ -79,7 +79,7 @@ export function TableSkeleton({ rows = 5 }: { rows?: number }) {
       <div className="mt-6 overflow-hidden rounded-2xl ring-1 ring-foreground/10">
         <div className="h-9 bg-muted/50" />
         {Array.from({ length: rows }, (_, i) => (
-          <div key={i} className="flex items-center gap-6 border-t border-foreground/5 px-4 py-3.5">
+          <div key={i} className="flex items-center gap-6 border-t border-foreground/10 px-4 py-3.5">
             <Line className="w-48" />
             <Line className="ml-auto w-10" />
             <Line className="w-16 max-sm:hidden" />
@@ -289,7 +289,7 @@ export function EditorSkeleton() {
         ))}
       </div>
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="grid flex-1 place-items-center bg-muted/40">
+        <div className="grid flex-1 place-items-center bg-muted/50">
           <Skeleton className="aspect-[9/16] h-[70%] rounded-xl" />
         </div>
         <div className="flex justify-center gap-3 border-t p-3">

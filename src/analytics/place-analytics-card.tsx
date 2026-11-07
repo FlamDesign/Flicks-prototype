@@ -63,14 +63,14 @@ export function PlaceAnalyticsCard({ kind, id }: { kind: "placement" | "embed"; 
                   </span>
                 </div>
                 <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div className={cn("h-full rounded-full", v.i === meta.start ? "bg-brand" : "bg-brand/45")} style={{ width: `${(v.shown / max) * 100}%` }} />
+                  <div className={cn("h-full rounded-full", v.i === meta.start ? "bg-brand" : "bg-brand/50")} style={{ width: `${(v.shown / max) * 100}%` }} />
                 </div>
               </div>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="rounded-xl bg-muted/60 px-4 py-6 text-center text-sm text-muted-foreground">{kind === "placement" ? "No views yet. Views show here once the tag is live in your ad platform." : "No views yet. Views show here once the embed is on your site."}</p>
+        <p className="rounded-xl bg-muted/70 px-4 py-6 text-center text-sm text-muted-foreground">{kind === "placement" ? "No views yet. Views show here once the tag is live in your ad platform." : "No views yet. Views show here once the embed is on your site."}</p>
       )}
     </section>
   )

@@ -111,7 +111,7 @@ function Chip({ cx, y, children, className, style }: { cx: number; y: number; ch
   return (
     <div className="absolute -translate-x-1/2" style={{ left: u(cx), top: u(y) }}>
       <div
-        className={cn("flex items-center justify-center gap-[0.4em] whitespace-nowrap rounded-full bg-background/85 font-medium text-foreground/80 shadow-md ring-1 ring-foreground/[0.07] backdrop-blur", className)}
+        className={cn("flex items-center justify-center gap-[0.4em] whitespace-nowrap rounded-full bg-background/90 font-medium text-foreground/90 shadow-md ring-1 ring-foreground/[0.07] backdrop-blur", className)}
         style={{ fontSize: u(11), height: u(22), paddingInline: u(10), ...style }}
       >
         {children}
@@ -181,7 +181,7 @@ function SceneVideo() {
 
       {/* connector */}
       <svg viewBox="0 0 520 280" className="absolute inset-0 size-full overflow-visible" aria-hidden>
-        <path d="M296 124 H 318" fill="none" strokeDasharray="3 4" strokeLinecap="round" strokeWidth={1.5} className="stroke-foreground/15" />
+        <path d="M296 124 H 318" fill="none" strokeDasharray="3 4" strokeLinecap="round" strokeWidth={1.5} className="stroke-foreground/20" />
       </svg>
 
       {/* the video: slot → generating → playing */}
@@ -380,7 +380,7 @@ function SceneAnywhere() {
             strokeLinecap="round"
             pathLength={1}
             strokeDasharray="1"
-            className="stroke-foreground/15"
+            className="stroke-foreground/20"
             style={a("hfw-draw", 0.45, 0.35 + i * 0.25)}
           />
         ))}
@@ -413,7 +413,7 @@ function SceneAnywhere() {
                 </div>
                 <div className="rounded-full bg-muted" style={box(6, 16, 30, 4)} />
                 <div className="rounded-full bg-muted" style={box(6, 24, 22, 4)} />
-                <div className="rounded-full bg-foreground/80" style={box(6, 36, 18, 7)} />
+                <div className="rounded-full bg-foreground/90" style={box(6, 36, 18, 7)} />
                 <MiniFlick x={44} y={14} size={36} rail={false} />
               </div>
             )}
@@ -498,7 +498,7 @@ export function HowFlicksWork({ open, onOpenChange, onStart }: { open: boolean; 
                   onClick={() => go(i)}
                   className={cn("relative h-1.5 overflow-hidden rounded-full bg-foreground/10 transition-[width] duration-300", i === step ? "w-8" : "w-4")}
                 >
-                  {i < step && <span className="absolute inset-0 bg-foreground/25" />}
+                  {i < step && <span className="absolute inset-0 bg-foreground/30" />}
                   {i === step && (
                     <span
                       key={`${step}-${auto}`}

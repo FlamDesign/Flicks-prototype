@@ -119,7 +119,7 @@ export function EditorPanel({
               aria-pressed={active}
               onClick={() => (picker?.onClose(), setOpen(active ? null : s.id))}
               className={cn(
-                "group flex w-full flex-col items-center gap-1 rounded-xl py-1.5 text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring",
+                "group flex w-full flex-col items-center gap-1 rounded-xl py-1.5 text-muted-foreground transition-colors hover:text-foreground focus-ring",
                 active && "text-foreground",
               )}
             >
@@ -219,7 +219,7 @@ function ShapeList({ disabled, onAdd }: { disabled: boolean; onAdd: (id: string)
               type="button"
               disabled={disabled}
               onClick={() => onAdd(x.id)}
-              className="flex w-full flex-col items-center gap-1.5 rounded-xl p-2 text-xs text-muted-foreground outline-none ring-1 ring-foreground/10 transition-colors hover:bg-muted/50 hover:text-foreground hover:ring-foreground/20 focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+              className="flex w-full flex-col items-center gap-1.5 rounded-xl p-2 text-xs text-muted-foreground ring-1 ring-foreground/10 transition-colors hover:bg-muted/50 hover:text-foreground hover:ring-foreground/20 focus-ring disabled:opacity-50"
             >
               <span className="grid size-12 place-items-center text-foreground">
                 <span className="block" style={{ width: x.ar >= 1 ? 40 : 40 * x.ar, height: x.ar >= 1 ? 40 / Math.min(x.ar, 4) : 40 }}>
@@ -470,12 +470,12 @@ function FailedTile({ u, onRetry, onRemove }: { u: Upload; onRetry: () => void; 
             type="button"
             onClick={onRetry}
             aria-label={`Retry uploading ${u.name}`}
-            className="relative block aspect-square w-full overflow-hidden rounded-xl ring-2 ring-destructive/60 outline-none focus-visible:ring-ring"
+            className="relative block aspect-square w-full overflow-hidden rounded-xl ring-2 ring-destructive/70 outline-none focus-visible:ring-ring"
           >
             <img loading="lazy" decoding="async" src={u.src} alt="" className="size-full object-cover opacity-50 grayscale" />
             <span className="absolute inset-0 grid place-items-center bg-destructive/20 text-white">
               <span className="grid size-8 place-items-center rounded-full bg-destructive shadow-sm">
-                <HugeiconsIcon icon={RefreshIcon} className="size-4" strokeWidth={2.25} />
+                <HugeiconsIcon icon={RefreshIcon} className="size-4" strokeWidth={2} />
               </span>
             </span>
           </button>
@@ -526,7 +526,7 @@ function PickerList({ picker, uploads, setUploads }: { picker: Picker; uploads: 
                 )}
                 {on && (
                   <span aria-hidden className="pointer-events-none absolute right-1.5 top-1.5 grid size-5 place-items-center rounded-full bg-brand text-brand-foreground shadow-sm">
-                    <HugeiconsIcon icon={Tick02Icon} className="size-3" strokeWidth={2.5} />
+                    <HugeiconsIcon icon={Tick02Icon} className="size-3" strokeWidth={3} />
                   </span>
                 )}
               </li>

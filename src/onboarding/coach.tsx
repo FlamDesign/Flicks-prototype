@@ -124,7 +124,7 @@ export function CoachLayer() {
               ))}
             </mask>
           </defs>
-          <rect width="100%" height="100%" fill="rgb(10 10 12 / 0.5)" mask="url(#coach-holes)" />
+          <rect width="100%" height="100%" fill="color-mix(in oklch, black 50%, transparent)" mask="url(#coach-holes)" />
         </svg>
       )}
       {/* a light ring on each target */}

@@ -99,12 +99,12 @@ export function AppSidebar({
     <aside className="hidden w-[232px] shrink-0 flex-col gap-4 overflow-y-auto px-3 py-4 [scrollbar-width:none] md:flex">
       <div className="flex h-10 items-center gap-1 px-2">
         {/* the logo goes home (Create) */}
-        <button type="button" aria-label="Flicks home" onClick={() => onNavigate("Create")} className="-mx-1 rounded-lg px-1 outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <button type="button" aria-label="Flicks home" onClick={() => onNavigate("Create")} className="-mx-1 rounded-lg px-1 focus-ring">
           <FlicksLogo className="h-7 text-foreground" />
         </button>
       </div>
       {onSearch && (
-        <Button variant="outline" onClick={onSearch} className="h-9 justify-start gap-2 bg-transparent px-3 font-normal text-muted-foreground shadow-none hover:bg-sidebar-accent/60 dark:hover:bg-sidebar-accent/60 active:not-aria-[haspopup]:translate-y-0 active:not-aria-[haspopup]:scale-100">
+        <Button variant="outline" size="lg" onClick={onSearch} className="justify-start gap-2 bg-transparent px-3 font-normal text-muted-foreground shadow-none hover:bg-sidebar-accent/70 dark:hover:bg-sidebar-accent/70 active:not-aria-[haspopup]:translate-y-0 active:not-aria-[haspopup]:scale-100">
           <HugeiconsIcon icon={Search01Icon} className="size-4" />
           Search
           <KbdGroup className="ml-auto">
@@ -136,7 +136,7 @@ export function AppSidebar({
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="h-9 w-full justify-start gap-2 px-2 text-left hover:bg-sidebar-accent/60 dark:hover:bg-sidebar-accent/60 data-[state=open]:bg-sidebar-accent">
+          <Button variant="ghost" size="lg" className="w-full justify-start gap-2 px-2 text-left hover:bg-sidebar-accent/70 dark:hover:bg-sidebar-accent/70 data-[state=open]:bg-sidebar-accent">
             <Avatar className="size-8 rounded-lg after:rounded-lg">
               {photo && <AvatarImage src={photo} alt="" className="rounded-lg object-cover" />}
               <AvatarFallback className="rounded-lg bg-brand text-xs font-semibold text-brand-foreground">{name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}</AvatarFallback>
@@ -183,7 +183,7 @@ function NavButton({ label, icon, active, onClick }: { label: string; icon: type
       onClick={onClick}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "h-9 justify-start gap-3 px-3 font-normal text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground dark:hover:bg-sidebar-accent/60 active:not-aria-[haspopup]:translate-y-0 active:not-aria-[haspopup]:scale-100",
+        "h-9 justify-start gap-3 px-3 font-normal text-muted-foreground hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground dark:hover:bg-sidebar-accent/70 active:not-aria-[haspopup]:translate-y-0 active:not-aria-[haspopup]:scale-100",
         active && "bg-sidebar-accent font-medium text-sidebar-accent-foreground hover:bg-sidebar-accent",
       )}
     >

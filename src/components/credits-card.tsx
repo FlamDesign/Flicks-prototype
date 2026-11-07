@@ -87,7 +87,7 @@ export function CreditsCard({
       <div
         role="group"
         aria-label="Credits"
-        className={cn("flex flex-col gap-1 rounded-xl bg-background p-3 shadow-xs ring-1 ring-foreground/5", low && "ring-brand/40")}
+        className={cn("flex flex-col gap-1 rounded-xl bg-background p-3 shadow-xs ring-1 ring-foreground/10", low && "ring-brand/50")}
       >
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <HugeiconsIcon icon={SparklesIcon} className="size-3.5 text-brand" />
@@ -205,7 +205,7 @@ function BuyCreditsDialog({
                       aria-pressed={on}
                       className={cn(
                         "tabular-nums",
-                        on && "border-foreground bg-foreground/5 hover:bg-foreground/5 dark:border-foreground dark:bg-foreground/10",
+                        on && "border-foreground bg-foreground/10 hover:bg-foreground/10 dark:border-foreground dark:bg-foreground/10",
                       )}
                       onClick={() => setI(STOPS.indexOf(v))}
                     >
@@ -232,7 +232,7 @@ function BuyCreditsDialog({
               </div>
 
               {/* the bonus, in one place: how far away it is, or that it's in */}
-              <div className={cn("flex h-10 items-center gap-2.5 rounded-lg px-3 text-sm transition-colors", bonus > 0 ? "bg-brand/10" : "bg-brand/5")}>
+              <div className={cn("flex h-10 items-center gap-2.5 rounded-lg px-3 text-sm transition-colors", bonus > 0 ? "bg-brand/10" : "bg-brand/10")}>
                 <HugeiconsIcon icon={GiftIcon} className="size-4 shrink-0 text-brand" />
                 {bonus > 0 ? (
                   <span className="flex-1">

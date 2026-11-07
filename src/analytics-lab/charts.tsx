@@ -169,7 +169,7 @@ export function BarList({
         <li
           key={it.label}
           tabIndex={detail ? 0 : undefined}
-          className="group flex flex-col gap-1 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="group flex flex-col gap-1 rounded-md focus-ring"
           onPointerMove={detail ? (e) => setTip({ x: e.clientX, y: e.clientY, title: it.label, rows: detail(i) }) : undefined}
           onPointerLeave={() => setTip(null)}
         >
@@ -220,7 +220,7 @@ export function Funnel({ steps }: { steps: { label: string; value: number }[] })
       })}
     </ol>
     {last && (
-      <p className="border-t border-foreground/5 pt-3 text-sm">
+      <p className="border-t border-foreground/10 pt-3 text-sm">
         <span className="font-semibold tabular-nums">{((last.value / first) * 100).toFixed(1)}%</span> <span className="text-muted-foreground">of loads end in a click, overall.</span>
       </p>
     )}
@@ -260,7 +260,7 @@ export function SwitchGrid({ names, matrix, total }: { names: string[]; matrix: 
                     tabIndex={same ? undefined : 0}
                     onPointerMove={same ? undefined : (e) => setTip({ x: e.clientX, y: e.clientY, title: `${names[a]} → ${names[b]}`, rows: [{ label: "switches", value: Math.round(v * total).toLocaleString("en-US") }, { label: "of all switches", value: `${(v * 100).toFixed(1)}%` }] })}
                     onPointerLeave={() => setTip(null)}
-                    className={cn("h-10 min-w-16 rounded-md text-center tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring", same ? "bg-muted/40 text-muted-foreground/50" : "hover:ring-2 hover:ring-foreground/20")}
+                    className={cn("h-10 min-w-16 rounded-md text-center tabular-nums focus-ring", same ? "bg-muted/50 text-muted-foreground/50" : "hover:ring-2 hover:ring-foreground/20")}
                     style={same ? undefined : { background: `color-mix(in oklch, var(--seq-hi) ${Math.round(12 + k * 78)}%, var(--seq-lo))`, color: k > 0.55 ? "var(--brand-foreground)" : "var(--foreground)" }}
                   >
                     {same ? "—" : `${(v * 100).toFixed(0)}%`}

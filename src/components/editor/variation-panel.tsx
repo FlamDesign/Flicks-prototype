@@ -63,7 +63,7 @@ export function VariationPanel({
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1 pb-4 pt-1">
       {stale && (
-        <div role="status" className="flex flex-col gap-2 rounded-xl bg-brand/10 p-3 text-sm ring-1 ring-brand/25">
+        <div role="status" className="flex flex-col gap-2 rounded-xl bg-brand/10 p-3 text-sm ring-1 ring-brand/30">
           <p className="flex items-center gap-1.5 font-medium text-brand">
             <HugeiconsIcon icon={Alert02Icon} className="size-4" />
             Needs regenerating
@@ -176,7 +176,7 @@ function FeedsSection({
       {adding && <NewFeed feeds={feeds} onAdd={(f) => (onAdd(f), setAdding(false))} onCancel={() => setAdding(false)} />}
 
       {feeds.length === 0 && !adding && (
-        <Button variant="ghost" onClick={() => setAdding(true)} className="h-auto w-full rounded-xl border border-dashed border-foreground/15 py-3 text-xs font-normal text-muted-foreground">
+        <Button variant="ghost" onClick={() => setAdding(true)} className="h-auto w-full rounded-xl border border-dashed border-foreground/20 py-3 text-xs font-normal text-muted-foreground">
           No feeds yet. Add one like @price
         </Button>
       )}
@@ -210,7 +210,7 @@ function FeedsSection({
                       type="button"
                       onClick={() => (setDraft(f.name), setRenaming(f.id))}
                       aria-label={`Rename @${f.name}`}
-                      className="absolute inset-y-0 left-1.5 z-10 my-auto flex h-6 w-[6.25rem] items-center gap-1 rounded-md px-1 text-left text-xs font-medium outline-none hover:bg-background/80 focus-visible:ring-2 focus-visible:ring-ring/50"
+                      className="absolute inset-y-0 left-1.5 z-10 my-auto flex h-6 w-[6.25rem] items-center gap-1 rounded-md px-1 text-left text-xs font-medium hover:bg-background/90 focus-ring"
                     >
                       <HugeiconsIcon icon={f.type === "link" ? Link04Icon : TextIcon} className="size-3.5 shrink-0 text-muted-foreground" />
                       <span className="truncate">@{f.name}</span>
@@ -229,7 +229,7 @@ function FeedsSection({
                 inputMode={f.type === "link" ? "url" : undefined}
                 aria-label={`@${f.name} value`}
                 // fixed label column so values line up
-                className={cn("pl-[6.75rem] pr-8 transition-shadow", flash === f.id && "bg-brand/5 ring-2 ring-brand")}
+                className={cn("pl-[6.75rem] pr-8 transition-shadow", flash === f.id && "bg-brand/10 ring-2 ring-brand")}
               />
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -331,7 +331,7 @@ export function NewFeed({
               aria-checked={type === t}
               onClick={() => setType(t)}
               className={cn(
-                "flex h-7 items-center justify-center gap-1.5 rounded-md text-xs font-medium text-muted-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
+                "flex h-7 items-center justify-center gap-1.5 rounded-md text-xs font-medium text-muted-foreground transition-colors focus-ring",
                 type === t ? "bg-background text-foreground shadow-sm" : "hover:text-foreground",
               )}
             >
@@ -380,7 +380,7 @@ export function NewFeed({
                 key={x.name}
                 type="button"
                 onClick={() => setName(x.name)}
-                className="h-6 rounded-md bg-muted px-1.5 text-xs text-muted-foreground outline-none hover:bg-muted/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                className="h-6 rounded-md bg-muted px-1.5 text-xs text-muted-foreground hover:bg-muted/50 hover:text-foreground focus-ring"
               >
                 @{x.name}
               </button>

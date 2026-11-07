@@ -37,7 +37,7 @@ export function StateManager({ open, onOpenChange }: { open: boolean; onOpenChan
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex h-[min(600px,85vh)] gap-0 overflow-hidden p-0 sm:max-w-3xl">
         {/* Side panel */}
-        <aside className="flex w-48 shrink-0 flex-col border-r bg-muted/40 p-3">
+        <aside className="flex w-48 shrink-0 flex-col border-r bg-muted/50 p-3">
           <DialogHeader className="gap-1 px-2 pb-4 pt-1 text-left">
             <DialogTitle className="flex items-center gap-2 text-base">
               State manager <DevBadge />
@@ -152,7 +152,7 @@ function FieldControl({ f }: { f: Field }) {
               variant="outline"
               aria-pressed={v === p.value}
               onClick={() => update({ [f.key]: p.value })}
-              className={cn("rounded-full", v === p.value && "border-foreground bg-foreground/5")}
+              className={cn("rounded-full", v === p.value && "border-foreground bg-foreground/10")}
             >
               {p.label}
               <span className="text-muted-foreground tabular-nums">{p.value.toLocaleString("en-US")}</span>

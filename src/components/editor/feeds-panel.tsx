@@ -101,7 +101,7 @@ export function FeedsPanel({
 
   if (!feeds.length)
     return (
-      <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-foreground/15 px-5 py-8 text-center" data-keep-selection>
+      <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-foreground/20 px-5 py-8 text-center" data-keep-selection>
         <span className="grid size-9 place-items-center rounded-xl bg-muted text-muted-foreground">
           <HugeiconsIcon icon={BracesIcon} className="size-5" />
         </span>
@@ -154,7 +154,7 @@ export function FeedsPanel({
                 type="button"
                 onDoubleClick={() => setRenaming(open.id)}
                 title="Double-click to rename"
-                className="min-w-0 flex-1 truncate text-left text-base font-medium outline-none"
+                className="min-w-0 flex-1 truncate rounded-md text-left text-base font-medium focus-ring"
               >
                 {open.name}
               </button>
@@ -191,7 +191,7 @@ export function FeedsPanel({
                     active ? "ring-brand/50" : "ring-foreground/10 hover:ring-foreground/20",
                   )}
                 >
-                  <button type="button" onClick={() => onSelectVideo(v.id)} aria-label={`Show ${v.name}`} aria-pressed={active} className="flex min-w-0 items-center gap-2.5 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+                  <button type="button" onClick={() => onSelectVideo(v.id)} aria-label={`Show ${v.name}`} aria-pressed={active} className="flex min-w-0 items-center gap-2.5 rounded-lg text-left focus-ring">
                     <span className="relative size-8 shrink-0 overflow-hidden rounded-full bg-muted ring-1 ring-foreground/10">
                       {v.poster && <img loading="lazy" decoding="async" src={v.poster} alt="" className="absolute inset-0 size-full object-cover" />}
                     </span>
@@ -230,7 +230,7 @@ export function FeedsPanel({
                         onOpen(f.id)
                         if (uses.length) onSelectElements(uses.map((u) => u.id))
                       }}
-                      className="flex h-full min-w-0 flex-1 items-center gap-2 rounded-lg text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                      className="flex h-full min-w-0 flex-1 items-center gap-2 rounded-lg text-left text-sm focus-ring"
                     >
                       <HugeiconsIcon icon={BracesIcon} className="size-4 shrink-0 text-muted-foreground" />
                       <span className="min-w-0 flex-1 truncate font-medium">{f.name}</span>
@@ -306,10 +306,10 @@ export function FeedsTitle({ feeds = [], openId, onOpen }: { feeds?: Feed[]; ope
   if (!f) return <h2 className="text-sm font-medium">Feeds</h2>
   return (
     <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-0.5 text-sm" data-keep-selection>
-      <button type="button" onClick={() => onOpen?.(null)} className="-ml-1.5 h-7 shrink-0 rounded-md px-1.5 text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50">
+      <button type="button" onClick={() => onOpen?.(null)} className="-ml-1.5 h-7 shrink-0 rounded-md px-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus-ring">
         Feeds
       </button>
-      <HugeiconsIcon icon={ArrowRight01Icon} className="size-3.5 shrink-0 text-muted-foreground/60" />
+      <HugeiconsIcon icon={ArrowRight01Icon} className="size-3.5 shrink-0 text-muted-foreground/70" />
       <span aria-current="page" className="min-w-0 truncate px-1 font-medium">
         {f.name}
       </span>

@@ -153,7 +153,7 @@ export function ModeSwitch({ mode, onChange }: { mode: "design" | "preview"; onC
       {/* sliding highlight */}
       <span
         aria-hidden
-        className="absolute inset-y-0.5 left-0.5 w-[calc(50%-2px)] rounded-lg bg-background shadow-sm ring-1 ring-foreground/5 transition-transform duration-200 ease-out"
+        className="absolute inset-y-0.5 left-0.5 w-[calc(50%-2px)] rounded-lg bg-background shadow-sm ring-1 ring-foreground/10 transition-transform duration-200 ease-out"
         style={{ transform: mode === "preview" ? "translateX(100%)" : undefined }}
       />
       {items.map(({ m, label, icon, hint }) => (

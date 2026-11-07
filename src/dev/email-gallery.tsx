@@ -73,7 +73,7 @@ export function EmailGallery({ open, onOpenChange }: { open: boolean; onOpenChan
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex h-[min(820px,92vh)] gap-0 overflow-hidden p-0 sm:max-w-6xl">
-        <aside className="flex w-64 shrink-0 flex-col border-r bg-muted/40 p-3">
+        <aside className="flex w-64 shrink-0 flex-col border-r bg-muted/50 p-3">
           <DialogHeader className="gap-1 px-2 pb-3 pt-1 text-left">
             <DialogTitle className="flex items-center gap-2 text-base">
               Emails <Badge variant="secondary" className="font-mono text-xs">DEV</Badge>
@@ -200,7 +200,7 @@ function EmailView({ e }: { e: EmailDef }) {
           </div>
         </div>
       </header>
-      <div className="min-h-0 flex-1 overflow-y-auto bg-muted/40 p-6">
+      <div className="min-h-0 flex-1 overflow-y-auto bg-muted/50 p-6">
         {tab === "preview" ? (
           <div className={cn("mx-auto flex flex-col gap-3", mobile ? "w-[375px]" : "w-full max-w-[760px]")}>
             {/* how it looks in the inbox list */}

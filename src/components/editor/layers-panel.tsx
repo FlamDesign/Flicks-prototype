@@ -89,14 +89,14 @@ export function LayersPanel({
               onClick={(e) => !el.hidden && setSelected(e.shiftKey ? (isSel ? selected.filter((id) => id !== el.id) : [...selected, el.id]) : [el.id])}
               onKeyDown={(e) => e.key === "Enter" && !el.hidden && setSelected([el.id])}
               className={cn(
-                "flex h-9 cursor-grab items-center gap-2 rounded-lg pl-1.5 pr-1 text-sm outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 active:cursor-grabbing",
+                "flex h-9 cursor-grab items-center gap-2 rounded-lg pl-1.5 pr-1 text-sm hover:bg-muted focus-ring active:cursor-grabbing",
                 isSel && "bg-muted font-medium",
-                dragging === el.id && "opacity-40",
+                dragging === el.id && "opacity-50",
               )}
             >
-              <HugeiconsIcon icon={DragDropVerticalIcon} className="size-3.5 shrink-0 text-muted-foreground/60 opacity-0 group-hover/layer:opacity-100" />
+              <HugeiconsIcon icon={DragDropVerticalIcon} className="size-3.5 shrink-0 text-muted-foreground/70 opacity-0 group-hover/layer:opacity-100" />
               <HugeiconsIcon icon={ICON[el.kind]} className={cn("size-4 shrink-0", isSel ? "text-foreground" : "text-muted-foreground")} />
-              <span className={cn("min-w-0 flex-1 truncate", el.hidden && "text-muted-foreground/60")}>{labelOf(el)}</span>
+              <span className={cn("min-w-0 flex-1 truncate", el.hidden && "text-muted-foreground/70")}>{labelOf(el)}</span>
               {/* the thumbnail strip is how viewers switch, so it can't be hidden (or deleted) */}
               {(el.kind !== "strip" || el.hidden) && (
               <Tooltip>

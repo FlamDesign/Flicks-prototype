@@ -69,7 +69,7 @@ function Row<S>({ v, current, onRestore, onRename, onOpenFlick }: { v: Checkpoin
   const [draft, setDraft] = useState(v.name ?? "")
   const name = v.name || `Version ${v.n}`
   return (
-    <li className="flex items-center gap-3 rounded-xl bg-muted/60 px-3 py-2.5">
+    <li className="flex items-center gap-3 rounded-xl bg-muted/70 px-3 py-2.5">
       <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-background text-xs font-medium tabular-nums">v{v.n}</span>
       <div className="min-w-0 flex-1">
         {editing ? (
@@ -103,7 +103,7 @@ function Row<S>({ v, current, onRestore, onRename, onOpenFlick }: { v: Checkpoin
           <p className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
             <span className="truncate">As “{v.exported.name}”</span>
             <span aria-hidden>·</span>
-            <button type="button" onClick={() => onOpenFlick(v.exported!.flickId)} className="inline-flex shrink-0 items-center gap-0.5 rounded font-medium text-foreground underline underline-offset-2 outline-none hover:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring">
+            <button type="button" onClick={() => onOpenFlick(v.exported!.flickId)} className="inline-flex shrink-0 items-center gap-0.5 rounded font-medium text-foreground underline underline-offset-2 hover:text-muted-foreground focus-ring">
               View Flick
               <HugeiconsIcon icon={ArrowUpRight01Icon} className="size-3" />
             </button>

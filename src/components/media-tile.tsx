@@ -60,7 +60,7 @@ export function MediaTile({
           className={cn(
             "absolute inset-0 size-full object-cover transition-[opacity,transform] duration-500 ease-out group-hover/tile:scale-[1.03]",
             loaded === src ? "opacity-100" : "opacity-0",
-            dim && "opacity-60 blur-[1px]",
+            dim && "opacity-70 blur-[1px]",
           )}
         />
       )}

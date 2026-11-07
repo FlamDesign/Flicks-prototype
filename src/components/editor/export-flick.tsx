@@ -47,7 +47,7 @@ export function ExportControl({
     <>
       <Tooltip open={busy ? undefined : false}>
         <TooltipTrigger asChild>
-          <Button size="lg" data-tour="export" className="h-9 gap-2 px-5" onClick={() => (setName(title), setOpen(true))}>
+          <Button size="lg" data-tour="export" className="gap-2 px-5" onClick={() => (setName(title), setOpen(true))}>
             {busy && <Spinner className="size-4" />}
             Export
           </Button>
@@ -61,7 +61,7 @@ export function ExportControl({
             <DialogDescription>Makes a Flick from this project, ready to share, embed in websites or serve in ads.</DialogDescription>
           </DialogHeader>
 
-          <div className="flex items-center gap-3 rounded-xl bg-muted/60 p-2.5">
+          <div className="flex items-center gap-3 rounded-xl bg-muted/70 p-2.5">
             <span className="size-12 shrink-0 overflow-hidden rounded-lg bg-muted">{poster && <img loading="lazy" decoding="async" src={poster} alt="" className="size-full object-cover" />}</span>
             <span className="text-sm">
               <span className="block font-medium">

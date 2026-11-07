@@ -352,7 +352,7 @@ export default function App() {
 
         <main className="flex min-w-0 flex-1 flex-col gap-2 p-2 md:pl-0">
           <header className="flex h-10 items-center px-2 md:hidden">
-            <button type="button" aria-label="Flicks home" onClick={() => (setAdsTarget(null), setPage("Create"))} className="rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <button type="button" aria-label="Flicks home" onClick={() => (setAdsTarget(null), setPage("Create"))} className="rounded-lg focus-ring">
               <FlicksLogo className="h-6 text-foreground" />
             </button>
           </header>

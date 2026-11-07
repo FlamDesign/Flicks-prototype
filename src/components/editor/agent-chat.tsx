@@ -3,6 +3,7 @@ import { Shortcut } from "@/components/shortcut"
 import { createContext, useContext, useEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Add01Icon, Alert02Icon, ArrowLeft01Icon, ArrowRight01Icon, ArrowDown01Icon, CheckmarkBadge01Icon, Globe02Icon, ArrowUp02Icon, PencilEdit01Icon, LeftToRightListNumberIcon, PaintBoardIcon, RefreshIcon, SparklesIcon, StopIcon, Tick02Icon, Cancel01Icon, PlayIcon, ArrowUpRight01Icon } from "@hugeicons/core-free-icons"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { InputGroupInput } from "@/components/ui/input-group"
@@ -54,7 +55,7 @@ export const isOpenChoice = (it: Item) => (it.kind === "question" && it.answer =
 export function ChoicePointer({ item, onShow }: { item: Item; onShow: () => void }) {
   const what = item.kind === "question" ? item.question : item.kind === "assets" ? item.message : item.kind === "plan" ? item.plan.title : ""
   return (
-    <button type="button" onClick={onShow} className="flex items-start gap-2 rounded-lg px-1 text-left text-xs text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+    <button type="button" onClick={onShow} className="flex items-start gap-2 rounded-lg px-1 text-left text-xs text-muted-foreground hover:text-foreground focus-ring">
       <HugeiconsIcon icon={LeftToRightListNumberIcon} className="mt-px size-3.5 shrink-0" />
       <span>
         {item.kind === "plan" ? "Opened the storyboard" : item.kind === "assets" ? "Asked for images" : "Opened a choice"}: <span className="text-foreground">{what}</span>
@@ -157,13 +158,13 @@ export function AgentItemView({ item, agent, ctx }: { item: Item; agent: Agent; 
     case "note":
       return (
         <p className="flex items-center gap-1.5 px-1 text-xs text-muted-foreground">
-          <HugeiconsIcon icon={Tick02Icon} className="size-3.5 text-foreground/60" />
+          <HugeiconsIcon icon={Tick02Icon} className="size-3.5 text-foreground/70" />
           {item.text}
         </p>
       )
     case "error":
       return (
-        <div role="alert" className="flex items-start gap-2 rounded-xl bg-destructive/5 p-3 text-sm ring-1 ring-destructive/20">
+        <div role="alert" className="flex items-start gap-2 rounded-xl bg-destructive/10 p-3 text-sm ring-1 ring-destructive/20">
           <HugeiconsIcon icon={Alert02Icon} className="mt-0.5 size-4 shrink-0 text-destructive" />
           <ErrorText text={item.text} />
           {/* a daily limit can't be retried today */}
@@ -197,7 +198,7 @@ function ErrorText({ text: raw0 }: { text: string }) {
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-1">
       <p>
-        {dev && <span className="mr-1.5 rounded-md bg-foreground/10 px-1.5 py-0.5 text-xs font-medium text-muted-foreground">Dev</span>}
+        {dev && <Badge variant="subtle" className="mr-1.5">Dev</Badge>}
         {dev ? plain.slice(5) : plain}
       </p>
       {raw && (
@@ -474,12 +475,12 @@ function Steps({ items, live }: { items: Item[]; live: boolean }) {
   const n = rows.length
   return (
     <div className="mr-6 flex flex-col gap-2">
-      <button type="button" onClick={() => setOpen(!shown)} aria-expanded={shown} className="flex items-center gap-1.5 self-start rounded-md px-1 text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+      <button type="button" onClick={() => setOpen(!shown)} aria-expanded={shown} className="flex items-center gap-1.5 self-start rounded-md px-1 text-sm text-muted-foreground hover:text-foreground focus-ring">
         <span className={cn(live && "text-shimmer")}>{live ? `Working · ${n} step${n === 1 ? "" : "s"} so far` : `Took ${n} step${n === 1 ? "" : "s"}`}</span>
         <HugeiconsIcon icon={ArrowDown01Icon} className={cn("size-3.5 transition-transform", shown && "rotate-180")} />
       </button>
       {shown && (
-        <ol className="flex flex-col divide-y divide-foreground/8 overflow-hidden rounded-xl ring-1 ring-foreground/10 animate-in fade-in-0">
+        <ol className="flex flex-col divide-y divide-foreground/10 overflow-hidden rounded-xl ring-1 ring-foreground/10 animate-in fade-in-0">
           {rows.map((r) => {
             const opened = more === r.key
             const head = (
@@ -503,7 +504,7 @@ function Steps({ items, live }: { items: Item[]; live: boolean }) {
                     <span className="flex min-w-0 items-center gap-2 py-2">{head}</span>
                   )}
                   {r.link && (
-                    <a href={/^https?:/.test(r.link) ? r.link : `https://${r.link}`} target="_blank" rel="noreferrer" aria-label={`Open ${r.host ?? "the page"}`} className="ml-auto grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+                    <a href={/^https?:/.test(r.link) ? r.link : `https://${r.link}`} target="_blank" rel="noreferrer" aria-label={`Open ${r.host ?? "the page"}`} className="ml-auto grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-ring">
                       <HugeiconsIcon icon={ArrowUpRight01Icon} className="size-3.5" />
                     </a>
                   )}
@@ -665,11 +666,11 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
                 disabled={agent.busy}
                 onClick={() => pick(o)}
                 className={cn(
-                  "group/row relative flex items-center gap-3 px-3 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60",
+                  "group/row relative flex items-center gap-3 px-3 text-left transition-colors focus-ring disabled:opacity-50",
                   stage ? "py-3 text-sm" : "py-2.5 text-sm",
                   // a hairline between rows, hidden around the hovered or picked one
-                  "after:absolute after:inset-x-3 after:bottom-0 after:h-px after:bg-foreground/8 hover:rounded-lg hover:bg-muted/50 hover:after:opacity-0",
-                  on && "rounded-lg bg-brand/10 text-brand after:opacity-0 hover:bg-brand/12",
+                  "after:absolute after:inset-x-3 after:bottom-0 after:h-px after:bg-foreground/10 hover:rounded-lg hover:bg-muted/50 hover:after:opacity-0",
+                  on && "rounded-lg bg-brand/10 text-brand after:opacity-0 hover:bg-brand/10",
                 )}
               >
                 <span
@@ -678,7 +679,7 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
                     on && "bg-brand text-brand-foreground ring-brand",
                   )}
                 >
-                  {on && item.multi ? <HugeiconsIcon icon={Tick02Icon} className="size-3.5" strokeWidth={2.5} /> : i + 1}
+                  {on && item.multi ? <HugeiconsIcon icon={Tick02Icon} className="size-3.5" strokeWidth={3} /> : i + 1}
                 </span>
                 <span className="flex flex-col">
                   {o.label}
@@ -717,7 +718,7 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
               variant="outline"
               aria-pressed={picked.includes(o.label)}
               onClick={() => pick(o)}
-              className={cn("h-8 rounded-full font-normal", picked.includes(o.label) && "border-foreground bg-foreground/5")}
+              className={cn("h-8 rounded-full font-normal", picked.includes(o.label) && "border-foreground bg-foreground/10")}
             >
               {picked.includes(o.label) && <HugeiconsIcon icon={Tick02Icon} className="size-3.5" />}
               {o.label}
@@ -737,7 +738,7 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
               onClick={() => pick(o)}
               disabled={agent.busy}
               className={cn(
-                "group/opt relative flex flex-col gap-1.5 rounded-xl p-1.5 text-left outline-none ring-1 ring-foreground/10 transition-[box-shadow,background-color] hover:bg-muted/50 hover:ring-foreground/30 focus-visible:ring-2 focus-visible:ring-ring",
+                "group/opt relative flex flex-col gap-1.5 rounded-xl p-1.5 text-left ring-1 ring-foreground/10 transition-[box-shadow,background-color] hover:bg-muted/50 hover:ring-foreground/30 focus-ring",
                 on && "bg-brand/10 ring-2 ring-brand hover:bg-brand/10 hover:ring-brand",
               )}
             >
@@ -770,7 +771,7 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
               )}
               {item.display === "palettes" && (
                 <span className="flex h-12 overflow-hidden rounded-lg ring-1 ring-foreground/10">
-                  {(o.colors?.length ? o.colors : ["#e4e4e7"]).slice(0, 4).map((c, k) => (
+                  {(o.colors?.length ? o.colors : ["var(--muted)"]).slice(0, 4).map((c, k) => (
                     <span key={k} className="flex-1" style={{ background: c }} />
                   ))}
                 </span>
@@ -875,7 +876,7 @@ function Assets({ item, agent, bare }: { item: Extract<Item, { kind: "assets" }>
 function Preparing({ poster, name, className }: { poster?: string; name: string; className?: string }) {
   return (
     <span className={cn("relative block shrink-0 overflow-hidden rounded-lg ring-1 ring-foreground/10", className)} aria-label={`Preparing ${name}`} title="Preparing the clip…">
-      {poster && <img loading="lazy" decoding="async" src={poster} alt="" className="size-full object-cover opacity-60" />}
+      {poster && <img loading="lazy" decoding="async" src={poster} alt="" className="size-full object-cover opacity-70" />}
       <span className="shimmer absolute inset-0" />
     </span>
   )
@@ -931,7 +932,7 @@ function BrandTable({ item }: { item: Extract<Item, { kind: "brand" }> }) {
       <span className="flex flex-wrap gap-x-3 gap-y-1.5">
         {colors.map(([n, c]) => (
           <span key={n} className="flex items-center gap-1.5">
-            <span className="size-4 rounded-full ring-1 ring-foreground/15" style={{ background: c }} />
+            <span className="size-4 rounded-full ring-1 ring-foreground/20" style={{ background: c }} />
             <span className="font-mono text-xs uppercase">{c}</span>
             <span className="text-xs text-muted-foreground">{n}</span>
           </span>
@@ -956,12 +957,12 @@ function BrandTable({ item }: { item: Extract<Item, { kind: "brand" }> }) {
     ])
   return (
     <section aria-label="Brand" className="mr-6 overflow-hidden rounded-xl ring-1 ring-foreground/10">
-      <header className="flex items-center gap-2 bg-muted/40 px-3 py-2">
+      <header className="flex items-center gap-2 bg-muted/50 px-3 py-2">
         <HugeiconsIcon icon={PaintBoardIcon} className="size-4 text-muted-foreground" />
         <span className="text-xs text-muted-foreground">Brand</span>
         <span className="truncate text-sm font-medium">{b.name || "Your brand"}</span>
       </header>
-      <dl className="flex flex-col divide-y divide-foreground/8 text-sm">
+      <dl className="flex flex-col divide-y divide-foreground/10 text-sm">
         {rows.map(([k, v]) => (
           <div key={k} className="grid grid-cols-[5.5rem_1fr] items-center gap-3 px-3 py-2">
             <dt className="text-xs text-muted-foreground">{k}</dt>
@@ -1013,7 +1014,7 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
   if (item.state !== "open")
     return (
       <div className="flex flex-col gap-2 px-1">
-        <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex items-center gap-2 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex items-center gap-2 rounded-lg text-left focus-ring">
           <HugeiconsIcon icon={item.state === "approved" ? Tick02Icon : Cancel01Icon} className="size-3.5 text-muted-foreground" />
           <span className="text-sm font-medium">{plan.title}</span>
           <span className="text-xs text-muted-foreground">
@@ -1045,7 +1046,7 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
     <Card className="gap-0 overflow-hidden p-0 animate-in fade-in-0 slide-in-from-bottom-1 duration-300">
       <div className="flex flex-col gap-3 p-3">
         <div className="flex items-center gap-2">
-          <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">Storyboard</span>
+          <Badge variant="subtle">Storyboard</Badge>
           <span className="min-w-0 flex-1 truncate text-sm font-medium">{plan.title}</span>
         </div>
         {frames.length && !own ? (
@@ -1057,7 +1058,7 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
               <li key={i} className="flex min-w-0 flex-col gap-1">
                 <span className="relative block overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/10" style={{ aspectRatio: String(Math.min(1.78, Math.max(0.56, ctx.ratio))) }}>
                   <PictureSlot src={item.previews?.[i]} />
-                  <span className="absolute left-1 top-1 grid size-5 place-items-center rounded-md bg-background/85 text-xs font-medium tabular-nums backdrop-blur">{i + 1}</span>
+                  <span className="absolute left-1 top-1 grid size-5 place-items-center rounded-md bg-background/90 text-xs font-medium tabular-nums backdrop-blur">{i + 1}</span>
                 </span>
                 <span className="truncate px-0.5 text-xs font-medium">{v.name}</span>
                 <span className="line-clamp-2 px-0.5 text-xs leading-snug text-muted-foreground">{v.video_id ? "Your video, as it is" : directionOf(v, i, plan)}</span>
@@ -1076,7 +1077,7 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
           Want something different? Tell me below.
         </p>
       </div>
-      <div className="flex items-center gap-3 border-t bg-muted/40 px-3 py-2.5">
+      <div className="flex items-center gap-3 border-t bg-muted/50 px-3 py-2.5">
         <span className="text-xs text-muted-foreground">
           {!making ? "Your videos, used as they are" : own ? `${making} video${making === 1 ? "" : "s"} · ${cost.toLocaleString("en-US")} credits` : `First video · ${cost.toLocaleString("en-US")} credits`}
           {ctx.credits < cost && <span className="text-destructive"> · you have {ctx.credits.toLocaleString("en-US")}</span>}
@@ -1100,7 +1101,7 @@ function Storyboard({ frames, stills, ratio, name }: { frames: NonNullable<Plan[
           <li key={i} className="flex min-w-0 flex-col gap-1">
             <span className="relative block overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/10" style={{ aspectRatio: String(Math.min(1.78, Math.max(0.56, ratio))) }}>
               <PictureSlot src={stills[i]} />
-              <span className="absolute left-1 top-1 grid size-5 place-items-center rounded-md bg-background/85 text-xs font-medium tabular-nums backdrop-blur">{i + 1}</span>
+              <span className="absolute left-1 top-1 grid size-5 place-items-center rounded-md bg-background/90 text-xs font-medium tabular-nums backdrop-blur">{i + 1}</span>
             </span>
             <span className="line-clamp-2 px-0.5 text-xs leading-snug">{f.action}</span>
             {f.camera && <span className="truncate px-0.5 text-xs text-muted-foreground">{f.camera}</span>}
@@ -1264,7 +1265,7 @@ function BuildTile({ video: v, still, ratio, waiting, direction }: { video: Buil
           <video src={v.src} poster={v.poster} autoPlay muted loop playsInline className="absolute inset-0 size-full object-cover animate-in fade-in-0 duration-500" />
         ) : (
           <>
-            {still && <img src={still} alt="" decoding="async" className={cn("absolute inset-0 size-full object-cover", v.state === "generating" ? "opacity-60 blur-xs" : "opacity-40 grayscale")} />}
+            {still && <img src={still} alt="" decoding="async" className={cn("absolute inset-0 size-full object-cover", v.state === "generating" ? "opacity-70 blur-xs" : "opacity-50 grayscale")} />}
             {v.state === "generating" && <GeneratingGradient sweep className="bg-transparent opacity-70" />}
             {v.retry && (
               <span className="absolute inset-x-1.5 bottom-1.5 flex flex-col items-stretch gap-1">
@@ -1276,7 +1277,7 @@ function BuildTile({ video: v, still, ratio, waiting, direction }: { video: Buil
                 </Button>
               </span>
             )}
-            <span className={cn("absolute inset-x-1.5 bottom-1.5 flex min-w-0 items-center gap-1 truncate rounded-md bg-background/85 px-1.5 py-0.5 text-xs tabular-nums text-muted-foreground backdrop-blur", v.retry && "hidden")}>
+            <span className={cn("absolute inset-x-1.5 bottom-1.5 flex min-w-0 items-center gap-1 truncate rounded-md bg-background/90 px-1.5 py-0.5 text-xs tabular-nums text-muted-foreground backdrop-blur", v.retry && "hidden")}>
               {v.state === "generating" ? (
                 <>
                   {pct !== undefined ? `Generating · ${pct}%` : `${STATUS[v.status ?? ""] ?? "Generating"} · ${secs < 60 ? `${secs}s` : `${Math.floor(secs / 60)}m`}`}
@@ -1529,7 +1530,7 @@ export function SizeFrame({ size, className }: { size?: string; className?: stri
   const r = w && h ? w / h : 1
   return (
     <span className={cn("grid size-14 shrink-0 place-items-center", className)} aria-hidden>
-      <span className="rounded-[3px] bg-foreground/10 ring-1 ring-foreground/25" style={r >= 1 ? { width: "100%", aspectRatio: String(Math.min(r, 8)) } : { height: "100%", aspectRatio: String(Math.max(r, 1 / 8)) }} />
+      <span className="rounded-[3px] bg-foreground/10 ring-1 ring-foreground/30" style={r >= 1 ? { width: "100%", aspectRatio: String(Math.min(r, 8)) } : { height: "100%", aspectRatio: String(Math.max(r, 1 / 8)) }} />
     </span>
   )
 }
@@ -1555,7 +1556,7 @@ function TypeRow({ value, onChange, onEnter, placeholder, last }: { value: strin
     <label
       className={cn(
         "relative flex items-center gap-3 rounded-xl px-3 py-2 transition-colors focus-within:bg-muted/50 hover:bg-muted/50",
-        !last && "after:absolute after:inset-x-3 after:bottom-0 after:h-px after:bg-foreground/8 focus-within:after:opacity-0 hover:after:opacity-0",
+        !last && "after:absolute after:inset-x-3 after:bottom-0 after:h-px after:bg-foreground/10 focus-within:after:opacity-0 hover:after:opacity-0",
       )}
     >
       <span className="grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground ring-1 ring-foreground/10">
@@ -1687,7 +1688,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
                 disabled={agent.busy}
                 onClick={() => pick(o)}
                 className={cn(
-                  "group/c flex flex-col gap-2 rounded-2xl p-1.5 text-left outline-none ring-1 ring-foreground/10 transition-[box-shadow,background-color] hover:bg-muted/50 hover:ring-foreground/25 focus-visible:ring-2 focus-visible:ring-ring",
+                  "group/c flex flex-col gap-2 rounded-2xl p-1.5 text-left ring-1 ring-foreground/10 transition-[box-shadow,background-color] hover:bg-muted/50 hover:ring-foreground/30 focus-ring",
                   chosen(o) && "bg-brand/10 ring-2 ring-brand",
                 )}
               >
@@ -1723,7 +1724,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
                 disabled={agent.busy}
                 onClick={() => pick(o)}
                 className={cn(
-                  "flex flex-col items-center gap-2 rounded-xl px-2 pb-2 pt-3 text-center outline-none ring-1 ring-foreground/10 transition-[box-shadow,background-color] hover:bg-muted/50 hover:ring-foreground/30 focus-visible:ring-2 focus-visible:ring-ring",
+                  "flex flex-col items-center gap-2 rounded-xl px-2 pb-2 pt-3 text-center ring-1 ring-foreground/10 transition-[box-shadow,background-color] hover:bg-muted/50 hover:ring-foreground/30 focus-ring",
                   chosen(o) && "bg-brand/10 ring-2 ring-brand",
                 )}
               >
@@ -1751,7 +1752,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
                 disabled={agent.busy}
                 onClick={() => pick(o)}
                 className={cn(
-                  "group/p relative overflow-hidden rounded-xl bg-muted text-left outline-none ring-1 ring-foreground/10 transition-shadow hover:ring-foreground/30 focus-visible:ring-2 focus-visible:ring-ring",
+                  "group/p relative overflow-hidden rounded-xl bg-muted text-left ring-1 ring-foreground/10 transition-shadow hover:ring-foreground/30 focus-ring",
                   chosen(o) && "ring-2 ring-brand",
                 )}
                 style={{ aspectRatio: Math.min(1.25, Math.max(ctx.ratio, 0.8)) }}
@@ -1782,13 +1783,13 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
                   disabled={agent.busy}
                   onClick={() => pick(o)}
                   className={cn(
-                    "group/row relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm outline-none transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60",
-                    "after:absolute after:inset-x-3 after:bottom-0 after:h-px after:bg-foreground/8 last:after:hidden hover:after:opacity-0",
-                    on && "bg-brand/10 after:opacity-0 hover:bg-brand/12",
+                    "group/row relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted/50 focus-ring disabled:opacity-50",
+                    "after:absolute after:inset-x-3 after:bottom-0 after:h-px after:bg-foreground/10 last:after:hidden hover:after:opacity-0",
+                    on && "bg-brand/10 after:opacity-0 hover:bg-brand/10",
                   )}
                 >
                   <span className={cn("grid size-7 shrink-0 place-items-center rounded-md text-xs font-medium tabular-nums text-muted-foreground ring-1 ring-foreground/10", on && "bg-brand text-brand-foreground ring-brand")}>
-                    {on && q.multi ? <HugeiconsIcon icon={Tick02Icon} className="size-3.5" strokeWidth={2.5} /> : n + 1}
+                    {on && q.multi ? <HugeiconsIcon icon={Tick02Icon} className="size-3.5" strokeWidth={3} /> : n + 1}
                   </span>
                   <span className="flex min-w-0 flex-1 flex-col">
                     <span className={cn(on && "text-brand")}>{o.label}</span>
@@ -1810,7 +1811,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
                 onClick={() => pick(o)}
                 disabled={agent.busy}
                 className={cn(
-                  "flex flex-col gap-1.5 rounded-xl p-1.5 text-left outline-none ring-1 ring-foreground/10 transition-[box-shadow,background-color] hover:bg-muted/50 hover:ring-foreground/30 focus-visible:ring-2 focus-visible:ring-ring",
+                  "flex flex-col gap-1.5 rounded-xl p-1.5 text-left ring-1 ring-foreground/10 transition-[box-shadow,background-color] hover:bg-muted/50 hover:ring-foreground/30 focus-ring",
                   chosen(o) && "bg-brand/10 ring-2 ring-brand",
                 )}
               >
@@ -1827,7 +1828,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
                 )}
                 {q.display === "palettes" && (
                   <span className="flex h-12 overflow-hidden rounded-lg ring-1 ring-foreground/10">
-                    {(o.colors?.length ? o.colors : ["#e4e4e7"]).slice(0, 4).map((c, k) => (
+                    {(o.colors?.length ? o.colors : ["var(--muted)"]).slice(0, 4).map((c, k) => (
                       <span key={k} className="flex-1" style={{ background: c }} />
                     ))}
                   </span>

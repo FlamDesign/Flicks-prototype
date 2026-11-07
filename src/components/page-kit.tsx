@@ -22,9 +22,9 @@ export function Crumbs({ items }: { items: Crumb[] }) {
     <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 text-sm text-muted-foreground">
       {items.map((c, i) => (
         <span key={i} className="flex min-w-0 items-center gap-1">
-          {i > 0 && <HugeiconsIcon icon={ArrowRight01Icon} className="size-3.5 shrink-0 opacity-60" />}
+          {i > 0 && <HugeiconsIcon icon={ArrowRight01Icon} className="size-3.5 shrink-0 opacity-70" />}
           {c.onClick ? (
-            <button type="button" onClick={c.onClick} className="-mx-1 truncate rounded-md px-1 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+            <button type="button" onClick={c.onClick} className="-mx-1 truncate rounded-md px-1 hover:text-foreground focus-ring">
               {c.label}
             </button>
           ) : (
@@ -108,7 +108,7 @@ export function StatCard({
       <CardContent className="space-y-2">
         <div className="flex min-h-5 items-center justify-between gap-2">
           <span className="text-sm text-muted-foreground">{label}</span>
-          {tag && <Badge variant="secondary" className="h-5 px-1.5 text-xs font-normal">{tag}</Badge>}
+          {tag && <Badge variant="subtle">{tag}</Badge>}
           {action}
         </div>
         <p className={cn("text-2xl font-semibold tabular-nums tracking-tight", valueClassName)}>{value}</p>
@@ -121,7 +121,7 @@ export function StatCard({
 /** The small link-style action in a stat card's corner (Set up, Edit, All rates). */
 export function StatAction({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
   return (
-    <Button size="xs" variant="ghost" className="-my-1 -mr-2 h-7 px-2 text-sm" onClick={onClick}>
+    <Button size="sm" variant="ghost" className="-my-1 -mr-2 px-2" onClick={onClick}>
       {children}
     </Button>
   )

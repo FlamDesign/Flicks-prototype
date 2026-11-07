@@ -681,10 +681,10 @@ export function CanvasStage({
     <div aria-hidden data-keep-selection className="pointer-events-none absolute inset-0 z-20">
       {/* alignment guides while dragging */}
       {guides.v.map((x) => (
-        <span key={`v${x}`} className="absolute inset-y-0 w-px -translate-x-1/2 bg-rose-500" style={{ left: x }} />
+        <span key={`v${x}`} className="absolute inset-y-0 w-px -translate-x-1/2 bg-guide" style={{ left: x }} />
       ))}
       {guides.h.map((y) => (
-        <span key={`h${y}`} className="absolute inset-x-0 h-px -translate-y-1/2 bg-rose-500" style={{ top: y }} />
+        <span key={`h${y}`} className="absolute inset-x-0 h-px -translate-y-1/2 bg-guide" style={{ top: y }} />
       ))}
       {boxes.map((x) => (
         <div key={x.id} className="absolute outline-1 outline-solid outline-brand" style={{ left: x.l, top: x.t, width: x.w, height: x.h, transform: x.rot ? `rotate(${x.rot}deg)` : undefined }}>
@@ -1202,7 +1202,7 @@ function ButtonLinkFloat({
   if (!open)
     return (
       <div
-        className="pointer-events-auto absolute flex h-9 max-w-80 items-center gap-1 rounded-xl bg-popover pl-3 pr-1 text-popover-foreground shadow-md ring-1 ring-foreground/10"
+        className="pointer-events-auto absolute flex h-9 max-w-80 items-center gap-1 rounded-2xl bg-popover pl-3 pr-1 text-popover-foreground shadow-md ring-1 ring-foreground/10"
         style={style}
         onPointerDown={stop}
         onClick={stop}
@@ -1233,7 +1233,7 @@ function ButtonLinkFloat({
     <div
       role="dialog"
       aria-label="Button link"
-      className="pointer-events-auto absolute flex h-11 w-80 items-center gap-1 rounded-xl bg-popover pl-3 pr-1.5 text-popover-foreground shadow-xl ring-1 ring-foreground/10"
+      className="pointer-events-auto absolute flex h-11 w-80 items-center gap-1 rounded-2xl bg-popover pl-3 pr-1.5 text-popover-foreground shadow-xl ring-1 ring-foreground/10"
       style={style}
       onPointerDown={stop}
       onClick={stop}
@@ -1316,7 +1316,7 @@ function FeedTab({
   const unlink = () =>
     onPatch((isLink ? { linkFeed: undefined, link: linked?.value.trim() || shownNow } : { feed: undefined, text: linked?.value || el.text }) as Partial<CanvasElement>)
 
-  const tab = "flex h-6 items-center rounded-t-md bg-popover px-2 text-xs font-medium text-popover-foreground shadow-sm ring-1 ring-foreground/10 outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50"
+  const tab = "flex h-6 items-center rounded-t-md bg-popover px-2 text-xs font-medium text-popover-foreground shadow-sm ring-1 ring-foreground/10 hover:bg-accent focus-ring"
   const linkTo = (label: string) =>
     others.length > 0 && (
       <>

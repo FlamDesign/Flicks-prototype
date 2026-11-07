@@ -112,7 +112,7 @@ export function VideoPlayer({
         else return
         wake()
       }}
-      className={cn("group/player relative flex overflow-hidden rounded-lg bg-black shadow-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring", fill && "absolute inset-0 rounded-none shadow-none", !shown && "cursor-none", className)}
+      className={cn("group/player relative flex overflow-hidden rounded-lg bg-black shadow-2xl focus-ring", fill && "absolute inset-0 rounded-none shadow-none", !shown && "cursor-none", className)}
     >
       <video
         ref={vid}

@@ -120,7 +120,7 @@ export function FlickPage({
         {project && (
           <>
             {" "}from{" "}
-            <button type="button" onClick={() => onOpenProject(project.id)} className="rounded text-foreground underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring">
+            <button type="button" onClick={() => onOpenProject(project.id)} className="rounded text-foreground underline-offset-2 hover:underline focus-ring">
               {project.name}
             </button>
           </>
@@ -249,12 +249,12 @@ export function FlickPage({
 
 /** What a Flick is in already (placements or embeds), each opening its page. */
 function UsedIn({ rows, empty }: { rows: { id: string; name: string; sub: string; onOpen: () => void }[]; empty: string }) {
-  if (!rows.length) return <p className="rounded-xl bg-muted/60 px-4 py-4 text-center text-sm text-muted-foreground">{empty}</p>
+  if (!rows.length) return <p className="rounded-xl bg-muted/70 px-4 py-4 text-center text-sm text-muted-foreground">{empty}</p>
   return (
     <ul className="-mx-2 flex flex-col">
       {rows.map((x) => (
         <li key={x.id}>
-          <button type="button" onClick={x.onOpen} className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring">
+          <button type="button" onClick={x.onOpen} className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left hover:bg-muted/50 focus-ring">
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm">{x.name}</span>
               <span className="block truncate text-xs text-muted-foreground">{x.sub}</span>
@@ -331,14 +331,14 @@ function Analytics({ f, onAnalytics }: { f: FlickRecord; onAnalytics: () => void
                   </span>
                 </div>
                 <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div className={cn("h-full rounded-full", i === f.start ? "bg-brand" : "bg-brand/45")} style={{ width: `${(v.views / max) * 100}%` }} />
+                  <div className={cn("h-full rounded-full", i === f.start ? "bg-brand" : "bg-brand/50")} style={{ width: `${(v.views / max) * 100}%` }} />
                 </div>
               </div>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="rounded-xl bg-muted/60 px-4 py-6 text-center text-sm text-muted-foreground">No views yet. Share the link, embed it or serve it in ads to start.</p>
+        <p className="rounded-xl bg-muted/70 px-4 py-6 text-center text-sm text-muted-foreground">No views yet. Share the link, embed it or serve it in ads to start.</p>
       )}
     </section>
   )

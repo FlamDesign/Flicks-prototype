@@ -69,7 +69,7 @@ export function TutorialVideo() {
                 <div className="blob blob-3" />
               </div>
               <FlicksMark className="relative size-9 text-foreground" />
-              <span className="relative flex size-14 items-center justify-center rounded-full bg-background/85 shadow-lg ring-1 ring-foreground/10 backdrop-blur">
+              <span className="relative flex size-14 items-center justify-center rounded-full bg-background/90 shadow-lg ring-1 ring-foreground/10 backdrop-blur">
                 <HugeiconsIcon icon={PlayIcon} className="ml-0.5 size-5 fill-current" />
               </span>
               <p className="relative text-sm text-muted-foreground">Tutorial video goes here</p>

@@ -142,7 +142,7 @@ function SpendByDay({ onCampaigns }: { onCampaigns: () => void }) {
       tools={
         <>
           <DateFilter value={dates} onChange={(v) => (setDates(v), setShownDays(DAYS_PAGE))} className="w-[150px]" />
-          <Button variant="outline" className="h-8 gap-1.5" disabled={!days.length} onClick={exportCsv}>
+          <Button variant="outline" className="gap-1.5" disabled={!days.length} onClick={exportCsv}>
             <HugeiconsIcon icon={Download01Icon} className="size-4" />
             Export CSV
           </Button>
@@ -170,7 +170,7 @@ function SpendByDay({ onCampaigns }: { onCampaigns: () => void }) {
                   <span className="hidden w-28 text-right tabular-nums text-muted-foreground sm:block">{compact(dayImpr)}</span>
                   <span className="w-24 text-right font-medium tabular-nums">{usd(daySpend)}</span>
                 </div>
-                <ul className="divide-y divide-foreground/5">
+                <ul className="divide-y divide-foreground/10">
                   {d.rows.map((r) => {
                     const p = placementOf(r.placementId)
                     return (

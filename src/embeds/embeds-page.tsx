@@ -78,7 +78,7 @@ export function EmbedsPage({ openEmbed, onRemixFlick, onOpenFlick }: { openEmbed
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {list.map((e) => (
               <li key={e.id}>
-                <button type="button" onClick={() => setView(e.id)} className="flex w-full flex-col gap-2.5 rounded-2xl p-2 text-left outline-none ring-1 ring-foreground/10 transition hover:ring-foreground/20 focus-visible:ring-2 focus-visible:ring-ring">
+                <button type="button" onClick={() => setView(e.id)} className="flex w-full flex-col gap-2.5 rounded-2xl p-2 text-left ring-1 ring-foreground/10 transition hover:ring-foreground/20 focus-ring">
                   <span className="relative grid aspect-square place-items-center overflow-hidden rounded-xl bg-muted">
                     {e.flick ? <img loading="lazy" decoding="async" src={e.flick.image} alt="" className="absolute inset-0 size-full object-cover" /> : <span className="text-xs text-muted-foreground">No Flick yet</span>}
                     <span className="absolute bottom-2 left-2 rounded-md bg-black/50 px-1.5 py-0.5 text-xs font-medium tabular-nums text-white backdrop-blur-sm">{e.size}</span>
@@ -210,7 +210,7 @@ function EmbedView({ e, actionsEl, onDeleted, onRemixFlick, onOpenFlick }: { e: 
             <DialogDescription>{preview && (preview.flick.id === e.flick?.id ? "Live in this embed" : `Ran ${range(preview)}`)}</DialogDescription>
           </DialogHeader>
           {preview && (
-            <div className="rounded-2xl bg-muted/60 p-3">
+            <div className="rounded-2xl bg-muted/70 p-3">
               <LiveFlick key={`${preview.flick.id}-${preview.from}`} flick={preview.flick} tall />
             </div>
           )}
@@ -290,7 +290,7 @@ function EmbedView({ e, actionsEl, onDeleted, onRemixFlick, onOpenFlick }: { e: 
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   {e.flick ? (
-                    <button type="button" onClick={() => onOpenFlick(e.flick!.id)} className="block max-w-full truncate rounded text-left text-sm font-medium outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring">
+                    <button type="button" onClick={() => onOpenFlick(e.flick!.id)} className="block max-w-full truncate rounded text-left text-sm font-medium hover:underline focus-ring">
                       {e.flick.name}
                     </button>
                   ) : (
@@ -330,12 +330,12 @@ function EmbedView({ e, actionsEl, onDeleted, onRemixFlick, onOpenFlick }: { e: 
                 <span className={cn(num, "w-14")}>CTR</span>
                 <span className="hidden w-[68px] shrink-0 @xl:block" />
               </div>
-              <ul className="flex flex-col divide-y divide-foreground/5 rounded-2xl ring-1 ring-foreground/10">
+              <ul className="flex flex-col divide-y divide-foreground/10 rounded-2xl ring-1 ring-foreground/10">
                 {e.history.map((h, i) => {
                   const isLive = i === 0 && !h.to
                   return (
                     <li key={`${h.flick.id}-${h.from}`} className="flex items-center gap-3 px-4 py-3 text-sm">
-                      <button type="button" onClick={() => setPreview(h)} aria-label={`Preview ${h.flick.name}`} className="size-11 shrink-0 overflow-hidden rounded-lg outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring">
+                      <button type="button" onClick={() => setPreview(h)} aria-label={`Preview ${h.flick.name}`} className="size-11 shrink-0 overflow-hidden rounded-lg transition-opacity hover:opacity-90 focus-ring">
                         <img loading="lazy" decoding="async" src={h.flick.image} alt="" className="size-full object-cover" />
                       </button>
                       <div className="min-w-0 flex-1">
@@ -395,7 +395,7 @@ function EmbedView({ e, actionsEl, onDeleted, onRemixFlick, onOpenFlick }: { e: 
             <section className="flex flex-col gap-1 rounded-2xl p-4 ring-1 ring-foreground/10">
               <h2 className="pb-1 text-sm font-medium">Learn more about embeds</h2>
               {LEARN_LINKS.map((l) => (
-                <a key={l} href="#" onClick={(ev) => ev.preventDefault()} className="-mx-2 flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring">
+                <a key={l} href="#" onClick={(ev) => ev.preventDefault()} className="-mx-2 flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-foreground hover:bg-muted focus-ring">
                   {l}
                   <HugeiconsIcon icon={ArrowUpRight01Icon} className="size-4 shrink-0" />
                 </a>

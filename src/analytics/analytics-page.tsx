@@ -122,7 +122,7 @@ export function AnalyticsPage({ data, target }: { data: Dataset; target?: Analyt
                   role="tab"
                   aria-selected={tab === t.id}
                   onClick={() => setTab(t.id)}
-                  className={cn("-mb-px border-b-2 px-3 pb-2.5 pt-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring", tab === t.id ? "border-brand font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}
+                  className={cn("-mb-px border-b-2 px-3 pb-2.5 pt-1 text-sm focus-ring", tab === t.id ? "border-brand font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}
                 >
                   {t.label}
                 </button>
@@ -199,7 +199,7 @@ function DetailHead({ data, open, tab, setOpen }: { data: Dataset; open: Open; t
     sub = p?.kind === "placement" ? ["Placement", camp, p.size, p.platform].filter(Boolean).join(" · ") : `Embed · ${p?.size ?? ""}`
   }
   const only = open.kind !== "link" && open.flickId ? flickOf(data, open.flickId) : undefined
-  const crumb = "rounded-md outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+  const crumb = "rounded-md hover:text-foreground focus-ring"
   return (
     <div className="flex flex-col gap-2">
       <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
@@ -237,7 +237,7 @@ function DetailHead({ data, open, tab, setOpen }: { data: Dataset; open: Open; t
           <span className="font-medium">{only.name}</span>
           <Tooltip>
             <TooltipTrigger asChild>
-              <button type="button" aria-label="Show every Flick" onClick={() => setOpen({ ...open, flickId: undefined })} className="grid size-6 place-items-center rounded-full text-muted-foreground outline-none hover:bg-background hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+              <button type="button" aria-label="Show every Flick" onClick={() => setOpen({ ...open, flickId: undefined })} className="grid size-6 place-items-center rounded-full text-muted-foreground hover:bg-background hover:text-foreground focus-ring">
                 <HugeiconsIcon icon={Cancel01Icon} className="size-3.5" />
               </button>
             </TooltipTrigger>
@@ -253,7 +253,7 @@ function Updated({ at }: { at: number }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span tabIndex={0} className="flex items-center gap-1.5 rounded-md text-xs text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <span tabIndex={0} className="flex items-center gap-1.5 rounded-md text-xs text-muted-foreground focus-ring">
           <span aria-hidden className="size-1.5 rounded-full bg-brand" />
           Updated {ago(at)}
         </span>
@@ -383,7 +383,7 @@ function MetricStrip({ rows, span, filter, set, sel, items }: { rows: Row[]; spa
   const by = hourly(span) ? "hour" : "day"
   return (
     <Card className="gap-0 overflow-hidden py-0 shadow-none">
-      <div role="tablist" aria-label="Metrics" className={cn("grid grid-cols-2 gap-px border-b bg-foreground/5", set.length === 5 ? "lg:grid-cols-5" : "lg:grid-cols-4")}>
+      <div role="tablist" aria-label="Metrics" className={cn("grid grid-cols-2 gap-px border-b bg-foreground/10", set.length === 5 ? "lg:grid-cols-5" : "lg:grid-cols-4")}>
         {set.map((x) => {
           const on = x.id === m.id
           const xc = colorOf(x.id)
@@ -419,7 +419,7 @@ function MetricStrip({ rows, span, filter, set, sel, items }: { rows: Row[]; spa
       <div className="flex flex-col gap-4 p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-0.5">
-            <h2 className="text-base font-medium">
+            <h2 className="text-sm font-medium">
               {m.label} by {by}
             </h2>
             <p className="text-xs text-muted-foreground">{m.hint}</p>
@@ -452,7 +452,7 @@ function MetricStrip({ rows, span, filter, set, sel, items }: { rows: Row[]; spa
               </thead>
               <tbody>
                 {labels.map((d, i) => (
-                  <tr key={d + i} className="border-t border-foreground/5">
+                  <tr key={d + i} className="border-t border-foreground/10">
                     <td className="py-1.5">{d}</td>
                     {lines.map((l) => (
                       <td key={l.name} className="py-1.5 text-right tabular-nums">
@@ -538,14 +538,14 @@ function CompareBar({ sel, items }: { sel: Selection; items: Pickable[] }) {
           <span className="size-2.5 shrink-0 rounded-full" style={{ background: s.color }} />
           <span className="truncate font-medium">{s.name}</span>
           <span className="shrink-0 text-muted-foreground">{s.kind}</span>
-          <button type="button" aria-label={`Remove ${s.name} from the chart`} onClick={() => sel.toggle(s)} className="grid size-5 shrink-0 place-items-center rounded-full text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+          <button type="button" aria-label={`Remove ${s.name} from the chart`} onClick={() => sel.toggle(s)} className="grid size-5 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-ring">
             <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
           </button>
         </span>
       ))}
       <ComparePicker sel={sel} items={items} />
       {sel.sel.length > 0 ? (
-        <Button variant="ghost" size="sm" className="h-7 px-2 text-muted-foreground" onClick={sel.clear}>
+        <Button variant="ghost" size="sm" className="px-2 text-muted-foreground" onClick={sel.clear}>
           Clear
         </Button>
       ) : (
@@ -562,7 +562,7 @@ function ComparePicker({ sel, items }: { sel: Selection; items: Pickable[] }) {
   const groups = KIND_ORDER.map((k) => ({ k, list: found.filter((i) => i.kind === k).sort((a, b) => b.views - a.views) })).filter((g) => g.list.length)
   const LIMIT = 8
   const trigger = (
-    <Button variant="outline" size="sm" className="h-7 gap-1 px-2.5 text-xs" disabled={sel.full}>
+    <Button variant="outline" size="sm" className="gap-1 px-2.5 text-xs" disabled={sel.full}>
       <HugeiconsIcon icon={Add01Icon} className="size-3.5" />
       {sel.sel.length ? "Add" : "Compare"}
     </Button>
@@ -601,7 +601,7 @@ function ComparePicker({ sel, items }: { sel: Selection; items: Pickable[] }) {
                     type="button"
                     disabled={blocked}
                     onClick={() => sel.toggle(i)}
-                    className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm outline-none hover:bg-muted focus-visible:bg-muted disabled:opacity-40"
+                    className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm outline-none hover:bg-muted focus-visible:bg-muted disabled:opacity-50"
                   >
                     {i.image ? <img loading="lazy" decoding="async" src={i.image} alt="" className="size-7 shrink-0 rounded-md object-cover" /> : <span className="size-7 shrink-0 rounded-md bg-muted" />}
                     <span className="min-w-0 flex-1">
@@ -762,7 +762,7 @@ function ListTable({
                     <button
                       type="button"
                       onClick={() => setSort((s) => ({ id: c.id, desc: s.id === c.id ? !s.desc : true }))}
-                      className={cn("inline-flex items-center gap-1 whitespace-nowrap rounded-md outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring", sort.id === c.id && "font-medium text-foreground")}
+                      className={cn("inline-flex items-center gap-1 whitespace-nowrap rounded-md hover:text-foreground focus-ring", sort.id === c.id && "font-medium text-foreground")}
                     >
                       {c.label}
                       <HugeiconsIcon icon={sort.id === c.id ? (sort.desc ? ArrowDown01Icon : ArrowUp01Icon) : ArrowUpDownIcon} className="size-3.5" />
@@ -782,7 +782,7 @@ function ListTable({
                       tabIndex={r.onClick ? 0 : undefined}
                       onClick={r.onClick}
                       onKeyDown={(e) => e.key === "Enter" && r.onClick?.()}
-                      className={cn("group border-t border-foreground/5 text-right outline-none", r.onClick && "cursor-pointer hover:bg-muted/50 focus-visible:bg-muted/50")}
+                      className={cn("group border-t border-foreground/10 text-right outline-none", r.onClick && "cursor-pointer hover:bg-muted/50 focus-visible:bg-muted/50")}
                     >
                       {expand && (
                         <td className="pl-1">
@@ -792,7 +792,7 @@ function ListTable({
                             aria-label={isOpen ? `Hide ${r.name}'s placements` : `Show ${r.name}'s placements`}
                             onClick={(e) => (e.stopPropagation(), setOpened((s) => { const n = new Set(s); if (n.has(r.id)) n.delete(r.id); else n.add(r.id); return n }))}
                             onKeyDown={(e) => e.stopPropagation()}
-                            className="grid size-7 place-items-center rounded-md text-muted-foreground outline-none hover:bg-background hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                            className="grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-background hover:text-foreground focus-ring"
                           >
                             <HugeiconsIcon icon={ArrowRight01Icon} className={cn("size-4 transition-transform", isOpen && "rotate-90")} />
                           </button>
@@ -810,7 +810,7 @@ function ListTable({
                           </span>
                           {(r.badge || r.kind) && (
                             <span className="ml-auto flex shrink-0 items-center gap-1.5 pl-2 pr-4">
-                              {r.badge && <Badge className="h-5 px-1.5 text-xs font-normal">{r.badge}</Badge>}
+                              {r.badge && <Badge className="px-1.5 font-normal">{r.badge}</Badge>}
                               {r.kind && (
                                 <Badge variant="outline" className="h-5 w-[72px] justify-center px-1.5 text-xs font-normal">
                                   {r.kind}
@@ -891,8 +891,8 @@ function CompareToggle({ sel, item }: { sel: Selection; item: Pickable }) {
           onClick={(e) => (e.stopPropagation(), sel.toggle(item))}
           onKeyDown={(e) => e.stopPropagation()}
           className={cn(
-            "inline-grid size-7 place-items-center rounded-full outline-none transition-opacity focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-0",
-            on ? "text-white" : "text-muted-foreground opacity-0 ring-1 ring-foreground/15 hover:bg-background hover:text-foreground group-hover:opacity-100 group-focus-visible:opacity-100",
+            "inline-grid size-7 place-items-center rounded-full transition-opacity focus-visible:opacity-100 focus-ring disabled:opacity-0",
+            on ? "text-white" : "text-muted-foreground opacity-0 ring-1 ring-foreground/20 hover:bg-background hover:text-foreground group-hover:opacity-100 group-focus-visible:opacity-100",
           )}
           style={on ? { background: on.color } : undefined}
         >
@@ -922,7 +922,7 @@ const sizeFilter = (sizes: string[]): ListFilter => ({ id: "size", label: "Size"
 
 function LeaderChip({ confidence }: { confidence: number }) {
   const sure = confidence >= 0.95
-  return <span className={cn("rounded-full px-1.5 py-0.5 text-xs", sure ? "bg-brand/10 text-brand" : "bg-muted text-muted-foreground")}>{sure ? "Clear lead" : confidence >= 0.8 ? "Likely" : "Too early"}</span>
+  return <Badge variant="subtle" className={cn(sure && "bg-brand/10 text-brand")}>{sure ? "Clear lead" : confidence >= 0.8 ? "Likely" : "Too early"}</Badge>
 }
 
 function HeadTip({ label, tip, className }: { label: string; tip: string; className?: string }) {
@@ -930,7 +930,7 @@ function HeadTip({ label, tip, className }: { label: string; tip: string; classN
     <th className={cn("py-2 font-normal", className)}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span tabIndex={0} className="cursor-default rounded underline decoration-dotted underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <span tabIndex={0} className="cursor-default rounded underline decoration-dotted underline-offset-4 focus-ring">
             {label}
           </span>
         </TooltipTrigger>
@@ -984,19 +984,19 @@ function VariationsCard({ data, rows, country, flickIds, current }: { data: Data
               {stats.map((v) => {
                 const best = lead.best?.i === v.i
                 return (
-                  <tr key={v.name} className="border-t border-foreground/5 text-right">
+                  <tr key={v.name} className="border-t border-foreground/10 text-right">
                     <td className="py-2 pl-2 text-left">
                       <span className="flex items-center gap-2.5">
                         <img loading="lazy" decoding="async" src={v.poster} alt="" className="h-10 w-8 rounded-md object-cover ring-1 ring-foreground/10" />
                         <span className="font-medium">{v.name}</span>
                         {v.i === meta.start && (
-                          <Badge variant="secondary" className="h-5 px-1.5 text-xs font-normal">
+                          <Badge variant="subtle">
                             Starts here
                           </Badge>
                         )}
                         {best && (
                           <span className="flex items-center gap-1">
-                            <Badge className="h-5 px-1.5 text-xs font-normal">Best click rate</Badge>
+                            <Badge className="px-1.5 font-normal">Best click rate</Badge>
                             <LeaderChip confidence={lead.confidence} />
                           </span>
                         )}
@@ -1041,7 +1041,7 @@ function CountriesCard({ data, rows, country, setCountry }: { data: Dataset; row
   const list = all ? items.filter((x) => !needle || x.c.name.toLowerCase().includes(needle)) : [...items.slice(0, TOP_COUNTRIES), ...(picked && picked.rank > TOP_COUNTRIES ? [picked] : [])]
   const description = picked ? `${picked.c.name}: ${fmtPct(picked.t.views / total, 0)} of views, #${picked.rank} of ${items.length} countries` : country !== "all" ? `No views from ${data.countries.find((c) => c.code === country)?.name ?? "this country"} in this period` : "Share of views."
   const tools = items.length > TOP_COUNTRIES && (
-    <Button variant="ghost" size="sm" className="-mr-2 h-7" onClick={() => (setAll((v) => !v), setQ(""))}>
+    <Button variant="ghost" size="sm" className="-mr-2" onClick={() => (setAll((v) => !v), setQ(""))}>
       {all ? "Show top 5" : `Show all ${items.length}`}
     </Button>
   )
@@ -1070,7 +1070,7 @@ function CountriesCard({ data, rows, country, setCountry }: { data: Dataset; row
                     onClick={() => setCountry(on ? "all" : x.c.code)}
                     onPointerMove={(e) => setTip({ x: e.clientX, y: e.clientY, i: items.indexOf(x) })}
                     onPointerLeave={() => setTip(null)}
-                    className={cn("flex w-full flex-col gap-1 rounded-lg px-2 py-1.5 text-left outline-none transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring", on && "bg-brand/5 ring-1 ring-brand/20")}
+                    className={cn("flex w-full flex-col gap-1 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-muted/50 focus-ring", on && "bg-brand/10 ring-1 ring-brand/20")}
                   >
                     <span className="flex items-baseline justify-between gap-3 text-sm">
                       <span className={cn("truncate", on && "font-medium")}>
@@ -1300,13 +1300,13 @@ function CampaignsTab({ data, filter, setCountry, go }: ViewProps) {
     return (
       <div className="flex flex-col">
         {ps.slice(0, 5).map((p) => (
-          <button key={p.id} type="button" onClick={p.onClick} className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm outline-none hover:bg-background focus-visible:ring-2 focus-visible:ring-ring">
+          <button key={p.id} type="button" onClick={p.onClick} className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-background focus-ring">
             {p.image ? <img loading="lazy" decoding="async" src={p.image} alt="" className="size-7 rounded-md object-cover" /> : <span className="size-7 rounded-md bg-muted" />}
             <span className="min-w-0 flex-1">
               <span className="block truncate">{p.name}</span>
               <span className="block truncate text-xs text-muted-foreground">{p.sub}</span>
             </span>
-            {p.badge && <Badge className="h-5 px-1.5 text-xs font-normal">{p.badge}</Badge>}
+            {p.badge && <Badge className="px-1.5 font-normal">{p.badge}</Badge>}
             <span className="w-20 text-right tabular-nums">{fmtCompact(p.t.views)}</span>
             <span className="w-24 text-right tabular-nums text-muted-foreground">{p.t.spend ? fmtUsdShort(p.t.spend) : "—"}</span>
           </button>
@@ -1444,7 +1444,7 @@ function EmbedsTab({ data, filter, setCountry, go }: ViewProps) {
 
 function EarlyNote() {
   return (
-    <div className="rounded-2xl bg-muted/60 px-4 py-3 text-sm">
+    <div className="rounded-2xl bg-muted/70 px-4 py-3 text-sm">
       <span className="font-medium">Early numbers.</span> <span className="text-muted-foreground">Fewer than {EARLY} views in this period. Numbers move a lot until more people watch.</span>
     </div>
   )

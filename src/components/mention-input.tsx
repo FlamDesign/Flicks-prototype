@@ -153,7 +153,7 @@ export const MentionTextarea = forwardRef<
     <div className="relative min-w-0">
       {/* the highlight layer: same text, mentions tinted, behind the transparent-backed textarea */}
       <div ref={mirror} aria-hidden className={cn("w-full border border-transparent px-2.5 py-2 text-base md:text-sm", className, "pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words bg-transparent text-transparent shadow-none ring-0 dark:bg-transparent")}>
-        {parts.map((p, i) => (p.on ? <mark key={i} className="rounded-[4px] bg-brand/15 text-transparent ring-1 ring-brand/25">{p.text}</mark> : <span key={i}>{p.text}</span>))}
+        {parts.map((p, i) => (p.on ? <mark key={i} className="rounded-sm bg-brand/20 text-transparent ring-1 ring-brand/30">{p.text}</mark> : <span key={i}>{p.text}</span>))}
         {"​"}
       </div>
       <Textarea
@@ -197,7 +197,7 @@ export const MentionTextarea = forwardRef<
           aria-label="Mention"
           onMouseDown={(e) => e.preventDefault()}
           style={place}
-          className="fixed z-[100] max-h-72 w-72 overflow-y-auto rounded-xl bg-popover p-1 text-popover-foreground shadow-lg ring-1 ring-foreground/10 animate-in fade-in-0 zoom-in-95"
+          className="fixed z-[100] max-h-72 w-72 overflow-y-auto rounded-2xl bg-popover p-1 text-popover-foreground shadow-lg ring-1 ring-foreground/10 animate-in fade-in-0 zoom-in-95"
         >
           {!list.length && <p className="px-2 py-1.5 text-xs text-muted-foreground">Nothing called “{query.text}”.</p>}
           {Object.entries(groups).map(([g, items]) => (
@@ -308,7 +308,7 @@ export function ElementDialog({ open, edit, name: initial, onClose, onSaved }: {
                   </button>
                 </span>
               ))}
-              <button type="button" onClick={media.openPicker} className="grid size-16 place-items-center rounded-lg border border-dashed border-foreground/20 text-muted-foreground outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring" aria-label="Add images">
+              <button type="button" onClick={media.openPicker} className="grid size-16 place-items-center rounded-lg border border-dashed border-foreground/20 text-muted-foreground hover:bg-muted/50 focus-ring" aria-label="Add images">
                 <HugeiconsIcon icon={Add01Icon} className="size-4" />
               </button>
             </div>

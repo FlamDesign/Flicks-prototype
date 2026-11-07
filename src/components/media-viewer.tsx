@@ -96,7 +96,7 @@ export function MediaViewer({
         <div className="relative flex min-w-0 flex-1 items-center justify-center p-12">
           {shown && <Media key={shown.src} m={shown} />}
           {ref && (
-            <Button variant="outline" onClick={() => setRef(null)} className="absolute left-3 top-3 gap-1.5 rounded-full border-white/20 bg-background/60 backdrop-blur-md">
+            <Button variant="outline" onClick={() => setRef(null)} className="absolute left-3 top-3 gap-1.5 rounded-full border-white/20 bg-background/70 backdrop-blur-md">
               <HugeiconsIcon icon={ArrowLeft01Icon} className="size-4" />
               Back
             </Button>
@@ -132,7 +132,7 @@ export function MediaViewer({
                                 type="button"
                                 onClick={() => setRef(r)}
                                 aria-label={`View ${r.name}`}
-                                className={cn("relative block size-16 overflow-hidden rounded-lg outline-none ring-1 ring-foreground/15 transition hover:ring-foreground/40 focus-visible:ring-2 focus-visible:ring-ring", r.kind === "image" && "bg-white")}
+                                className={cn("relative block size-16 overflow-hidden rounded-lg ring-1 ring-foreground/20 transition hover:ring-foreground/50 focus-ring", r.kind === "image" && "bg-white")}
                               >
                                 <img loading="lazy" decoding="async" src={r.kind === "video" ? r.poster : r.src} alt="" className={cn("size-full", r.kind === "video" ? "object-cover" : "object-contain p-1")} />
                                 {r.kind === "video" && (
@@ -184,7 +184,7 @@ function Block({ title, action, children }: { title: string; action?: React.Reac
   return (
     <section className="flex flex-col gap-3 rounded-xl bg-muted/50 p-3">
       <div className="flex h-7 items-center justify-between">
-        <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{title}</h3>
+        <h3 className="text-sm font-medium">{title}</h3>
         {action}
       </div>
       {children}
@@ -275,7 +275,7 @@ function Actions({ m, link, onDelete, onUse, useLabel = "Use" }: { m: ViewerMedi
     <div className="flex items-center gap-2">
       {onUse ? (
         <>
-          <Button className="h-9 flex-1 gap-2" onClick={onUse}>
+          <Button size="lg" className="flex-1 gap-2" onClick={onUse}>
             <HugeiconsIcon icon={SparklesIcon} className="size-4" />
             {useLabel}
           </Button>
@@ -289,7 +289,7 @@ function Actions({ m, link, onDelete, onUse, useLabel = "Use" }: { m: ViewerMedi
           </Tooltip>
         </>
       ) : (
-        <Button className="h-9 flex-1 gap-2" onClick={save}>
+        <Button size="lg" className="flex-1 gap-2" onClick={save}>
           <HugeiconsIcon icon={Download01Icon} className="size-4" />
           Download
         </Button>
@@ -326,7 +326,7 @@ function Step({ side, onClick }: { side: "left" | "right"; onClick: () => void }
       size="icon"
       aria-label={side === "left" ? "Previous" : "Next"}
       onClick={onClick}
-      className={cn("absolute inset-y-0 my-auto border-white/20 bg-background/60 backdrop-blur-md", side === "left" ? "left-3" : "right-3")}
+      className={cn("absolute inset-y-0 my-auto border-white/20 bg-background/70 backdrop-blur-md", side === "left" ? "left-3" : "right-3")}
     >
       <HugeiconsIcon icon={side === "left" ? ArrowLeft01Icon : ArrowRight01Icon} className="size-4" />
     </Button>

@@ -105,14 +105,14 @@ export function BriefUpdate({ all, latest = true }: { all: BriefEntry[]; latest?
   const shown = open ?? latest
   return (
     <section aria-label="Brief" className="mr-6 overflow-hidden rounded-xl ring-1 ring-foreground/10">
-      <button type="button" onClick={() => setOpen(!shown)} aria-expanded={shown} className="flex min-h-10 w-full items-center gap-2 bg-muted/40 px-3 py-1.5 text-left outline-none hover:bg-muted/60 focus-visible:bg-muted/60">
+      <button type="button" onClick={() => setOpen(!shown)} aria-expanded={shown} className="flex min-h-10 w-full items-center gap-2 bg-muted/50 px-3 py-1.5 text-left outline-none hover:bg-muted focus-visible:bg-muted/70">
         <HugeiconsIcon icon={Tick02Icon} className="size-3.5 shrink-0 text-muted-foreground" />
         <span className="text-sm font-medium">{latest ? "Brief updated" : "Brief"}</span>
         {!shown && <span className="min-w-0 truncate text-xs text-muted-foreground">{all.map((e) => e.value).join(" · ")}</span>}
         <HugeiconsIcon icon={ArrowDown01Icon} className={cn("ml-auto size-3.5 shrink-0 text-muted-foreground transition-transform", shown && "rotate-180")} />
       </button>
       {shown && (
-        <dl className="flex flex-col divide-y divide-foreground/8 border-t text-sm animate-in fade-in-0">
+        <dl className="flex flex-col divide-y divide-foreground/10 border-t text-sm animate-in fade-in-0">
           {all.map((e) => (
             <div key={e.key} className="grid grid-cols-[6rem_1fr] items-center gap-3 px-3 py-2">
               <dt className="text-xs text-muted-foreground">{e.label}</dt>

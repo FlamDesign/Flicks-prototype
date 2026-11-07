@@ -8,8 +8,8 @@ import { cn } from "@/lib/utils"
 export type EmptyArt = "projects" | "flicks" | "media" | "search" | "templates"
 
 function Art({ kind }: { kind: EmptyArt }) {
-  const frame = "fill-background stroke-foreground/25"
-  const accent = "fill-brand/15 stroke-brand"
+  const frame = "fill-background stroke-foreground/30"
+  const accent = "fill-brand/20 stroke-brand"
   return (
     <svg viewBox="0 0 120 84" className="h-20 w-auto" strokeWidth={1.5} aria-hidden>
       {kind === "projects" && (
@@ -26,7 +26,7 @@ function Art({ kind }: { kind: EmptyArt }) {
           <circle cx="60" cy="34" r="11" className={accent} />
           <path d="M57 29.5v9l7.5-4.5z" className="fill-brand stroke-none" />
           <rect x="46" y="58" width="8" height="8" rx="2" className="fill-foreground/10 stroke-none" />
-          <rect x="56" y="58" width="8" height="8" rx="2" className="fill-brand/40 stroke-none" />
+          <rect x="56" y="58" width="8" height="8" rx="2" className="fill-brand/50 stroke-none" />
           <rect x="66" y="58" width="8" height="8" rx="2" className="fill-foreground/10 stroke-none" />
         </>
       )}
@@ -42,7 +42,7 @@ function Art({ kind }: { kind: EmptyArt }) {
       {kind === "search" && (
         <>
           <circle cx="54" cy="38" r="20" className={frame} />
-          <path d="M69 53l14 14" className="fill-none stroke-foreground/40" strokeLinecap="round" strokeWidth={3} />
+          <path d="M69 53l14 14" className="fill-none stroke-foreground/50" strokeLinecap="round" strokeWidth={3} />
           <path d="M46 38h16" className="fill-none stroke-brand" strokeLinecap="round" />
         </>
       )}

@@ -179,7 +179,7 @@ export function PromptComposer({
         </div>
 
         {dragging && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-3xl bg-background/80 text-sm font-medium backdrop-blur-sm">
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-3xl bg-background/90 text-sm font-medium backdrop-blur-sm">
             Drop images to add as references
           </div>
         )}
@@ -266,17 +266,17 @@ export function ReferenceThumb({ r, onRemove, onRetry, onOpen }: { r: Reference;
               type="button"
               onClick={onRetry}
               aria-label={`Retry uploading ${r.name}`}
-              className="relative block size-14 overflow-hidden rounded-xl ring-2 ring-destructive/60 outline-none focus-visible:ring-ring"
+              className="relative block size-14 overflow-hidden rounded-xl ring-2 ring-destructive/70 outline-none focus-visible:ring-ring"
             >
               <RefStill r={r} className="size-full object-cover opacity-50 grayscale" />
-              <span className="absolute inset-0 grid place-items-center bg-destructive/25 text-white">
+              <span className="absolute inset-0 grid place-items-center bg-destructive/30 text-white">
                 <span className="grid size-6 place-items-center rounded-full bg-destructive shadow-sm">
-                  <HugeiconsIcon icon={RefreshIcon} className="size-3.5" strokeWidth={2.25} />
+                  <HugeiconsIcon icon={RefreshIcon} className="size-3.5" strokeWidth={2} />
                 </span>
               </span>
             </button>
           ) : (
-            <button type="button" onClick={onOpen} disabled={!onOpen} aria-label={`View ${r.name}`} className="block size-14 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default">
+            <button type="button" onClick={onOpen} disabled={!onOpen} aria-label={`View ${r.name}`} className="block size-14 rounded-xl focus-ring disabled:cursor-default">
               <RefStill r={r} className="animate-in fade-in-0 zoom-in-95 size-14 rounded-xl object-cover ring-1 ring-foreground/10 duration-300" />
               {r.media === "video" && (
                 <span className="absolute bottom-1 left-1 flex items-center gap-0.5 rounded bg-black/70 px-1 text-xs font-medium text-white tabular-nums">

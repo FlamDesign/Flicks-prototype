@@ -185,7 +185,7 @@ export function ShareSection({
           <label
             className={cn(
               "flex h-10 min-w-0 flex-1 items-center rounded-xl bg-muted/70 pl-3.5 text-sm focus-within:ring-2 focus-within:ring-ring/50",
-              changed && (!valid || avail === "taken") && "ring-2 ring-destructive/40",
+              changed && (!valid || avail === "taken") && "ring-2 ring-destructive/50",
             )}
           >
             <span className="shrink-0 text-muted-foreground">{DOMAIN}</span>
@@ -283,7 +283,7 @@ export function EmbedSection({ link }: { link: string }) {
     <div className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">Paste this where you want the Flick to show on your website.</p>
       <div className="overflow-hidden rounded-xl bg-muted/70">
-          <div className="flex items-center justify-between border-b border-foreground/5 py-1.5 pl-4 pr-1.5">
+          <div className="flex items-center justify-between border-b border-foreground/10 py-1.5 pl-4 pr-1.5">
             <span className="text-xs text-muted-foreground">Script tag</span>
             <Button
               size="sm"
@@ -344,7 +344,7 @@ export function Empty({ title, text }: { title?: string; text: string }) {
   return (
     <div className="flex flex-col gap-2">
       {title && <h3 className="text-sm font-medium">{title}</h3>}
-      <p className="rounded-xl bg-muted/60 px-4 py-6 text-center text-sm text-muted-foreground">{text}</p>
+      <p className="rounded-xl bg-muted/70 px-4 py-6 text-center text-sm text-muted-foreground">{text}</p>
     </div>
   )
 }

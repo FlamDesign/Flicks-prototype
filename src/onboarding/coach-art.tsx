@@ -15,7 +15,7 @@ import refBag from "@/assets/intro/ref-bag.webp"
 export function CoachArt({ art }: { art: Art }) {
   const Scene = SCENES[art]
   return (
-    <div aria-hidden className="ca relative h-[132px] w-full overflow-hidden rounded-xl bg-muted/70 ring-1 ring-foreground/5">
+    <div aria-hidden className="ca relative h-[132px] w-full overflow-hidden rounded-xl bg-muted/70 ring-1 ring-foreground/10">
       <style>{CSS}</style>
       <Scene />
     </div>
@@ -147,7 +147,7 @@ function Variations() {
             <Frame x={0} y={0} w={22} h={40} tone={3} style={loop("ca-fill")} />
           </div>
         </div>
-        <div className="grid h-[40px] w-[22px] place-items-center rounded-md border border-dashed border-foreground/25 text-muted-foreground" style={loop("ca-press")}>
+        <div className="grid h-[40px] w-[22px] place-items-center rounded-md border border-dashed border-foreground/30 text-muted-foreground" style={loop("ca-press")}>
           <HugeiconsIcon icon={Add01Icon} className="size-3" />
         </div>
       </div>
@@ -252,7 +252,7 @@ function Strip() {
           <span className="absolute inset-0" style={t("ca-s-add")}>Add thumbnail</span>
           <span className="absolute inset-0" style={t("ca-s-chg")}>Change thumbnail</span>
         </span>
-        <span className="mx-0.5 h-3 w-px bg-foreground/15" />
+        <span className="mx-0.5 h-3 w-px bg-foreground/20" />
         <span className="size-2.5 rounded-full bg-foreground/20" />
         <span className="size-2.5 rounded-[3px] bg-foreground/20" />
       </div>

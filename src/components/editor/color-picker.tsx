@@ -114,7 +114,7 @@ export function ColorPanel({ value, onChange, onPicking }: { value: string; onCh
           <TooltipContent>Pick from canvas</TooltipContent>
         </Tooltip>
         <label className="flex h-8 min-w-0 flex-1 items-center gap-1.5 rounded-2xl px-2.5 text-sm ring-1 ring-foreground/10 focus-within:ring-2 focus-within:ring-ring/50">
-          <span className="size-4 shrink-0 rounded-[4px] ring-1 ring-foreground/15" style={{ background: swatchBg(toHex(c)) }} />
+          <span className="size-4 shrink-0 rounded-sm ring-1 ring-foreground/20" style={{ background: swatchBg(toHex(c)) }} />
           <span className="text-muted-foreground">#</span>
           <InputGroupInput
             aria-label="Hex color"
@@ -199,7 +199,7 @@ function Area({
         const d = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key]
         if (d) (e.preventDefault(), onChange(clamp01(x + d[0]), clamp01(y + d[1])))
       }}
-      className={cn("relative cursor-crosshair touch-none outline-none ring-1 ring-foreground/10 focus-visible:ring-2 focus-visible:ring-ring", className)}
+      className={cn("relative cursor-crosshair touch-none ring-1 ring-foreground/10 focus-ring", className)}
       style={style}
     >
       <span

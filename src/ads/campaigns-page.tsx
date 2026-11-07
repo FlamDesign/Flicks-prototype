@@ -209,7 +209,7 @@ function CampaignList({ onOpen, onNew }: { onOpen: (id: string) => void; onNew: 
                 tabIndex={0}
                 onClick={() => onOpen(c.id)}
                 onKeyDown={(e) => e.key === "Enter" && onOpen(c.id)}
-                className="cursor-pointer border-t border-foreground/5 outline-none hover:bg-muted/50 focus-visible:bg-muted/50"
+                className="cursor-pointer border-t border-foreground/10 outline-none hover:bg-muted/50 focus-visible:bg-muted/50"
               >
                 <td className="px-4 py-3 font-medium">{c.name}</td>
                 <td className="px-4 py-3 text-right tabular-nums">{ps.length}</td>
@@ -374,7 +374,7 @@ function CampaignView({ id, actionsEl, onOpen, onDeleted }: { id: string; action
 
 /** Serving, waiting for funds, or no Flick yet. */
 function status(p: Placement, funded: boolean) {
-  if (!p.flick) return { label: "No Flick", dot: "bg-muted-foreground/40" }
+  if (!p.flick) return { label: "No Flick", dot: "bg-muted-foreground/50" }
   if (!funded) return { label: "Waiting for funds", dot: "bg-muted-foreground" }
   return { label: "Serving", dot: "bg-brand" }
 }
@@ -382,7 +382,7 @@ function status(p: Placement, funded: boolean) {
 function PlacementCard({ p, funded, onOpen }: { p: Placement; funded: boolean; onOpen: () => void }) {
   const st = status(p, funded)
   return (
-    <button type="button" onClick={onOpen} className="group flex w-full flex-col gap-2.5 rounded-2xl p-2 text-left outline-none ring-1 ring-foreground/10 transition hover:ring-foreground/20 focus-visible:ring-2 focus-visible:ring-ring">
+    <button type="button" onClick={onOpen} className="group flex w-full flex-col gap-2.5 rounded-2xl p-2 text-left ring-1 ring-foreground/10 transition hover:ring-foreground/20 focus-ring">
       <span className="relative grid aspect-square place-items-center overflow-hidden rounded-xl bg-muted">
         {p.flick ? (
           <img loading="lazy" decoding="async" src={p.flick.image} alt="" className="absolute inset-0 size-full object-cover" />
@@ -539,7 +539,7 @@ function PlacementView({
             <DialogDescription>{preview && (preview.flick.id === p.flick?.id ? "Live in this placement" : `Ran ${range(preview)}`)}</DialogDescription>
           </DialogHeader>
           {preview && (
-            <div className="rounded-2xl bg-muted/60 p-3">
+            <div className="rounded-2xl bg-muted/70 p-3">
               <LiveFlick key={`${preview.flick.id}-${preview.from}`} flick={preview.flick} tall />
             </div>
           )}
@@ -622,7 +622,7 @@ function PlacementView({
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   {p.flick ? (
-                    <button type="button" onClick={() => onOpenFlick(p.flick!.id)} className="block max-w-full truncate rounded text-left text-sm font-medium outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring">
+                    <button type="button" onClick={() => onOpenFlick(p.flick!.id)} className="block max-w-full truncate rounded text-left text-sm font-medium hover:underline focus-ring">
                       {p.flick.name}
                     </button>
                   ) : (
@@ -667,12 +667,12 @@ function PlacementView({
                 <span className={cn(num, "w-14")}>CTR</span>
                 <span className="hidden w-[68px] shrink-0 @2xl:block" />
               </div>
-              <ul className="flex flex-col divide-y divide-foreground/5 rounded-2xl ring-1 ring-foreground/10">
+              <ul className="flex flex-col divide-y divide-foreground/10 rounded-2xl ring-1 ring-foreground/10">
                 {p.history.map((h, i) => {
                   const isLive = i === 0 && !h.to
                   return (
                     <li key={`${h.flick.id}-${h.from}`} className="flex items-center gap-3 px-4 py-3 text-sm">
-                      <button type="button" onClick={() => setPreview(h)} aria-label={`Preview ${h.flick.name}`} className="relative size-11 shrink-0 overflow-hidden rounded-lg outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring">
+                      <button type="button" onClick={() => setPreview(h)} aria-label={`Preview ${h.flick.name}`} className="relative size-11 shrink-0 overflow-hidden rounded-lg transition-opacity hover:opacity-90 focus-ring">
                         <img loading="lazy" decoding="async" src={h.flick.image} alt="" className="size-full object-cover" />
                       </button>
                       <div className="min-w-0 flex-1">
@@ -760,7 +760,7 @@ function PlacementView({
                   key={l}
                   href="#"
                   onClick={(e) => e.preventDefault()}
-                  className="-mx-2 flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm text-brand outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+                  className="-mx-2 flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm text-brand hover:bg-muted focus-ring"
                 >
                   {l}
                   <HugeiconsIcon icon={ArrowUpRight01Icon} className="size-4 shrink-0" />

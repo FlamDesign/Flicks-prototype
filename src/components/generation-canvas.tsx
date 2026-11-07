@@ -1880,7 +1880,7 @@ export function GenerationCanvas({
               <div
                 role="toolbar"
                 aria-label="Selection options"
-                className="pointer-events-auto flex items-center gap-0.5 rounded-xl bg-popover p-1 text-popover-foreground shadow-lg ring-1 ring-foreground/10"
+                className="pointer-events-auto flex items-center gap-0.5 rounded-2xl bg-popover p-1 text-popover-foreground shadow-lg ring-1 ring-foreground/10"
                 onPointerDown={(e) => e.stopPropagation()}
               >
                 {grip}
@@ -1963,7 +1963,7 @@ export function GenerationCanvas({
               variant="outline"
               size="sm"
               onClick={() => setChatHidden(false)}
-              className="absolute right-3 top-3 z-20 gap-1.5 rounded-xl bg-popover shadow-sm"
+              className="absolute right-3 top-3 z-20 gap-1.5 rounded-2xl bg-popover shadow-sm"
             >
               <HugeiconsIcon icon={BubbleChatIcon} className="size-4" />
               Prompts
@@ -1973,7 +1973,7 @@ export function GenerationCanvas({
           {/* zoom: collapsed to the percentage; opens on hover and while zooming */}
           <div
             data-no-pan
-            className="group/zoom absolute bottom-3 right-3 z-20 flex items-center rounded-xl bg-popover p-1 text-popover-foreground shadow-sm ring-1 ring-foreground/10"
+            className="group/zoom absolute bottom-3 right-3 z-20 flex items-center rounded-2xl bg-popover p-1 text-popover-foreground shadow-sm ring-1 ring-foreground/10"
           >
             <Reveal open={zooming}>
               <ZoomTool label="Zoom out" disabled={view.s <= MIN_ZOOM} onClick={() => zoomTo(view.s / 1.25)}>
@@ -1982,7 +1982,7 @@ export function GenerationCanvas({
             </Reveal>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" aria-label="Fit to screen" onClick={fitView} className="h-7 min-w-12 px-1.5 text-xs tabular-nums">
+                <Button variant="ghost" size="sm" aria-label="Fit to screen" onClick={fitView} className="min-w-12 px-1.5 text-xs tabular-nums">
                   {zoomPct}%
                 </Button>
               </TooltipTrigger>
@@ -2030,14 +2030,14 @@ export function GenerationCanvas({
                         setChatHidden(false)
                         focusPromptBox()
                       }}
-                      className="absolute bottom-full right-0 z-30 mb-2 flex items-center gap-1.5 whitespace-nowrap rounded-full bg-background/85 py-1 pl-2 pr-2.5 text-xs font-medium shadow-sm ring-1 ring-foreground/10 backdrop-blur-md outline-none transition-colors hover:bg-background focus-visible:ring-2 focus-visible:ring-ring/50"
+                      className="absolute bottom-full right-0 z-30 mb-2 flex items-center gap-1.5 whitespace-nowrap rounded-full bg-background/90 py-1 pl-2 pr-2.5 text-xs font-medium shadow-sm ring-1 ring-foreground/10 backdrop-blur-md transition-colors hover:bg-background focus-ring"
                     >
                       <span aria-hidden className="size-2 rounded-full bg-destructive" />
                       Needs regenerating
                     </button>
                   )}
                   {/* media is clipped to the frame; the element layer is not, so toolbars can sit above the frame edge */}
-                  <div className={cn("absolute inset-0 overflow-hidden transition-opacity", stale(activeSlide) && "opacity-40")}>
+                  <div className={cn("absolute inset-0 overflow-hidden transition-opacity", stale(activeSlide) && "opacity-50")}>
                     <GeneratedVideo
                       key={activeSlide.id}
                       index={activeSlide.video!}
@@ -2056,14 +2056,14 @@ export function GenerationCanvas({
                       setChatHidden(false)
                       focusPromptBox()
                     }}
-                    className="absolute bottom-full right-0 z-30 mb-2 flex items-center gap-1 whitespace-nowrap rounded-full bg-background/85 py-0.5 pl-1.5 pr-2 text-xs font-medium shadow-sm ring-1 ring-foreground/10 backdrop-blur-md outline-none transition-colors hover:bg-background focus-visible:ring-2 focus-visible:ring-ring/50"
+                    className="absolute bottom-full right-0 z-30 mb-2 flex items-center gap-1 whitespace-nowrap rounded-full bg-background/90 py-0.5 pl-1.5 pr-2 text-xs font-medium shadow-sm ring-1 ring-foreground/10 backdrop-blur-md transition-colors hover:bg-background focus-ring"
                   >
                     <HugeiconsIcon icon={SparklesIcon} className="size-3 text-brand" />
                     Generate this variation
                   </button>
                   {/* not generated yet: the reference video, faded, under this variation's elements */}
                   <div className="absolute inset-0 overflow-hidden bg-muted">
-                    <img loading="lazy" decoding="async" src={videoAt(slides[0].video!).poster} alt="" className="absolute inset-0 size-full object-cover opacity-25 blur-[2px]" />
+                    <img loading="lazy" decoding="async" src={videoAt(slides[0].video!).poster} alt="" className="absolute inset-0 size-full object-cover opacity-30 blur-[2px]" />
                   </div>
                   <CanvasStage elements={elements} setElements={setElements} selected={selected} setSelected={setSelected} editing={editing} setEditing={setEditing} ratio={ratio} thumbs={thumbs} activeThumb={activeThumb} feedOf={feedOf} onEditFeed={editFeed} onFeedValue={setFeedValue} feeds={feeds} onAddFeed={addFeed} onSeedFeed={seedFeed} onRenameFeed={renameFeed} onDeleteFeed={deleteFeed} hovered={hovered} selectedThumb={thumbSel} onSelectThumb={pickThumb} readOnly={previewing} onThumb={(n) => included[n] && select(included[n].id)} />
                 </>

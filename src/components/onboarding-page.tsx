@@ -247,8 +247,8 @@ export function OnboardingPage({
                           aria-checked={on}
                           onClick={() => toggleGoal(g.id)}
                           className={cn(
-                            "flex items-center gap-3 rounded-2xl p-3 text-left outline-none ring-1 transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
-                            on ? "bg-brand/5 ring-brand/50" : errors.goals ? "ring-destructive/40 hover:bg-muted/50" : "ring-foreground/10 hover:bg-muted/50",
+                            "flex items-center gap-3 rounded-2xl p-3 text-left ring-1 transition-colors focus-ring",
+                            on ? "bg-brand/10 ring-brand/50" : errors.goals ? "ring-destructive/50 hover:bg-muted/50" : "ring-foreground/10 hover:bg-muted/50",
                           )}
                         >
                           <span className={cn("grid size-10 shrink-0 place-items-center rounded-xl", on ? "bg-brand/10 text-brand" : "bg-muted text-muted-foreground")}>
@@ -259,7 +259,7 @@ export function OnboardingPage({
                             <span className="text-xs text-muted-foreground">{g.hint}</span>
                           </span>
                           <span className={cn("grid size-5 shrink-0 place-items-center rounded-md ring-1 transition-colors", on ? "bg-brand text-brand-foreground ring-brand" : "ring-foreground/20")}>
-                            {on && <HugeiconsIcon icon={Tick02Icon} className="size-3.5" strokeWidth={2.5} />}
+                            {on && <HugeiconsIcon icon={Tick02Icon} className="size-3.5" strokeWidth={3} />}
                           </span>
                         </button>
                       )
@@ -296,7 +296,7 @@ export function OnboardingPage({
 
               <div className="mt-2 flex items-center gap-2">
                 {step > 0 && (
-                  <Button type="button" variant="ghost" size="lg" onClick={back} disabled={saving} className="h-9 gap-1.5 px-3 text-muted-foreground">
+                  <Button type="button" variant="ghost" size="lg" onClick={back} disabled={saving} className="gap-1.5 px-3 text-muted-foreground">
                     <HugeiconsIcon icon={ArrowLeft01Icon} className="size-4" />
                     Back
                   </Button>
@@ -354,8 +354,8 @@ export function Chips({ id, options, value, onChange, invalid, suffix }: { id: s
           aria-label={suffix && /\d/.test(o) ? `${o}${suffix}` : o}
           onClick={() => onChange(o)}
           className={cn(
-            "h-9 rounded-full px-3.5 text-sm outline-none ring-1 transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
-            value === o ? "bg-brand/10 font-medium text-brand ring-brand/40" : invalid ? "ring-destructive/40 hover:bg-muted" : "ring-foreground/10 hover:bg-muted",
+            "h-9 rounded-full px-3.5 text-sm ring-1 transition-colors focus-ring",
+            value === o ? "bg-brand/10 font-medium text-brand ring-brand/50" : invalid ? "ring-destructive/50 hover:bg-muted" : "ring-foreground/10 hover:bg-muted",
           )}
         >
           {o}

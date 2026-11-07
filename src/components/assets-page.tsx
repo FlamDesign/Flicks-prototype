@@ -294,7 +294,7 @@ function AssetCard({ a, onOpen }: { a: Asset; onOpen: () => void }) {
           </Tooltip>
         }
       >
-        <button type="button" onClick={onOpen} aria-label={`Open video: ${a.prompt}`} className="absolute inset-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+        <button type="button" onClick={onOpen} aria-label={`Open video: ${a.prompt}`} className="absolute inset-0 rounded-xl focus-ring" />
       </MediaTile>
       <p className="truncate px-0.5 text-xs text-muted-foreground" title={a.prompt}>
         {a.prompt}

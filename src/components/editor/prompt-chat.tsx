@@ -6,6 +6,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Alert02Icon, PanelRightCloseIcon, SparklesIcon } from "@hugeicons/core-free-icons"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { MOD } from "@/lib/keys"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { RefStill, type Reference } from "@/components/prompt-composer"
 import { cn } from "@/lib/utils"
@@ -148,9 +149,9 @@ export function PromptChat({
                 {h.prompt && <p className="whitespace-pre-line text-sm leading-relaxed">{h.prompt}</p>}
                 {(h.fromReference || h.refs.length > 0) && (
                   <div className="flex flex-wrap gap-1.5">
-                    {h.fromReference && <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">From Variation 1</span>}
+                    {h.fromReference && <Badge variant="subtle">From Variation 1</Badge>}
                     {h.refs.map((r, i) => (
-                      <button key={i} type="button" onClick={() => setViewing({ h: h.id, i })} aria-label={`View ${r.name}`} className="rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                      <button key={i} type="button" onClick={() => setViewing({ h: h.id, i })} aria-label={`View ${r.name}`} className="rounded-lg focus-ring">
                         <RefStill r={r} className="size-9 rounded-lg object-cover ring-1 ring-foreground/10" />
                       </button>
                     ))}
@@ -162,7 +163,7 @@ export function PromptChat({
                 type="button"
                 disabled={!name}
                 onClick={() => name && onSelect(h.slideId)}
-                className="mr-10 flex items-center gap-3 rounded-2xl p-1.5 pr-3 text-left outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none"
+                className="mr-10 flex items-center gap-3 rounded-2xl p-1.5 pr-3 text-left hover:bg-muted focus-ring disabled:pointer-events-none"
               >
                 <span className="relative grid size-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-muted ring-1 ring-foreground/10">
                   {generating ? (
@@ -241,7 +242,7 @@ export function PromptChat({
             <TargetChip name={target.name} poster={target.poster} />
           </div>
         )}
-        <div data-composer className={cn("rounded-2xl transition-[opacity,box-shadow] duration-300 data-[flash]:ring-2 data-[flash]:ring-brand data-[flash]:ring-offset-2 data-[flash]:ring-offset-background", busy && "pointer-events-none opacity-60")} aria-disabled={busy}>
+        <div data-composer className={cn("rounded-2xl transition-[opacity,box-shadow] duration-300 data-[flash]:ring-2 data-[flash]:ring-brand data-[flash]:ring-offset-2 data-[flash]:ring-offset-background", busy && "pointer-events-none opacity-70")} aria-disabled={busy}>
           {composer}
         </div>
       </div>

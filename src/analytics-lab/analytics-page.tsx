@@ -99,7 +99,7 @@ export function AnalyticsPage({ data, loading }: { data: Dataset; loading: boole
     <div className="mx-auto w-full max-w-[1180px] px-4 py-8 md:px-8 md:py-10">
       {open ? (
         <div className="flex flex-col gap-1">
-          <button type="button" onClick={back} className="flex w-fit items-center gap-1 rounded-md text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+          <button type="button" onClick={back} className="flex w-fit items-center gap-1 rounded-md text-sm text-muted-foreground hover:text-foreground focus-ring">
             <HugeiconsIcon icon={ArrowLeft01Icon} className="size-4" />
             {backLabel}
           </button>
@@ -118,7 +118,7 @@ export function AnalyticsPage({ data, loading }: { data: Dataset; loading: boole
                 role="tab"
                 aria-selected={tab === t.id}
                 onClick={() => setTab(t.id)}
-                className={cn("-mb-px border-b-2 px-3 pb-2.5 pt-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring", tab === t.id ? "border-brand font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}
+                className={cn("-mb-px border-b-2 px-3 pb-2.5 pt-1 text-sm focus-ring", tab === t.id ? "border-brand font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}
               >
                 {t.label}
               </button>
@@ -324,7 +324,7 @@ function MetricStrip({ rows, prevRows, filter, metrics, sel }: { rows: Row[]; pr
       ]
   return (
     <Card className="gap-0 overflow-hidden py-0 shadow-none">
-      <div role="tablist" aria-label="Metrics" className={cn("grid grid-cols-2 gap-px border-b bg-foreground/5", metrics.length === 5 ? "lg:grid-cols-5" : "lg:grid-cols-4")}>
+      <div role="tablist" aria-label="Metrics" className={cn("grid grid-cols-2 gap-px border-b bg-foreground/10", metrics.length === 5 ? "lg:grid-cols-5" : "lg:grid-cols-4")}>
         {metrics.map((x) => {
           const on = x.id === m.id
           return (
@@ -334,7 +334,7 @@ function MetricStrip({ rows, prevRows, filter, metrics, sel }: { rows: Row[]; pr
               role="tab"
               aria-selected={on}
               onClick={() => setMid(x.id)}
-              className={cn("relative flex flex-col gap-1.5 bg-card p-4 text-left outline-none last:odd:col-span-2 lg:last:odd:col-span-1 transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring", on ? "bg-brand/5" : "hover:bg-muted/50")}
+              className={cn("relative flex flex-col gap-1.5 bg-card p-4 text-left outline-none last:odd:col-span-2 lg:last:odd:col-span-1 transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring", on ? "bg-brand/10" : "hover:bg-muted/50")}
             >
               {on && <span aria-hidden className="absolute inset-x-0 top-0 h-0.5 bg-brand" />}
               <span className={cn("text-sm", on ? "font-medium text-foreground" : "text-muted-foreground")}>{x.label}</span>
@@ -350,13 +350,13 @@ function MetricStrip({ rows, prevRows, filter, metrics, sel }: { rows: Row[]; pr
       <div className="flex flex-col gap-3 p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-0.5">
-            <h2 className="text-base font-medium">{m.label} by day</h2>
+            <h2 className="text-sm font-medium">{m.label} by day</h2>
             <p className="text-xs text-muted-foreground">{m.hint}</p>
           </div>
           <div className="flex items-center gap-3">
             <Legend items={lines.map((l) => ({ label: l.name === m.label ? RANGE_LABEL[filter.range] : l.name, color: l.color, line: true, dashed: l.dashed }))} />
             {picks.length > 0 && (
-              <Button variant="ghost" size="sm" className="h-7 px-2" onClick={sel?.clear}>
+              <Button variant="ghost" size="sm" className="px-2" onClick={sel?.clear}>
                 Clear
               </Button>
             )}
@@ -385,7 +385,7 @@ function MetricStrip({ rows, prevRows, filter, metrics, sel }: { rows: Row[]; pr
               </thead>
               <tbody>
                 {labels.map((d, i) => (
-                  <tr key={d + i} className="border-t border-foreground/5">
+                  <tr key={d + i} className="border-t border-foreground/10">
                     <td className="py-1.5">{d}</td>
                     {lines.map((l) => (
                       <td key={l.name} className={cn("py-1.5 text-right tabular-nums", l.dashed && "text-muted-foreground")}>
@@ -434,7 +434,7 @@ function SelBox({ selection, id, name, pred }: { selection: Selection; id: strin
       disabled={full}
       onClick={(e) => (e.stopPropagation(), selection.toggle({ id, name, pred }))}
       onKeyDown={(e) => e.stopPropagation()}
-      className={cn("grid size-4 place-items-center rounded-[5px] outline-none ring-1 ring-foreground/25 transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40", cur && "ring-0")}
+      className={cn("grid size-4 place-items-center rounded-md ring-1 ring-foreground/30 transition-colors focus-ring disabled:opacity-50", cur && "ring-0")}
       style={cur ? { background: cur.color } : undefined}
     >
       {cur && <HugeiconsIcon icon={Tick02Icon} className="size-3 text-white" strokeWidth={3} />}
@@ -448,7 +448,7 @@ function Summary({ items }: { items: string[] }) {
   const [vote, setVote] = useState<"up" | "down" | null>(null)
   if (!items.length) return null
   return (
-    <section aria-label="Summary" className="rounded-2xl bg-brand/5 p-5 ring-1 ring-brand/15">
+    <section aria-label="Summary" className="rounded-2xl bg-brand/10 p-5 ring-1 ring-brand/20">
       <div className="flex items-center gap-2">
         <HugeiconsIcon icon={SparklesIcon} className="size-4 text-brand" />
         <h2 className="text-sm font-medium">Summary</h2>
@@ -648,7 +648,7 @@ function Overview({ data, filter, go, onTab, flicksOnly }: { data: Dataset; filt
       <button
         type="button"
         onClick={() => setSort((s) => ({ key, desc: s.key === key ? !s.desc : true }))}
-        className={cn("inline-flex items-center gap-1 rounded-md outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring", sort.key === key && "font-medium text-foreground")}
+        className={cn("inline-flex items-center gap-1 rounded-md hover:text-foreground focus-ring", sort.key === key && "font-medium text-foreground")}
       >
         {label}
         <HugeiconsIcon icon={sort.key === key ? (sort.desc ? ArrowDown01Icon : ArrowUp01Icon) : ArrowUpDownIcon} className="size-3.5" />
@@ -686,7 +686,7 @@ function Overview({ data, filter, go, onTab, flicksOnly }: { data: Dataset; filt
             </thead>
             <tbody>
               {sorted.map(({ meta, t: ft, spark, lead }) => (
-                <tr key={meta.id} tabIndex={0} onClick={() => onOpen(meta.id)} onKeyDown={(e) => e.key === "Enter" && onOpen(meta.id)} className="cursor-pointer border-t border-foreground/5 text-right outline-none hover:bg-muted/50 focus-visible:bg-muted/50">
+                <tr key={meta.id} tabIndex={0} onClick={() => onOpen(meta.id)} onKeyDown={(e) => e.key === "Enter" && onOpen(meta.id)} className="cursor-pointer border-t border-foreground/10 text-right outline-none hover:bg-muted/50 focus-visible:bg-muted/50">
                   <td className="py-2 pl-2">
                     <SelBox selection={selection} id={meta.id} name={meta.name} pred={(r) => r.flickId === meta.id} />
                   </td>
@@ -782,7 +782,7 @@ function FlickView({ data, meta, filter }: { data: Dataset; meta: FlickMeta; fil
                 const clicks = t.clicks * v.click
                 const best = lead.best?.i === i && t.played > 0
                 return (
-                  <tr key={v.name} className="border-t border-foreground/5 text-right">
+                  <tr key={v.name} className="border-t border-foreground/10 text-right">
                     <td className="py-2 pl-2 text-left">
                       <span className="flex items-center gap-2.5">
                         <span className="relative">
@@ -790,8 +790,8 @@ function FlickView({ data, meta, filter }: { data: Dataset; meta: FlickMeta; fil
                           <span aria-hidden className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full ring-2 ring-card" style={{ background: SERIES[i % SERIES.length] }} />
                         </span>
                         <span className="font-medium">{v.name}</span>
-                        {i === meta.start && <Badge variant="secondary" className="h-5 px-1.5 text-xs font-normal">Starts here</Badge>}
-                        {best && <Badge className="h-5 px-1.5 text-xs font-normal">Most clicks per view</Badge>}
+                        {i === meta.start && <Badge variant="subtle">Starts here</Badge>}
+                        {best && <Badge className="px-1.5 font-normal">Most clicks per view</Badge>}
                       </span>
                     </td>
                     <td className="py-2 pl-4">
@@ -863,7 +863,7 @@ function FlickView({ data, meta, filter }: { data: Dataset; meta: FlickMeta; fil
 
 function EarlyNote() {
   return (
-    <div className="rounded-2xl bg-muted/60 px-4 py-3 text-sm">
+    <div className="rounded-2xl bg-muted/70 px-4 py-3 text-sm">
       <span className="font-medium">Early numbers.</span> <span className="text-muted-foreground">Fewer than {EARLY} views so far. Rates move a lot until more people watch.</span>
     </div>
   )
@@ -960,7 +960,7 @@ function DataTable({ rows, cols, empty = "Nothing in this period.", nameLabel = 
                 <button
                   type="button"
                   onClick={() => setSort((s) => ({ id: c.id, desc: s.id === c.id ? !s.desc : true }))}
-                  className={cn("inline-flex items-center gap-1 rounded-md outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring", sort.id === c.id && "font-medium text-foreground")}
+                  className={cn("inline-flex items-center gap-1 rounded-md hover:text-foreground focus-ring", sort.id === c.id && "font-medium text-foreground")}
                 >
                   {c.label}
                   <HugeiconsIcon icon={sort.id === c.id ? (sort.desc ? ArrowDown01Icon : ArrowUp01Icon) : ArrowUpDownIcon} className="size-3.5" />
@@ -976,7 +976,7 @@ function DataTable({ rows, cols, empty = "Nothing in this period.", nameLabel = 
               tabIndex={r.onClick ? 0 : undefined}
               onClick={r.onClick}
               onKeyDown={(e) => e.key === "Enter" && r.onClick?.()}
-              className={cn("border-t border-foreground/5 text-right outline-none", r.onClick && "cursor-pointer hover:bg-muted/50 focus-visible:bg-muted/50")}
+              className={cn("border-t border-foreground/10 text-right outline-none", r.onClick && "cursor-pointer hover:bg-muted/50 focus-visible:bg-muted/50")}
             >
               {selection && (
                 <td className="py-2 pl-2">
@@ -1020,11 +1020,11 @@ function TopLists({ data, filter, go, onTab }: { data: Dataset; filter: Filter; 
   const embeds = placesOf(data, "embed").map((e) => ({ id: e.id, name: e.name, t: byWhere(rows, e.id) }))
   const flicks = data.flicks.map((f) => ({ id: f.id, name: f.name, image: f.image, t: byFlick(rows, f.id) }))
   const list = (title: string, items: { id: string; name: string; image?: string; t: Totals }[], kind: Open["kind"], tab: Tab, value: (t: Totals) => string, label: string) => (
-    <Section title={title} tools={<Button variant="ghost" size="sm" className="-my-1 h-7 px-2" onClick={() => onTab(tab)}>See all</Button>}>
+    <Section title={title} tools={<Button variant="ghost" size="sm" className="-my-1 px-2" onClick={() => onTab(tab)}>See all</Button>}>
       <ul className="flex flex-col">
         {[...items].sort((a, b) => b.t.played - a.t.played).slice(0, 4).map((x) => (
           <li key={x.id}>
-            <button type="button" onClick={() => go({ kind, id: x.id })} className="-mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded-lg px-2 py-2 text-left text-sm outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring">
+            <button type="button" onClick={() => go({ kind, id: x.id })} className="-mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded-lg px-2 py-2 text-left text-sm hover:bg-muted/50 focus-ring">
               {x.image && <img loading="lazy" decoding="async" src={x.image} alt="" className="size-8 shrink-0 rounded-md object-cover ring-1 ring-foreground/10" />}
               <span className="min-w-0 flex-1 truncate font-medium">{x.name}</span>
               <span className="shrink-0 text-right tabular-nums">

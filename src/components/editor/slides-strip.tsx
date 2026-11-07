@@ -187,7 +187,7 @@ export function SlidesStrip({
                   aria-label="Add variation"
                   disabled={locked}
                   onClick={onAdd}
-                  className="border border-dashed border-foreground/20 p-0 text-muted-foreground hover:border-foreground/40"
+                  className="border border-dashed border-foreground/20 p-0 text-muted-foreground hover:border-foreground/50"
                   style={{ width: w, height: h }}
                 >
                   <HugeiconsIcon icon={PlusSignIcon} className="size-4" />
@@ -236,7 +236,7 @@ function Label({ label, active, onRename, placeholder }: { label: string; active
           type="button"
           onClick={() => (setDraft(label), setEditing(true))}
           aria-label={`Rename ${label}`}
-          className={cn(cls, "h-5 truncate whitespace-nowrap rounded-md px-1 outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50")}
+          className={cn(cls, "h-5 truncate whitespace-nowrap rounded-md px-1 hover:bg-muted focus-ring")}
         >
           {label}
         </button>
@@ -328,7 +328,7 @@ function Thumb({
         )}
         style={{ width, height }}
       >
-        {status === "done" && video && <img loading="lazy" decoding="async" src={video.poster} alt="" className={cn("absolute inset-0 size-full object-cover", stale && "opacity-40", arrived && "animate-in fade-in-0 zoom-in-105 duration-700")} />}
+        {status === "done" && video && <img loading="lazy" decoding="async" src={video.poster} alt="" className={cn("absolute inset-0 size-full object-cover", stale && "opacity-50", arrived && "animate-in fade-in-0 zoom-in-105 duration-700")} />}
         {status === "generating" && <GeneratingGradient spinner />}
         {status === "empty" && <HugeiconsIcon icon={SparklesIcon} className="size-4 text-muted-foreground" />}
       </Button>

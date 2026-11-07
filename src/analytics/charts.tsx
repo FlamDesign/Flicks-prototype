@@ -80,7 +80,7 @@ export function BarList({
         <li
           key={it.label}
           tabIndex={detail ? 0 : undefined}
-          className="group flex flex-col gap-1 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="group flex flex-col gap-1 rounded-md focus-ring"
           onPointerMove={detail ? (e) => setTip({ x: e.clientX, y: e.clientY, title: it.label, rows: detail(i) }) : undefined}
           onPointerLeave={() => setTip(null)}
         >

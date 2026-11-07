@@ -126,7 +126,7 @@ export function RecipeCards({ onStart }: { onStart: (s: RecipeStart) => void }) 
                 type="button"
                 onClick={() => setOpen(r)}
                 className={cn(
-                  "group/r relative block w-full overflow-hidden rounded-2xl bg-muted text-left shadow-xs ring-1 ring-foreground/10 outline-none transition-[box-shadow,transform] duration-300 hover:-translate-y-0.5 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-ring",
+                  "group/r relative block w-full overflow-hidden rounded-2xl bg-muted text-left shadow-xs ring-1 ring-foreground/10 transition-[box-shadow,transform] duration-300 hover:-translate-y-0.5 hover:shadow-lg focus-ring",
                   big ? "aspect-[16/9] @3xl:aspect-auto @3xl:h-full" : "aspect-[3/4] @3xl:aspect-[4/5]",
                 )}
               >
@@ -174,8 +174,8 @@ function HowItWorks({ r }: { r: Recipe }) {
   const layer = (n: number) => cn("absolute inset-0 grid place-items-center p-8 transition-[opacity,transform] duration-500", step === n ? "opacity-100 translate-y-0" : "pointer-events-none translate-y-2 opacity-0")
   const frame = "relative aspect-[3/4] w-[min(72%,300px)] overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10"
   return (
-    <div className="relative flex h-full min-h-80 flex-col overflow-hidden bg-neutral-950 text-white">
-      <div aria-hidden className="pointer-events-none absolute inset-0 opacity-60" style={{ backgroundImage: "radial-gradient(circle at 30% 20%, color-mix(in oklch, var(--brand) 35%, transparent), transparent 55%), radial-gradient(circle at 80% 90%, color-mix(in oklch, var(--chart-2) 25%, transparent), transparent 50%)" }} />
+    <div className="relative flex h-full min-h-80 flex-col overflow-hidden bg-black text-white">
+      <div aria-hidden className="pointer-events-none absolute inset-0 opacity-70" style={{ backgroundImage: "radial-gradient(circle at 30% 20%, color-mix(in oklch, var(--brand) 35%, transparent), transparent 55%), radial-gradient(circle at 80% 90%, color-mix(in oklch, var(--chart-2) 25%, transparent), transparent 50%)" }} />
       <p className="relative px-6 pt-6 text-xs font-medium uppercase tracking-wider text-white/70">How it works</p>
       <div aria-hidden className="relative min-h-0 flex-1">
         {/* 1: what you add drops into place */}
@@ -200,7 +200,7 @@ function HowItWorks({ r }: { r: Recipe }) {
                 <div key={t} className={cn("flex w-44 flex-col gap-2.5 rounded-2xl p-2.5 ring-1 transition-colors", i === 0 ? "bg-white/10 ring-white/50" : "bg-white/10 ring-white/10")}>
                   <div className="flex items-center gap-1">
                     {[0, 1, 2].map((k) => (
-                      <span key={k} className={cn("aspect-[3/4] flex-1 overflow-hidden rounded-md", (i === 0 ? k === 0 : k === 2) ? "ring-2 ring-brand" : "opacity-40")}>
+                      <span key={k} className={cn("aspect-[3/4] flex-1 overflow-hidden rounded-md", (i === 0 ? k === 0 : k === 2) ? "ring-2 ring-brand" : "opacity-50")}>
                         <img src={r.media.still} alt="" className="size-full object-cover" style={{ filter: (i === 0 ? k === 0 : k === 2) ? undefined : "blur(1px) saturate(.6)" }} />
                       </span>
                     ))}
@@ -250,7 +250,7 @@ function HowItWorks({ r }: { r: Recipe }) {
       </div>
       <ol className="relative grid grid-cols-3 gap-3 border-t border-white/10 px-6 py-5">
         {r.steps.map(([t, d], i) => (
-          <li key={t} className={cn("flex flex-col gap-1 transition-opacity duration-300", step === i ? "opacity-100" : "opacity-45")}>
+          <li key={t} className={cn("flex flex-col gap-1 transition-opacity duration-300", step === i ? "opacity-100" : "opacity-50")}>
             <span className="h-0.5 overflow-hidden rounded-full bg-white/10">
               <span className={cn("block h-full rounded-full bg-white", step === i ? "w-full transition-[width] duration-[3600ms] ease-linear" : step > i ? "w-full" : "w-0")} />
             </span>
@@ -373,7 +373,7 @@ function RecipeForm({ recipe: r, onClose, onStart }: { recipe: Recipe; onClose: 
                       ["end", "Where it ends", "The video builds up to your image."],
                     ] as const
                   ).map(([v, label, hint]) => (
-                    <button key={v} type="button" role="radio" aria-checked={frame === v} onClick={() => setFrame(v)} className={cn("flex flex-col gap-0.5 rounded-xl p-3.5 text-left ring-1 ring-foreground/10 outline-none transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring", frame === v && "bg-brand/10 ring-2 ring-brand")}>
+                    <button key={v} type="button" role="radio" aria-checked={frame === v} onClick={() => setFrame(v)} className={cn("flex flex-col gap-0.5 rounded-xl p-3.5 text-left ring-1 ring-foreground/10 transition-colors hover:bg-muted/50 focus-ring", frame === v && "bg-brand/10 ring-2 ring-brand")}>
                       <span className="text-sm font-medium">{label}</span>
                       <span className="text-xs text-muted-foreground">{hint}</span>
                     </button>

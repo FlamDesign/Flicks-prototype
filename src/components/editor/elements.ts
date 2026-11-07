@@ -432,7 +432,7 @@ export const BUTTON_STYLES: { variant: ButtonVariant; name: string; className: s
   { variant: "lightSharp", name: "Light sharp", className: "rounded-none bg-white text-zinc-950 uppercase tracking-[0.12em]", panelClassName: "rounded-none bg-white text-zinc-950 uppercase tracking-[0.12em] ring-1 ring-zinc-300" },
   { variant: "outline", name: "Outline", className: "rounded-full border-[0.12em] border-white text-white", panelClassName: "rounded-full border-[0.12em] border-zinc-950 text-zinc-950" },
   { variant: "outlineSharp", name: "Outline sharp", className: "rounded-none border-[0.12em] border-white text-white", panelClassName: "rounded-none border-[0.12em] border-zinc-950 text-zinc-950" },
-  { variant: "glass", name: "Glass", className: "rounded-full border border-white/40 bg-white/20 text-white backdrop-blur-md", panelClassName: "rounded-full border border-zinc-950/15 bg-zinc-950/5 text-zinc-950" },
+  { variant: "glass", name: "Glass", className: "rounded-full border border-white/50 bg-white/20 text-white backdrop-blur-md", panelClassName: "rounded-full border border-zinc-950/15 bg-zinc-950/5 text-zinc-950" },
   { variant: "block", name: "Block shadow", className: "rounded-none border-[0.12em] border-zinc-950 bg-white text-zinc-950 shadow-[0.25em_0.25em_0_0_rgb(9_9_11)]" },
   // image only, no label: only its image and link change
   { variant: "icon", name: "Icon", className: "rounded-full" },
@@ -523,7 +523,7 @@ export function defaultBorder(el: Extract<CanvasElement, { kind: "button" }>) {
   const c = BUTTON_STYLES.find((b) => b.variant === el.variant)!.className
   const size = el.size ?? BUTTON_SIZE
   if (c.includes("border-[0.12em]")) return { width: Math.round(0.12 * size * 10.8), color: c.includes("border-white") ? "#ffffff" : "#09090b" }
-  if (c.includes("border-white/40")) return { width: 1, color: "#ffffff66" }
+  if (c.includes("border-white/50")) return { width: 1, color: "#ffffff66" }
   return { width: 0, color: "#ffffff" }
 }
 

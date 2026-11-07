@@ -22,7 +22,7 @@ export function PlanSteps({ step }: { step: Step }) {
     <ol aria-label="Steps" className="flex items-center gap-1 text-xs">
       {STEPS.map((s, i) => (
         <li key={s.id} className="flex items-center gap-1">
-          {i > 0 && <span aria-hidden className={cn("h-px w-5 transition-colors", i <= at ? "bg-foreground/40" : "bg-foreground/10")} />}
+          {i > 0 && <span aria-hidden className={cn("h-px w-5 transition-colors", i <= at ? "bg-foreground/50" : "bg-foreground/10")} />}
           <span
             aria-current={i === at ? "step" : undefined}
             className={cn(
@@ -30,7 +30,7 @@ export function PlanSteps({ step }: { step: Step }) {
               i < at ? "text-foreground" : i === at ? "bg-foreground text-background" : "text-muted-foreground",
             )}
           >
-            {i < at && <HugeiconsIcon icon={Tick02Icon} className="size-3" strokeWidth={2.5} />}
+            {i < at && <HugeiconsIcon icon={Tick02Icon} className="size-3" strokeWidth={3} />}
             {s.label}
           </span>
         </li>

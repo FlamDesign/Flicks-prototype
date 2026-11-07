@@ -98,7 +98,7 @@ function ClaimButton({ claimed, onClick }: { claimed: boolean; onClick: () => vo
         </span>
         {claimed && (
           <span className="col-start-1 row-start-1 flex items-center justify-center gap-1.5">
-            <HugeiconsIcon icon={Tick02Icon} className="size-4" strokeWidth={2.5} style={{ animation: "wg-tick .4s cubic-bezier(.34,1.56,.64,1) .1s both" }} />
+            <HugeiconsIcon icon={Tick02Icon} className="size-4" strokeWidth={3} style={{ animation: "wg-tick .4s cubic-bezier(.34,1.56,.64,1) .1s both" }} />
             <span style={{ animation: "wg-label .35s ease-out .2s both" }}>Credits added</span>
           </span>
         )}

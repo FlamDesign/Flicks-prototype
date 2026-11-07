@@ -253,14 +253,14 @@ export function MediaPicker({
           </div>
         </DialogHeader>
 
-        <div className={cn("relative min-h-0 flex-1 overflow-y-auto p-4", over && "bg-brand/5")}>
+        <div className={cn("relative min-h-0 flex-1 overflow-y-auto p-4", over && "bg-brand/10")}>
           <input ref={file} type="file" accept={[...IMAGE_TYPES, ...VIDEO_TYPES].join(",")} multiple hidden onChange={(e) => (e.target.files && upload(e.target.files), (e.target.value = ""))} />
           {failed && <p className="mb-3 text-xs text-destructive">Couldn’t load your library. Uploads from this session still show.</p>}
           <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3">
             <button
               type="button"
               onClick={() => file.current?.click()}
-              className="group/up flex aspect-square flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-foreground/20 bg-muted/30 px-3 text-center outline-none transition-colors hover:border-foreground/35 hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring"
+              className="group/up flex aspect-square flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-foreground/20 bg-muted/30 px-3 text-center transition-colors hover:border-foreground/30 hover:bg-muted focus-ring"
             >
               <span className="grid size-11 place-items-center rounded-2xl bg-background text-foreground shadow-sm ring-1 ring-foreground/10 transition-transform group-hover/up:-translate-y-0.5">
                 <HugeiconsIcon icon={CloudUploadIcon} className="size-5" />
@@ -361,7 +361,7 @@ function Tile({ x, on, onToggle, onOpen, onDuration }: { x: MediaItem; on: boole
           <Tooltip>
             <TooltipTrigger asChild>
               <Button variant="secondary" size="icon-xs" onClick={onOpen} aria-label={`View ${x.name} full screen`} className="size-6 bg-black/50 text-white opacity-0 shadow-sm backdrop-blur-sm hover:bg-black/70 focus-visible:opacity-100 group-hover/tile:opacity-100">
-                <HugeiconsIcon icon={ArrowExpand01Icon} className="size-3" strokeWidth={2.25} />
+                <HugeiconsIcon icon={ArrowExpand01Icon} className="size-3" strokeWidth={2} />
               </Button>
             </TooltipTrigger>
             <TooltipContent>Full screen</TooltipContent>
@@ -372,7 +372,7 @@ function Tile({ x, on, onToggle, onOpen, onDuration }: { x: MediaItem; on: boole
             onClick={onToggle}
             aria-pressed={on}
             aria-label={`${on ? "Unselect" : "Select"} ${x.name}`}
-            className={cn("grid size-6 place-items-center rounded-full border-2 border-white/90 shadow-sm outline-none transition-opacity focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring", on ? "bg-brand text-brand-foreground opacity-100" : "bg-black/30 opacity-0 hover:bg-black/50 group-hover/tile:opacity-100")}
+            className={cn("grid size-6 place-items-center rounded-full border-2 border-white/90 shadow-sm transition-opacity focus-visible:opacity-100 focus-ring", on ? "bg-brand text-brand-foreground opacity-100" : "bg-black/30 opacity-0 hover:bg-black/50 group-hover/tile:opacity-100")}
           >
             {on && <HugeiconsIcon icon={Tick02Icon} className="size-3.5" strokeWidth={3} />}
           </button>
@@ -523,7 +523,7 @@ export function VideoTrimmer({ item, onDone }: { item: MediaItem | null; onDone:
                   aria-valuetext={clock(range[i])}
                   onPointerDown={grab(w)}
                   onKeyDown={nudge(i as 0 | 1)}
-                  className="absolute inset-y-0 z-10 w-3 -translate-x-1/2 cursor-ew-resize rounded-sm bg-brand outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="absolute inset-y-0 z-10 w-3 -translate-x-1/2 cursor-ew-resize rounded-sm bg-brand focus-ring"
                   style={{ left: `${pct(range[i])}%` }}
                 >
                   <span className="absolute left-1/2 top-1/2 h-5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded bg-brand-foreground/80" />

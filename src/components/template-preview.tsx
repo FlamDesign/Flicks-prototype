@@ -75,7 +75,7 @@ export function TemplatePreview({
 
       {more.length > 0 && (
         <section className="flex flex-col gap-4 pt-4">
-          <h2 className="text-base font-medium">More templates</h2>
+          <h2 className="text-sm font-medium">More templates</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {more.map((x) => (
               <TemplateCard key={x.id} t={x} onUse={onOpen} />
@@ -133,7 +133,7 @@ function TryFlick({ t }: { t: Template }) {
   const [w, h] = t.size.split("×").map(Number);
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex h-[clamp(420px,72vh,640px)] items-center justify-center rounded-2xl bg-muted p-6 ring-1 ring-foreground/5" style={{ containerType: "size" }}>
+      <div className="flex h-[clamp(420px,72vh,640px)] items-center justify-center rounded-2xl bg-muted p-6 ring-1 ring-foreground/10" style={{ containerType: "size" }}>
         <div
           className="relative overflow-hidden rounded-xl bg-black shadow-xl"
           // the Flick at its exact shape, as large as the pane allows by width or height, whichever runs
@@ -200,7 +200,7 @@ function TryFlick({ t }: { t: Template }) {
                 {t.headline}
               </p>
               <div className="absolute inset-x-0 bottom-[5%] flex flex-col items-center gap-[5cqmin]">
-                <span className="rounded-full bg-white px-[6cqmin] py-[2.5cqmin] text-[4.5cqmin] font-medium text-zinc-950 shadow">
+                <span className="rounded-full bg-white px-[6cqmin] py-[2.5cqmin] text-[4.5cqmin] font-medium text-black shadow">
                   {t.cta}
                 </span>
 

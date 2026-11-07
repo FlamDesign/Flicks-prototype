@@ -17,6 +17,11 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* the one keyboard focus look for custom controls, the same as the preset's Button and Input */
+@utility focus-ring {
+  @apply outline-none focus-visible:ring-3 focus-visible:ring-ring/30;
+}
+
 @theme inline {
   --font-sans: "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;
   --color-background: var(--background);
@@ -29,6 +34,8 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
+  /* snap guides on the canvas: one color that reads over any video */
+  --color-guide: var(--guide);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -76,6 +83,7 @@
   --primary-foreground: oklch(0.988 0.004 84);
   /* new: the amber, for selection, progress, AI and the brand mark */
   --brand: oklch(0.555 0.163 48.998); /* the preset's amber primary, unchanged */
+  --guide: oklch(0.65 0.24 15);
   --brand-foreground: oklch(0.987 0.022 95.277);
   --secondary: oklch(0.954 0.008 84);
   --secondary-foreground: oklch(0.216 0.006 56.043);
@@ -117,6 +125,7 @@
   --primary-foreground: oklch(0.216 0.006 56.043);
   /* new: the preset's dark amber, a step brighter to sit on the lifted surfaces */
   --brand: oklch(0.62 0.165 47.5);
+  --guide: oklch(0.72 0.22 15);
   --brand-foreground: oklch(0.987 0.022 95.277);
   --secondary: oklch(0.31 0.008 56);
   --secondary-foreground: oklch(0.97 0.002 84);

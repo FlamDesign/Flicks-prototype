@@ -88,7 +88,7 @@ export function HelpCenter() {
           <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:px-6">
             <a
               href="#help"
-              className="flex shrink-0 items-center gap-2.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex shrink-0 items-center gap-2.5 rounded-md focus-ring"
             >
               <FlicksLogo className="h-6" />
               <span className="hidden text-sm font-medium text-muted-foreground sm:inline">
@@ -239,7 +239,7 @@ function QuickStart({
     <button
       type="button"
       onClick={onClick}
-      className="group flex items-start gap-3 rounded-2xl bg-muted/60 p-4 text-left outline-none ring-1 ring-foreground/5 transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+      className="group flex items-start gap-3 rounded-2xl bg-muted/70 p-4 text-left ring-1 ring-foreground/10 transition-colors hover:bg-muted focus-ring"
     >
       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand text-brand-foreground">
         <HugeiconsIcon icon={icon} className="size-5" />
@@ -263,7 +263,7 @@ function GuideCard({ guide }: { guide: Guide }) {
   return (
     <a
       href={`#help/${guide.id}`}
-      className="group flex flex-col overflow-hidden rounded-2xl bg-card outline-none ring-1 ring-foreground/10 transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring"
+      className="group flex flex-col overflow-hidden rounded-2xl bg-card ring-1 ring-foreground/10 transition-shadow hover:shadow-md focus-ring"
     >
       <span className="relative aspect-[16/10] overflow-hidden bg-muted">
         {cover && (
@@ -327,7 +327,7 @@ function Results({
           <li key={g.id}>
             <a
               href={`#help/${g.id}`}
-              className="flex items-center gap-4 rounded-2xl p-2 outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex items-center gap-4 rounded-2xl p-2 hover:bg-muted focus-ring"
             >
               <img loading="lazy" decoding="async"
                 src={g.frames[0]?.src}
@@ -373,7 +373,7 @@ function GuideNav({ current }: { current: string }) {
               href={`#help/${g.id}`}
               aria-current={g.id === current ? "page" : undefined}
               className={cn(
-                "rounded-lg px-2.5 py-1.5 text-sm outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring",
+                "rounded-lg px-2.5 py-1.5 text-sm hover:bg-muted focus-ring",
                 g.id === current
                   ? "bg-muted font-medium"
                   : "text-muted-foreground",
@@ -429,7 +429,7 @@ function GuidePage({ guide }: { guide: Guide }) {
                 onClick={() => (setStep(k), setPlaying(false))}
                 aria-current={k === step ? "step" : undefined}
                 className={cn(
-                  "flex w-full gap-3 rounded-xl p-2.5 text-left text-sm outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring",
+                  "flex w-full gap-3 rounded-xl p-2.5 text-left text-sm transition-colors hover:bg-muted focus-ring",
                   k === step ? "bg-muted" : "text-muted-foreground",
                 )}
               >
@@ -439,8 +439,8 @@ function GuidePage({ guide }: { guide: Guide }) {
                     k === step
                       ? "bg-brand text-brand-foreground"
                       : k < step
-                        ? "bg-brand/15 text-brand"
-                        : "bg-muted-foreground/15",
+                        ? "bg-brand/20 text-brand"
+                        : "bg-muted-foreground/20",
                   )}
                 >
                   {k + 1}
@@ -455,7 +455,7 @@ function GuidePage({ guide }: { guide: Guide }) {
       {guide.tips.length > 0 && (
         <section
           aria-labelledby="tips"
-          className="flex max-w-3xl flex-col gap-3 rounded-2xl bg-muted/60 p-5"
+          className="flex max-w-3xl flex-col gap-3 rounded-2xl bg-muted/70 p-5"
         >
           <h2 id="tips" className="font-medium">
             Good to know
@@ -499,7 +499,7 @@ function GuidePage({ guide }: { guide: Guide }) {
                   <a
                     key={r}
                     href={`#help/${r}`}
-                    className="rounded-full px-3 py-1.5 text-sm outline-none ring-1 ring-foreground/10 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+                    className="rounded-full px-3 py-1.5 text-sm ring-1 ring-foreground/10 hover:bg-muted focus-ring"
                   >
                     {g.title}
                   </a>
@@ -517,7 +517,7 @@ function GuidePage({ guide }: { guide: Guide }) {
         {prev ? (
           <a
             href={`#help/${prev.id}`}
-            className="flex flex-col gap-0.5 rounded-xl p-3 outline-none ring-1 ring-foreground/10 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex flex-col gap-0.5 rounded-xl p-3 ring-1 ring-foreground/10 hover:bg-muted focus-ring"
           >
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <HugeiconsIcon icon={ArrowLeft01Icon} className="size-3.5" />
@@ -531,7 +531,7 @@ function GuidePage({ guide }: { guide: Guide }) {
         {next && (
           <a
             href={`#help/${next.id}`}
-            className="flex flex-col items-end gap-0.5 rounded-xl p-3 text-right outline-none ring-1 ring-foreground/10 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex flex-col items-end gap-0.5 rounded-xl p-3 text-right ring-1 ring-foreground/10 hover:bg-muted focus-ring"
           >
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
               Next
@@ -636,7 +636,7 @@ function Player({
                 top: `calc(${target.y! - target.h! / 2}% - 4px)`,
                 width: `calc(${target.w}% + 8px)`,
                 height: `calc(${target.h}% + 8px)`,
-                boxShadow: "0 0 0 9999px rgb(0 0 0 / 0.18), 0 0 0 4px color-mix(in oklch, var(--brand) 20%, transparent)",
+                boxShadow: "0 0 0 9999px color-mix(in oklch, black 20%, transparent), 0 0 0 4px color-mix(in oklch, var(--brand) 20%, transparent)",
               }}
             />
           )}
@@ -652,7 +652,7 @@ function Player({
             {target?.x !== undefined && (
               <span
                 key={`${step}-${run}`}
-                className="absolute size-10 rounded-full bg-brand/40 ring-2 ring-brand"
+                className="absolute size-10 rounded-full bg-brand/50 ring-2 ring-brand"
                 style={{ animation: "help-click 700ms ease-out 1000ms both" }}
               />
             )}
@@ -683,7 +683,7 @@ function Player({
           <button
             type="button"
             onClick={toggle}
-            className="absolute inset-0 z-20 grid place-items-center bg-black/30 text-white outline-none animate-in fade-in-0"
+            className="absolute inset-0 z-20 grid place-items-center bg-black/30 text-white animate-in fade-in-0 focus-ring"
           >
             <span className="flex items-center gap-2 rounded-full bg-black/70 px-4 py-2 text-sm font-medium">
               <HugeiconsIcon icon={RepeatIcon} className="size-4" />
@@ -720,7 +720,7 @@ function Player({
               type="button"
               onClick={() => go(k)}
               aria-label={`Step ${k + 1}`}
-              className="group/seg flex h-6 flex-1 items-center outline-none"
+              className="group/seg flex h-6 flex-1 items-center rounded-md focus-ring"
             >
               <span className="relative h-1 w-full overflow-hidden rounded-full bg-foreground/10 group-hover/seg:bg-foreground/20 group-focus-visible/seg:ring-2 group-focus-visible/seg:ring-ring">
                 <span

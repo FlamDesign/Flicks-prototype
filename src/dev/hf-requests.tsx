@@ -175,7 +175,7 @@ export function HfRequests({ open, onOpenChange }: { open: boolean; onOpenChange
                       type="button"
                       onClick={() => setSel(keyOf(r))}
                       aria-current={on || undefined}
-                      className={cn("flex w-full items-start gap-3 rounded-xl p-2.5 text-left outline-none transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring", on && "bg-muted")}
+                      className={cn("flex w-full items-start gap-3 rounded-xl p-2.5 text-left transition-colors hover:bg-muted focus-ring", on && "bg-muted")}
                     >
                       <Thumb r={r} />
                       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -307,7 +307,7 @@ function Detail({ r, onChecked }: { r: HfRequest; onChecked: () => void }) {
 
       {error && (
         <Section title="Error">
-          <pre className="whitespace-pre-wrap break-words rounded-lg bg-destructive/5 p-3 font-mono text-xs text-destructive ring-1 ring-destructive/20">{pretty(error)}</pre>
+          <pre className="whitespace-pre-wrap break-words rounded-lg bg-destructive/10 p-3 font-mono text-xs text-destructive ring-1 ring-destructive/20">{pretty(error)}</pre>
         </Section>
       )}
 
@@ -332,7 +332,7 @@ function Detail({ r, onChecked }: { r: HfRequest; onChecked: () => void }) {
           <ol className="grid grid-cols-[repeat(auto-fill,minmax(112px,1fr))] gap-3">
             {inputs.map((x) => (
               <li key={x.tag + x.url} className="flex min-w-0 flex-col gap-1">
-                <a href={x.url} target="_blank" rel="noreferrer" className="relative block aspect-square overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/10 outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <a href={x.url} target="_blank" rel="noreferrer" className="relative block aspect-square overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/10 focus-ring">
                   {x.video ? <video src={`${x.url}#t=0.5`} muted playsInline preload="metadata" className="absolute inset-0 size-full object-cover" /> : <img src={x.url} alt="" loading="lazy" decoding="async" className="absolute inset-0 size-full object-cover" />}
                   {x.video && (
                     <span className="absolute bottom-1 left-1 rounded bg-black/50 px-1 text-xs text-white">
@@ -370,7 +370,7 @@ function Detail({ r, onChecked }: { r: HfRequest; onChecked: () => void }) {
       )}
 
       <Section title="Sent (JSON)" action={<CopyButton on={copied === "json"} onClick={() => copy("json", JSON.stringify(r.payload, null, 2))} />}>
-        <pre className="overflow-x-auto rounded-lg bg-muted/60 p-3 font-mono text-xs leading-relaxed">{JSON.stringify(r.payload, null, 2)}</pre>
+        <pre className="overflow-x-auto rounded-lg bg-muted/70 p-3 font-mono text-xs leading-relaxed">{JSON.stringify(r.payload, null, 2)}</pre>
       </Section>
     </div>
   )

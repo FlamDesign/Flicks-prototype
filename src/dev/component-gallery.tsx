@@ -893,7 +893,7 @@ export function ComponentGallery({ open, onOpenChange }: { open: boolean; onOpen
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex h-[min(760px,90vh)] gap-0 overflow-hidden p-0 sm:max-w-5xl">
-        <aside className="flex w-56 shrink-0 flex-col border-r bg-muted/40 p-3">
+        <aside className="flex w-56 shrink-0 flex-col border-r bg-muted/50 p-3">
           <DialogHeader className="gap-1 px-2 pb-3 pt-1 text-left">
             <DialogTitle className="flex items-center gap-2 text-base">
               Components <DevBadge />

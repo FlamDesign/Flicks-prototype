@@ -18,7 +18,7 @@ export function TemplateCard({ t, onUse }: { t: Template; onUse: (t: Template) =
       className="group mb-6 break-inside-avoid cursor-pointer gap-0 overflow-visible rounded-none bg-transparent py-0 shadow-none ring-0 outline-none"
     >
       <div
-        className="relative overflow-hidden rounded-xl bg-muted ring-1 ring-foreground/5 transition-[box-shadow,transform] duration-300 group-hover:-translate-y-0.5 group-hover:shadow-lg group-hover:ring-foreground/15 group-focus-visible:ring-2 group-focus-visible:ring-ring"
+        className="relative overflow-hidden rounded-xl bg-muted ring-1 ring-foreground/10 transition-[box-shadow,transform] duration-300 group-hover:-translate-y-0.5 group-hover:shadow-lg group-hover:ring-foreground/20 group-focus-visible:ring-2 group-focus-visible:ring-ring"
         style={{ aspectRatio: t.cardRatio ?? "1 / 1" }}
       >
         <img
@@ -29,8 +29,8 @@ export function TemplateCard({ t, onUse }: { t: Template; onUse: (t: Template) =
         />
         {t.cardInk ? (
           // shopping-app hero card: the brand and its line set on the card's clear top
-          <div className={cn("absolute inset-x-0 top-0 space-y-1 p-[7%]", t.cardInk === "light" ? "text-white" : "text-neutral-950")}>
-            <p className="text-xs font-medium opacity-80">{t.brandName ?? t.brand}</p>
+          <div className={cn("absolute inset-x-0 top-0 space-y-1 p-[7%]", t.cardInk === "light" ? "text-white" : "text-black")}>
+            <p className="text-xs font-medium opacity-90">{t.brandName ?? t.brand}</p>
             <p className="text-balance text-xl font-bold leading-tight tracking-tight">{t.cardHeadline ?? t.headline}</p>
           </div>
         ) : (
@@ -42,8 +42,8 @@ export function TemplateCard({ t, onUse }: { t: Template; onUse: (t: Template) =
       <div className="space-y-0.5 px-0.5 pt-2.5">
         <p className="truncate text-sm font-medium">{t.title}</p>
         <div className="flex flex-wrap items-center gap-1.5 pt-1">
-          <Badge variant="secondary" className="h-5 px-1.5 text-xs font-normal">{t.industry}</Badge>
-          <Badge variant="secondary" className="h-5 px-1.5 text-xs font-normal tabular-nums">{t.size}</Badge>
+          <Badge variant="subtle">{t.industry}</Badge>
+          <Badge variant="subtle" className="tabular-nums">{t.size}</Badge>
         </div>
       </div>
     </Card>

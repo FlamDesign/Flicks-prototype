@@ -110,7 +110,7 @@ export function AccountPage({
         <Field id="email" label="Email">
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="flex h-9 items-center gap-2 rounded-2xl bg-muted/60 px-3 text-sm text-muted-foreground" aria-readonly>
+              <div className="flex h-9 items-center gap-2 rounded-2xl bg-muted/70 px-3 text-sm text-muted-foreground" aria-readonly>
                 <span id="ob-email" className="min-w-0 flex-1 truncate">
                   {email}
                 </span>
@@ -190,7 +190,7 @@ function Section({ title, description, children }: { title: string; description:
     <Card className="shadow-none">
       <CardContent className="grid gap-6 md:grid-cols-[220px_minmax(0,1fr)]">
         <div>
-          <h2 className="text-base font-medium">{title}</h2>
+          <h2 className="text-sm font-medium">{title}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>
         </div>
         <div className="flex max-w-xl flex-col gap-6">{children}</div>

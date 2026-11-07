@@ -55,9 +55,9 @@ export function Dropzone({
         onClick={onBrowse}
         {...drop}
         className={cn(
-          "group/drop flex w-full flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-foreground/20 bg-muted/30 px-6 text-center outline-none transition-[background-color,border-color,box-shadow] hover:border-foreground/35 hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring",
+          "group/drop flex w-full flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-foreground/20 bg-muted/30 px-6 text-center transition-[background-color,border-color,box-shadow] hover:border-foreground/30 hover:bg-muted focus-ring",
           size === "lg" ? "min-h-56 py-10" : size === "sm" ? "min-h-28 py-5" : "min-h-40 py-8",
-          over && "border-brand bg-brand/10 ring-4 ring-brand/15",
+          over && "border-brand bg-brand/10 ring-4 ring-brand/20",
           className,
         )}
       >
@@ -79,7 +79,7 @@ export function Dropzone({
       </button>
     )
   return (
-    <div {...drop} className={cn("flex flex-col gap-2 rounded-2xl p-1 transition-colors", over && "bg-brand/10 ring-2 ring-brand/40", className)}>
+    <div {...drop} className={cn("flex flex-col gap-2 rounded-2xl p-1 transition-colors", over && "bg-brand/10 ring-2 ring-brand/50", className)}>
       <ul className="flex flex-wrap gap-2.5">
         {items.map((m) => (
           <li key={m.id} className={cn("group/t relative shrink-0 overflow-hidden rounded-xl bg-muted ring-1 ring-foreground/10", tile)}>
@@ -88,7 +88,7 @@ export function Dropzone({
             ) : (
               <PictureSlot src={m.kind === "video" ? m.poster : (m.url ?? m.poster)} alt={m.name} />
             )}
-            {m.preparing && <span className="absolute inset-x-1 bottom-1 rounded-md bg-background/85 px-1 py-0.5 text-center text-xs backdrop-blur">Trimming…</span>}
+            {m.preparing && <span className="absolute inset-x-1 bottom-1 rounded-md bg-background/90 px-1 py-0.5 text-center text-xs backdrop-blur">Trimming…</span>}
             {m.kind === "video" && !m.preparing && (
               <span className="absolute bottom-1 left-1 flex items-center gap-1 rounded-md bg-black/50 px-1.5 py-0.5 text-xs text-white backdrop-blur-sm">
                 <HugeiconsIcon icon={Video01Icon} className="size-3" />
@@ -104,7 +104,7 @@ export function Dropzone({
         ))}
         {!full && (
           <li>
-            <button type="button" onClick={onBrowse} className={cn("flex flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-foreground/20 bg-muted/30 text-xs text-muted-foreground outline-none transition-colors hover:border-foreground/35 hover:bg-muted/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring", tile)}>
+            <button type="button" onClick={onBrowse} className={cn("flex flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-foreground/20 bg-muted/30 text-xs text-muted-foreground transition-colors hover:border-foreground/30 hover:bg-muted hover:text-foreground focus-ring", tile)}>
               <HugeiconsIcon icon={Add01Icon} className="size-4" />
               Add
             </button>

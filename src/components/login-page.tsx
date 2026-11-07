@@ -241,7 +241,7 @@ export function LoginPage({
                 <span className="h-px flex-1 bg-border" />
               </div>
 
-              <Button variant="outline" size="lg" disabled={sending || google} onClick={withGoogle} data-no-validate className="h-9 gap-2">
+              <Button variant="outline" size="lg" disabled={sending || google} onClick={withGoogle} data-no-validate className="gap-2">
                 {google ? <Spinner className="size-4" /> : <GoogleLogo className="size-4" />}
                 {google ? "Connecting to Google…" : "Continue with Google"}
               </Button>
@@ -290,7 +290,7 @@ export function LoginPage({
               <p className="mt-2.5 text-pretty text-sm text-muted-foreground">
                 Sign-in links work once, for 15 minutes. We’ll send a fresh one to <span className="font-medium text-foreground">{email.trim()}</span>.
               </p>
-              <Button size="lg" className="mt-8 h-9 gap-2" disabled={sending} onClick={resend}>
+              <Button size="lg" className="mt-8 gap-2" disabled={sending} onClick={resend}>
                 {sending && <Spinner className="size-4" />}
                 {sending ? "Sending link…" : "Email me a new link"}
               </Button>

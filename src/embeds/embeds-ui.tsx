@@ -47,7 +47,7 @@ export function NewEmbedDialog({ open, onOpenChange, flick, onCreated }: { open:
           <div className="flex flex-col gap-2">
             <Label htmlFor="em-size">Size</Label>
             {flick ? (
-              <p className="flex h-9 items-center gap-2 rounded-2xl bg-muted/60 px-3 text-sm tabular-nums">
+              <p className="flex h-9 items-center gap-2 rounded-2xl bg-muted/70 px-3 text-sm tabular-nums">
                 <RatioGlyph size={flick.size} className="text-muted-foreground" />
                 {flick.size}
                 <span className="text-muted-foreground">· this Flick’s size</span>
@@ -109,10 +109,10 @@ export function AddToEmbed({ flick, onOpenEmbed, onDone }: { flick: FlickRef; on
   return (
     <div className="flex flex-col gap-5">
       <section className="flex flex-col gap-2">
-        <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Embeds in {flick.size}</h3>
+        <h3 className="text-sm font-medium">Embeds in {flick.size}</h3>
         <Loading skeleton={<RowsSkeleton rows={3} className="rounded-2xl p-3 ring-1 ring-foreground/10" />}>
         {same.length ? (
-          <ul className="flex flex-col divide-y divide-foreground/5 rounded-2xl ring-1 ring-foreground/10">
+          <ul className="flex flex-col divide-y divide-foreground/10 rounded-2xl ring-1 ring-foreground/10">
             {same.map((e) => {
               const here = e.flick?.id === flick.id
               return (
