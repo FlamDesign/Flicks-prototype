@@ -76,6 +76,10 @@ export type EditorApi = {
   /** version history: the list, restoring one, saving the current canvas as a named version */
   versions(): { n: number; at: string; name?: string; exported?: string; current: boolean }[]
   restoreVersion(n: number): string
+  /** a proposed video the user approved in words: starts it */
+  makeProposed(name: string): string
+  /** videos the chat proposed that are still waiting for the user's Make */
+  proposed(): { name: string; change: string; cost: number }[]
   saveVersion(name: string): string
   /** a variation's thumbnail in the strip */
   setThumbnail(target: string, url: string): string
@@ -666,6 +670,11 @@ export const TOOLS: Tool[] = [
     input_schema: { type: "object", properties: {} },
   },
   {
+    name: "make_proposed_video",
+    description: "Start a video you proposed (set_variation regenerate or add_variation) when the user approves it in their own words ('yes, make it', 'go ahead'). The card above the composer is the usual way; this is for when they say it in chat instead. Never for a video they haven't approved.",
+    input_schema: { type: "object", properties: { variation: { type: "string", description: "The proposed variation's name" } }, required: ["variation"] },
+  },
+  {
     name: "restore_version",
     description: "Bring back an earlier version of the canvas (design, variations, feeds, where it starts) by its number from list_versions. Use it when the user asks to undo or go back.",
     input_schema: { type: "object", properties: { n: { type: "number" } }, required: ["n"] },
@@ -771,12 +780,13 @@ const ACTIVITY: Record<string, string> = {
   restore_version: "Going back a version",
   save_version: "Saving a version",
   set_variation: "Reworking a variation",
+  make_proposed_video: "Starting the video",
   add_variation: "Adding a variation",
   vary_field: "Writing the copy",
   same_for_all: "Writing the copy",
 }
 /** tools that change the Flick or the project: after one, looking or checking again is new work, not a repeat */
-const CHANGES = new Set(["add_element", "edit_element", "remove_element", "arrange_elements", "restore_version", "update_design", "set_variation", "add_variation", "vary_field", "same_for_all", "rename_feed", "use_image", "set_format", "set_brand", "generate_image", "make_sheet", "propose_plan"])
+const CHANGES = new Set(["add_element", "edit_element", "remove_element", "arrange_elements", "restore_version", "update_design", "set_variation", "add_variation", "make_proposed_video", "vary_field", "same_for_all", "rename_feed", "use_image", "set_format", "set_brand", "generate_image", "make_sheet", "propose_plan"])
 /** what reading each skill means for the user's Flick */
 const SKILL_ACTIVITY: Record<string, string> = {
   flicks: "Getting to know your Flick",
@@ -831,9 +841,9 @@ How the app works (the mechanics, not what to ask):
 - The user's own variation videos: when the user gives a finished video for each variation (e.g. 'here are my 3 videos'), nothing needs generating. Skip concepts, looks, sheets, shots and storyboards: settle only what's missing for the design (names, copy, prices, links), then propose_plan with each variation's video_id (and thumbnail_id when they gave thumbnails); no shot or reference fields. The app checks the videos match each other and the Flick in frame shape and length, and tells you if they don't. After approval, make thumbnails only for variations without one; if every variation has a thumbnail, make none. If only some variations have a video, the rest are made as usual (from Variation 1).
 - Pictures over words: when a question is about something the user judges by eye (setting, mood, light, styling, people, props), ask with display 'pictures' and an image_prompt per answer (up to 4); the app draws each with their product.
 - Placement and size go in one batch (any size options: the app shows the right sizes for the placement answer).
-- Changes after the build. A change to the person, product, setting or shot of the videos is a regenerate (set_variation on "reference" with the new prompt, regenerate true), never a new storyboard; the user reviews the new Variation 1 and the others are remade from it. propose_plan after a build is only for a different Flick altogether, and then the canvas stays as it is (the app keeps the design, logo and everything placed; don't add or re-place anything). "Go back", "revert", "use the earlier/original video": restore_version brings the canvas and the videos back as they were (nothing to make afterwards), or set_variation use_earlier puts a variation's earlier finished video back; both are free. Never say an earlier video can't be brought back.
+- Changes after the build. A change to the person, product, setting or shot of the videos is a proposed remake of Variation 1 (set_variation on "reference" with the new prompt, regenerate true; the app's card asks the user), never a new storyboard; they review the new Variation 1 and the others are remade from it. propose_plan after a build is only for a different Flick altogether, and then the canvas stays as it is (the app keeps the design, logo and everything placed; don't add or re-place anything). "Go back", "revert", "use the earlier/original video": restore_version brings the canvas and the videos back as they were (nothing to make afterwards), or set_variation use_earlier puts a variation's earlier finished video back; both are free. Never say an earlier video can't be brought back.
 - Links: each variation links to its own product page (that flavour, colour or model), never a range or variety page, unless the user gives one. Fill every variation's link in the storyboard from your research; the storyboard card has a field per variation where the user adds or changes them. Never ask for links with a question, and don't mention missing ones until the hand-over (once).
-- The storyboard card shows the storyboard frames and a link field per variation; approving it makes the first video (Variation 1). The variations, copy and links you set are applied with it and the user can change them later. While it's being made (a few minutes), make the thumbnails and set the copy once, then end the turn with one short line; don't look at the Flick or adjust the layout yet (there's only a stand-in frame). The app wakes you when Variation 1 is ready: look once (view_flick), fix only clear clashes, then end with one line asking the user to play it and press Make the variations in the build card, or say what to change. That button is the approval; never ask it with ask_user. If the user says in words they're happy with it, call approve_variation_1. While videos are being made, send no progress updates (the build card shows progress); speak again when the app wakes you. When the state has sample_videos, the videos are test samples that won't show the product: don't judge what's in them, remake them or explain them; carry on as if they were right. Images you made yourself (concept previews, looks) are already described in their results: don't view them again before the storyboard. Never remake a video on your own judgement (it costs credits): if a finished video looks wrong to you, say so in one line and let the user decide; remake only when they ask, or when the app reports a failure to retry.
+- The storyboard card shows the storyboard frames and a link field per variation; approving it makes the first video (Variation 1). The variations, copy and links you set are applied with it and the user can change them later. While it's being made (a few minutes), make the thumbnails and set the copy once, then end the turn with one short line; don't look at the Flick or adjust the layout yet (there's only a stand-in frame). The app wakes you when Variation 1 is ready: look once (view_flick), fix only clear clashes, then end with one line asking the user to play it and press Make the variations in the build card, or say what to change. That button is the approval; never ask it with ask_user. If the user says in words they're happy with it, call approve_variation_1. While videos are being made, send no progress updates (the build card shows progress); speak again when the app wakes you. When the state has sample_videos, the videos are test samples that won't show the product: don't judge what's in them, remake them or explain them; carry on as if they were right. Images you made yourself (concept previews, looks) are already described in their results: don't view them again before the storyboard. You never start a video. Every video needs the user's explicit approval in the app: Approve on the storyboard, Make the variations after Variation 1, Make on a card the app shows when you propose one (set_variation regenerate, add_variation), or Try again on a failed tile. When the user asks for a change to a video, propose it (set_variation with the new prompt and regenerate true) and say in one line what the card will make; don't ask them to confirm in words, the card is the question. If they then approve in words, make_proposed_video. After a failure, never retry on your own.
 - Storyboard: propose_plan shows the storyboard card; call it "the storyboard" to the user, never "the plan". Every one gives storyboard frames (the reference video as 3 or 4 frames: what happens, how it's framed; the app draws a quick still per frame) and a direction per variation. The user never sees prompts, only directions, frames and the on-screen copy; when they edit a direction, it reaches the video as their direction. Don't quote prompts to the user either: describe the idea.
 - Concepts: propose_concepts shows up to 3 concepts as cards with preview images; use it before every plan unless the user already gave a full concept or asked to skip ideas.
 - Videos the user adds (vid-1, vid-2...) arrive as three stills (start, middle, end) with their length (15 seconds at most; longer ones were trimmed). Say what happens in each. Decide from the context what each upload is for, and say it in a line: a video to change (plan reference_mode "edit", source_video_id), a video or image to follow for style, characters or the product (reference_video_ids / reference_image_ids), or an image to bring to life as it is (reference_mode "animate", first_frame_id). Ask only when it's truly unclear.
@@ -1780,13 +1790,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         }
         case "set_variation": {
           const { variation, ...rest } = input as { variation: string } & Partial<PlanVariation> & { regenerate?: boolean }
-          // a video is remade only when the user asked (in this turn) or the app reported a failure to retry
-          if (rest.regenerate) {
-            const userAsked = lastRealUser() !== null
-            const lastNote = [...msgs.current].reverse().find((m) => m.role === "user" && Array.isArray(m.content) && m.content.some((b) => b.type === "text"))
-            const failure = !!lastNote && (lastNote.content as Block[]).some((b) => b.type === "text" && /^\(App: .*(video failed|Retry it once)/.test((b as { text: string }).text))
-            if (!userAsked && !failure) return "Error: videos are only remade when the user asks for it (it costs credits). Tell them what you'd change, in one line, and let them decide."
-          }
+          // a remake is only ever proposed (the app asks the user); and only when the user asked for a change in this turn
+          if (rest.regenerate && lastRealUser() === null) return "Error: propose a remake only when the user asked for a change to the video. Otherwise say in one line what you'd change and let them decide."
           const r = a.setVariation(variation, rest)
           if (!r.startsWith("Error")) add({ kind: "design", text: r.replace(/ Check: .*$/, "") })
           return r
@@ -1825,6 +1830,18 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         case "list_versions": {
           const list = a.versions()
           return list.length ? JSON.stringify(list) : "No versions yet."
+        }
+        case "make_proposed_video": {
+          // only on the user's own words, after the proposal (never on a note from the app)
+          const said = lastRealUser()
+          let proposedAt = -1
+          msgs.current.forEach((m, i) => {
+            if (m.role === "user" && Array.isArray(m.content) && m.content.some((b) => b.type === "tool_result" && /proposed (a remake|its video)/.test(resultText(b.content)))) proposedAt = i
+          })
+          if (!said || said.at < proposedAt || !/\b(yes|yep|go ahead|go for it|make it|do it|approve|ok(ay)?|sure|please do|remake it|try it)\b/i.test(said.text))
+            return "Error: only when the user approves it in their own message after the proposal. Otherwise the Make card above the composer is their call; don't ask again."
+          if (/\b(but|change|instead|except|not|first|before)\b/i.test(said.text)) return "Error: the user asked for a change along with it: update the proposal (set_variation again) and let them decide."
+          return a.makeProposed(String(input.variation ?? ""))
         }
         case "restore_version": {
           const r = a.restoreVersion(Number(input.n))

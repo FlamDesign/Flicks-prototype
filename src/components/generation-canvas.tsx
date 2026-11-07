@@ -37,7 +37,7 @@ import { boxOf, buildDesign, color as colorOf, contrast, describeDesign, element
 import { cancelJob, generateVideo, isLive, posterOf, shareable, useAiConfig, videoAspectOf, type VideoInput } from "@/ai/client"
 import { isTyping } from "@/lib/keys"
 import { GeneratingGradient } from "@/components/editor/generation-progress"
-import { AgentComposer, isDocked, QuestionDeck, QuickReplies, threadGroups, type AgentCtx } from "@/components/editor/agent-chat"
+import { AgentComposer, ApprovalDock, isDocked, QuestionDeck, QuickReplies, threadGroups, type AgentCtx } from "@/components/editor/agent-chat"
 import { PlanningView, PlanSteps } from "@/components/editor/planning-view"
 import { renderFlickShot } from "@/components/editor/flick-shot"
 import { addMadeVideo, canRotate, SHAPES, SHAPE_GREY, isBox, isMadeVideo, MISSING_POSTER, BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, defaultFill, defaultInk, SAMPLE_UPLOADS, inSet, clampStrip, fitStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload, videoAt, wrapVideo } from "@/components/editor/elements"
@@ -590,6 +590,30 @@ export function GenerationCanvas({
   const keepImage = (src: string, name: string) =>
     setUploads((u) => (u.some((x) => x.src === src) ? u : [{ id: crypto.randomUUID(), name: `${name.slice(0, 40)}.jpg`, src, loading: false }, ...u]))
   /** starts one video now (or right after the reference video), charged and logged like the prompt box does */
+  /** videos the chat has asked to make: nothing starts until the user presses Make on the docked card */
+  const [proposals, setProposals] = useState<VideoProposal[]>([])
+  const proposalsNow = useRef(proposals)
+  proposalsNow.current = proposals
+  const propose = (p: Omit<VideoProposal, "id" | "cost" | "at">) => {
+    const next: VideoProposal = { ...p, id: crypto.randomUUID(), cost: VIDEO_COST, at: Date.now() }
+    // one proposal per variation: a newer one replaces it
+    setProposals((list) => ((proposalsNow.current = [...list.filter((x) => x.slideId !== p.slideId), next]), proposalsNow.current))
+    return next
+  }
+  const makeProposed = (id: string) => {
+    const p = proposalsNow.current.find((x) => x.id === id)
+    if (!p) return false
+    const ok = startVideo(p.slideId, p.prompt, { keep_seconds: p.keep_seconds })
+    if (!ok) return false
+    setProposals((list) => ((proposalsNow.current = list.filter((x) => x.id !== id)), proposalsNow.current))
+    if (agentMode) agent.notify(`(App: the user pressed Make: ${p.name} is being made with the change you proposed. Nothing to reply.)`, false)
+    return true
+  }
+  const dropProposed = (id: string) => {
+    const p = proposalsNow.current.find((x) => x.id === id)
+    setProposals((list) => ((proposalsNow.current = list.filter((x) => x.id !== id)), proposalsNow.current))
+    if (p && agentMode) agent.notify(`(App: the user chose Not now for the ${p.name} video; it stays as it is. Nothing to reply.)`, false)
+  }
   const startVideo = (id: string, prompt: string, opts?: { keep_seconds?: number }) => {
     if (dev.credits < VIDEO_COST) return void onGetCredits()
     setDev((d) => ({ credits: d.credits - VIDEO_COST }))
@@ -870,6 +894,8 @@ export function GenerationCanvas({
         values: Object.fromEntries(slidesNow.current.map((x) => [nameOfSlide(x), x.feeds?.[f.id] ?? ""])),
       })),
       issues: feedIssues(),
+      // videos you proposed, still waiting for the user's Make (don't propose them again)
+      ...(proposalsNow.current.length ? { proposed_videos: proposalsNow.current.map((x) => ({ name: x.name, change: x.change ?? x.prompt.slice(0, 120), cost: x.cost })) } : {}),
       design: describeDesign(elementsNow.current, (id) => feedsNow.current.find((f) => f.id === id)?.name, { ratio, thumbs: (includeRef ? slidesNow.current : slidesNow.current.slice(1)).filter((x) => x.id === "main" || x.startedAt).map(nameOfSlide) }),
       // the variation the Flick opens on
       starts_on: nameOfSlide(slidesNow.current.find((x) => x.id === start) ?? slidesNow.current[0]),
@@ -1083,8 +1109,8 @@ export function GenerationCanvas({
         else (setStart(sl.id), parts.push("the Flick now starts on it"))
       }
       if (p.regenerate && p.prompt) {
-        if (!startVideo(sl.id, p.prompt, { keep_seconds: p.keep_seconds })) return "Error: Not enough credits to regenerate."
-        parts.push(`regenerating with the new prompt${p.keep_seconds ? ` (the first ${p.keep_seconds} s pinned to Variation 1)` : ""}`)
+        propose({ slideId: sl.id, name, prompt: p.prompt, change: p.direction?.trim() || undefined, keep_seconds: p.keep_seconds })
+        parts.push(`proposed a remake (${VIDEO_COST} credits): it starts only when the user presses Make on the card above the composer. Say in one line what it will change; don't ask them to confirm in words`)
       }
       // an earlier video of this variation, back as it is: nothing made, nothing charged
       if (p.use_earlier) {
@@ -1117,9 +1143,10 @@ export function GenerationCanvas({
       }
       const sl: Slide = { id, n, name: v.name?.trim() || undefined, prompt: v.prompt ?? "", refs: [], feeds: values }
       commitSlides([...slidesNow.current, sl])
-      if (gen && v.prompt && slidesNow.current[0].startedAt) startVideo(id, v.prompt)
+      const proposed = gen && v.prompt && slidesNow.current[0].startedAt
+      if (proposed) propose({ slideId: id, name: v.name?.trim() || `Variation ${n + 1}`, prompt: v.prompt!, change: v.direction?.trim() || undefined, keep_seconds: v.keep_seconds })
       return withIssues(
-        `Added ${v.name || `Variation ${n + 1}`}${gen ? " and started its video" : ""}.${copied.length ? ` Copied ${copied.join(", ")} from ${nameOfSlide(first)}; change them with set_variation if they should differ.` : ""}`,
+        `Added ${v.name || `Variation ${n + 1}`}${proposed ? ` and proposed its video (${VIDEO_COST} credits): it starts only when the user presses Make on the card above the composer` : ""}.${copied.length ? ` Copied ${copied.join(", ")} from ${nameOfSlide(first)}; change them with set_variation if they should differ.` : ""}`,
       )
     },
     varyField(field, feed, values) {
@@ -1336,6 +1363,14 @@ export function GenerationCanvas({
     },
     versions() {
       return versions.map((v) => ({ n: v.n, at: new Date(v.at).toISOString().slice(0, 16).replace("T", " "), name: v.name, exported: v.exported?.name, current: v.n === currentVersion }))
+    },
+    makeProposed(name) {
+      const p = proposalsNow.current.find((x) => x.name.toLowerCase() === name.trim().toLowerCase()) ?? (proposalsNow.current.length === 1 ? proposalsNow.current[0] : undefined)
+      if (!p) return `Error: nothing proposed for “${name}”. Proposed now: ${proposalsNow.current.map((x) => x.name).join(", ") || "nothing"}.`
+      return makeProposed(p.id) ? `${p.name} is being made (${p.cost} credits).` : "Error: Not enough credits."
+    },
+    proposed() {
+      return proposalsNow.current.map((x) => ({ name: x.name, change: x.change ?? x.prompt.slice(0, 120), cost: x.cost }))
     },
     restoreVersion(n) {
       if (!versions.some((v) => v.n === n)) return `Error: No version ${n}. Versions: ${versions.map((v) => v.n).join(", ") || "none yet"}.`
@@ -1569,7 +1604,7 @@ export function GenerationCanvas({
               sl.id === "main"
                 ? `(App: Variation 1's video failed (${reason}); refunded. Tell the user in one short line; they can press Try again in the build card, or you can regenerate it with a simpler prompt if they ask.)`
                 : tries === 1
-                  ? `(App: ${name}'s video failed (${reason}); it's back to not started and refunded. Retry it once now: set_variation "${name}" with a gentler, simpler version of the same change and regenerate true. Don't ask first; say it in one short line.)`
+                  ? `(App: ${name}'s video failed (${reason}); it's back to not started and refunded. Don't remake it yourself. Tell the user in one short line: Try again is on its tile, or you can propose a gentler version of the change (set_variation with regenerate) for them to approve.)`
                   : `(App: ${name} failed again (${reason}); refunded. Don't retry. Tell the user in one short line and suggest a different change, or Try again in the build card.)`,
             )
           // without the reference video, the variations waiting for it can't be made: refunded too
@@ -1658,6 +1693,7 @@ export function GenerationCanvas({
         return { name: nameOf(s), state: st, src: v?.mp4 || undefined, poster: v?.poster, since: s.job?.since ?? s.startedAt, ms: s.job ? undefined : ms, status: s.job?.status, stop: stoppable ? () => void cancelVideo(s.id) : undefined, failed, retry: failed ? () => retryVideo(s.id) : undefined }
       }),
     review: { needed: needsReview, approve: () => approveRef(), change: () => changeRef() },
+    proposals: () => proposals.map((p) => ({ id: p.id, name: p.name, change: p.change ?? p.prompt, cost: p.cost, make: () => void makeProposed(p.id), dismiss: () => dropProposed(p.id) })),
     issues: () => publishIssues.filter((x) => !x.blocking).map((x) => x.text),
     progress: () => {
       const vs = slides.slice(1)
@@ -2342,6 +2378,7 @@ export function GenerationCanvas({
             composer={
               chatting ? (
                 <div className="flex flex-col gap-2">
+                  <ApprovalDock agent={agent} ctx={agentCtx} poster={isMadeVideo(slides[0].video) ? videoAt(slides[0].video!).poster : undefined} />
                   <QuestionDeck agent={agent} ctx={agentCtx} />
                   <QuickReplies agent={agent} ctx={agentCtx} />
                   <AgentComposer
@@ -2418,6 +2455,9 @@ const SKIP = new Set(
   "a an the and or of in on at to for with from by into onto across through over under near is are be as it its this that slow fast quick push-in push pull-out pan zoom tilt dolly orbit close-up closeup wide shot shots camera cinematic video scene footage featuring showing shows".split(" "),
 )
 /** What an existing Flick's two variations were made from. */
+/** a video the chat asked for, waiting for the user's Make */
+type VideoProposal = { id: string; slideId: string; name: string; prompt: string; change?: string; keep_seconds?: number; cost: number; at: number }
+
 const VARIATION_PROMPTS = ["Same scene, the second colourway", "Same scene, the third colourway, warmer light"]
 
 /** Stands in for the AI naming step: the first few meaningful words of the prompt, title-cased. */

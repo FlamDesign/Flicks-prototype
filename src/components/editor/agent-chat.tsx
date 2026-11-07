@@ -31,6 +31,8 @@ export type AgentCtx = {
   brand?: Brand
   /** Variation 1 is ready and waiting for the user's OK before the variations are made */
   review?: { needed: boolean; approve: () => void; change: () => void }
+  /** videos the chat proposed, waiting for the user's Make (nothing is made without it) */
+  proposals?: () => { id: string; name: string; change: string; cost: number; make: () => void; dismiss: () => void }[]
   /** the build's steps, read live */
   progress: () => { label: string; state: "done" | "working" | "waiting" }[]
   /** each video in the build, read live: shown in place in the chat as it's made */
@@ -1182,6 +1184,54 @@ function BuildCard({ ctx, agent }: { ctx: AgentCtx; agent: Agent }) {
 }
 
 /** Variation 1 is in: the user's OK starts the other variations (it comes into view once) */
+/**
+ * Every approval that is waiting, docked above the composer so it can't scroll out of sight: the
+ * Variation 1 review, and each video the chat proposed (Make · cost, or Not now). Nothing is made
+ * until one of these is pressed.
+ */
+export function ApprovalDock({ agent, ctx, poster }: { agent: Agent; ctx: AgentCtx; poster?: string }) {
+  const proposals = ctx.proposals?.() ?? []
+  const review = !!ctx.review?.needed
+  if (!review && !proposals.length) return null
+  return (
+    <div role="region" aria-label="Waiting for you" className="flex flex-col gap-1.5">
+      {review && (
+        <div role="group" aria-label="Review Variation 1" className="flex flex-wrap items-center gap-3 rounded-xl bg-brand/10 p-2.5 ring-1 ring-brand/30 animate-in fade-in-0 slide-in-from-bottom-1">
+          {poster && <img src={poster} alt="" decoding="async" className="size-10 shrink-0 rounded-lg object-cover ring-1 ring-foreground/10" />}
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium leading-snug">Variation 1 is ready. Happy with it?</p>
+            <p className="text-xs text-muted-foreground">The others are made from it{ctx.videoCost ? ` · ${ctx.videoCost} credits each` : ""}.</p>
+          </div>
+          <div className="ml-auto flex gap-1.5">
+            <Button size="sm" variant="ghost" onClick={ctx.review!.change} disabled={agent.busy}>
+              Change it
+            </Button>
+            <Button size="sm" onClick={ctx.review!.approve} disabled={agent.busy}>
+              Make the variations
+            </Button>
+          </div>
+        </div>
+      )}
+      {proposals.map((p) => (
+        <div key={p.id} role="group" aria-label={`Make ${p.name}`} className="flex flex-wrap items-center gap-3 rounded-xl bg-brand/10 p-2.5 ring-1 ring-brand/30 animate-in fade-in-0 slide-in-from-bottom-1">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium leading-snug">Make {p.name} again?</p>
+            <p className="line-clamp-2 text-xs text-muted-foreground">{p.change}</p>
+          </div>
+          <div className="ml-auto flex gap-1.5">
+            <Button size="sm" variant="ghost" onClick={p.dismiss}>
+              Not now
+            </Button>
+            <Button size="sm" onClick={p.make}>
+              Make · {p.cost} credits
+            </Button>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function ReviewBar({ ctx, poster }: { ctx: AgentCtx; poster?: string }) {
   const self = useRef<HTMLDivElement>(null)
   useEffect(() => {

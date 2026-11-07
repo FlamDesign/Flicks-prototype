@@ -56,7 +56,7 @@ import { PromptChat, type HistoryItem } from "@/components/editor/prompt-chat"
 import { ReferenceThumb } from "@/components/prompt-composer"
 import { DevBadge } from "@/dev/state-manager"
 import { cn } from "@/lib/utils"
-import { AgentItemView, QuestionDeck, threadGroups } from "@/components/editor/agent-chat"
+import { AgentItemView, ApprovalDock, QuestionDeck, threadGroups } from "@/components/editor/agent-chat"
 import { BriefUpdate } from "@/components/editor/brief-card"
 import { RecipeCards } from "@/components/recipes"
 import { Dropzone } from "@/components/dropzone"
@@ -1104,6 +1104,10 @@ function ChatCardsDemo() {
     { label: "Look: layouts (visual answers)", node: <AgentItemView item={it({ kind: "question", toolId: "l", question: "Which layout fits?", display: "layouts", step: "look", multi: false, custom: false, options: [{ label: "Bold bottom", design: { layout: "bottom", thumbnails: { position: "bottom" } } }, { label: "Editorial", design: { layout: "bottom", align: "left", button_style: "sharp", thumbnails: { position: "right", shape: "square", size: "small" } } }, { label: "Clean top", design: { layout: "top", button_style: "light", thumbnails: { shape: "circle" } } }] })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Look: palettes", node: <AgentItemView item={it({ kind: "question", toolId: "c", question: "And the colours?", display: "palettes", step: "look", multi: false, custom: false, options: [{ label: "Ink", colors: ["#09090b", "#a1a1aa", "#ffffff"] }, { label: "Sunset", colors: ["#ea580c", "#fdba74", "#ffffff"] }, { label: "Ocean", colors: ["#2563eb", "#93c5fd", "#ffffff"] }] })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Build, videos made in place (directions under the waiting ones)", node: <AgentItemView item={it({ kind: "build", count: 3 })} agent={{ ...fakeAgent, items: [it({ kind: "plan", toolId: "p", plan: { ...demoPlan, variations: [...demoPlan.variations, { name: "Ember", prompt: "Same scene, ember lenses.", direction: "Ember lenses, warm tint" }] }, state: "approved" })] } as typeof fakeAgent} ctx={buildCtx} /> },
+    {
+      label: "Docked approvals (above the composer): Variation 1 review, a proposed remake",
+      node: <ApprovalDock agent={fakeAgent} ctx={{ ...chatCtx, review: { needed: true, approve: () => {}, change: () => {} }, proposals: () => [{ id: "p1", name: "Mango", change: "Darker background, the can lit from the side", cost: 48, make: () => {}, dismiss: () => {} }] }} poster={GENERATED_VIDEOS[1].poster} />,
+    },
     { label: "Carry on (after a reload, or a long reply)", node: <AgentItemView item={it({ kind: "resume", text: "That was a long one; I paused here." })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Brand", node: <AgentItemView item={it({ kind: "brand", brand: { name: "Lumen", primary_color: "#ea580c", text_color: "#ffffff", font: "Montserrat", tone: "Bold" } })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Storyboard (frames, where the button goes)", node: <AgentItemView item={it({ kind: "plan", toolId: "p", plan: demoPlan, state: "open", frames: [4, 5, 6].map((i) => GENERATED_VIDEOS[i].poster) })} agent={fakeAgent} ctx={chatCtx} /> },
