@@ -166,6 +166,14 @@ const TESTS = {
           run.log("RELOAD during Variation 1", name)
           await run.p.reload({ waitUntil: "networkidle" })
           await run.p.waitForTimeout(5000)
+          // the app has no router: a reload lands on Home, so reopen the project from Projects
+          if (name && (await run.p.getByText("let’s start with a video").count())) {
+            run.log("reload landed on Home; reopening", name)
+            await run.p.getByText("Projects", { exact: true }).first().click()
+            await run.p.waitForTimeout(3000)
+            await run.p.getByRole("button", { name: `Open ${name}`, exact: true }).first().click()
+            await run.p.waitForTimeout(6000)
+          }
           const after = await look(run.p)
           await run.shot("after-reload")
           run.log("after reload:", JSON.stringify({ resume: after.resume, busy: after.busy, building: after.building.slice(0, 4) }))
@@ -176,6 +184,12 @@ const TESTS = {
             await run.p.waitForTimeout(2500)
             await run.p.reload({ waitUntil: "networkidle" })
             await run.p.waitForTimeout(5000)
+            if (name && (await run.p.getByText("let’s start with a video").count())) {
+              await run.p.getByText("Projects", { exact: true }).first().click()
+              await run.p.waitForTimeout(3000)
+              await run.p.getByRole("button", { name: `Open ${name}`, exact: true }).first().click()
+              await run.p.waitForTimeout(6000)
+            }
             cardAfterDismiss = (await look(run.p)).resume
             await run.shot("after-dismiss-reload")
           }
@@ -413,13 +427,15 @@ const TESTS = {
       onMake: async (v) => (run.log("the chat proposed a remake after the failure (card shown, nothing started)"), chatRetried = true, false),
       onTick: async (v) => {
         if (v.tryAgain && !sawFail) (sawFail = true), await run.shot("failed-tile")
-        if (v.tryAgain && !v.busy && sawFail && tryAgain === 0 && !v.make) {
+        // both videos fail (mockFail=2); press Try again on each failed tile, one at a time
+        if (v.tryAgain && !v.busy && sawFail && tryAgain < 3 && !v.make) {
           await run.p.waitForTimeout(5000)
           const again = await look(run.p)
           if (again.tryAgain && !again.busy) {
             tryAgain++
-            run.log("pressing Try again")
+            run.log("pressing Try again", tryAgain)
             await run.p.getByRole("button", { name: "Try again" }).first().click()
+            await run.p.waitForTimeout(3000)
             return true
           }
         }
