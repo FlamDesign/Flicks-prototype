@@ -1,8 +1,9 @@
 import { EmptyState } from "@/components/empty-state"
 import { PAGE, PageHeader } from "@/components/page-kit"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { MediaTile, TileBadge } from "@/components/media-tile"
+import { MediaTile } from "@/components/media-tile"
 import { CardsSkeleton, Loading, PendingButton } from "@/components/page-skeletons"
+import { Skeleton } from "@/components/ui/skeleton"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Download01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
@@ -50,10 +51,8 @@ const fullLabel = (t: number) => `${new Date(t).toLocaleDateString("en-US", { mo
 const ext = (a: Asset) => (a.type?.split("/")[1] ?? (a.kind === "video" ? "mp4" : "png")).replace("jpeg", "jpg").replace("quicktime", "mov")
 const fileName = (a: Asset) => (a.source === "Uploaded" && /\.\w{2,4}$/.test(a.name) ? a.name : `flicks-${a.kind}-${a.id.slice(0, 8)}.${ext(a)}`)
 
-/** Length as m:ss, like 0:09. */
-export const clockLabel = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`
-
 type Kind = "all" | "video" | "image"
+type Source = "all" | "Uploaded" | "Generated"
 
 /** true once the element has scrolled into view (and stays true), so a grid of hundreds loads only what shows */
 function useSeen<T extends HTMLElement>() {
@@ -117,9 +116,10 @@ export function AssetsPage({ onCreate, onUse }: { onCreate: () => void; onUse: (
   const [openId, setOpenId] = useState<string | null>(null)
   const [confirm, setConfirm] = useState<Asset | null>(null)
   const [kind, setKind] = useState<Kind>("all")
+  const [source, setSource] = useState<Source>("all")
   const [dates, setDates] = useState<DateFilterValue>(ALL_DATES)
-  const shown = useMemo(() => list.filter((a) => (kind === "all" || a.kind === kind) && inDateFilter(a.createdAt, dates)), [list, kind, dates])
-  const filtering = kind !== "all" || dates.preset !== "all"
+  const shown = useMemo(() => list.filter((a) => (kind === "all" || a.kind === kind) && (source === "all" || a.source === source) && inDateFilter(a.createdAt, dates)), [list, kind, source, dates])
+  const filtering = kind !== "all" || source !== "all" || dates.preset !== "all"
   const groups = useMemo(() => {
     const sorted = [...shown].sort((a, b) => b.createdAt - a.createdAt)
     const out: { label: string; items: Asset[] }[] = []
@@ -184,7 +184,14 @@ export function AssetsPage({ onCreate, onUse }: { onCreate: () => void; onUse: (
         title="Assets"
         count={list.length > 0 ? count : undefined}
         toolbar={
-          list.length > 0 && (
+          assets === null && !dev.assetsEmpty ? (
+            // the filters' places while the library loads, so nothing jumps when it arrives
+            <>
+              <Skeleton className="h-8 w-[150px] rounded-2xl" />
+              <Skeleton className="h-8 w-[190px] rounded-2xl" />
+              <Skeleton className="h-8 w-[230px] rounded-2xl" />
+            </>
+          ) : list.length > 0 && (
             <>
               <DateFilter value={dates} onChange={setDates} className="w-[150px]" />
               <Tabs value={kind} onValueChange={(v) => setKind(v as Kind)}>
@@ -194,13 +201,20 @@ export function AssetsPage({ onCreate, onUse }: { onCreate: () => void; onUse: (
                   <TabsTrigger value="image">Images</TabsTrigger>
                 </TabsList>
               </Tabs>
+              <Tabs value={source} onValueChange={(v) => setSource(v as Source)}>
+                <TabsList aria-label="Source">
+                  <TabsTrigger value="all">All</TabsTrigger>
+                  <TabsTrigger value="Generated">Generated</TabsTrigger>
+                  <TabsTrigger value="Uploaded">Uploaded</TabsTrigger>
+                </TabsList>
+              </Tabs>
             </>
           )
         }
       />
 
       {assets === null && !dev.assetsEmpty ? (
-        <div className="mt-6"><CardsSkeleton count={12} cols={grid} aspect="aspect-square" lines={1} /></div>
+        <div className="mt-6"><CardsSkeleton count={12} cols={grid} aspect="aspect-square" lines={0} /></div>
       ) : failed && !dev.assetsEmpty ? (
         <EmptyState
           className="mt-6"
@@ -211,7 +225,7 @@ export function AssetsPage({ onCreate, onUse }: { onCreate: () => void; onUse: (
         />
       ) : (
       /* filtering fetches again */
-      <Loading k={[kind, dates]} skipFirst skeleton={<div className="mt-6"><CardsSkeleton count={12} cols={grid} aspect="aspect-square" lines={1} /></div>}>
+      <Loading k={`${kind}|${source}|${JSON.stringify(dates)}`} skipFirst skeleton={<div className="mt-6"><CardsSkeleton count={12} cols={grid} aspect="aspect-square" lines={0} /></div>}>
       {list.length === 0 ? (
         <EmptyState
           className="mt-6"
@@ -225,8 +239,8 @@ export function AssetsPage({ onCreate, onUse }: { onCreate: () => void; onUse: (
           className="mt-6"
           art="search"
           title="Nothing matches these filters"
-          text="Try another date or type."
-          action={<Button size="sm" variant="outline" onClick={() => (setKind("all"), setDates(ALL_DATES))}>Clear filters</Button>}
+          text="Try another date, type or source."
+          action={<Button size="sm" variant="outline" onClick={() => (setKind("all"), setSource("all"), setDates(ALL_DATES))}>Clear filters</Button>}
         />
       ) : (
         <div className="mt-6 flex flex-col gap-10">
@@ -283,26 +297,18 @@ export function AssetsPage({ onCreate, onUse }: { onCreate: () => void; onUse: (
 }
 
 /**
- * One asset in the grid: the shared tile. A video plays on hover and shows its length and size bottom-left
- * once known; an upload shows "Uploaded". The prompt (or file name) slides up on hover; download top-right.
+ * One asset in the grid: the shared tile. A video plays on hover; its metadata (size, length) goes to the
+ * viewer's details. The prompt (or file name) slides up on hover; download top-right.
  */
 function AssetCard({ a, onOpen, onMeta }: { a: Asset; onOpen: () => void; onMeta: (id: string, m: VideoMeta) => void }) {
   const { ref, seen } = useSeen<HTMLDivElement>()
-  const [meta, setMeta] = useState<VideoMeta | null>(null)
   const label = a.prompt || a.name
   const corner = "size-7 rounded-lg bg-background/90 opacity-0 shadow-sm backdrop-blur-sm transition-opacity hover:bg-background group-hover/tile:opacity-100 focus-visible:opacity-100"
   return (
-    <div ref={ref} className="flex flex-col gap-1.5">
+    <div ref={ref}>
       <MediaTile
         src={a.kind === "image" && seen ? a.url : undefined}
         video={a.kind === "video" ? { mp4: a.url } : undefined}
-        badges={
-          <>
-            {meta && <TileBadge>{clockLabel(meta.duration)}</TileBadge>}
-            {meta && <TileBadge>{meta.size}</TileBadge>}
-            {a.source === "Uploaded" && <TileBadge>Uploaded</TileBadge>}
-          </>
-        }
         details={<p className="line-clamp-3">{label}</p>}
         actions={
           <Tooltip>
@@ -325,18 +331,13 @@ function AssetCard({ a, onOpen, onMeta }: { a: Asset; onOpen: () => void; onMeta
             aria-hidden
             onLoadedMetadata={(e) => {
               const v = e.currentTarget
-              const m = { size: `${v.videoWidth}×${v.videoHeight}`, duration: v.duration }
-              setMeta(m)
-              onMeta(a.id, m)
+              onMeta(a.id, { size: `${v.videoWidth}×${v.videoHeight}`, duration: v.duration })
             }}
             className="pointer-events-none absolute inset-0 size-full object-cover"
           />
         )}
         <button type="button" onClick={onOpen} aria-label={`Open ${a.kind}: ${label}`} className="absolute inset-0 rounded-xl focus-ring" />
       </MediaTile>
-      <p className="truncate px-0.5 text-xs text-muted-foreground" title={label}>
-        {a.project ? `${a.project} · ${label}` : label}
-      </p>
     </div>
   )
 }

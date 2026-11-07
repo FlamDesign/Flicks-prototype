@@ -379,7 +379,7 @@ export default function App() {
                 <AnalyticsRoute key={`${navCount}-${analyticsTarget?.id ?? "all"}`} target={analyticsTarget} />
               </Loaded>
             ) : page === "Assets" ? (
-              <Loaded k={loadKey} ms={dev.pageLoadMs} s={<GridSkeleton count={12} filters={2} cols="grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6" />}>
+              <Loaded k={loadKey} ms={dev.pageLoadMs} s={<GridSkeleton count={12} filters={3} lines={0} cols="grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6" />}>
 <AssetsPage
                 onCreate={() => setPage("Create")}
                 onUse={(a) => {

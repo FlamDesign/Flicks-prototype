@@ -43,7 +43,7 @@ function ListHeader({ filters = 3, action, crumbs, title = "w-36" }: { filters?:
       </div>
       {filters > 0 && (
         <div className="flex gap-2">
-          {/* three: search, date, size (Projects, Flicks); two: date, size (Assets) */}
+          {/* three: search, date, size (Projects, Flicks); two: date, size; Assets: date, type, source */}
           {(filters >= 3 ? ["w-[240px] max-sm:hidden", "w-[150px]", "w-[140px]"] : ["w-[150px]", "w-[140px]"]).slice(0, filters).map((w, i) => (
             <Skeleton key={i} className={cn("h-8 rounded-2xl", w)} />
           ))}
@@ -54,16 +54,16 @@ function ListHeader({ filters = 3, action, crumbs, title = "w-36" }: { filters?:
 }
 
 /** Square cards with two lines under them: Projects, Flicks, Assets, Embeds. */
-export function GridSkeleton({ count = 8, filters = 3, action, cols = "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4" }: { count?: number; filters?: number; action?: boolean; cols?: string }) {
+export function GridSkeleton({ count = 8, filters = 3, action, cols = "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4", lines = 2 }: { count?: number; filters?: number; action?: boolean; cols?: string; lines?: 0 | 1 | 2 }) {
   return (
     <Frame>
       <ListHeader filters={filters} action={action} />
-      <div className={cn("mt-6 grid gap-x-4 gap-y-6", cols)}>
+      <div className={cn("mt-6 grid", lines ? "gap-x-4 gap-y-6" : "gap-3", cols)}>
         {Array.from({ length: count }, (_, i) => (
           <div key={i} className="flex flex-col gap-2.5">
             <Skeleton className="aspect-square w-full rounded-xl" />
-            <Line className="w-3/4" />
-            <Line className="w-1/2" />
+            {lines > 0 && <Line className="w-3/4" />}
+            {lines > 1 && <Line className="w-1/2" />}
           </div>
         ))}
       </div>

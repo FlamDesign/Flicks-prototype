@@ -134,7 +134,11 @@ export function MediaViewer({
                                 aria-label={`View ${r.name}`}
                                 className={cn("relative block size-16 overflow-hidden rounded-lg ring-1 ring-foreground/20 transition hover:ring-foreground/50 focus-ring", r.kind === "image" && "bg-white")}
                               >
-                                <img loading="lazy" decoding="async" src={r.kind === "video" ? r.poster : r.src} alt="" className={cn("size-full", r.kind === "video" ? "object-cover" : "object-contain p-1")} />
+                                {r.kind === "video" && !r.poster ? (
+                                  <video src={`${r.src}#t=0.1`} muted playsInline preload="metadata" aria-hidden className="size-full object-cover" />
+                                ) : (
+                                  <img loading="lazy" decoding="async" src={r.kind === "video" ? r.poster : r.src} alt="" className={cn("size-full", r.kind === "video" ? "object-cover" : "object-contain p-1")} />
+                                )}
                                 {r.kind === "video" && (
                                   <span className="absolute bottom-1 left-1 grid size-4 place-items-center rounded bg-black/70 text-white">
                                     <HugeiconsIcon icon={Video01Icon} className="size-2.5" />
@@ -204,15 +208,19 @@ function Clamped({ text }: { text: string }) {
   useEffect(() => setOpen(false), [text])
   return (
     <div className="flex flex-col items-start gap-1.5">
-      <p
-        ref={box}
-        className={cn(
-          "whitespace-pre-wrap break-words text-sm leading-6",
-          open ? "max-h-64 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : "line-clamp-6",
-        )}
-      >
-        {text}
-      </p>
+      <div className="relative w-full">
+        <p
+          ref={box}
+          className={cn(
+            "whitespace-pre-wrap break-words text-sm leading-6",
+            open ? "max-h-64 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : "line-clamp-6",
+          )}
+        >
+          {text}
+        </p>
+        {/* the last clamped line fades out, so it reads as "there's more" rather than a cut */}
+        {long && !open && <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-popover to-transparent" />}
+      </div>
       {long && (
         <Button variant="link" onClick={() => setOpen((o) => !o)} className="h-auto self-start p-0 text-xs text-muted-foreground hover:text-foreground">
           {open ? "See less" : "See more"}

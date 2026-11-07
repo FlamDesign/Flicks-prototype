@@ -428,15 +428,21 @@ export default {
       }
 
       if (req.method === "GET" && url.pathname === "/library") {
-        const keys: string[] = []
-        let cursor: string | undefined
-        do {
-          const page = await env.USAGE!.list({ prefix: "lib:", limit: 1000, cursor })
-          keys.push(...page.keys.map((k) => k.name))
-          cursor = page.list_complete ? undefined : page.cursor
-        } while (cursor && keys.length < 5000)
-        const items = (await Promise.all(keys.map((k) => env.USAGE!.get(k)))).flatMap((x) => (x ? [JSON.parse(x) as { created: number; id: string; saved?: boolean; hidden?: boolean }] : []))
-        items.sort((a, b) => b.created - a.created)
+        // reading two thousand records one by one takes seconds, so the list is kept for a short
+        // while in this worker's memory; every library write here drops it
+        let items = libraryCache && Date.now() - libraryCache.at < LIBRARY_CACHE_MS ? libraryCache.items : undefined
+        if (!items) {
+          const keys: string[] = []
+          let cursor: string | undefined
+          do {
+            const page = await env.USAGE!.list({ prefix: "lib:", limit: 1000, cursor })
+            keys.push(...page.keys.map((k) => k.name))
+            cursor = page.list_complete ? undefined : page.cursor
+          } while (cursor && keys.length < 5000)
+          items = (await Promise.all(keys.map((k) => env.USAGE!.get(k)))).flatMap((x) => (x ? [JSON.parse(x) as LibraryRecord] : []))
+          items.sort((a, b) => b.created - a.created)
+          libraryCache = { at: Date.now(), items }
+        }
         // deleted from Assets: left out (the record and file stay, so Flicks using it keep working)
         return json({ items: items.filter((x) => !x.hidden).map((x) => ({ ...x, file: x.saved ? `${url.origin}/file/${x.id}` : undefined })) }, 200, cors)
       }
@@ -631,7 +637,12 @@ async function take(env: Env, key: string, cap: number) {
  * A storage write that never throws: false when it didn't happen (on the free plan, KV allows
  * 1,000 writes a day; past that every write fails until the day resets at 00:00 UTC).
  */
+type LibraryRecord = { created: number; id: string; saved?: boolean; hidden?: boolean }
+const LIBRARY_CACHE_MS = 20_000
+let libraryCache: { at: number; items: LibraryRecord[] } | undefined
+
 async function put(env: Env, key: string, value: string | ArrayBuffer, opts?: KVNamespacePutOptions) {
+  if (key.startsWith("lib:")) libraryCache = undefined
   if (!env.USAGE) return true
   try {
     await env.USAGE.put(key, value, opts)
