@@ -321,7 +321,7 @@ const TESTS = {
     check(run, checks, "storyboard offered 'Build the Flick' (nothing to generate)", sb === "Build the Flick", sb ?? "none")
     check(run, checks, "built from the clips", !!v)
     const text = await bodyText(run)
-    check(run, checks, "no video was generated", !/\d+%|queued|generating/.test(text))
+    check(run, checks, "no video was generated", !/\d+%|Up next|Generating ·/.test(text))
     return finish(run, { test: "r6", checks })
   },
 

@@ -140,7 +140,8 @@ export type ChatResult = { content: Block[]; stop: string }
  * the result. Parses the Messages API's server-sent events.
  */
 export async function streamChat(req: ChatRequest, onText: (text: string) => void, signal?: AbortSignal, onTool?: (name: string) => void, onToolJson?: (id: string, name: string, json: string) => void): Promise<ChatResult> {
-  const res = await call("/chat", { method: "POST", body: JSON.stringify({ ...req, model: config.model }), signal })
+  // a dropped connection is retried before the chat shows "Couldn't connect" (nothing has started yet)
+  const res = await steady("/chat", { method: "POST", body: JSON.stringify({ ...req, model: config.model }), signal })
   const reader = res.body!.getReader()
   const dec = new TextDecoder()
   const blocks: (Block & { json?: string })[] = []
