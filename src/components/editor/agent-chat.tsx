@@ -1676,41 +1676,45 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
       <div className="max-h-[50vh] overflow-y-auto px-2">
         {q.typeFirst && <TypeRow key={q.id} value={typed} onChange={(v) => setOther((o) => ({ ...o, [q.id]: v }))} onEnter={cont} placeholder={q.typeFirst} last={!q.options.length} />}
         {q.display === "concepts" ? (
-          // big pictures, little text: the title and the idea; what changes shows over the picture on hover
-          <div className="grid grid-cols-1 gap-2.5 p-1 sm:grid-cols-3" role="radiogroup" aria-label={q.question}>
-            {q.options.map((o, n) => (
-              <button
-                key={o.label}
-                type="button"
-                role="radio"
-                aria-checked={chosen(o)}
-                aria-description={[o.question, o.variations?.length ? `Variations: ${o.variations.join(", ")}` : "", o.beats?.join(", then ")].filter(Boolean).join(". ")}
-                disabled={agent.busy}
-                onClick={() => pick(o)}
-                className={cn(
-                  "group/c flex flex-col gap-2 rounded-2xl p-1.5 text-left ring-1 ring-foreground/10 transition-[box-shadow,background-color] hover:bg-muted/50 hover:ring-foreground/30 focus-ring",
-                  chosen(o) && "bg-brand/10 ring-2 ring-brand",
-                )}
-              >
-                <span className="relative w-full overflow-hidden rounded-xl bg-muted" style={{ aspectRatio: Math.max(ctx.ratio, 0.8) }}>
-                  <PictureSlot src={o.image} imgClassName="transition-[opacity,transform] duration-500 group-hover/c:scale-[1.03]" />
-                  <span className="absolute left-2 top-2 grid size-6 place-items-center rounded-full bg-black/50 text-xs font-medium text-white tabular-nums backdrop-blur-sm">{n + 1}</span>
-                  {!!o.variations?.length && (
-                    <span className="absolute inset-x-0 bottom-0 flex flex-wrap gap-1 bg-gradient-to-t from-black/70 to-transparent p-2 pt-6 opacity-0 transition-opacity group-hover/c:opacity-100 group-focus-visible/c:opacity-100">
-                      {o.variations.map((v) => (
-                        <span key={v} className="rounded-full bg-white/90 px-2 py-0.5 text-xs font-medium text-black">
-                          {v}
-                        </span>
-                      ))}
-                    </span>
+          // wide (the chat on its own): three across, with the title and the idea wrapping under each picture;
+          // narrow (the panel beside the canvas): one per row, the picture left and the whole text right.
+          // The variation chips sit with the text, so touch sees them too.
+          <div className="@container">
+            <div className="grid grid-cols-1 gap-2.5 p-1 @[540px]:grid-cols-3" role="radiogroup" aria-label={q.question}>
+              {q.options.map((o, n) => (
+                <button
+                  key={o.label}
+                  type="button"
+                  role="radio"
+                  aria-checked={chosen(o)}
+                  aria-description={[o.question, o.variations?.length ? `Variations: ${o.variations.join(", ")}` : "", o.beats?.join(", then ")].filter(Boolean).join(". ")}
+                  disabled={agent.busy}
+                  onClick={() => pick(o)}
+                  className={cn(
+                    "group/c flex gap-3 rounded-2xl p-1.5 text-left ring-1 ring-foreground/10 transition-[box-shadow,background-color] hover:bg-muted/50 hover:ring-foreground/30 focus-ring @[540px]:flex-col @[540px]:gap-2",
+                    chosen(o) && "bg-brand/10 ring-2 ring-brand",
                   )}
-                </span>
-                <span className="flex min-w-0 flex-col gap-0.5 px-1 pb-1">
-                  <span className="truncate text-sm font-medium">{o.label}</span>
-                  {o.description && <span className="line-clamp-2 text-xs leading-snug text-muted-foreground">{o.description}</span>}
-                </span>
-              </button>
-            ))}
+                >
+                  <span className="relative w-[38%] shrink-0 self-start overflow-hidden rounded-xl bg-muted @[540px]:w-full" style={{ aspectRatio: Math.max(ctx.ratio, 0.8) }}>
+                    <PictureSlot src={o.image} imgClassName="transition-[opacity,transform] duration-500 group-hover/c:scale-[1.03]" />
+                    <span className="absolute left-2 top-2 grid size-6 place-items-center rounded-full bg-black/50 text-xs font-medium text-white tabular-nums backdrop-blur-sm">{n + 1}</span>
+                  </span>
+                  <span className="flex min-w-0 flex-1 flex-col gap-1 py-1 pr-1 @[540px]:px-1 @[540px]:pb-1 @[540px]:pt-0">
+                    <span className="line-clamp-2 text-sm font-medium leading-snug">{o.label}</span>
+                    {o.description && <span className="text-xs leading-snug text-muted-foreground">{o.description}</span>}
+                    {!!o.variations?.length && (
+                      <span className="mt-1 flex flex-wrap gap-1">
+                        {o.variations.map((v) => (
+                          <Badge key={v} variant="subtle">
+                            {v}
+                          </Badge>
+                        ))}
+                      </span>
+                    )}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
         ) : q.display === "sizes" ? (
           // frame shapes drawn to scale, with the name and the pixels

@@ -987,6 +987,23 @@ function PopupDemo({ kind }: { kind: "intro" | "gift" }) {
 
 // a stand-in agent for the demos: typed as the real one (no cast), so a function the chat cards
 // start using can't be missing here without the build failing
+/** a concept choice as the chat asks it: three ideas with a preview, a line of idea and the variations each would make */
+const conceptsQuestion = {
+  id: "cq",
+  at: 0,
+  kind: "question",
+  toolId: "c1",
+  question: "Which concept should we build?",
+  display: "concepts",
+  multi: false,
+  custom: true,
+  options: [
+    { label: "Rain-ready", description: "Wheat leather boot on wet black rock in heavy rain, a slow macro push along the stitching, then a splash as the boot lands. Moody storm light; the colorway swaps per variation.", image: GENERATED_VIDEOS[5].poster, variations: ["Wheat", "Black", "Dark brown"] },
+    { label: "City dawn", description: "A runner crosses an empty crosswalk at first light, the boots in step; a push-in on the laces, then the skyline reflected in a puddle.", image: GENERATED_VIDEOS[0].poster, variations: ["Wheat", "Black"] },
+    { label: "Workshop", description: "The boot on a cobbler's bench, hands brushing the leather, tools out of focus; warm tungsten light and a slow turn to camera.", image: GENERATED_VIDEOS[8].poster, variations: ["Wheat", "Black", "Dark brown", "Olive"] },
+  ],
+} as Item
+
 const fakeAgent: Parameters<typeof AgentItemView>[0]["agent"] = {
   imageUrl: () => undefined,
   media: (id) => (id ? { url: GENERATED_VIDEOS[Number(id.slice(-1)) || 0].poster, video: false, name: id } : undefined),
@@ -1047,6 +1064,23 @@ function ChatCardsDemo() {
           agent={{ ...fakeAgent, pendingIds: ["bq"], items: [it({ id: "bq", kind: "question", toolId: "b1", question: "Which brand is it from?", options: [{ label: "No brand, choose for me" }], display: "chips", multi: false, custom: true, purpose: "brand", typeFirst: "Brand name or website link" })] } as typeof fakeAgent}
           ctx={chatCtx}
         />
+      ),
+    },
+    {
+      label: "Concepts, wide (the chat on its own)",
+      wide: true,
+      node: (
+        <div className="w-[680px] max-w-full">
+          <QuestionDeck agent={{ ...fakeAgent, pendingIds: ["cq"], items: [conceptsQuestion] } as typeof fakeAgent} ctx={chatCtx} />
+        </div>
+      ),
+    },
+    {
+      label: "Concepts, narrow (the panel beside the canvas)",
+      node: (
+        <div className="w-[340px]">
+          <QuestionDeck agent={{ ...fakeAgent, pendingIds: ["cq"], items: [conceptsQuestion] } as typeof fakeAgent} ctx={chatCtx} />
+        </div>
       ),
     },
     {
@@ -1123,7 +1157,7 @@ function ChatCardsDemo() {
   return (
     <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
       {states.map((x) => (
-        <figure key={x.label} className="flex flex-col overflow-hidden rounded-xl ring-1 ring-foreground/10">
+        <figure key={x.label} className={cn("flex flex-col overflow-hidden rounded-xl ring-1 ring-foreground/10", x.wide && "md:col-span-2")}>
           <div className="flex flex-1 flex-col justify-center bg-[color-mix(in_oklch,var(--muted),var(--foreground)_4%)] p-3">{x.node}</div>
           <figcaption className="border-t px-2.5 py-1.5 text-xs text-muted-foreground">{x.label}</figcaption>
         </figure>
