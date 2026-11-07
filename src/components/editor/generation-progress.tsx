@@ -26,11 +26,17 @@ export function PictureSlot({ src, alt = "", className, imgClassName }: { src?: 
   const [loaded, setLoaded] = useState<string | undefined>()
   const [broken, setBroken] = useState<string | undefined>()
   const ready = !!src && loaded === src
-  // a picture that can't load stops animating: plain muted, not "still working"
-  if (src && broken === src) return <span className={cn("absolute inset-0 block bg-muted", className)} />
+  // a picture that can't load stops animating: plain muted and says so, not "still working"
+  if (src && broken === src)
+    return (
+      <span className={cn("absolute inset-0 grid place-items-center bg-muted", className)}>
+        <span className="rounded-md bg-background/90 px-1.5 py-0.5 text-xs text-muted-foreground">Didn't draw</span>
+      </span>
+    )
   return (
     <span className={cn("absolute inset-0 block overflow-hidden", className)}>
       {!ready && <GeneratingGradient sweep />}
+      {!ready && !src && <span className="absolute bottom-1.5 left-1.5 rounded-md bg-background/90 px-1.5 py-0.5 text-xs text-muted-foreground">Drawing…</span>}
       {src && <img src={src} alt={alt} decoding="async" onLoad={() => setLoaded(src)} onError={() => setBroken(src)} ref={(n) => void (n?.complete && n.naturalWidth && loaded !== src && setLoaded(src))} className={cn("absolute inset-0 size-full object-cover transition-opacity duration-300", ready ? "opacity-100" : "opacity-0", imgClassName)} />}
     </span>
   )

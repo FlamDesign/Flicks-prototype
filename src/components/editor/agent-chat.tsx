@@ -15,6 +15,7 @@ import { noNames } from "@/ai/client"
 import { Dropzone } from "@/components/dropzone"
 import { BriefUpdate, briefAt, briefSig, sigOf, type BriefEntry } from "@/components/editor/brief-card"
 import { cn } from "@/lib/utils"
+import { listNames } from "@/lib/format"
 import { useMediaAdd } from "@/components/media-picker"
 import { MentionTextarea, useMentionOptions } from "@/components/mention-input"
 import { elementsIn } from "@/lib/elements"
@@ -31,9 +32,9 @@ export type AgentCtx = {
   posters: string[]
   brand?: Brand
   /** Variation 1 is ready and waiting for the user's OK before the variations are made */
-  review?: { needed: boolean; approve: () => void; change: () => void; /** the variations waiting on it, and what they cost together */ count?: number; cost?: number; /** a remake: the variations were made from the earlier Variation 1 */ remade?: boolean }
+  review?: { needed: boolean; approve: () => void; change: () => void; /** the variations waiting on it, and what they cost together */ count?: number; cost?: number; /** a remake: the variations were made from the earlier Variation 1 */ remade?: boolean; /** Variation 1's name, and the waiting variations' names ("Black and Sand") */ name?: string; others?: string }
   /** videos the chat proposed, waiting for the user's Make (nothing is made without it) */
-  proposals?: () => { id: string; name: string; change: string; cost: number; make: () => void; dismiss: () => void }[]
+  proposals?: () => { id: string; name: string; change: string; cost: number; make: () => void; dismiss: () => void; /** a Variation 1 remake: the variations made from it, and what they cost */ first?: boolean; others?: string; othersCost?: number }[]
   /** the build's steps, read live */
   progress: () => { label: string; state: "done" | "working" | "waiting" }[]
   /** each video in the build, read live: shown in place in the chat as it's made */
@@ -87,9 +88,15 @@ export function AgentItemView({ item, agent, ctx }: { item: Item; agent: Agent; 
           {item.text && <Said text={item.text} streaming={item.streaming} />}
           {!item.text && !item.streaming && !item.stopped && <Said text={item.text} streaming={item.streaming} />}
           {item.stopped && (
-            <span className="flex items-center gap-1.5 px-1 text-xs text-muted-foreground">
+            <span className="flex flex-wrap items-center gap-1.5 px-1 text-xs text-muted-foreground">
               <HugeiconsIcon icon={StopIcon} className="size-3" />
               {item.stopped}
+              {/* a way on, without inventing a message: the chat picks up where it stopped */}
+              {!agent.busy && agent.items.at(-1)?.id === item.id && (
+                <Button variant="link" size="sm" onClick={() => agent.send("Go on from where you stopped.")} className="h-auto p-0 text-xs">
+                  Continue
+                </Button>
+              )}
             </span>
           )}
           {item.streaming && (
@@ -102,7 +109,7 @@ export function AgentItemView({ item, agent, ctx }: { item: Item; agent: Agent; 
       )
     case "resume":
       return (
-        <div role="group" aria-label="Carry on" className="mr-6 flex flex-wrap items-center gap-3 rounded-xl bg-muted/50 p-3 ring-1 ring-foreground/10">
+        <div role="group" aria-label="Carry on" className="mr-2 flex flex-wrap items-center gap-3 rounded-xl bg-muted/50 p-3 ring-1 ring-foreground/10">
           <p className="min-w-0 flex-1 text-sm">{item.text ?? "I was in the middle of this when the page closed."}</p>
           <div className="flex gap-1.5">
             <Button size="sm" variant="ghost" onClick={() => agent.resume(item.id, false)}>
@@ -203,7 +210,7 @@ function ErrorText({ text: raw0 }: { text: string }) {
       </p>
       {raw && (
         <>
-          <button type="button" onClick={() => setOpen((o) => !o)} className="self-start text-xs text-muted-foreground underline-offset-2 outline-none hover:underline focus-visible:underline">
+          <button type="button" onClick={() => setOpen((o) => !o)} className="self-start rounded-sm text-xs text-muted-foreground underline-offset-2 hover:underline focus-ring">
             {open ? "Hide details" : "Details"}
           </button>
           {open && <p className="break-all font-mono text-xs text-muted-foreground">{text}</p>}
@@ -311,8 +318,8 @@ export function threadGroups(items: Item[], agent: Agent, ctx: AgentCtx): Group[
 function Fold({ head, children, defaultOpen = false, className }: { head: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean; className?: string }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
-    <div className={cn("mr-6 flex flex-col overflow-hidden rounded-xl ring-1 ring-foreground/10", className)}>
-      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex min-h-10 w-full items-center gap-2 px-3 py-1.5 text-left text-sm outline-none hover:bg-muted/50 focus-visible:bg-muted/50">
+    <div className={cn("mr-2 flex flex-col overflow-hidden rounded-xl ring-1 ring-foreground/10", className)}>
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex min-h-10 w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-muted/50 focus-ring">
         {head}
         <HugeiconsIcon icon={ArrowDown01Icon} className={cn("ml-auto size-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
       </button>
@@ -474,9 +481,9 @@ function Steps({ items, live }: { items: Item[]; live: boolean }) {
   const shown = open ?? live
   const n = rows.length
   return (
-    <div className="mr-6 flex flex-col gap-2">
+    <div className="mr-2 flex flex-col gap-2">
       <button type="button" onClick={() => setOpen(!shown)} aria-expanded={shown} className="flex items-center gap-1.5 self-start rounded-md px-1 text-sm text-muted-foreground hover:text-foreground focus-ring">
-        <span className={cn(live && "text-shimmer")}>{live ? `Working · ${n} step${n === 1 ? "" : "s"} so far` : `Took ${n} step${n === 1 ? "" : "s"}`}</span>
+        <span className={cn(live && "text-shimmer")}>{live ? `Working · ${n} step${n === 1 ? "" : "s"} so far` : n === 1 ? rows[0].label : `Took ${n} steps`}</span>
         <HugeiconsIcon icon={ArrowDown01Icon} className={cn("size-3.5 transition-transform", shown && "rotate-180")} />
       </button>
       {shown && (
@@ -497,7 +504,7 @@ function Steps({ items, live }: { items: Item[]; live: boolean }) {
               <li key={r.key} className="flex flex-col">
                 <div className="flex min-h-10 items-center gap-2 px-3 text-sm">
                   {r.detail ? (
-                    <button type="button" onClick={() => setMore(opened ? null : r.key)} aria-expanded={opened} className="flex min-w-0 items-center gap-2 py-2 text-left outline-none focus-visible:underline">
+                    <button type="button" onClick={() => setMore(opened ? null : r.key)} aria-expanded={opened} className="flex min-w-0 items-center gap-2 rounded-sm py-2 text-left focus-ring">
                       {head}
                     </button>
                   ) : (
@@ -587,7 +594,7 @@ function Said({ text: said, streaming }: { text: string; streaming?: boolean }) 
     )
   const bold = (s: string) => s.split(/(\*\*[^*]+\*\*)/g).map((p, i) => (p.startsWith("**") && p.endsWith("**") ? <strong key={i} className="font-medium">{p.slice(2, -2)}</strong> : p))
   return (
-    <div data-reply className={cn("mr-6 flex flex-col gap-2.5 px-1 text-sm leading-relaxed", streaming && "stream-fade")}>
+    <div data-reply className={cn("mr-2 flex flex-col gap-2.5 px-1 text-sm leading-relaxed", streaming && "stream-fade")}>
       {text.split(/\n{2,}/).map((para, i) =>
         /^\s*[-•] /m.test(para) ? (
           <ul key={i} className="flex list-disc flex-col gap-1 pl-4">
@@ -636,11 +643,11 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
         <p className="text-xs text-muted-foreground">{item.question}</p>
         <p className="flex items-center gap-1.5 text-sm font-medium">
           <HugeiconsIcon icon={Tick02Icon} className="size-3.5 text-muted-foreground" />
-          {item.answer === "Skipped" ? <span className="font-normal text-muted-foreground">Skipped</span> : item.answer}
+          {item.answer === "Skipped" ? <span className="font-normal text-muted-foreground">Left to the chat</span> : item.answer}
         </p>
       </div>
     )
-  const pick = (o: Choice) => (item.multi ? setPicked((p) => (p.includes(o.label) ? p.filter((x) => x !== o.label) : p.length >= (item.range?.max ?? 99) ? [...p.slice(1), o.label] : [...p, o.label])) : agent.answer(item.id, o.label, o))
+  const pick = (o: Choice) => (item.multi ? setPicked((p) => (p.includes(o.label) ? p.filter((x) => x !== o.label) : p.length >= (item.range?.max ?? 99) ? p : [...p, o.label])) : agent.answer(item.id, o.label, o))
   const enough = picked.length + (other.trim() ? 1 : 0) >= (item.range?.min ?? 1)
   pickRef.current = pick
   const visual = item.display === "layouts" || item.display === "thumbnails"
@@ -650,19 +657,18 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
     <Card className={cn("animate-in fade-in-0 slide-in-from-bottom-1 duration-300", rows && "gap-2 px-2 pb-2")}>
       <p className={cn("text-sm font-medium", stage && "text-lg", rows && "px-3")}>
         {item.question}
-        {item.multi && <span className="ml-2 text-xs font-normal text-muted-foreground">{pickHint(item.range)}</span>}
+        {item.multi && !saysCount(item.question) && <span className="ml-2 text-xs font-normal text-muted-foreground">{pickHint(item.range)}</span>}
       </p>
       {item.typeFirst && <TypeRow value={other} onChange={setOther} onEnter={() => other.trim() && send()} placeholder={item.typeFirst} last={!item.options.length} />}
       {rows ? (
-        <div className="flex flex-col" role={item.multi ? "group" : "radiogroup"} aria-label={item.question}>
+        <div className="flex flex-col" role="group" aria-label={item.question}>
           {item.options.map((o, i) => {
             const on = picked.includes(o.label)
             return (
               <button
                 key={o.label}
                 type="button"
-                role={item.multi ? "checkbox" : "radio"}
-                aria-checked={on}
+                aria-pressed={on}
                 disabled={agent.busy}
                 onClick={() => pick(o)}
                 className={cn(
@@ -710,7 +716,7 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
           )}
         </div>
       ) : item.display === "chips" ? (
-        <div className="flex flex-wrap gap-1.5" role={item.multi ? "group" : "radiogroup"} aria-label={item.question}>
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label={item.question}>
           {item.options.map((o) => (
             <Button
               key={o.label}
@@ -726,15 +732,14 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
           ))}
         </div>
       ) : (
-        <div className={cn("grid gap-2", item.display === "sizes" ? "grid-cols-3" : item.display === "pictures" ? (item.options.length === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4") : visual || item.display === "palettes" ? "grid-cols-3" : "grid-cols-2")} role={item.multi ? "group" : "radiogroup"} aria-label={item.question}>
+        <div className={cn("grid gap-2", item.display === "sizes" ? "grid-cols-3" : item.display === "pictures" ? (item.options.length === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4") : visual || item.display === "palettes" ? "grid-cols-3" : "grid-cols-2")} role="group" aria-label={item.question}>
           {item.options.map((o, i) => {
             const on = picked.includes(o.label)
             return (
             <button
               key={o.label}
               type="button"
-              role={item.multi ? "checkbox" : "radio"}
-              aria-checked={on}
+              aria-pressed={on}
               onClick={() => pick(o)}
               disabled={agent.busy}
               className={cn(
@@ -808,6 +813,8 @@ function Question({ item, agent, ctx }: { item: Extract<Item, { kind: "question"
 }
 
 /** the hint next to a pick-several question: "Pick 2 to 4", "Pick up to 3", or "Pick any" */
+/** the question already says how many ("Pick 3 colors", "Choose two to four") */
+const saysCount = (q: string) => /\b(pick|choose|select)\b[^.?]*\b(\d+|one|two|three|four|five|six)\b/i.test(q)
 const pickHint = (r?: { min: number; max: number }) => (!r ? "Pick any" : r.min === r.max ? `Pick ${r.min}` : r.max >= 9 ? `Pick at least ${r.min}` : r.min <= 1 ? `Pick up to ${r.max}` : `Pick ${r.min} to ${r.max}`)
 
 function Assets({ item, agent, bare }: { item: Extract<Item, { kind: "assets" }>; agent: Agent; bare?: boolean }) {
@@ -956,7 +963,7 @@ function BrandTable({ item }: { item: Extract<Item, { kind: "brand" }> }) {
       </span>,
     ])
   return (
-    <section aria-label="Brand" className="mr-6 overflow-hidden rounded-xl ring-1 ring-foreground/10">
+    <section aria-label="Brand" className="mr-2 overflow-hidden rounded-xl ring-1 ring-foreground/10">
       <header className="flex items-center gap-2 bg-muted/50 px-3 py-2">
         <HugeiconsIcon icon={PaintBoardIcon} className="size-4 text-muted-foreground" />
         <span className="text-xs text-muted-foreground">Brand</span>
@@ -1079,12 +1086,18 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
       </div>
       <div className="flex items-center gap-3 border-t bg-muted/50 px-3 py-2.5">
         <span className="text-xs text-muted-foreground">
-          {!making ? "Your videos, used as they are" : own ? `${making} video${making === 1 ? "" : "s"} · ${cost.toLocaleString("en-US")} credits` : `First video · ${cost.toLocaleString("en-US")} credits`}
+          {!making
+            ? "Your videos, used as they are"
+            : own
+              ? `${making} video${making === 1 ? "" : "s"} · ${cost.toLocaleString("en-US")} credits`
+              : plan.variations.length > 1
+                ? `First video · ${cost.toLocaleString("en-US")} credits, then ${((plan.variations.length - 1) * ctx.videoCost).toLocaleString("en-US")} for ${listNames(plan.variations.slice(1).map((v) => v.name))} once you approve it`
+                : `First video · ${cost.toLocaleString("en-US")} credits`}
           {ctx.credits < cost && <span className="text-destructive"> · you have {ctx.credits.toLocaleString("en-US")}</span>}
         </span>
         <Button size="sm" className="ml-auto gap-1.5" disabled={agent.busy} onClick={() => agent.decidePlan(item.id, plan)}>
           <HugeiconsIcon icon={SparklesIcon} className="size-4" />
-          {!making ? "Build the Flick" : own ? `Approve and make ${making === 1 ? "it" : `${making} videos`}` : "Approve and make the first video"}
+          {!making ? "Build the Flick" : own ? `Approve and make ${making === 1 ? "it" : `${making} videos`}` : "Approve and make it"}
         </Button>
       </div>
     </Card>
@@ -1104,7 +1117,7 @@ function Storyboard({ frames, stills, ratio, name }: { frames: NonNullable<Plan[
               <span className="absolute left-1 top-1 grid size-5 place-items-center rounded-md bg-background/90 text-xs font-medium tabular-nums backdrop-blur">{i + 1}</span>
             </span>
             <span className="line-clamp-2 px-0.5 text-xs leading-snug">{f.action}</span>
-            {f.camera && <span className="truncate px-0.5 text-xs text-muted-foreground">{f.camera}</span>}
+            {f.camera && <span className="line-clamp-2 px-0.5 text-xs leading-snug text-muted-foreground">{f.camera}</span>}
           </li>
         ))}
       </ol>
@@ -1136,7 +1149,7 @@ function BuildCard({ ctx, agent }: { ctx: AgentCtx; agent: Agent }) {
   // all done: one row that opens to the videos
   if (done === steps.length && steps.length && !open)
     return (
-      <button type="button" onClick={() => setOpen(true)} aria-expanded={false} className="mr-6 flex min-h-10 items-center gap-2 rounded-xl px-3 py-1.5 text-left text-sm ring-1 ring-foreground/10 outline-none hover:bg-muted/50 focus-visible:bg-muted/50">
+      <button type="button" onClick={() => setOpen(true)} aria-expanded={false} className="mr-2 flex min-h-10 items-center gap-2 rounded-xl px-3 py-1.5 text-left text-sm ring-1 ring-foreground/10 hover:bg-muted/50 focus-ring">
         <HugeiconsIcon icon={Tick02Icon} className="size-4 shrink-0 text-muted-foreground" />
         <span className="min-w-0 truncate">Your Flick is ready{videos.length ? ` · ${videos.length} videos` : ""}</span>
         <span className="ml-auto flex shrink-0 -space-x-1.5">
@@ -1154,13 +1167,15 @@ function BuildCard({ ctx, agent }: { ctx: AgentCtx; agent: Agent }) {
         </span>
       </div>
       {videos.length > 0 && (
-        <div className={cn("grid gap-2", videos.length > 3 ? "grid-cols-3" : videos.length === 3 ? "grid-cols-3" : "grid-cols-2")}>
-          {videos.map((v, i) => (
-            <BuildTile key={i} video={v} still={stillOf(i)} ratio={ctx.ratio} waiting={i > 0 && v.state === "empty" && videos[0].state === "done"} direction={i > 0 && v.state !== "done" && plan ? directionOf(plan.plan.variations[i], i, plan.plan) : undefined} />
-          ))}
+        // the narrow panel beside the canvas: one video per row (still left, words right); wider: side by side
+        <div className="@container">
+          <div className={cn("grid gap-2 grid-cols-1", videos.length >= 3 ? "@[360px]:grid-cols-3" : "@[360px]:grid-cols-2")}>
+            {videos.map((v, i) => (
+              <BuildTile key={i} video={v} still={stillOf(i)} ratio={ctx.ratio} waiting={i > 0 && v.state === "empty" && videos[0].state === "done"} direction={i > 0 && v.state !== "done" && plan ? directionOf(plan.plan.variations[i], i, plan.plan) : undefined} />
+            ))}
+          </div>
         </div>
       )}
-      {ctx.review?.needed && <ReviewBar ctx={ctx} poster={videos[0]?.poster} />}
       <ol className="flex flex-col gap-1.5">
         {(videos.length ? others : steps).map((x) => (
           <li key={x.label} className="flex items-center gap-2 text-xs">
@@ -1175,7 +1190,6 @@ function BuildCard({ ctx, agent }: { ctx: AgentCtx; agent: Agent }) {
   )
 }
 
-/** Variation 1 is in: the user's OK starts the other variations (it comes into view once) */
 /**
  * Every approval that is waiting, docked above the composer so it can't scroll out of sight: the
  * Variation 1 review, and each video the chat proposed (Make · cost, or Not now). Nothing is made
@@ -1191,26 +1205,27 @@ export function ApprovalDock({ agent, ctx, poster }: { agent: Agent; ctx: AgentC
         <div role="group" aria-label="Review Variation 1" className="flex flex-wrap items-center gap-3 rounded-xl bg-brand/10 p-2.5 ring-1 ring-brand/30 animate-in fade-in-0 slide-in-from-bottom-1">
           {poster && <img src={poster} alt="" decoding="async" className="size-10 shrink-0 rounded-lg object-cover ring-1 ring-foreground/10" />}
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium leading-snug">{ctx.review!.remade ? "Variation 1 is remade. Keep it?" : "Variation 1 is ready. Happy with it?"}</p>
-            <p className="text-xs text-muted-foreground">{ctx.review!.remade ? "The others were made from the earlier one and need making again" : "The others are made from it"}{ctx.review!.count ? ` · ${ctx.review!.count} videos · ${(ctx.review!.cost ?? 0).toLocaleString("en-US")} credits` : ctx.videoCost ? ` · ${ctx.videoCost} credits each` : ""}.</p>
+            <p className="text-sm font-medium leading-snug">{ctx.review!.remade ? `${ctx.review!.name ?? "Variation 1"} is remade. Keep it?` : `${ctx.review!.name ?? "Variation 1"} is ready. Happy with it?`}</p>
+            <p className="text-xs text-muted-foreground">{ctx.review!.remade ? `${ctx.review!.others ?? "The others"} were made from the earlier one and need making again` : `${ctx.review!.others ?? "The others"} are made from it`}{ctx.review!.count ? ` · ${ctx.review!.count} videos · ${(ctx.review!.cost ?? 0).toLocaleString("en-US")} credits` : ctx.videoCost ? ` · ${ctx.videoCost} credits each` : ""}.</p>
           </div>
-          <div className="ml-auto flex gap-1.5">
+          <div className="ml-auto flex flex-wrap justify-end gap-1.5">
             <Button size="sm" variant="ghost" onClick={ctx.review!.change} disabled={agent.busy}>
               Change it
             </Button>
             <Button size="sm" onClick={ctx.review!.approve} disabled={agent.busy}>
-              {ctx.review!.remade ? "Make the variations again" : "Make the variations"}{ctx.review!.cost ? ` · ${ctx.review!.cost.toLocaleString("en-US")}` : ""}
+              {ctx.review!.remade ? "Make the others again" : "Make the others"}{ctx.review!.cost ? ` · ${ctx.review!.cost.toLocaleString("en-US")}` : ""}
             </Button>
           </div>
         </div>
       )}
       {proposals.map((p) => (
-        <div key={p.id} role="group" aria-label={`Make ${p.name}`} className="flex flex-wrap items-center gap-3 rounded-xl bg-brand/10 p-2.5 ring-1 ring-brand/30 animate-in fade-in-0 slide-in-from-bottom-1">
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium leading-snug">Make {p.name} again?</p>
-            <p className="line-clamp-2 text-xs text-muted-foreground">{p.change}</p>
+        <div key={p.id} role="group" aria-label={`Make ${p.name}`} className="flex flex-col gap-2 rounded-xl bg-brand/10 p-2.5 ring-1 ring-brand/30 animate-in fade-in-0 slide-in-from-bottom-1">
+          <div className="min-w-0">
+            <p className="text-sm font-medium leading-snug">Remake {p.name}?</p>
+            <p className="text-xs leading-snug text-muted-foreground">{p.change}</p>
+            {p.first && p.others && <p className="mt-1 text-xs text-muted-foreground">{p.others} are remade from it after you approve it · {p.cost} now, {p.othersCost} then</p>}
           </div>
-          <div className="ml-auto flex gap-1.5">
+          <div className="flex flex-wrap justify-end gap-1.5">
             <Button size="sm" variant="ghost" onClick={p.dismiss}>
               Not now
             </Button>
@@ -1220,30 +1235,6 @@ export function ApprovalDock({ agent, ctx, poster }: { agent: Agent; ctx: AgentC
           </div>
         </div>
       ))}
-    </div>
-  )
-}
-
-function ReviewBar({ ctx, poster }: { ctx: AgentCtx; poster?: string }) {
-  const self = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    self.current?.scrollIntoView({ behavior: "smooth", block: "nearest" })
-  }, [])
-  return (
-    <div ref={self} role="group" aria-label="Review Variation 1" className="flex flex-wrap items-center gap-3 rounded-xl bg-brand/10 p-2.5 ring-1 ring-brand/30 animate-in fade-in-0 slide-in-from-bottom-1">
-      {poster && <img src={poster} alt="" decoding="async" className="size-10 shrink-0 rounded-lg object-cover ring-1 ring-foreground/10" />}
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium leading-snug">Happy with Variation 1?</p>
-        <p className="text-xs text-muted-foreground">The others are made from it.</p>
-      </div>
-      <div className="ml-auto flex gap-1.5">
-        <Button size="sm" variant="ghost" onClick={ctx.review!.change}>
-          Change it
-        </Button>
-        <Button size="sm" onClick={ctx.review!.approve}>
-          Make the variations
-        </Button>
-      </div>
     </div>
   )
 }
@@ -1259,10 +1250,10 @@ function BuildTile({ video: v, still, ratio, waiting, direction }: { video: Buil
   const pct = v.state === "generating" && v.since && v.ms ? Math.min(99, Math.max(0, Math.round(((Date.now() - v.since) / v.ms) * 100))) : undefined
   const secs = v.state === "generating" && v.since ? Math.round((Date.now() - v.since) / 1000) : 0
   return (
-    <figure className="flex min-w-0 flex-col gap-1">
-      <div className="relative overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/10" style={{ aspectRatio: String(Math.min(1.78, Math.max(0.56, ratio))) }}>
+    <figure className="flex min-w-0 gap-3 @[360px]:flex-col @[360px]:gap-1">
+      <div className="relative w-[38%] shrink-0 overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/10 @[360px]:w-auto" style={{ aspectRatio: String(Math.min(1.78, Math.max(0.56, ratio))) }}>
         {v.state === "done" && v.src ? (
-          <video src={v.src} poster={v.poster} autoPlay muted loop playsInline className="absolute inset-0 size-full object-cover animate-in fade-in-0 duration-500" />
+          <video src={v.src} poster={v.poster} autoPlay={!reducedMotion()} muted loop playsInline controls={reducedMotion()} className="absolute inset-0 size-full object-cover animate-in fade-in-0 duration-500" />
         ) : (
           <>
             {still && <img src={still} alt="" decoding="async" className={cn("absolute inset-0 size-full object-cover", v.state === "generating" ? "opacity-70 blur-xs" : "opacity-50 grayscale")} />}
@@ -1280,7 +1271,7 @@ function BuildTile({ video: v, still, ratio, waiting, direction }: { video: Buil
             <span className={cn("absolute inset-x-1.5 bottom-1.5 flex min-w-0 items-center gap-1 truncate rounded-md bg-background/90 px-1.5 py-0.5 text-xs tabular-nums text-muted-foreground backdrop-blur", v.retry && "hidden")}>
               {v.state === "generating" ? (
                 <>
-                  {pct !== undefined ? `Generating · ${pct}%` : `${STATUS[v.status ?? ""] ?? "Generating"} · ${secs < 60 ? `${secs}s` : `${Math.floor(secs / 60)}m`}`}
+                  {pct !== undefined ? `Generating · ${pct}%` : v.status === "queued" ? "Up next" : `${STATUS[v.status ?? ""] ?? "Generating"} · ${secs < 60 ? `${secs}s` : `${Math.floor(secs / 60)}m`}`}
                 </>
               ) : v.failed ? (
                 <span className="truncate text-destructive" title={v.failed}>
@@ -1298,21 +1289,23 @@ function BuildTile({ video: v, still, ratio, waiting, direction }: { video: Buil
           </>
         )}
       </div>
-      <figcaption className="flex min-w-0 flex-col gap-0.5 px-0.5 text-xs">
+      <figcaption className="flex min-w-0 flex-1 flex-col gap-0.5 px-0.5 text-xs">
         <span className="flex min-w-0 items-center gap-1 font-medium">
-          <span className="min-w-0 truncate">{v.name}</span>
+          <span className="min-w-0 truncate @[360px]:truncate">{v.name}</span>
           {v.stop && (
             <Button size="xs" variant="ghost" onClick={v.stop} className="ml-auto text-muted-foreground">
-              {waiting || v.state === "empty" ? "Remove" : "Cancel"}
+              Don't make
             </Button>
           )}
         </span>
-        {direction && <span className="line-clamp-2 leading-snug text-muted-foreground">{direction}</span>}
+        {direction && <span className="line-clamp-3 leading-snug text-muted-foreground @[360px]:line-clamp-2">{direction}</span>}
       </figcaption>
     </figure>
   )
 }
 
+/** the user asked the system for less motion: finished videos wait for a press instead of playing on their own */
+const reducedMotion = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches
 /** one ladder of words for a video being made, used on the build tile, the canvas and the chat: Up next, Waiting for your OK, Generating, Ready, Didn't generate */
 const STATUS: Record<string, string> = { starting: "Generating", queued: "Up next", in_progress: "Generating", completed: "Generating" }
 /** seconds since an image started, ticking */
@@ -1332,7 +1325,7 @@ function imageWhat(item: Extract<Item, { kind: "image" }>) {
     item.purpose === "view"
       ? `Looked at ${item.target ?? "the Flick"}`
       : item.purpose === "thumbnail" && item.target
-      ? `Thumbnail for ${item.target}`
+      ? `${item.target} · thumbnail`
       : item.purpose === "canvas"
         ? "For the canvas"
         : item.purpose === "sheet"
@@ -1349,7 +1342,7 @@ function ImageCard({ item, ctx, agent }: { item: Extract<Item, { kind: "image" }
   const what = imageWhat(item)
   const [added, setAdded] = useState(false)
   return (
-    <div className="mr-10 flex items-center gap-3 rounded-2xl p-1.5 pr-3">
+    <div className="mr-2 flex items-center gap-3 rounded-2xl p-1.5 pr-3">
       <span className="relative grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-muted ring-1 ring-foreground/10">
         {item.state === "working" ? (
           <GeneratingGradient sweep />
@@ -1390,22 +1383,29 @@ export function QuickReplies({ agent, ctx }: { agent: Agent; ctx: AgentCtx }) {
   const last = [...agent.items].reverse().find((x) => x.kind === "user" || x.kind === "assistant")
   const failed = videos.filter((v) => v.failed && v.state !== "done")
   const ready = videos.length > 1 && videos.every((v) => v.state === "done" || v.failed)
-  if (!ready || agent.busy || agent.waiting || last?.kind !== "assistant") return null
+  // nothing to suggest while an approval is waiting for a press
+  const docked = !!ctx.review?.needed || !!ctx.proposals?.().length
+  if (!ready || agent.busy || agent.waiting || docked || last?.kind !== "assistant") return null
   const review = [...agent.items].reverse().find((x): x is Extract<Item, { kind: "review" }> => x.kind === "review")
   const issues = ctx.issues?.() ?? []
   const links = issues.filter((t) => /no link/.test(t)).length
+  // the issue itself, in the chip, so the user sees what they'd be fixing
+  const issue = review?.fail[0]?.replace(/\s*\(id [^)]*\)/g, "").replace(/\.$/, "")
+  const asked = agent.items.filter((x) => x.kind === "user").map((x) => x.text.trim().toLowerCase())
   const next = [
     ...failed.slice(0, 2).map((v) => `Make ${v.name} again`),
-    ...(review?.fail.length ? [`Fix the ${review.fail.length === 1 ? "review issue" : `${review.fail.length} review issues`}`] : []),
+    ...(issue ? [`Fix: ${issue.length > 60 ? `${issue.slice(0, 57).trimEnd()}…` : issue}`] : []),
     ...(links ? ["Set the missing links"] : []),
     "Make the headline shorter",
     "Try a bolder button",
     ...(videos.length < 5 ? ["Add another variation"] : []),
-  ].slice(0, 4)
+  ]
+    .filter((t) => !asked.includes(t.toLowerCase()))
+    .slice(0, 4)
   return (
-    <div role="group" aria-label="Suggestions" className="flex flex-wrap gap-1.5 px-1 animate-in fade-in-0 slide-in-from-bottom-1">
+    <div role="group" aria-label="Suggestions" className="flex gap-1.5 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] animate-in fade-in-0 slide-in-from-bottom-1 [&::-webkit-scrollbar]:hidden">
       {next.map((t) => (
-        <Button key={t} size="sm" variant="outline" onClick={() => agent.send(t)} className="h-8 rounded-full font-normal">
+        <Button key={t} size="sm" variant="outline" onClick={() => agent.send(t.startsWith("Fix: ") ? `Fix this review issue: ${issue}` : t)} className="h-8 shrink-0 rounded-full font-normal">
           {t}
         </Button>
       ))}
@@ -1437,7 +1437,10 @@ export function AgentComposer({ agent, placeholder, variations, brand }: { agent
   const can = (text.trim() || files.length) && !preparing.length
   const send = () => {
     if (!can) return
-    agent.send(text.trim(), files, elementsIn(text))
+    // while a question is on show, words typed here answer that question; the other questions stay open
+    const q = questionShowing()
+    if (q && !files.length && agent.pendingIds.includes(q.id)) agent.answer(q.id, text.trim())
+    else agent.send(text.trim(), files, elementsIn(text))
     setText("")
     setFiles([])
   }
@@ -1576,12 +1579,20 @@ function TypeRow({ value, onChange, onEnter, placeholder, last }: { value: strin
   )
 }
 
+/** the question the deck is showing right now (a plain message from the composer answers it) */
+let deckShowing: { id: string; question: string } | null = null
+export const questionShowing = () => deckShowing
+
 export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: AgentCtx; className?: string }) {
   const qs = agent.items.filter((x): x is Deckable => isDocked(x, agent.pendingIds)).map((x) => withSizes(x, agent.items))
   const [at, setAt] = useState(0)
   const [picked, setPicked] = useState<Record<string, string[]>>({})
   const [other, setOther] = useState<Record<string, string>>({})
+  const self = useRef<HTMLElement>(null)
   const key = qs.map((q) => q.id).join()
+  const showing = qs[Math.min(at, Math.max(0, qs.length - 1))]
+  deckShowing = showing?.kind === "question" ? { id: showing.id, question: showing.question } : null
+  useEffect(() => () => void (deckShowing = null), [])
   // a new set of questions starts at the first
   useEffect(() => setAt(0), [key])
   const i = Math.min(at, Math.max(0, qs.length - 1))
@@ -1604,6 +1615,8 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reqDone])
   const mine = q ? (picked[q.id] ?? []) : []
+  /** at the most allowed: the options not picked can't be added */
+  const full = (o: Choice) => !!q && q.kind === "question" && q.multi && !!q.range && mine.length >= q.range.max && !mine.includes(o.label)
   const typed = q ? (other[q.id] ?? "") : ""
   const commit = (value: string, choice?: Choice) => {
     if (!q) return
@@ -1613,7 +1626,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
   }
   const pick = (o: Choice) => {
     if (!q || q.kind !== "question") return
-    if (q.multi) setPicked((p) => ({ ...p, [q.id]: mine.includes(o.label) ? mine.filter((x) => x !== o.label) : mine.length >= (q.range?.max ?? 99) ? [...mine.slice(1), o.label] : [...mine, o.label] }))
+    if (q.multi) setPicked((p) => ({ ...p, [q.id]: mine.includes(o.label) ? mine.filter((x) => x !== o.label) : mine.length >= (q.range?.max ?? 99) ? mine : [...mine, o.label] }))
     else commit(o.label, o)
   }
   const need = q?.kind === "question" && q.multi ? (q.range?.min ?? 1) : 1
@@ -1631,9 +1644,12 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement
       if (e.metaKey || e.ctrlKey || e.altKey || t.closest("input, textarea, [contenteditable]")) return
+      // only while the deck has the focus (or nothing has): Esc on the canvas or in a dialog must not skip a question
+      const focus = document.activeElement
+      if (focus && focus !== document.body && !self.current?.contains(focus)) return
       const n = Number(e.key)
       if (n >= 1 && n <= Math.min(9, q.options.length)) (e.preventDefault(), pickRef.current(q.options[n - 1]))
-      else if (e.key === "Escape") skipRef.current()
+      else if (e.key === "Escape" && self.current?.contains(focus)) skipRef.current()
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
@@ -1654,7 +1670,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
   const shell = "flex flex-col overflow-hidden rounded-2xl bg-card shadow-lg ring-1 ring-foreground/10 animate-in fade-in-0 slide-in-from-bottom-2 duration-300"
   if (q.kind === "assets")
     return (
-      <section aria-label="Questions" className={cn(shell, className)}>
+      <section ref={self} aria-label="Questions" className={cn(shell, className)}>
         <header className="flex items-start gap-3 px-4 pb-2 pt-3.5">
           <p className="flex-1 text-base font-medium leading-snug">{q.message}</p>
           {pager}
@@ -1665,11 +1681,11 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
   const visual = q.display === "layouts" || q.display === "thumbnails"
   const chosen = (o: Choice) => (q.multi ? mine.includes(o.label) : q.answer === o.label)
   return (
-    <section aria-label="Questions" className={cn(shell, className)}>
+    <section ref={self} aria-label="Questions" className={cn(shell, className)}>
       <header className="flex items-start gap-3 px-4 pb-2 pt-3.5">
         <p className="flex-1 text-base font-medium leading-snug">
           {q.question}
-          {q.multi && <span className="ml-2 text-xs font-normal text-muted-foreground">{pickHint(q.range)}</span>}
+          {q.multi && <span className="ml-2 text-xs font-normal text-muted-foreground">{q.range && mine.length >= q.range.max ? `${mine.length} of ${q.range.max} picked` : !saysCount(q.question) ? pickHint(q.range) : ""}</span>}
         </p>
         {pager}
       </header>
@@ -1680,15 +1696,14 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
           // narrow (the panel beside the canvas): one per row, the picture left and the whole text right.
           // The variations each concept would make are read out to screen readers only.
           <div className="@container">
-            <div className="grid grid-cols-1 gap-2.5 p-1 @[540px]:grid-cols-3" role="radiogroup" aria-label={q.question}>
+            <div className="grid grid-cols-1 gap-2.5 p-1 @[540px]:grid-cols-3" role="group" aria-label={q.question}>
               {q.options.map((o, n) => (
                 <button
                   key={o.label}
                   type="button"
-                  role="radio"
-                  aria-checked={chosen(o)}
+                  aria-pressed={chosen(o)}
                   aria-description={[o.question, o.variations?.length ? `Variations: ${o.variations.join(", ")}` : "", o.beats?.join(", then ")].filter(Boolean).join(". ")}
-                  disabled={agent.busy}
+                  disabled={agent.busy || full(o)}
                   onClick={() => pick(o)}
                   className={cn(
                     "group/c flex gap-3 rounded-2xl p-1.5 text-left ring-1 ring-foreground/10 transition-[box-shadow,background-color] hover:bg-muted/50 hover:ring-foreground/30 focus-ring @[540px]:flex-col @[540px]:gap-2",
@@ -1709,14 +1724,13 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
           </div>
         ) : q.display === "sizes" ? (
           // frame shapes drawn to scale, with the name and the pixels
-          <div className="grid grid-cols-3 gap-2 p-1 sm:grid-cols-5" role="radiogroup" aria-label={q.question}>
+          <div className="grid grid-cols-3 gap-2 p-1 sm:grid-cols-5" role="group" aria-label={q.question}>
             {q.options.map((o, n) => (
               <button
                 key={o.label}
                 type="button"
-                role="radio"
-                aria-checked={chosen(o)}
-                disabled={agent.busy}
+                aria-pressed={chosen(o)}
+                disabled={agent.busy || full(o)}
                 onClick={() => pick(o)}
                 className={cn(
                   "flex flex-col items-center gap-2 rounded-xl px-2 pb-2 pt-3 text-center ring-1 ring-foreground/10 transition-[box-shadow,background-color] hover:bg-muted/50 hover:ring-foreground/30 focus-ring",
@@ -1736,15 +1750,14 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
           </div>
         ) : q.display === "pictures" ? (
           // one picture per answer, drawn with their product; the name sits on the picture
-          <div className={cn("grid grid-cols-2 gap-2 p-1", q.options.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-4")} role={q.multi ? "group" : "radiogroup"} aria-label={q.question}>
+          <div className={cn("grid grid-cols-2 gap-2 p-1", q.options.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-4")} role="group" aria-label={q.question}>
             {q.options.map((o, n) => (
               <button
                 key={o.label}
                 type="button"
-                role={q.multi ? "checkbox" : "radio"}
-                aria-checked={chosen(o)}
+                aria-pressed={chosen(o)}
                 aria-description={o.description}
-                disabled={agent.busy}
+                disabled={agent.busy || full(o)}
                 onClick={() => pick(o)}
                 className={cn(
                   "group/p relative overflow-hidden rounded-xl bg-muted text-left ring-1 ring-foreground/10 transition-shadow hover:ring-foreground/30 focus-ring",
@@ -1766,16 +1779,15 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
             ))}
           </div>
         ) : q.display === "chips" || q.display === "cards" ? (
-          <div className="flex flex-col" role={q.multi ? "group" : "radiogroup"} aria-label={q.question}>
+          <div className="flex flex-col" role="group" aria-label={q.question}>
             {q.options.map((o, n) => {
               const on = chosen(o)
               return (
                 <button
                   key={o.label}
                   type="button"
-                  role={q.multi ? "checkbox" : "radio"}
-                  aria-checked={on}
-                  disabled={agent.busy}
+                  aria-pressed={on}
+                  disabled={agent.busy || full(o)}
                   onClick={() => pick(o)}
                   className={cn(
                     "group/row relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted/50 focus-ring disabled:opacity-50",
@@ -1796,15 +1808,14 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
             })}
           </div>
         ) : (
-          <div className={cn("grid gap-2 p-1", "grid-cols-3")} role={q.multi ? "group" : "radiogroup"} aria-label={q.question}>
+          <div className={cn("grid gap-2 p-1", "grid-cols-3")} role="group" aria-label={q.question}>
             {q.options.map((o, n) => (
               <button
                 key={o.label}
                 type="button"
-                role={q.multi ? "checkbox" : "radio"}
-                aria-checked={chosen(o)}
+                aria-pressed={chosen(o)}
                 onClick={() => pick(o)}
-                disabled={agent.busy}
+                disabled={agent.busy || full(o)}
                 className={cn(
                   "flex flex-col gap-1.5 rounded-xl p-1.5 text-left ring-1 ring-foreground/10 transition-[box-shadow,background-color] hover:bg-muted/50 hover:ring-foreground/30 focus-ring",
                   chosen(o) && "bg-brand/10 ring-2 ring-brand",
@@ -1850,7 +1861,7 @@ export function QuestionDeck({ agent, ctx, className }: { agent: Agent; ctx: Age
         />
         </>}
         <Button size="sm" variant="ghost" disabled={agent.busy} onClick={() => commit("Skipped")} className="gap-1.5 text-muted-foreground">
-          Skip <Shortcut keys={["Esc"]} />
+          You decide <Shortcut keys={["Esc"]} />
         </Button>
         {(q.multi || typed.trim()) && (
           <Button size="sm" disabled={agent.busy || mine.length + (typed.trim() ? 1 : 0) < need} onClick={cont}>

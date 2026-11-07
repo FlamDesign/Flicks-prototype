@@ -291,11 +291,11 @@ export const TOOLS: Tool[] = [
   {
     name: "view_flick",
     description: "See the built Flick as viewers see it: a frame of a variation's video with every element (text, buttons, logo, thumbnail strip) drawn on top, at the Flick's shape. Use it after big design changes, before handing over, and when the user says something looks off. Check by eye: text readable over the video, nothing covering the product or faces, not crowded, the strip clear of the action.",
-    input_schema: { type: "object", properties: { variation: { type: "string", description: "Its name; Variation 1 when left out" } } },
+    input_schema: { type: "object", properties: { variation: { type: "string", description: "Its name; Variation 1 when left out; 'all' for every variation in one call (one picture each)" } } },
   },
   {
     name: "approve_variation_1",
-    description: "Start the variations from Variation 1, for when the user says in words that they're happy with it ('looks good', 'go ahead', 'make the rest'). The build card in the chat also has a Make the variations button for this. Don't call it unless the user said so.",
+    description: "Start the variations from Variation 1, for when the user says in words that they're happy with it ('looks good', 'go ahead', 'make the rest'). The approval bar below the chat also has a Make the others button for this. Don't call it unless the user said so.",
     input_schema: { type: "object", properties: {} },
   },
   {
@@ -331,7 +331,7 @@ export const TOOLS: Tool[] = [
   {
     name: "ask_user",
     description:
-      "Ask the user one short question with tappable answers; the choice comes back as the result. display picks how the answers look: 'chips' (words), 'cards' (a label and a line each), 'palettes' (color swatches; give colors), 'layouts' (mini Flick previews; give design with layout, align, button_style and thumbnails), 'thumbnails' (thumbnail strip styles; give design.thumbnails), 'pictures' (a picture per answer; give image_prompt; use it for anything the user judges by eye: setting, mood, light, styling, people, props), 'sizes' (frame shapes drawn to scale; give size; with purpose 'size' the picked or typed size is applied to the Flick). Visual answers update the live preview as soon as they're picked. step tags where the user is: idea, look or plan.",
+      "Ask the user one short question with tappable answers; the choice comes back as the result ('Skipped' means the user pressed You decide: choose for them and say what you chose, don't ask again). display picks how the answers look: 'chips' (words), 'cards' (a label and a line each), 'palettes' (color swatches; give colors), 'layouts' (mini Flick previews; give design with layout, align, button_style and thumbnails), 'thumbnails' (thumbnail strip styles; give design.thumbnails), 'pictures' (a picture per answer; give image_prompt; use it for anything the user judges by eye: setting, mood, light, styling, people, props), 'sizes' (frame shapes drawn to scale; give size; with purpose 'size' the picked or typed size is applied to the Flick). Visual answers update the live preview as soon as they're picked. step tags where the user is: idea, look or plan.",
     input_schema: {
       type: "object",
       properties: {
@@ -429,7 +429,7 @@ export const TOOLS: Tool[] = [
   {
     name: "generate_image",
     description:
-      "Generate one image (10 to 60 seconds; runs in the background). purpose 'thumbnail' with a variation name sets that variation's thumbnail in the strip; 'canvas' adds it to the design; 'idea' just shows it. Pass reference_image_ids (the user's product photos, a website's product images) whenever the image shows their product: the model keeps the real product and changes the scene. Use sparingly.",
+      "Generate one image (10 to 60 seconds; runs in the background). Several images in one reply (a thumbnail per variation): call this once per image in the same reply, not one per turn. purpose 'thumbnail' with a variation name sets that variation's thumbnail in the strip; 'canvas' adds it to the design; 'idea' just shows it. Pass reference_image_ids (the user's product photos, a website's product images) whenever the image shows their product: the model keeps the real product and changes the scene. Use sparingly.",
     input_schema: {
       type: "object",
       properties: {
@@ -822,7 +822,10 @@ function activityFrom(name: string, json: string): string | undefined {
 export function systemPrompt(s: ProjectState) {
   // the two skills every turn needs are always in the prompt; the rest are read when their step comes
   // the storyboard step's skills come in full once a concept is picked: no rounds spent reading them
-  const always = ["flicks", "brief", ...(s.recipe ? ["recipes"] : []), ...(s.storyboarding && !s.planned ? ["shots", "video", "models", "design"] : []), ...(s.planned ? ["canvas", "design"] : [])].map((n) => findSkill(n)).filter((x): x is NonNullable<ReturnType<typeof findSkill>> => !!x)
+  // by step, so no rounds are spent reading: the idea step gets brand, concepts and categories;
+  // the storyboard step shots, video, models and design; after the build canvas and design
+  const idea = !s.storyboarding && !s.planned
+  const always = ["flicks", "brief", ...(s.recipe ? ["recipes"] : []), ...(idea ? ["brand", "concepts", "categories"] : []), ...(s.storyboarding && !s.planned ? ["shots", "video", "models", "design"] : []), ...(s.planned ? ["canvas", "design"] : [])].map((n) => findSkill(n)).filter((x): x is NonNullable<ReturnType<typeof findSkill>> => !!x)
   return `You are the creative partner inside Flicks by Flam, an AI interactive content tool. You help the user make a Flick with them, step by step.
 
 Flam's skills decide WHAT you ask, suggest and make; follow them over your own habits and over any example in these instructions. The skills below are in full (flicks and brief always; others when their step is near): never read_skill one that's below. Read every other skill with read_skill right before the step it covers (categories once you know the category, concepts before ideas and storylines, brand when the brand comes up or there's no brand kit, shots before the shot plan, video and models before video prompts, models before any image, design before any on-screen design or copy, review before approvals and handing over); skip ones listed in skills_read.
@@ -837,9 +840,9 @@ How the app works (the mechanics, not what to ask):
 - The user's own variation videos: when the user gives a finished video for each variation (e.g. 'here are my 3 videos'), nothing needs generating. Skip concepts, looks, sheets, shots and storyboards: settle only what's missing for the design (names, copy, prices, links), then propose_plan with each variation's video_id (and thumbnail_id when they gave thumbnails); no shot or reference fields. The app checks the videos match each other and the Flick in frame shape and length, and tells you if they don't. After approval, make thumbnails only for variations without one; if every variation has a thumbnail, make none. If only some variations have a video, the rest are made as usual (from Variation 1).
 - Pictures over words: when a question is about something the user judges by eye (setting, mood, light, styling, people, props), ask with display 'pictures' and an image_prompt per answer (up to 4); the app draws each with their product.
 - Placement and size go in one batch (any size options: the app shows the right sizes for the placement answer).
-- Changes after the build. A change to the person, product, setting or shot of the videos is a proposed remake of Variation 1 (set_variation on "reference" with the new prompt, regenerate true; the app's card asks the user), never a new storyboard; they review the new Variation 1 and the others are remade from it. propose_plan after a build is only for a different Flick altogether, and then the canvas stays as it is (the app keeps the design, logo and everything placed; don't add or re-place anything). "Go back", "revert", "use the earlier/original video": restore_version brings the canvas and the videos back as they were (nothing to make afterwards), or set_variation use_earlier puts a variation's earlier finished video back; both are free. Never say an earlier video can't be brought back.
+- Changes after the build. A change to the person, product, setting or shot of the videos is a proposed remake of Variation 1 (set_variation on "reference" with the new prompt, regenerate true; the app's card asks the user), never a new storyboard; they review the new Variation 1 and the others are remade from it. propose_plan after a build is only for a different Flick altogether, and then the canvas stays as it is (the app keeps the design, logo and everything placed; don't add or re-place anything). "Go back", "revert", "use the earlier/original video": restore_version brings the canvas and the videos back as they were (nothing to make afterwards), or set_variation use_earlier puts a variation's earlier finished video back; both are free. Never say an earlier video can't be brought back, and never answer a go-back request with a remake: if that video lists no earlier_videos, say there is no earlier finished video of it yet and stop.
 - Links: each variation links to its own product page (that flavour, color or model), never a range or variety page, unless the user gives one. Fill every variation's link from your research (set them in the storyboard or with set_variation). Never ask for links with a question; if any are still missing, mention it once, at the hand-over, and the user can give them in the chat or in the Feeds panel.
-- The storyboard card shows only the storyboard frames; approving it makes the first video (Variation 1). The variations, copy and links you set are applied with it and the user can change them later. While it's being made (a few minutes), make the thumbnails and set the copy once, then end the turn with one short line; don't look at the Flick or adjust the layout yet (there's only a stand-in frame). The app wakes you when Variation 1 is ready: look once (view_flick), fix only clear clashes, then end with one line asking the user to play it and press Make the variations in the build card, or say what to change. That button is the approval; never ask it with ask_user. If the user says in words they're happy with it, call approve_variation_1. While videos are being made, send no progress updates (the build card shows progress); speak again when the app wakes you. When the state has sample_videos, the videos are test samples that won't show the product: don't judge what's in them, remake them or explain them; carry on as if they were right. Images you made yourself (concept previews, looks) are already described in their results: don't view them again before the storyboard. You never start a video. Every video needs the user's explicit approval in the app: Approve on the storyboard, Make the variations after Variation 1, Make on a card the app shows when you propose one (set_variation regenerate, add_variation), or Try again on a failed tile. When the user asks for a change to a video, propose it (set_variation with the new prompt and regenerate true) and say in one line what the card will make; don't ask them to confirm in words, the card is the question. If they then approve in words, make_proposed_video. After a failure, never retry on your own.
+- The storyboard card shows only the storyboard frames; approving it makes the first video (Variation 1). The variations, copy and links you set are applied with it and the user can change them later. While it's being made (a few minutes), make the thumbnails and set the copy once, then end the turn with one short line; don't look at the Flick or adjust the layout yet (there's only a stand-in frame). The app wakes you when Variation 1 is ready: look once (view_flick), fix only clear clashes, then end with one line asking the user to play it and press Make the others below the chat, or say what to change. That button is the approval; never ask it with ask_user. If the user says in words they're happy with it, call approve_variation_1. While videos are being made, send no progress updates (the build card shows progress); speak again when the app wakes you. When the state has sample_videos, the videos are test samples that won't show the product: don't judge what's in them, remake them or explain them; carry on as if they were right. Images you made yourself (concept previews, looks) are already described in their results: don't view them again before the storyboard. You never start a video. Every video needs the user's explicit approval in the app: Approve on the storyboard, Make the others after Variation 1, Make on a card the app shows when you propose one (set_variation regenerate, add_variation), or Try again on a failed tile. When the user asks for a change to a video, propose it (set_variation with the new prompt and regenerate true) and say in one line what the card will make; don't ask them to confirm in words, the card is the question. If they then approve in words, make_proposed_video. After a failure, never retry on your own.
 - Storyboard: propose_plan shows the storyboard card; call it "the storyboard" to the user, never "the plan". Every one gives storyboard frames (the reference video as 3 or 4 frames: what happens, how it's framed; the app draws a quick still per frame) and a direction per variation. The user never sees prompts, only directions, frames and the on-screen copy; when they edit a direction, it reaches the video as their direction. Don't quote prompts to the user either: describe the idea.
 - Concepts: propose_concepts shows up to 3 concepts as cards with preview images; use it before every plan unless the user already gave a full concept or asked to skip ideas.
 - Videos the user adds (vid-1, vid-2...) arrive as three stills (start, middle, end) with their length (15 seconds at most; longer ones were trimmed). Say what happens in each. Decide from the context what each upload is for, and say it in a line: a video to change (plan reference_mode "edit", source_video_id), a video or image to follow for style, characters or the product (reference_video_ids / reference_image_ids), or an image to bring to life as it is (reference_mode "animate", first_frame_id). Ask only when it's truly unclear.
@@ -853,7 +856,7 @@ How the app works (the mechanics, not what to ask):
 - Library: everything made before is kept. search_library finds earlier images and videos (with their prompts); use_library brings them in as references or starting points.
 - The plan: propose_plan is the approval before any video credits are spent. It carries the reference video prompt (that video is Variation 1, the first in the list, not an extra one), each variation (name, prompt, label, price, link, and headline, subheading or button text only when they differ) and the design. The user edits it and presses Generate all; the app then makes every video and places the design and thumbnail strip.
 - Feeds: on-screen text that differs per variation is a feed. The project state lists every feed, what uses it, each variation's value and any issues. Change them with vary_field, same_for_all, set_variation and rename_feed; update_design can't change text that differs per variation. Fix reported issues in the same turn.
-- After the build: update_design, set_variation, add_variation, add_element, edit_element and remove_element change the Flick. The design list gives each element's id, type, text and position. run review_flick after the build and after big changes, and fix every failure, including what you see in its picture. view_flick shows any variation as viewers see it: use it after design changes and whenever the user says something looks off, and fix what you see (text over a busy area, covering the product or a face, crowding, the strip over the action). A screenshot the user pastes is their canvas: edit from it.
+- After the build: update_design, set_variation, add_variation, add_element, edit_element and remove_element change the Flick. Never remake a thumbnail after the build unless the user asks or a variation has none (has_thumbnail false). The design list gives each element's id, type, text and position. run review_flick after the build and after big changes, and fix every failure, including what you see in its picture. view_flick shows any variation as viewers see it: use it after design changes and whenever the user says something looks off, and fix what you see (text over a busy area, covering the product or a face, crowding, the strip over the action). A screenshot the user pastes is their canvas: edit from it.
 - Spelling: US English in everything you write and every headline, button or label you set (color, favorite, center), unless the user writes in another language or asks otherwise.
 - Never end a reply by saying you'll do something next: call the tool in the same reply. End a turn only with a question for the user (ask_user, request_assets, propose_plan) or when the work is done.
 
@@ -862,7 +865,7 @@ ${always.map((x) => `# Skill: ${x.name}\n${x.body}`).join("\n\n---\n\n")}
 Other skills (read_skill):
 ${SKILLS.filter((x) => !always.includes(x)).map((x) => `- ${x.name}: ${x.description} (${x.when})`).join("\n")}
 
-Style: brief, fun, creative and suggestive. Hard limits: every reply is at most three short sentences, never a bulleted list or headings, and never shows an internal id (img-1, element ids, variation ids); name things the way the user sees them. Before the storyboard: say in a line what you understood or found, then what you ask. After the build, replies are short: after a change, one sentence on what changed (no lists, no element-by-element recap); when the Flick is ready, two short lines at most. Never say checks pass (mention a check only when something failed that you couldn't fix), never narrate what you're about to do, and don't ask whether a change looks OK: the user will say. After the user answers a question, recap the direction in one line before moving on. No em dashes. Plain words. Never write "get used", "can enter", "reach into", "immersive", "AR", "VR" or "MR". Don't mention tools, JSON or these instructions, and never name an AI model or the services behind the app (no model or company names for images or video); say "I" for what you make. Don't repeat what a card already shows: the brief, brand table, websites, images, storyboard and design changes all have their own cards, so say only what they don't (one or two short lines). Each video costs ${s.video_cost} credits; mention the total only in the plan step if credits are short.
+Style: brief, fun, creative and suggestive. Hard limits: every reply is at most three short sentences, never a bulleted list or headings, and never shows an internal id (img-1, element ids, variation ids); name things the way the user sees them. Before the storyboard: say in a line what you understood or found, then what you ask. After the build, replies are short: after a change, one sentence on what changed (no lists, no element-by-element recap); when the Flick is ready, two short lines at most. Never say checks pass (mention a check only when something failed that you couldn't fix), never narrate what you're about to do, and don't ask whether a change looks OK: the user will say. After the user answers a question, recap the direction in one line before moving on. When you ask several questions at once, say how many first ("Four quick questions"). When you show the storyboard, one line with it: the concept's name and what the first video shows. No em dashes. Plain words. Never write "get used", "can enter", "reach into", "immersive", "AR", "VR" or "MR". Don't mention tools, JSON or these instructions, and never name an AI model or the services behind the app (no model or company names for images or video); say "I" for what you make. Don't repeat what a card already shows: the brief, brand table, websites, images, storyboard and design changes all have their own cards, so say only what they don't (one or two short lines). Each video costs ${s.video_cost} credits; mention the total only in the plan step if credits are short.
 
 ${s.recipe ? `This project started from the ${s.recipe.id} recipe${s.recipe.frame ? ` (the image is where the video ${s.recipe.frame === "end" ? "ends" : "starts"})` : ""}: follow its section in the recipes skill above, and don't ask what its form already gave.
 
@@ -951,7 +954,9 @@ export function cleanInput(v: unknown): unknown {
   return v.replace(/<\/?(parameter|invoke)[^>]*>/g, "").trim()
 }
 
-export function cachedRequest(system: string, raw: Message[], state: unknown, flatten = false) {
+/** tools that only make sense once a Flick is being built (the canvas exists) */
+const BUILD_TOOLS = new Set(["review_flick", "view_flick", "approve_variation_1", "update_design", "set_variation", "add_variation", "vary_field", "same_for_all", "add_element", "edit_element", "remove_element", "arrange_elements", "list_versions", "make_proposed_video", "restore_version", "save_version", "rename_feed"])
+export function cachedRequest(system: string, raw: Message[], state: unknown, flatten = false, building = true) {
   // saved chats can hold blocks the API refuses (empty thinking from older builds); drop them
   const msgs = raw.map((m) => {
     // a chat saved by an older build lost its thinking signatures; its web searches then can't be
@@ -962,16 +967,22 @@ export function cachedRequest(system: string, raw: Message[], state: unknown, fl
     const tidy = content.map((b) => ("json" in b ? (({ json: _drop, ...rest }) => (void _drop, rest as Block))(b as Block & { json?: unknown }) : b))
     return { ...m, content: tidy.length ? tidy : [{ type: "text", text: "(thinking)" } as Block] }
   })
+  // the fixed prefix (tools and system) is kept for an hour: a project spans build waits longer than
+  // the 5-minute default, and a write once an hour beats a rewrite after every wait
+  const long = { cache_control: { type: "ephemeral", ttl: "1h" } }
   const cache = { cache_control: { type: "ephemeral" } }
-  const tools = [...SERVER_TOOLS, ...TOOLS]
+  // in the idea step the canvas tools stay out: a third fewer tokens per call, and one cache rewrite when the storyboard step starts
+  const tools = [...SERVER_TOOLS, ...TOOLS.filter((t) => building || !BUILD_TOOLS.has(t.name))]
   const last = msgs[msgs.length - 1]
   // a paused turn (a long web search) continues from Claude's own message, sent back unchanged
-  if (last.role === "assistant") return { system: [{ type: "text", text: system, ...cache }] as unknown as string, messages: msgs, tools: tools.map((t, i) => (i === tools.length - 1 ? { ...t, ...cache } : t)) }
-  const tail: Message = { ...last, content: [...last.content.slice(0, -1), { ...last.content[last.content.length - 1], ...cache } as Block, { type: "text", text: `Current project (JSON):\n${JSON.stringify(state)}` }] }
+  if (last.role === "assistant") return { system: [{ type: "text", text: system, ...long }] as unknown as string, messages: msgs, tools: tools.map((t, i) => (i === tools.length - 1 ? { ...t, ...long } : t)) }
+  // the project state rides outside the cache (it changes every call), always on the latest message only
+  const stateBlock: Block = { type: "text", text: `Current project (JSON):\n${JSON.stringify(state)}` }
+  const tail: Message = { ...last, content: [...last.content.slice(0, -1), { ...last.content[last.content.length - 1], ...cache } as Block, stateBlock] }
   return {
-    system: [{ type: "text", text: system, ...cache }] as unknown as string,
+    system: [{ type: "text", text: system, ...long }] as unknown as string,
     messages: [...msgs.slice(0, -1), tail],
-    tools: tools.map((t, i) => (i === tools.length - 1 ? { ...t, ...cache } : t)),
+    tools: tools.map((t, i) => (i === tools.length - 1 ? { ...t, ...long } : t)),
   }
 }
 
@@ -979,7 +990,7 @@ export function cachedRequest(system: string, raw: Message[], state: unknown, fl
  * Old images leave the history (a line says where they were; view_image brings any back). Done in
  * batches, once the oldest image is far back, so the cached history only changes now and then.
  */
-export function dropOldImages(msgs: Message[], { far = 12, keep = 4 } = {}) {
+export function dropOldImages(msgs: Message[], { far = 8, keep = 3 } = {}) {
   const has = (c: Block[]): boolean => c.some((b) => b.type === "image" || (b.type === "tool_result" && Array.isArray(b.content) && has(b.content)))
   const oldest = msgs.findIndex((m) => has(m.content))
   if (oldest < 0 || oldest > msgs.length - 1 - far) return false
@@ -1422,7 +1433,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     for (const v of variations) {
       try {
         const shot = await apiRef.current.shot(v)
-        out.push({ type: "text", text: shot.note }, await imageBlock(shot.blob))
+        out.push({ type: "text", text: shot.note }, await imageBlock(shot.blob, 768))
         add({ kind: "image", prompt: shot.note, purpose: "view", target: shot.name, state: "done", url: URL.createObjectURL(shot.blob), placed: true })
       } catch (e) {
         // not built yet, or it couldn't be drawn: say which, so the chat doesn't try again and again
@@ -1690,7 +1701,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
             if (m.role === "user" && Array.isArray(m.content) && m.content.some((b) => b.type === "text" && /^\(App: Variation 1 is ready/.test((b as { text: string }).text))) readyAt = i
           })
           if (!said || said.at < readyAt || !/\b(good|great|love|perfect|nice|go ahead|go for it|approve|yes|yep|make (the )?(rest|others|variations)|happy|fine|works|do it|ship it|ok(ay)?)\b/i.test(said.text))
-            return "Error: only when the user says, in their own message after Variation 1 was ready, that they're happy with it. Otherwise point them to Make the variations in the build card."
+            return "Error: only when the user says, in their own message after Variation 1 was ready, that they're happy with it. Otherwise point them to Make the others below the chat."
           // "yes, but move the button first" asks for a change, not the variations
           if (/\b(but|change|instead|except|fix|redo|move|not|first|before|remake|again)\b/i.test(said.text)) return "Error: the user asked for a change along with it: make the change first, then let them approve from the build card."
           return a.approveReference()
@@ -1717,7 +1728,10 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         }
         case "view_flick": {
           if (standIn()) return STAND_IN
-          const looks = await orStopped(lookAt([input.variation ? String(input.variation) : undefined]))
+          const which = String(input.variation ?? "")
+          // 'all': every variation in one round, instead of a call (and a full resend of the context) per variation
+          const names = /^all$/i.test(which) ? apiRef.current.state().videos.map((v) => v.name) : [which || undefined]
+          const looks = await orStopped(lookAt(names))
           return looks.length ? looks : "Error: couldn't draw the Flick (is it built yet?)."
         }
         case "search_library": {
@@ -1883,7 +1897,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         const storyboarding = itemsRef.current.some((x) => (x.kind === "question" && x.display === "concepts") || x.kind === "plan")
         const base = { ...state(), storyboarding, ...(mockVideos() ? { sample_videos: true } : {}) }
         const now = saved.length ? ({ ...base, saved_elements: saved.map((e) => ({ name: e.name, kind: e.kind, images: e.images.length })) } as ReturnType<typeof state>) : base
-        const req = cachedRequest(systemPrompt(now), msgs.current, now)
+        const req = cachedRequest(systemPrompt(now), msgs.current, now, false, now.storyboarding || now.planned)
         const itemId = add({ kind: "assistant", text: "", streaming: true })
         replyId = itemId
         phase.current = "ask"
@@ -1899,9 +1913,11 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         const ask = (r: typeof req) => streamChat(r, onText, abort.current!.signal, onTool, onJson)
         // if the API refuses how earlier searches or thinking were sent back, send them once more as plain notes
         const res = await ask(req).catch((e) => {
-          if (e instanceof Error && /tool_result|thinking|signature/i.test(e.message)) return ask(cachedRequest(systemPrompt(now), msgs.current, now, true))
+          if (e instanceof Error && /tool_result|thinking|signature/i.test(e.message)) return ask(cachedRequest(systemPrompt(now), msgs.current, now, true, now.storyboarding || now.planned))
           throw e
         })
+        // what this project has cost in tokens so far (shown on the Dev metrics page)
+        usage.current = { calls: usage.current.calls + 1, input: usage.current.input + res.usage.input, cached: usage.current.cached + res.usage.cached, written: usage.current.written + res.usage.written, output: usage.current.output + res.usage.output }
         const text = res.content.flatMap((b) => (b.type === "text" && !b.text.startsWith("(Started a web") ? [b.text] : [])).join("\n\n")
         if (text.trim()) patch(itemId, { text, streaming: false } as Partial<Item>)
         else setItems((list) => list.filter((x) => x.id !== itemId))
@@ -2020,6 +2036,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     msgs.current.push({ role: "user", content: [{ type: "text", text }] })
     void turn()
   }
+  const usage = useRef<ChatUsage>({ calls: 0, input: 0, cached: 0, written: 0, output: 0 })
   const notify = useCallback((text: string, wake = true) => {
     notes.current.push({ text, wake })
     flushRef.current()
@@ -2048,7 +2065,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     ready.current = []
     pending.current = []
     held.current = {}
-    if (notes.current.length) content.push({ type: "text", text: notes.current.map((n) => n.text).join("\n") }), (notes.current = [])
+    // app notes queued while the chat was busy ride along with this newer message: marked as earlier, so the message wins
+    if (notes.current.length) content.push({ type: "text", text: notes.current.map((n) => n.text.replace(/^\(App: /, "(App, before the message above: ")).join("\n") }), (notes.current = [])
     return content
   }
   /** answers to questions asked together, kept until every one of them is answered */
@@ -2282,7 +2300,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   }, [turn])
 
   // the chat is saved with its project (with the AI server connected): reopening it picks up here
-  type SavedChat = { items: Item[]; msgs: Message[]; pending: typeof pending.current; ready: Block[]; held: Record<string, string | Block[]>; images: ProjectImage[]; read: string[]; draft: Design; /** saved mid-turn: a reload offers to carry on */ inTurn?: boolean; /** the user dismissed the offer to carry on: don't offer again until something new happens */ resumeDismissed?: boolean; notes?: { text: string; wake: boolean }[] }
+  type SavedChat = { items: Item[]; msgs: Message[]; pending: typeof pending.current; ready: Block[]; held: Record<string, string | Block[]>; images: ProjectImage[]; read: string[]; draft: Design; /** saved mid-turn: a reload offers to carry on */ inTurn?: boolean; /** the user dismissed the offer to carry on: don't offer again until something new happens */ resumeDismissed?: boolean; notes?: { text: string; wake: boolean }[]; /** tokens this project has cost, over every call */ usage?: ChatUsage }
+  type ChatUsage = { calls: number; input: number; cached: number; written: number; output: number }
   // files that only live in this browser are saved by their server address, so they still open after a reload
   const lasting = (i: ProjectImage): ProjectImage => ({ ...i, url: /^blob:/.test(i.url) ? (sharedNow(i.url) ?? i.url) : i.url, ...(i.poster && /^blob:/.test(i.poster) ? { poster: sharedNow(i.poster) ?? i.poster } : {}) })
   /** an image job from before a reload: when it's done it shows and joins the project's images */
@@ -2317,6 +2336,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     inTurn: inTurn || msgs.current.at(-1)?.role === "user",
     resumeDismissed: resumeDismissed.current,
     notes: notes.current,
+    usage: usage.current,
   })
   /** saved at safe points mid-turn (after the user's message, after each step), so a reload loses nothing */
   const checkpoint = (now = false) => {
@@ -2359,6 +2379,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
             read.current = new Set(saved.read ?? [])
             if (saved.draft) mergeDraft(saved.draft)
             notes.current = saved.notes ?? []
+            usage.current = saved.usage ?? usage.current
             // cards whose answer is already in memory are answered (a card list saved a moment before an answer)
             const resultOf = (id?: string) => {
               for (const m of saved.msgs) if (m.role === "user" && Array.isArray(m.content)) for (const b of m.content) if (b.type === "tool_result" && (b as { tool_use_id?: string }).tool_use_id === id) return String(typeof (b as { content?: unknown }).content === "string" ? (b as { content: string }).content : "answered")
@@ -2408,5 +2429,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   /** the user's own images, newest last (a fallback picture for the plan's preview) */
   const ownImages = () => images.current.filter((x) => x.kind !== "video" && (x.from === "upload" || x.from === "library" || x.from === "website")).map((x) => x.url)
 
-  return { imageUrl, media, ownImages, items, busy, send, answer, pendingIds: pending.current.map((p) => p.itemId), addAssets, decidePlan, editPlan, retryImage, stop, retry, notify, resume, waiting: pending.current.length > 0, draft: draftView, plan: plan?.plan, step }
+  /** a one-line note in the thread from the app (what it just did), no model turn */
+  const note = (text: string) => void add({ kind: "note", text })
+  return { imageUrl, media, ownImages, items, busy, send, answer, pendingIds: pending.current.map((p) => p.itemId), addAssets, decidePlan, editPlan, retryImage, stop, retry, notify, note, resume, waiting: pending.current.length > 0, draft: draftView, plan: plan?.plan, step }
 }

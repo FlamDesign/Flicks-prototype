@@ -32,7 +32,7 @@ export type HistoryItem = {
 
 const MIN_W = 280
 const MAX_W = 560
-const DEFAULT_W = 340
+const DEFAULT_W = 380
 const WIDTH_KEY = "flam.promptsWidth"
 const clampW = (w: number) => Math.round(Math.min(MAX_W, Math.max(MIN_W, w)))
 
@@ -135,6 +135,21 @@ export function PromptChat({
     const el = list.current
     if (el && el.scrollHeight - el.scrollTop - el.clientHeight < 160) el.scrollTop = el.scrollHeight
   }, [lastNode])
+  // the bottom area grows (a question deck, an approval, suggestion chips): the thread keeps its place at the end
+  const foot = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = foot.current
+    const l = list.current
+    if (!el || !l) return
+    let last = el.offsetHeight
+    const ro = new ResizeObserver(() => {
+      const h = el.offsetHeight
+      if (h > last && l.scrollHeight - l.scrollTop - l.clientHeight < 160 + (h - last)) l.scrollTop = l.scrollHeight
+      last = h
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [collapsed])
 
   if (collapsed) return null
   const historyRow = (h: HistoryItem) => {
@@ -235,7 +250,7 @@ export function PromptChat({
       </div>
 
       {/* composer: says which video it's writing for */}
-      <div className="shrink-0 border-t p-3">
+      <div ref={foot} className="shrink-0 border-t p-3">
         {head ?? (
           <div className="flex items-center gap-2 px-1 pb-2 text-xs text-muted-foreground">
             <span>Creating for</span>

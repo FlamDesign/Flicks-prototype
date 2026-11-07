@@ -10,7 +10,8 @@ import { cn } from "@/lib/utils"
 
 /** the shape of a saved chat we read numbers from (the rest is ignored) */
 type SavedItem = { kind: string; at: number; state?: string; count?: number; answer?: string; fail?: string[]; text?: string }
-type SavedChat = { items: SavedItem[] }
+type SavedUsage = { calls: number; input: number; cached: number; written: number; output: number }
+type SavedChat = { items: SavedItem[]; usage?: SavedUsage }
 type SavedState = { projects?: { id: string; name?: string; editedAt?: number }[] }
 
 type Stage = "start" | "brief" | "concepts" | "storyboard" | "building" | "reviewed" | "handed over"
@@ -29,12 +30,14 @@ export type ChatMetrics = {
   /** minutes from the first message to the last activity */
   minutes: number
   reviewFails: number
+  /** model calls and tokens this chat has cost (chats saved before tracking have none) */
+  usage?: SavedUsage
 }
 
 const STAGES: Stage[] = ["start", "brief", "concepts", "storyboard", "building", "reviewed", "handed over"]
 
 /** where a chat got to, and how much it took to get there */
-export function metricsOf(id: string, name: string, items: SavedItem[]): ChatMetrics {
+export function metricsOf(id: string, name: string, items: SavedItem[], usage?: SavedUsage): ChatMetrics {
   const first = items[0]?.at ?? Date.now()
   const last = items.at(-1)?.at ?? first
   const planAt = items.findIndex((x) => x.kind === "plan")
@@ -57,11 +60,22 @@ export function metricsOf(id: string, name: string, items: SavedItem[]): ChatMet
     videos: build?.count ?? 0,
     minutes: Math.round((last - first) / 60_000),
     reviewFails: reviews.reduce((n, r) => n + (r.fail?.length ?? 0), 0),
+    usage,
   }
 }
 
 const day = (t: number) => new Date(t).toLocaleDateString([], { month: "short", day: "numeric" })
 const avg = (xs: number[]) => (xs.length ? (xs.reduce((a, b) => a + b, 0) / xs.length).toFixed(1) : "–")
+const avgN = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0)
+/** every input token a chat sent, cached or not, plus its output */
+const tokensOf = (u: SavedUsage) => u.input + u.cached + u.written + u.output
+const kTokens = (n: number) => (n ? `${(n / 1000).toFixed(n >= 100_000 ? 0 : 1)}k` : "–")
+/** the share of input that came from the cache (what makes the bill a tenth of the token count) */
+const pct = (us: SavedUsage[]) => {
+  const all = us.reduce((n, u) => n + u.input + u.cached + u.written, 0)
+  const cached = us.reduce((n, u) => n + u.cached, 0)
+  return all ? `${Math.round((cached / all) * 100)}%` : "–"
+}
 
 /**
  * Every saved chat, one row each: how far it got, how many turns and questions it took to reach the
@@ -85,7 +99,7 @@ export function ChatMetricsDialog({ open, onOpenChange }: { open: boolean; onOpe
       const names = new Map((state?.projects ?? []).map((p) => [p.id, p.name ?? ""]))
       // only chats whose project still exists (deleted ones are gone from the list)
       const ids = chats.filter((id) => names.has(id)).slice(0, 150)
-      const got = await Promise.all(ids.map((id) => loadSaved<SavedChat>(`chat-${id}`).then((c) => (c?.items?.length ? metricsOf(id, names.get(id) ?? "", c.items) : null)).catch(() => null)))
+      const got = await Promise.all(ids.map((id) => loadSaved<SavedChat>(`chat-${id}`).then((c) => (c?.items?.length ? metricsOf(id, names.get(id) ?? "", c.items, c.usage) : null)).catch(() => null)))
       setRows(got.filter((x): x is ChatMetrics => !!x).sort((a, b) => b.when - a.when))
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't load the chats.")
@@ -105,6 +119,9 @@ export function ChatMetricsDialog({ open, onOpenChange }: { open: boolean; onOpe
     ["Questions before it", avg(reached.map((r) => r.questions))],
     ["Handed over", String(rows.filter((r) => r.stage === "handed over").length)],
     ["Videos made", String(rows.reduce((n, r) => n + r.videos, 0))],
+    ["Calls per chat", avg(rows.filter((r) => r.usage).map((r) => r.usage!.calls))],
+    ["Tokens per chat", kTokens(avgN(rows.filter((r) => r.usage).map((r) => tokensOf(r.usage!))))],
+    ["From cache", pct(rows.filter((r) => r.usage).map((r) => r.usage!))],
   ]
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -121,7 +138,7 @@ export function ChatMetricsDialog({ open, onOpenChange }: { open: boolean; onOpe
           {error && <span className="text-xs text-destructive">{error}</span>}
         </div>
         {summary && (
-          <dl className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+          <dl className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-9">
             {summary.map(([k, v]) => (
               <div key={k} className="rounded-lg bg-muted/50 px-2.5 py-2">
                 <dt className="text-xs text-muted-foreground">{k}</dt>
@@ -134,7 +151,7 @@ export function ChatMetricsDialog({ open, onOpenChange }: { open: boolean; onOpe
           <table className="w-full text-xs">
             <thead className="sticky top-0 bg-background text-left text-muted-foreground">
               <tr>
-                {["Project", "When", "Stage", "Turns", "To storyboard", "Questions", "Videos", "Review fails", "Minutes"].map((h) => (
+                {["Project", "When", "Stage", "Turns", "To storyboard", "Questions", "Videos", "Review fails", "Minutes", "Calls", "Tokens", "Cached"].map((h) => (
                   <th key={h} className="px-2 py-1.5 font-medium">
                     {h}
                   </th>
@@ -155,11 +172,14 @@ export function ChatMetricsDialog({ open, onOpenChange }: { open: boolean; onOpe
                   <td className="px-2 py-1.5 tabular-nums">{r.videos || "–"}</td>
                   <td className="px-2 py-1.5 tabular-nums">{r.reviewFails || "–"}</td>
                   <td className="px-2 py-1.5 tabular-nums">{r.minutes}</td>
+                  <td className="px-2 py-1.5 tabular-nums">{r.usage?.calls ?? "–"}</td>
+                  <td className="px-2 py-1.5 tabular-nums" title={r.usage ? `${r.usage.input} new · ${r.usage.cached} cached · ${r.usage.written} written · ${r.usage.output} out` : undefined}>{r.usage ? kTokens(tokensOf(r.usage)) : "–"}</td>
+                  <td className="px-2 py-1.5 tabular-nums">{r.usage ? pct([r.usage]) : "–"}</td>
                 </tr>
               ))}
               {rows && !rows.length && (
                 <tr>
-                  <td colSpan={9} className="px-2 py-6 text-center text-muted-foreground">
+                  <td colSpan={12} className="px-2 py-6 text-center text-muted-foreground">
                     No saved chats yet.
                   </td>
                 </tr>

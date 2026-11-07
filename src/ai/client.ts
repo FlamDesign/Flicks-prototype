@@ -97,7 +97,8 @@ async function fail(res: Response): Promise<never> {
     const what = body.what === "images" ? "image" : body.what === "videos" ? "video" : body.what === "chat" ? "chat" : body.what
     throw new AiError(`daily_limit_${body.what}`, `Dev: today's ${what} limit on the AI server is reached. It resets at midnight UTC.`)
   }
-  throw new AiError(code, MESSAGES[code] ?? body.message ?? `The AI server answered ${res.status}.`)
+  // a server-side failure (5xx, or a gateway timeout) reads as a plain line with Retry, never a status code
+  throw new AiError(code, MESSAGES[code] ?? body.message ?? (res.status >= 500 ? "The chat is unavailable right now. Try again in a moment." : `The AI server answered ${res.status}.`))
 }
 async function call(path: string, init?: RequestInit) {
   let res: Response
@@ -133,7 +134,9 @@ export const keepable = (b: Block | undefined): b is Block => !!b && !(b.type ==
 export type Message = { role: "user" | "assistant"; content: Block[] }
 export type Tool = { name: string; description?: string; input_schema?: Record<string, unknown>; type?: string; [k: string]: unknown }
 export type ChatRequest = { system: string; messages: Message[]; tools: Tool[]; max_tokens?: number }
-export type ChatResult = { content: Block[]; stop: string }
+/** tokens one call cost: new input, read from the cache, written to the cache, and output */
+export type Usage = { input: number; cached: number; written: number; output: number }
+export type ChatResult = { content: Block[]; stop: string; usage: Usage }
 
 /**
  * One Claude reply, streamed: `onText` gets the reply's text so far; tool calls come back whole in
@@ -147,6 +150,7 @@ export async function streamChat(req: ChatRequest, onText: (text: string) => voi
   const blocks: (Block & { json?: string })[] = []
   let buf = ""
   let stop = "end_turn"
+  const usage: Usage = { input: 0, cached: 0, written: 0, output: 0 }
   let text = ""
   for (;;) {
     const { done, value } = await reader.read()
@@ -171,7 +175,10 @@ export async function streamChat(req: ChatRequest, onText: (text: string) => voi
       // how much came from Claude's cache (visible in the browser console)
       if (ev.type === "message_start" && ev.message?.usage) {
         const u = ev.message.usage
-        console.info(`[Flicks AI] input ${u.input_tokens} new, ${u.cache_read_input_tokens ?? 0} from cache, ${u.cache_creation_input_tokens ?? 0} cached now`)
+        usage.input = u.input_tokens ?? 0
+        usage.cached = u.cache_read_input_tokens ?? 0
+        usage.written = u.cache_creation_input_tokens ?? 0
+        console.info(`[Flicks AI] input ${usage.input} new, ${usage.cached} from cache, ${usage.written} cached now`)
       }
       if (ev.type === "content_block_start") {
         const b = ev.content_block
@@ -206,8 +213,10 @@ export async function streamChat(req: ChatRequest, onText: (text: string) => voi
           }
           delete b.json
         }
-      } else if (ev.type === "message_delta" && ev.delta?.stop_reason) stop = ev.delta.stop_reason
-      else if (ev.type === "error") throw new AiError("claude_error", ev.error?.message ?? "The chat returned an error.")
+      } else if (ev.type === "message_delta") {
+        if (ev.delta?.stop_reason) stop = ev.delta.stop_reason
+        if (ev.usage?.output_tokens) usage.output = ev.usage.output_tokens
+      } else if (ev.type === "error") throw new AiError("claude_error", ev.error?.message ?? "The chat returned an error.")
     }
   }
   // a reply cut off mid tool call (the stream ended before the block closed): finish what can be read,
@@ -231,7 +240,7 @@ export async function streamChat(req: ChatRequest, onText: (text: string) => voi
       ? { type: "text", text: `(Started a web ${b.name === "web_fetch" ? "read" : "search"} that didn't finish: ${String((b.input as { query?: string; url?: string } | undefined)?.query ?? (b.input as { url?: string } | undefined)?.url ?? "")})` }
       : b,
   )
-  return { content: content.filter(keepable), stop }
+  return { content: content.filter(keepable), stop, usage }
 }
 
 /* ---------- images ---------- */
@@ -524,9 +533,9 @@ export function aspectOf(size: string) {
 }
 
 /** An image file, scaled down (max 1024 px) as base64 JPEG, for Claude to see. */
-export async function imageBlock(file: Blob): Promise<Block> {
+export async function imageBlock(file: Blob, max = 1024): Promise<Block> {
   const bmp = await createImageBitmap(file)
-  const s = Math.min(1, 1024 / Math.max(bmp.width, bmp.height))
+  const s = Math.min(1, max / Math.max(bmp.width, bmp.height))
   const c = document.createElement("canvas")
   c.width = Math.round(bmp.width * s)
   c.height = Math.round(bmp.height * s)

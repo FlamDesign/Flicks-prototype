@@ -144,7 +144,8 @@ export default {
         const model = MODELS.includes(String(body.model)) ? String(body.model) : MODELS[0]
         const upstream = await fetch(ANTHROPIC, {
           method: "POST",
-          headers: { "content-type": "application/json", "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
+          // the hour-long prompt cache the app asks for on its fixed prefix
+          headers: { "content-type": "application/json", "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "anthropic-beta": "extended-cache-ttl-2025-04-11" },
           body: JSON.stringify({
             model,
             max_tokens: Math.min(Number(body.max_tokens) || MAX_TOKENS, MAX_TOKENS),

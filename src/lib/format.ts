@@ -35,3 +35,6 @@ export const weekdayDate = (t: number | Date) => {
   const d = new Date(t)
   return d.toLocaleDateString(L, { weekday: "short", month: "short", day: "numeric", ...(sameYear(d) ? {} : { year: "numeric" }) })
 }
+
+/** "Black", "Black and Sand", "Black, Sand and Gold" */
+export const listNames = (names: string[]) => (names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`)

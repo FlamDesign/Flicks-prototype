@@ -32,6 +32,7 @@ import { useAgent, type EditorApi, type ElementSpec } from "@/ai/agent"
 import { boxOf, buildDesign, color as colorOf, contrast, describeDesign, elementFor, fontName, freeY, headlineLimit, feedOfField, FIELD_FEED, FIELDS, patchDesign, restack, type Brand, type Field } from "@/ai/design"
 import { cancelJob, generateVideo, isLive, posterOf, shareable, useAiConfig, videoAspectOf, type VideoInput } from "@/ai/client"
 import { loadLibrary, nameOf as libraryName } from "@/lib/library"
+import { listNames } from "@/lib/format"
 import { isTyping } from "@/lib/keys"
 import { GeneratingGradient } from "@/components/editor/generation-progress"
 import { AgentComposer, ApprovalDock, isDocked, QuestionDeck, QuickReplies, threadGroups, type AgentCtx } from "@/components/editor/agent-chat"
@@ -557,11 +558,12 @@ export function GenerationCanvas({
   /** this variation's finished videos before the current one, newest first (from the prompts history) */
   const earlierVideos = (slideId: string) => {
     const cur = slidesNow.current.find((x) => x.id === slideId)
+    // told apart by when they were made, not by the video number: sample videos share numbers
     const seen = new Set<number>()
     return history
-      .filter((h) => h.slideId === slideId && isMadeVideo(h.video) && h.video !== cur?.video && h.startedAt + ms < Date.now())
+      .filter((h) => h.slideId === slideId && isMadeVideo(h.video) && h.startedAt !== cur?.startedAt && h.startedAt + ms < Date.now())
       .sort((a, b) => b.startedAt - a.startedAt)
-      .filter((h) => (seen.has(h.video) ? false : (seen.add(h.video), true)))
+      .filter((h) => (seen.has(h.startedAt) ? false : (seen.add(h.startedAt), true)))
   }
   const ago = (t: number) => {
     const m = Math.round((Date.now() - t) / 60_000)
@@ -1347,7 +1349,7 @@ export function GenerationCanvas({
       // overlaps and the frame's edges
       // shapes are meant to sit behind or around other elements (backdrops, frames), so they don't count as overlaps
       const boxes = els.filter((e) => e.kind !== "shape").map((e) => ({ e, b: boxOf(e, ratio, longestOf(e)) }))
-      const label = (e: CanvasElement) => (e.kind === "text" ? `“${(longestOf(e) || e.role || "text").slice(0, 24)}”` : e.kind === "strip" ? "the thumbnail strip" : e.kind) + ` (id ${e.id.slice(0, 6)})`
+      const label = (e: CanvasElement) => (e.kind === "text" || e.kind === "button" ? `“${(longestOf(e) || e.role || e.kind).slice(0, 24)}”` : e.kind === "strip" ? "the thumbnail strip" : e.kind) + ` (id ${e.id.slice(0, 6)})`
       const hits: string[] = []
       for (let i = 0; i < boxes.length; i++)
         for (let j = i + 1; j < boxes.length; j++) {
@@ -1364,7 +1366,7 @@ export function GenerationCanvas({
         const c = contrast(e.color ?? defaultInk(e), e.bg ?? defaultFill(e))
         if (c !== undefined) check(c >= 3, "Button text is readable", `Button ${label(e)} text contrast is ${c.toFixed(1)}:1; needs 3:1. Change its text or background color.`)
         const linked = e.linkFeed ? shown.every((x) => x.feeds?.[e.linkFeed!]?.trim()) : !!e.link?.trim()
-        check(linked, "Every button has a link", `Button ${label(e)} has no link${e.linkFeed ? " on some variations" : ""}.`)
+        check(linked, "Every button has a link", `The ${label(e)} button has no link${e.linkFeed ? " on some variations" : ""}.`)
       }
       const issues = feedIssues()
       check(!issues.length, "Every feed is filled", `Empty values: ${issues.join("; ")}.`)
@@ -1418,7 +1420,11 @@ export function GenerationCanvas({
         i === 0 ? { ...x, approvedRef: x.startedAt } : again.some((a) => a.id === x.id) ? { ...x, video: inSet(generation.video ?? 0, nextVideo.current++), startedAt: now + i, job: { status: "waiting", since: now }, failed: undefined } : x,
       ),
     )
-    if (!byChat) agent.notify(`(App: the user approved Variation 1 with the button; the variations are being made from it${again.length ? " again" : ""}. Nothing to reply.)`, false)
+    if (!byChat) {
+      const names = listNames([...waitingOnRef, ...again].map(nameOfSlide))
+      agent.note(`Making ${names || "the variations"}${again.length ? " again" : ""}${again.length ? ` · ${again.length * VIDEO_COST} credits` : ""}`)
+      agent.notify(`(App: the user approved Variation 1 with the button; the variations are being made from it${again.length ? " again" : ""}. Nothing to reply.)`, false)
+    }
   }
   // Variation 1 is in and waiting for review: wake the chat, once per version, so it looks and asks
   const toldReady = useRef(0)
@@ -1428,7 +1434,7 @@ export function GenerationCanvas({
   useEffect(() => {
     if (!needsReview || toldReady.current === mainNow.startedAt || sawMaking.current !== mainNow.startedAt) return
     toldReady.current = mainNow.startedAt ?? 0
-    agent.notify("(App: Variation 1 is ready. Look at it once with view_flick and fix only clear clashes (text over the product or faces, the strip over the action). Then end with one short line asking the user to play it and press Make the variations in the build card, or say what to change. Don't ask with ask_user.)")
+    agent.notify("(App: Variation 1 is ready. Look at it once with view_flick and fix only clear clashes (text over the product or faces, the strip over the action). Then end with one short line asking the user to play it and press Make the others below the chat, or say what to change. Don't ask with ask_user.)")
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needsReview, mainNow.startedAt])
   const changeRef = () => {
@@ -1524,7 +1530,7 @@ export function GenerationCanvas({
           if (agentMode && live)
             agent.notify(
               sl.id === "main"
-                ? `(App: Variation 1's video failed (${reason}); refunded. Tell the user in one short line; they can press Try again in the build card, or you can regenerate it with a simpler prompt if they ask.)`
+                ? `(App: Variation 1's video failed (${reason}); refunded. Tell the user in one short line; they can press Try again on its tile, or you can regenerate it with a simpler prompt if they ask.)`
                 : tries === 1
                   ? `(App: ${name}'s video failed (${reason}); it's back to not started and refunded. Don't remake it yourself. Tell the user in one short line: Try again is on its tile, or you can propose a gentler version of the change (set_variation with regenerate) for them to approve.)`
                   : `(App: ${name} failed again (${reason}); refunded. Don't retry. Tell the user in one short line and suggest a different change, or Try again in the build card.)`,
@@ -1583,7 +1589,7 @@ export function GenerationCanvas({
   useEffect(() => {
     if (!agentMode || !live || !allMade || toldDone.current === batch || sawVariations.current !== batch) return
     toldDone.current = batch
-    agent.notify("(App: every variation is made. Check each once: view_flick on each variation (or review_flick for all of them), fix only real clashes (text over faces or the product, the strip over the action), and make sure each has its label and link. Then hand over in two short lines.)")
+    agent.notify("(App: every variation is made. Check them once: view_flick with variation 'all' (one call), fix only real clashes (text over faces or the product, the strip over the action), and make sure each has its label and link. Then hand over in two short lines at most: what's ready and the one thing still worth doing, nothing about what was checked.)")
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allMade, batch])
   // the composer in chat mode: talk to the chat, or write a video's prompt yourself
@@ -1613,8 +1619,13 @@ export function GenerationCanvas({
         return { name: nameOf(s), state: st, src: v?.mp4 || undefined, poster: v?.poster, since: s.job?.since ?? s.startedAt, ms: s.job ? undefined : ms, status: s.job?.status, stop: stoppable ? () => void cancelVideo(s.id) : undefined, failed, retry: failed ? () => retryVideo(s.id) : undefined }
       }),
     // the review bar steps aside while the chat is asking something or offering a new storyboard (a start-over): the deck or the card is the question then
-    review: { needed: needsReview && !agent.waiting && !agent.items.some((x) => x.kind === "plan" && x.state === "open"), approve: () => approveRef(), change: () => changeRef(), count: waitingOnRef.length + staleOnRef.length, cost: (waitingOnRef.length + staleOnRef.length) * VIDEO_COST, remade },
-    proposals: () => proposals.map((p) => ({ id: p.id, name: p.name, change: p.change ?? p.prompt, cost: p.cost, make: () => void makeProposed(p.id), dismiss: () => dropProposed(p.id) })),
+    review: { needed: needsReview && !agent.waiting && !agent.items.some((x) => x.kind === "plan" && x.state === "open"), approve: () => approveRef(), change: () => changeRef(), count: waitingOnRef.length + staleOnRef.length, cost: (waitingOnRef.length + staleOnRef.length) * VIDEO_COST, remade, name: nameOfSlide(slidesNow.current[0]), others: listNames([...waitingOnRef, ...staleOnRef].map(nameOfSlide)) },
+    proposals: () =>
+      proposals.map((p) => {
+        const first = p.slideId === "main"
+        const rest = first ? slidesNow.current.slice(1).filter((x) => isMadeVideo(x.video) || x.job) : []
+        return { id: p.id, name: p.name, change: p.change ?? p.prompt, cost: p.cost, make: () => void makeProposed(p.id), dismiss: () => dropProposed(p.id), first, others: rest.length ? listNames(rest.map(nameOfSlide)) : undefined, othersCost: rest.length * VIDEO_COST }
+      }),
     issues: () => publishIssues.filter((x) => !x.blocking).map((x) => x.text),
     progress: () => {
       const vs = slides.slice(1)
@@ -2218,7 +2229,7 @@ export function GenerationCanvas({
                   <QuickReplies agent={agent} ctx={agentCtx} />
                   <AgentComposer
                     agent={agent}
-                    placeholder={agent.waiting ? "Or reply directly…" : slides[0].startedAt ? "Ask for a change: a headline, a color, another variation. Type @ to mention a photo or variation" : undefined}
+                    placeholder={agent.waiting ? "Answer in your own words…" : slides[0].startedAt ? "Ask for a change. @ picks a photo or variation" : undefined}
                     variations={slides[0].startedAt ? slides.map((x) => ({ name: nameOf(x), poster: x.video !== undefined ? videoAt(wrapVideo(x.video))?.poster : undefined })) : undefined}
                     brand={!!brand}
                   />

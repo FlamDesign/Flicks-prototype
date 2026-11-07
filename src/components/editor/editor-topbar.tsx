@@ -47,7 +47,9 @@ export function FileTitle({
     setTitle(draft.trim() || "Untitled project")
     setEditing(false)
   }
-  const shown = title.length > MAX_SHOWN ? `${title.slice(0, MAX_SHOWN).trimEnd()}…` : title
+  // a new project has no name until the chat gives it one
+  const named = title || "Untitled project"
+  const shown = named.length > MAX_SHOWN ? `${named.slice(0, MAX_SHOWN).trimEnd()}…` : named
 
   return (
     <div className="flex min-w-0 flex-1 items-center gap-1">
@@ -83,13 +85,13 @@ export function FileTitle({
               variant="ghost"
               size="sm"
               onClick={() => (setDraft(title), setEditing(true))}
-              aria-label={`Rename ${title}`}
+              aria-label={`Rename ${named}`}
               className="h-8 max-w-72 rounded-lg px-2 font-medium"
             >
               <span className="truncate">{shown}</span>
             </Button>
           </TooltipTrigger>
-          <TooltipContent>{title}</TooltipContent>
+          <TooltipContent>{named}</TooltipContent>
         </Tooltip>
       )}
 
