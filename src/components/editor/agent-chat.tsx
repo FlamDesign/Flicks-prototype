@@ -1040,7 +1040,6 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
             ))}
           </ol>
         )}
-        {(plan.design?.cta || plan.variations.some((v) => v.link)) && <PlanLinks plan={plan} onChange={(next) => agent.editPlan(item.id, next)} />}
         <p className="px-1.5 text-xs text-muted-foreground">
           {own
             ? making
@@ -1063,39 +1062,6 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
         </Button>
       </div>
     </Card>
-  )
-}
-
-/** Where each variation's button goes: one field per variation, prefilled from the research, edited here rather than typed into the chat. */
-function PlanLinks({ plan, onChange }: { plan: Plan; onChange: (plan: Plan) => void }) {
-  const [open, setOpen] = useState(() => plan.variations.some((v) => !v.link))
-  const missing = plan.variations.filter((v) => !v.link?.trim()).length
-  return (
-    <section aria-label="Links" className="flex flex-col gap-1.5">
-      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex items-center gap-2 px-1.5 text-left text-xs font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:text-foreground">
-        <span>Where the button goes</span>
-        <span className="font-normal">{missing ? `${missing} to add` : "set for every variation"}</span>
-        <HugeiconsIcon icon={ArrowDown01Icon} className={cn("ml-auto size-3.5 transition-transform", open && "rotate-180")} />
-      </button>
-      {open && (
-        <ol className="flex flex-col gap-1">
-          {plan.variations.map((v, i) => (
-            <li key={i} className="flex items-center gap-2 rounded-lg px-1.5 py-1 transition-colors focus-within:bg-muted/50">
-              <span className="w-28 shrink-0 truncate text-xs font-medium">{v.name}</span>
-              <InputGroupInput
-                type="url"
-                inputMode="url"
-                value={v.link ?? ""}
-                onChange={(e) => onChange({ ...plan, variations: plan.variations.map((x, j) => (j === i ? { ...x, link: e.target.value } : x)) })}
-                placeholder="https://… the product page for this one"
-                aria-label={`${v.name} link`}
-                className="h-7 min-w-0 flex-1 bg-transparent px-0 text-xs placeholder:text-muted-foreground"
-              />
-            </li>
-          ))}
-        </ol>
-      )}
-    </section>
   )
 }
 
