@@ -167,7 +167,8 @@ const TESTS = {
           await run.p.reload({ waitUntil: "networkidle" })
           await run.p.waitForTimeout(5000)
           // the app has no router: a reload lands on Home, so reopen the project from Projects
-          if (name && (await run.p.getByText("let’s start with a video").count())) {
+          if (await run.p.getByText("let’s start with a video").count()) {
+            name = (await projectName(run).catch(() => null)) ?? name // the chat may have renamed it since
             run.log("reload landed on Home; reopening", name)
             await run.p.getByText("Projects", { exact: true }).first().click()
             await run.p.waitForTimeout(3000)
@@ -184,7 +185,8 @@ const TESTS = {
             await run.p.waitForTimeout(2500)
             await run.p.reload({ waitUntil: "networkidle" })
             await run.p.waitForTimeout(5000)
-            if (name && (await run.p.getByText("let’s start with a video").count())) {
+            if (await run.p.getByText("let’s start with a video").count()) {
+              name = (await projectName(run).catch(() => null)) ?? name
               await run.p.getByText("Projects", { exact: true }).first().click()
               await run.p.waitForTimeout(3000)
               await run.p.getByRole("button", { name: `Open ${name}`, exact: true }).first().click()
