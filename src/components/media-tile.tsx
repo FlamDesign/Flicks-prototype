@@ -1,5 +1,32 @@
 import { useState } from "react"
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { HugeiconsIcon } from "@hugeicons/react"
+import type { IconSvgElement } from "@hugeicons/react"
+
+/**
+ * One corner action on a tile (full screen, download, delete), the same everywhere: a small dark
+ * glass button that shows while the tile (a `group/tile`) is hovered or focused.
+ */
+export function TileAction({ label, icon, onClick, className }: { label: string; icon: IconSvgElement; onClick: () => void; className?: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="secondary"
+          size="icon-xs"
+          aria-label={label}
+          onClick={onClick}
+          className={cn("size-6 bg-black/50 text-white opacity-0 shadow-sm backdrop-blur-sm transition-opacity hover:bg-black/70 hover:text-white focus-visible:opacity-100 group-hover/tile:opacity-100 group-focus-within/tile:opacity-100", className)}
+        >
+          <HugeiconsIcon icon={icon} className="size-3.5" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  )
+}
 
 /** in place of a picture a project doesn't have yet: one plain tint of the theme's brand color */
 export function CoverPlaceholder({ className }: { small?: boolean; className?: string }) {

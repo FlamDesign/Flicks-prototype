@@ -19,6 +19,7 @@ import {
 } from "@hugeicons/core-free-icons"
 import { LayersPanel } from "@/components/editor/layers-panel"
 import { Button } from "@/components/ui/button"
+import { TileAction } from "@/components/media-tile"
 import { EmptyState } from "@/components/empty-state"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -374,7 +375,7 @@ function ImageList({
       ) : (
         <ul className="grid grid-cols-2 gap-2">
           {uploads.map((u) => (
-            <li key={u.id} className="group/img relative">
+            <li key={u.id} className="group/tile relative">
               {u.loading ? (
                 <Skeleton className="shimmer aspect-square w-full animate-none rounded-xl" aria-label={`Uploading ${u.name}`} />
               ) : u.failed ? (
@@ -390,29 +391,9 @@ function ImageList({
                   >
                     <img loading="lazy" decoding="async" src={u.src} alt="" className="animate-in fade-in-0 h-full w-full object-cover duration-300" />
                   </Button>
-                  <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition-opacity group-hover/img:opacity-100 group-focus-within/img:opacity-100">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="secondary" size="icon-xs" className="size-6 shadow-sm" aria-label={`View ${u.name}`} onClick={() => setPreview(u)}>
-                          <HugeiconsIcon icon={ArrowExpand01Icon} className="size-3.5" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent sideOffset={6} className={PLAIN_TIP}>Full screen</TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="secondary"
-                          size="icon-xs"
-                          className="size-6 shadow-sm"
-                          aria-label={`Delete ${u.name}`}
-                          onClick={() => setConfirmDel(u)}
-                        >
-                          <HugeiconsIcon icon={Delete02Icon} className="size-3.5" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent sideOffset={6} className={PLAIN_TIP}>Delete</TooltipContent>
-                    </Tooltip>
+                  <div className="absolute right-2 top-2 z-10 flex gap-1">
+                    <TileAction label="Full screen" icon={ArrowExpand01Icon} onClick={() => setPreview(u)} />
+                    <TileAction label="Delete" icon={Delete02Icon} onClick={() => setConfirmDel(u)} />
                   </div>
                 </>
               )}

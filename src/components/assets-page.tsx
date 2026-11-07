@@ -1,7 +1,7 @@
 import { EmptyState } from "@/components/empty-state"
 import { PAGE, PageHeader } from "@/components/page-kit"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { MediaTile, TileBadge } from "@/components/media-tile"
+import { MediaTile, TileAction, TileBadge } from "@/components/media-tile"
 import { CardsSkeleton, Loading, PendingButton } from "@/components/page-skeletons"
 import { Skeleton } from "@/components/ui/skeleton"
 import { length } from "@/lib/media"
@@ -9,7 +9,6 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Download01Icon, PlayIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/components/ui-extra/toaster"
 import { ALL_DATES, DateFilter, inDateFilter, type DateFilterValue } from "@/components/ui-extra/date-filter"
@@ -305,7 +304,6 @@ function AssetCard({ a, onOpen, onMeta }: { a: Asset; onOpen: () => void; onMeta
   const { ref, seen } = useSeen<HTMLDivElement>()
   const label = a.prompt || a.name
   const [duration, setDuration] = useState<number>()
-  const corner = "size-7 rounded-lg bg-background/90 opacity-0 shadow-sm backdrop-blur-sm transition-opacity hover:bg-background group-hover/tile:opacity-100 focus-visible:opacity-100"
   return (
     <div ref={ref}>
       <MediaTile
@@ -320,16 +318,7 @@ function AssetCard({ a, onOpen, onMeta }: { a: Asset; onOpen: () => void; onMeta
           )
         }
         details={<p className="line-clamp-3">{label}</p>}
-        actions={
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="secondary" size="icon-xs" aria-label="Download" onClick={() => download(a.url, fileName(a))} className={corner}>
-                <HugeiconsIcon icon={Download01Icon} className="size-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Download</TooltipContent>
-          </Tooltip>
-        }
+        actions={<TileAction label="Download" icon={Download01Icon} onClick={() => download(a.url, fileName(a))} />}
       >
         {/* a video has no poster of its own on the server: its first frame stands in until it plays, and its metadata gives the length and size */}
         {a.kind === "video" && seen && (

@@ -1,6 +1,6 @@
 import { EmptyState } from "@/components/empty-state"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { MediaTile, TileBadge } from "@/components/media-tile"
+import { MediaTile, TileAction, TileBadge } from "@/components/media-tile"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowExpand01Icon, CloudUploadIcon, PauseIcon, PlayIcon, Scissor01Icon, Search01Icon, Tick02Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
@@ -339,14 +339,7 @@ function Tile({ x, on, onToggle, onOpen, onDuration }: { x: MediaItem; on: boole
       actions={
         <>
           {/* full screen, left of the select mark */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="secondary" size="icon-xs" onClick={onOpen} aria-label={`View ${x.name} full screen`} className="size-6 bg-black/50 text-white opacity-0 shadow-sm backdrop-blur-sm hover:bg-black/70 focus-visible:opacity-100 group-hover/tile:opacity-100">
-                <HugeiconsIcon icon={ArrowExpand01Icon} className="size-3" strokeWidth={2} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Full screen</TooltipContent>
-          </Tooltip>
+          <TileAction label="Full screen" icon={ArrowExpand01Icon} onClick={onOpen} />
           {/* the select mark: the same size as the button beside it, and a click on it selects */}
           <button
             type="button"
