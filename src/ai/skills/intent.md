@@ -54,6 +54,9 @@ Everything still missing is asked in the first reply as one batch of ask_user ca
 deck, one question at a time ("1 of 3"). Later questions only when a step truly needs one.
 - **Order:** brand (if unknown: "What's the brand name or website?", the user types; the only option is
   "No brand, choose for me") → the swap → the products → where it runs → size.
+- **The swap comes before the products.** A count or a category alone ("three shoes", "three
+  flavours") is not a swap: ask what changes (colorways, models, styles…) in its own question, in the
+  same deck, before the products request; the request's wording then follows the answer.
 - **The products** (when products swap and you have no images of them yet): one request_assets with
   ways photos, links and names: "Add photos of the three shoes, paste their product page links, or
   type their names." Links are read with read_website; names are searched and the finds offered as

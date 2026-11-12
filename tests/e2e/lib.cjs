@@ -84,7 +84,7 @@ async function look(p) {
     let question = null
     if (deck && deck.offsetParent) {
       const opts = [...deck.querySelectorAll('[role="group"] button[aria-pressed]')].filter((b) => !b.disabled && b.offsetParent)
-      const typeField = [...deck.querySelectorAll("input")].find((i) => i.offsetParent && i.getAttribute("aria-label") && i.getAttribute("aria-label") !== "Your own answer")
+      const typeField = [...deck.querySelectorAll("input")].find((i) => i.offsetParent && i.getAttribute("aria-label") && i.getAttribute("aria-label") !== "Your own answer" && !/^Or /.test(i.getAttribute("aria-label")))
       const header = deck.querySelector("header")
       question = { text: (header?.innerText ?? deck.innerText).split("\n")[0].slice(0, 160), options: opts.map((o) => o.innerText.replace(/\s+/g, " ").trim().slice(0, 60)), multi: !!deck.querySelector("[data-multi]"), typeField: typeField?.getAttribute("aria-label") ?? null }
     }
@@ -157,7 +157,9 @@ async function drive(run, policy, until, { timeout = 8 * 60_000, label = "" } = 
         await f.fill(policy.typed ?? "No brand, choose for me")
         await f.press("Enter")
       } else if (qq.multi) {
-        const need = Number(/Pick (\d)/.exec(qq.text)?.[1] ?? 2)
+        const words = { one: 1, two: 2, three: 3, four: 4, five: 5 }
+        const m = /Pick (\d|one|two|three|four|five)/i.exec(qq.text)
+        const need = m ? (words[m[1].toLowerCase()] ?? Number(m[1])) : 2
         log(`question "${qq.text}" (several): picking ${qq.options.slice(0, need).join(" + ")}`)
         const opts = scope(p, qq).locator('button[aria-pressed]:not([disabled]):visible')
         const n = Math.min(need, await opts.count())
@@ -174,6 +176,15 @@ async function drive(run, policy, until, { timeout = 8 * 60_000, label = "" } = 
     }
     if (v.assets) {
       if (policy.onAssets && (await policy.onAssets(v))) continue
+      await run.shot("assets")
+      // PRODUCTS=…: type product links or names into the request instead of files
+      const typedIn = process.env.PRODUCTS && p.locator('input[placeholder^="Or "]:visible').last()
+      if (typedIn && (await typedIn.count())) {
+        log(`asked for files: typing "${process.env.PRODUCTS}"`)
+        await typedIn.fill(process.env.PRODUCTS)
+        await p.getByRole("button", { name: "Continue" }).last().click()
+        continue
+      }
       log("asked for files: Skip")
       await p.getByRole("button", { name: "Skip" }).last().click()
       continue
