@@ -833,13 +833,20 @@ function Assets({ item, agent, bare }: { item: Extract<Item, { kind: "assets" }>
     }),
   )
   const addFiles = (list: FileList | File[]) => media.addFiles(list)
+  // products may also come as page links or names, typed
+  const [typed, setTyped] = useState("")
+  const ways = item.ways ?? ["photos"]
+  const typing = ways.includes("links") || ways.includes("names")
+  const typedHint = ways.includes("links") && ways.includes("names") ? "Or paste product page links, or type the product names" : ways.includes("links") ? "Or paste product page links" : "Or type the product names"
+  const canAdd = files.length > 0 || (typing && typed.trim().length > 0)
   if (item.done)
     return (
       <div className="flex flex-col gap-1.5 px-1">
         <p className="text-xs text-muted-foreground">{item.message}</p>
-        {item.done === "added" ? (
-          <div className="flex flex-wrap gap-1.5">
+        {item.done !== "skipped" ? (
+          <div className="flex flex-wrap items-center gap-1.5">
             {item.images?.map((u) => <img loading="lazy" decoding="async" key={u} src={u} alt="" className="size-10 rounded-lg object-cover ring-1 ring-foreground/10" />)}
+            {item.typed && <p className="text-sm break-all">{item.typed}</p>}
           </div>
         ) : (
           <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -866,12 +873,22 @@ function Assets({ item, agent, bare }: { item: Extract<Item, { kind: "assets" }>
         onFiles={addFiles}
         onRemove={(id) => setFiles((x) => x.filter((f) => url(f) !== id))}
       />
+      {typing && (
+        <InputGroupInput
+          value={typed}
+          onChange={(e) => setTyped(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && canAdd && preparing.length === 0 && (e.preventDefault(), agent.addAssets(item.id, files, undefined, typed))}
+          placeholder={typedHint}
+          aria-label={typedHint}
+          className="h-9 rounded-lg bg-muted/50 px-3 text-sm placeholder:text-muted-foreground"
+        />
+      )}
       <div className="flex justify-end gap-2">
         <Button size="sm" variant="ghost" disabled={agent.busy} onClick={() => agent.addAssets(item.id, [])}>
           Skip
         </Button>
-        <Button size="sm" disabled={agent.busy || !files.length || preparing.length > 0} onClick={() => agent.addAssets(item.id, files)}>
-          Add{files.length > 0 ? ` ${files.length}` : ""}
+        <Button size="sm" disabled={agent.busy || !canAdd || preparing.length > 0} onClick={() => agent.addAssets(item.id, files, undefined, typed)}>
+          {files.length > 0 ? `Add ${files.length}` : typed.trim() ? "Continue" : "Add"}
         </Button>
       </div>
     </>

@@ -26,7 +26,11 @@ reliable is found, say so and ask.
 ## Products
 - The range (other flavors, colors, models, each with its page or pack shot) is what the swap
   question offers, as pictures. When the range has 3 to 5 items, propose them as the picks.
-- Never generate a product you have no image of: ask for pack shots or take the official ones.
+- Never generate a product you have no image of: take the official ones, or ask (photos, page links
+  or names, in one request). Names given: web_search each, read_website its page, and show the
+  images found as a pictures question to confirm before concepts.
+- No brand chosen ("choose for me"): invent a fitting name, colors and font, save them with
+  set_brand, and never ask for a logo.
 - Every variation gets its own product page as its link (that flavor, color or model), never a
   range page, unless the user gives one. Prices and names come from the page, exact.
 

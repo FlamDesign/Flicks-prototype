@@ -170,6 +170,7 @@ export type Choice = {
 }
 
 type Base = { id: string; at: number }
+export type AssetWay = "photos" | "links" | "names"
 export type Item = Base &
   (
     | { kind: "user"; text: string; images: string[] }
@@ -179,7 +180,7 @@ export type Item = Base &
     /** the page closed mid-turn: reopening offers to carry on */
     | { kind: "resume"; text?: string }
     | { kind: "question"; toolId: string; question: string; options: Choice[]; display: Display; step?: Step; multi: boolean; custom: boolean; answer?: string; purpose?: string; /** the answer is typed (a brand name, a link): a field that's ready to type in, with this hint, above any other options */ typeFirst?: string; /** how many to pick, when the wording says ("pick 2 to 4") */ range?: { min: number; max: number } }
-    | { kind: "assets"; toolId: string; message: string; kinds: string[]; done?: "added" | "skipped"; images?: string[] }
+    | { kind: "assets"; toolId: string; message: string; kinds: string[]; ways?: AssetWay[]; done?: "added" | "skipped" | "typed"; images?: string[]; typed?: string }
     | { kind: "brand"; brand: Brand }
     | { kind: "plan"; toolId: string; plan: Plan; state: "open" | "approved" | "skipped"; previews?: (string | undefined)[]; frames?: (string | undefined)[] }
     | { kind: "image"; prompt: string; purpose: string; target?: string; aspect?: string; state: "working" | "done" | "failed" | "stopped"; url?: string; error?: string; placed?: boolean; status?: string; startedAt?: number; /** its job, so a reload can keep checking it */ job?: string }
@@ -353,10 +354,14 @@ export const TOOLS: Tool[] = [
   },
   {
     name: "request_assets",
-    description: "Ask the user to add images (product photos, logo, people, scenes). The images come back as the result, or a note that they skipped.",
+    description: "Ask the user for references: images (product photos, logo, people, scenes) and, with ways, product page links or product names typed instead. The images, the typed links or names, or a note that they skipped come back as the result. One request per step; never ask for a logo when the user chose no brand.",
     input_schema: {
       type: "object",
-      properties: { message: str, kinds: { type: "array", items: { type: "string", enum: ["product", "logo", "people", "scene", "other"] } } },
+      properties: {
+        message: str,
+        kinds: { type: "array", items: { type: "string", enum: ["product", "logo", "people", "scene", "other"] } },
+        ways: { type: "array", description: "how the user may answer; default photos only (for products: photos, links and names)", items: { type: "string", enum: ["photos", "links", "names"] } },
+      },
       required: ["message"],
     },
   },
@@ -834,7 +839,7 @@ Flam's skills decide WHAT you ask, suggest, make and say; follow them over your 
 The order of work: read everything the user gave and decide the intent (intent skill) → research any brand or product hint (research skill) → ask what's still missing in one deck → concepts for make (concepts skill) → the storyboard (storyboard skill) → Variation 1, review, the others, then the layout (build skill) → changes in the editor (changes skill).
 
 How the app works (the mechanics; the skills say what to do with them):
-- Questions: ask_user shows tappable answers; several ask_user calls in one reply show together as one deck. display "chips" for words, "cards" for where it runs, "sizes" for sizes (the app shows the sizes for the placement answered), "pictures" with an image_prompt or image_id per answer for visual choices, "layouts", "palettes" or "thumbnails" for design choices; step "idea", "look" or "plan" moves the progress bar; purpose names the question (brand, variations, goal, placement, size). "Skipped" as an answer means the user pressed You decide. request_assets asks for files. The user can also type in the composer; while a question is on show, their words answer it.
+- Questions: ask_user shows tappable answers; several ask_user calls in one reply show together as one deck. display "chips" for words, "cards" for where it runs, "sizes" for sizes (the app shows the sizes for the placement answered), "pictures" with an image_prompt or image_id per answer for visual choices, "layouts", "palettes" or "thumbnails" for design choices; step "idea", "look" or "plan" moves the progress bar; purpose names the question (brand, variations, goal, placement, size). "Skipped" as an answer means the user pressed You decide. request_assets asks for files; with ways links or names the user may type product page links or names instead, and they come back as text. The user can also type in the composer; while a question is on show, their words answer it.
 - Web: web_search finds pages; web_fetch reads a page or PDF that appeared in the conversation or in search results; read_website reads a product page for products, prices, colors and images (kept for the project). Only read addresses the user gave or a search returned.
 - Brand: set_brand records it (name, colors, font, voice). set_format sets a size the user named.
 - Images: generate_image (purpose look, edit, thumbnail, canvas, with reference_image_ids to keep the user's images and has_text for readable words), view_image to look at any project image, use_image to place one. make_sheet makes a product or character sheet from the user's images. search_library and use_library bring earlier work in. Images you made are described in their results; don't view them again.
@@ -1597,7 +1602,9 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           return WAIT
         }
         case "request_assets": {
-          const itemId = add({ kind: "assets", toolId: u.id, message: String(input.message ?? "Add images"), kinds: (input.kinds as string[]) ?? [] })
+          const kinds = (input.kinds as string[]) ?? []
+          const ways = (input.ways as AssetWay[] | undefined) ?? (kinds.includes("product") ? ["photos", "links", "names"] : ["photos"])
+          const itemId = add({ kind: "assets", toolId: u.id, message: String(input.message ?? "Add images"), kinds, ways })
           pending.current.push({ toolId: u.id, itemId })
           return WAIT
         }
@@ -2129,13 +2136,22 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   )
 
   const addAssets = useCallback(
-    async (itemId: string, files: File[], kind?: string) => {
+    async (itemId: string, files: File[], kind?: string, typed?: string) => {
       const it = items.find((x) => x.id === itemId)
       if (!it || it.kind !== "assets" || busy || busyRef.current) return
       // taken at once: a second click while the first is still preparing does nothing
       setBusy(true)
       try {
         if (answered(it.toolId)) return void patch(itemId, { done: it.done ?? "added" } as Partial<Item>)
+        const text = typed?.trim()
+        if (!files.length && text) {
+          // links or names instead of files: handed over as words
+          patch(itemId, { done: "typed", typed: text } as Partial<Item>)
+          if (!hold(it.toolId, `${/https?:\/\/|www\./i.test(text) ? "Product links" : "Product names"} typed instead of images: ${text}`)) return
+          msgs.current.push({ role: "user", content: settle({ ...held.current }) })
+          await turn()
+          return
+        }
         if (!files.length) {
           patch(itemId, { done: "skipped" } as Partial<Item>)
           if (!hold(it.toolId, "Skipped: no images.")) return
@@ -2144,8 +2160,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           return
         }
         const got = await attach(files, kind)
-        patch(itemId, { done: "added", images: got.shows } as Partial<Item>)
-        const result: Block[] = [{ type: "text", text: got.line }, ...got.blocks]
+        patch(itemId, { done: "added", images: got.shows, typed: text || undefined } as Partial<Item>)
+        const result: Block[] = [{ type: "text", text: text ? `${got.line} Also typed: ${text}` : got.line }, ...got.blocks]
         if (!hold(it.toolId, result)) return
         msgs.current.push({ role: "user", content: settle({ ...held.current }) })
         checkpoint(true)

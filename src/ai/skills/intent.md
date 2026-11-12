@@ -31,7 +31,7 @@ words: "change this video, or use it as the look for new ones?").
 | Size and where it runs | ask (see 5) | from the video; never asked | from the videos; never asked |
 | Brand | from the inputs, else research, else ask | same | same, for the layout |
 | The swap and its options | from the inputs, else ask with suggestions | ask what the other variations are | the videos are the variations |
-| Product photos or page links | ask when products swap | ask when products swap | ask the links for the layout |
+| The products (photos, page links or names) | ask when products swap | ask when products swap | ask the page links for the layout |
 | People or scene references | ask when people or scenes swap | same | not needed |
 | Is the given video a variation or a reference only? | not applicable | ask | not applicable |
 | Goal | never asked; inferred from words (launch, sale, sign-ups, installs) or the brand | same | same |
@@ -53,8 +53,15 @@ Infer only when you'd bet on it, and say what you inferred in one line so the us
 Everything still missing is asked in the first reply as one batch of ask_user calls; they show as one
 deck, one question at a time ("1 of 3"). Later questions only when a step truly needs one.
 - **Order:** brand (if unknown: "What's the brand name or website?", the user types; the only option is
-  "No brand, choose for me") → the swap → product photos or links (request_assets, or read_website
-  when the site has them) → where it runs → size.
+  "No brand, choose for me") → the swap → the products → where it runs → size.
+- **The products** (when products swap and you have no images of them yet): one request_assets with
+  ways photos, links and names: "Add photos of the three shoes, paste their product page links, or
+  type their names." Links are read with read_website; names are searched and the finds offered as
+  pictures to confirm. When the brand's site already has them, skip the request and offer the range
+  as pictures instead. Never make a product you have no image of.
+- **No brand, choose for me:** you choose a name, colors and font (set_brand) and the layout carries
+  no logo. Never ask for a logo. A logo is requested only when a brand is named and none was found on
+  its site or in the files; add it to the products request (kinds product, logo), never a request of its own.
 - **Only what changes the result.** If any answer would lead to the same Flick, don't ask.
 - **Suggestions always:** 2 to 5 tappable answers built from the inputs and research, the
   recommendation first, a short line each when it helps. No "Decide for me" option: the deck's You
@@ -69,7 +76,8 @@ deck, one question at a time ("1 of 3"). Later questions only when a step truly 
   variations?" with suggestions from what the video shows and the brand's range.
 - **Vague brief** ("make something cool"): still one deck: what to make, the swap, where, size, with the
   style as a visual choice.
-- Links are never asked for in a question; see the build skill for when they're named.
+- Layout button links are never asked for in a question; see the build skill for when they're named.
+  Product page links are a product source and belong in the products request.
 - Say how many questions follow ("Three quick questions"). After an answer, recap the direction in one line.
 
 ## 6. Recipe forms

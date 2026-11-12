@@ -717,7 +717,7 @@ const ENTRIES: Entry[] = [
   {
     name: "Uploader",
     kind: "UI",
-    about: "The one uploader: recipe forms, the chat's asset requests and the picker. Empty, it names what it takes and its limits; filled, it shows tiles with remove and an Add tile. Drop files on it or click to browse.",
+    about: "The one uploader: recipe forms, the chat's asset requests and the picker. Empty, it names what it takes and its limits; filled, it shows tiles with remove and an Add tile. Drop files on it or click to browse. A product request in the chat adds a field under it for product page links or names instead.",
     render: () => (
       <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
         <Dropzone items={[]} onBrowse={() => {}} onFiles={() => {}} accept="video" title="Drop your video here" hint="MP4, MOV or WebM · up to 15s" />
