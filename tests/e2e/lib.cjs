@@ -5,7 +5,7 @@ const { chromium } = require("playwright")
 const fs = require("fs")
 const path = require("path")
 
-const SITE = "https://flamdesign.github.io/Flicks-prototype/visual-chat/"
+const SITE = process.env.SITE || "https://flamdesign.github.io/Flicks-prototype/visual-chat/"
 const FILES = path.join(__dirname, "files")
 
 function file(name) {
@@ -187,7 +187,7 @@ async function drive(run, policy, until, { timeout = 8 * 60_000, label = "" } = 
     if (v.review) {
       if (policy.onReview && (await policy.onReview(v))) continue
       log("review: Make the variations")
-      await p.getByRole("button", { name: /^Make the variations/ }).last().click()
+      await p.getByRole("button", { name: /^Make the (variations|others)/ }).last().click()
       continue
     }
     if (v.make) {

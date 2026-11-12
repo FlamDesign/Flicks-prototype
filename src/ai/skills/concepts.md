@@ -1,68 +1,62 @@
 ---
 name: concepts
-description: Turning the brief into up to 3 concepts and storylines, choosing what changes and what changes with it, and the video types that work for Flicks.
-when: After the brief, before the shot plan; again whenever the user wants new ideas.
+description: Three concepts with previews after the brief (make only), the category playbooks, choosing what changes, and keeping the other concepts for later.
+when: After the brief is complete, before the storyboard, for the make intent; again when the user wants new ideas.
 ---
 
 # Concepts
 
-## What a concept is
-One line each:
-- **Idea:** the hook in one sentence ("Three summer flavours, one ice-cold pour").
-- **The question the tap answers:** "Which flavour is yours?", "Which color suits you?",
-  "Where would you go?". If a concept has no question worth tapping for, it's not a Flick concept.
-- **The swap and the variations:** 2 to 5 options, each clearly different at thumbnail size.
-- **The story in 2 or 3 beats:** what happens and what moves, start to end ("the can drops onto
-  ice, condensation streams down, it turns to camera").
-- **The video type** (see the list below).
+For **make** only. Change and assemble go straight to the storyboard (the video fixes the motion).
 
-## Offering concepts (always, before the plan)
-- Use **propose_concepts** before every plan, unless the user already gave a complete concept or
-  asked to skip ideas. It shows each concept as a card with a preview image the app makes from your
-  image_prompt, so the user sees the style before any video credits are spent.
-- Suggest up to 3, clearly different from each other (not three versions of one idea).
-- Write image_prompt as one frame of the concept: subject, setting, light, style; no text.
-- **Previews use the user's images.** The app passes the user's own images (uploads, website and
-  library images) as references by default, so each preview shows their real product or person.
-  Set reference_image_ids to choose which ones (for example only the product photo, not the logo),
-  and describe them in image_prompt as "the product from the photo".
-- The user can pick one, or type a mix or a change. Then plan the picked concept.
+## What a concept is
+One line each: the idea (the hook in a sentence), the question the tap answers ("Which flavour is
+yours?"), the story in 2 or 3 beats (what happens and what moves), the video type. A concept with no
+question worth tapping for is not a Flick concept.
+
+## Offering concepts
+- propose_concepts shows three concepts as cards with a preview image each, clearly different from
+  each other (not three versions of one idea). Three, unless the user asked for fewer or gave a
+  complete concept.
+- Previews: one frame of the concept (subject, setting, light, style, no text), drawn with the user's
+  own images as references so each shows their real product or person (reference_image_ids picks which).
+- The user picks one, or types a mix or a change. The storyboard for the picked concept follows in
+  the same reply. The other two stay in the thread: the user can come back and pick another later;
+  when they do, draft that storyboard (the videos made so far are not touched until they approve).
 
 ## Choosing what changes
-- **Anything that makes sense** can change: product, color, flavour, size, person, outfit, pet,
-  setting, time of day, season, weather, offer. Suggest what could change; confirm with the user.
-- **Change everything that belongs together, and nothing else.** Example: an ice-cream video where
-  the flavour changes also changes the packaging, the cream color and the fruit floating around
-  it. The hand, the camera and the table stay the same.
-- **Odd requests:** if a swap would look absurd (a sports car swapping into a bicycle in the same
-  motion), flag it in one line and suggest an option that works; then do what the user decides.
-- **Visible enough:** the swap must be on screen at least 40 to 50% of the time and big enough to
-  see at a glance. If a concept can't do that, change the concept.
-- **Same footprint:** variations work best when the changing thing keeps the same shape and size
-  (bottle to bottle, sneaker to sneaker, room to room). Different shapes make the motion drift.
+- The swap is settled before concepts (intent skill); every concept uses it. Concepts differ in idea,
+  story and look, not in the swap.
+- Change everything that belongs together and nothing else: a flavor change also changes the pack and
+  the fruit; the hand, camera and table stay. The changing thing keeps the same shape and size.
+- The swap is on screen at least 40 to 50% of the time, big enough to see at a glance; a concept that
+  can't do that is changed.
+- An odd swap (a car into a bicycle in the same motion) is flagged in one line with a better option.
 
-## Ideas to borrow from (not a list to pick from)
-| Type | What happens | Best swaps | Watch out |
-|---|---|---|---|
-| Product hero | the product alone, the camera or the product moving, clean background | color, flavour, finish, model | keep the product big and centered |
-| In use | a hand or person uses the product, with a visible result | product, color | hands covering the product |
-| Lifestyle moment | a person in a place enjoying the product | person, setting, outfit, time of day | faces and hands drifting between variations |
-| Transformation | before and after in one shot (room makeover, glow up) | the "after" | keep the "before" identical |
-| Place reveal | a reveal of a setting | destination, season, weather, décor | crowds and moving water |
-| Ingredient story | ingredients arrange around the product | flavour, recipe | flying ingredients covering the pack |
-| Collection | several products side by side, one highlighted | which product is highlighted | too many items, small products |
-| Character | a mascot or person reacting | character, outfit | expressions changing between versions |
+## Video types to borrow from
+Product hero (the product alone, camera or product moving), in use (a hand or person, a visible
+result), lifestyle moment, transformation (before and after in one shot), place reveal, ingredient
+story, collection (several products, one highlighted), character (a mascot or person reacting).
+Watch out: hands covering the product, faces and hands drifting between variations, crowds and
+moving water, flying ingredients over the pack, too many small items.
 
-## Examples
-- **Drinks, flavour swap:** "One sip, three moods." Variations: Lime, Mango, Berry. Beats: hand
-  lifts the can into frame, condensation close-up, can turns to camera. Question: "Which flavour?"
-- **Fashion, outfit swap:** "Same walk, your style." Variations: Denim, Linen, Leather. Beats: model
-  walks toward camera, pauses, turns to a three-quarter pose. Question: "Which look is you?"
-- **Travel, place swap:** "Where's your weekend?" Variations: Beach, Mountains, City. Beats: person
-  opens a window, the view is revealed, push toward the view. Question: "Where would you go?"
-
-For category-specific ideas, read the categories skill.
-
-## Before concepts
-What changes between variations is settled first (brief skill): every concept uses that swap. Concepts
-differ in the idea, story and look, not in a swap the user didn't choose.
+## Categories (starting points, not rules; the flicks skill wins when anything conflicts)
+Work out the category from the brand, product and brief and say it in one line.
+| Category | Usually changes | Strong concepts | Light and look | Copy angle | Avoid |
+|---|---|---|---|---|---|
+| Drinks | flavor, can color, serve, occasion | sip moment, condensation hero, pour | backlit, bokeh | taste, refreshment, mood | hands over the label, splashing over the pack |
+| Food and quick service | menu item, topping, size, sauce | sizzling hero, steam reveal, top-down spread | warm, bright | craving, freshness, value | bites hiding the food |
+| Beauty and skincare | shade, product, finish, model | texture swatch, application, glow reveal | soft high key | results, feeling, ritual | hands across the face |
+| Fashion and apparel | outfit, colorway, model | walk to camera, pose turn, fabric detail | clean high key, or neon at night | style, identity, occasion | |
+| Footwear | colorway, model, surface | step close-up, on-foot walk, sole detail | backlit, minimal | comfort, performance, style | feet crossing |
+| Tech and gadgets | finish, model, accessory | hero orbit, in-hand reveal, edge detail | low key with a rim light | design, speed, what it lets you do | readable screens |
+| Automotive | paint, trim, setting, season | front three-quarter hero, rolling shot, drone follow | golden hour backlight | design, freedom, performance | road-level blur |
+| Travel and hotels | destination, room, time of day, season | window reveal, aerial, guest moment | warm, sunlit | escape, the moment | crowds, animals, choppy water |
+| Finance and apps | persona, life moment, benefit | the moment the product enables, relief | warm, bright | ease, confidence, outcome | readable numbers, money piles |
+| Luxury, jewellery, watches | metal, stone, strap, model | macro facets, orbit on velvet, worn | low key, reflections | craft, rarity, gift | sparkle changing between variations |
+| Home and appliances | finish, palette, room style | room makeover, in use, detail push-in | bright, natural | comfort, design, easier life | moving pets or people behind |
+| Packaged goods | flavor, variant, pack size | pack hero, ingredients arranged, in-hand | bright, clean | taste, benefit, freshness | ingredients flying across the pack |
+| Sports and fitness | athlete, gear colorway, sport | effort moment, gear hero, finish line | backlit, high contrast | performance, determination | |
+| Gaming and entertainment | character, world, mode, show | screen-glow reaction, character reveal | neon, low key | thrill, world, fandom | readable screens, gore |
+| Kids and family | toy, character, setting, theme | play moment, toy hero, family reaction | bright, warm, soft | joy, discovery, togetherness | many people in frame |
+Product-led categories usually swap a product or color; people-led a person, outfit or shade;
+place-led a setting, season or time of day. Suggest the usual one first.
