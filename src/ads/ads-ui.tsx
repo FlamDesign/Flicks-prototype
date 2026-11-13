@@ -19,6 +19,7 @@ import { useLibrary } from "@/library"
 import { REFERENCE_VIDEOS, inSet, videoAt } from "@/components/editor/elements"
 import { useDevState } from "@/dev/state"
 import { cn } from "@/lib/utils"
+import { FlickPlayer } from "@/components/flick-player"
 import {
   ads,
   CPM_RATES,
@@ -668,15 +669,7 @@ export function LiveFlick({ flick, tall, fit, videos: given, start = 0 }: { flic
         // never stretched: one side sets the size and the shape follows (wide by width, tall by height)
         style={{ aspectRatio: `${w} / ${h}`, containerType: "size", ...(fit ? { width: `min(100cqw, calc(100cqh * ${w / h}))` } : {}) }}
       >
-        {videos.map((v, k) => {
-          const m = videoAt(v)
-          return (
-            <video key={v} autoPlay muted loop playsInline poster={m.poster} aria-hidden className={cn("absolute inset-0 size-full object-cover", k === active ? "opacity-100" : "opacity-0")}>
-              {m.webm && <source src={m.webm} type="video/webm" />}
-              <source src={m.mp4} type="video/mp4" />
-            </video>
-          )
-        })}
+        <FlickPlayer videos={videos} active={active} />
         <div role="radiogroup" aria-label="Variations" className="absolute inset-x-0 bottom-[5%] flex justify-center gap-[3cqmin]">
           {videos.map((v, k) => (
             <button

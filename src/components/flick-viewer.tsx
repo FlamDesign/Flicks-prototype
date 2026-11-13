@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { GeneratedVideo } from "@/components/editor/generated-video"
+import { FlickPlayer } from "@/components/flick-player"
 import { FlicksLogo } from "@/components/brand"
 import { ratioOf } from "@/components/ratio-glyph"
 import { useLibrary } from "@/library"
@@ -24,7 +24,6 @@ export function FlickViewer({ slug }: { slug: string }) {
       </div>
     )
   const r = ratioOf(f.size)
-  const v = f.variants[i] ?? f.variants[0]
   return (
     <div className="flex min-h-dvh flex-col items-center gap-4 bg-background px-4 py-5">
       <div className="flex w-full max-w-md items-center justify-between">
@@ -37,7 +36,7 @@ export function FlickViewer({ slug }: { slug: string }) {
         className="relative w-full overflow-hidden rounded-2xl bg-muted shadow-lg ring-1 ring-foreground/10"
         style={{ aspectRatio: r, maxWidth: `min(28rem, calc((100dvh - 12rem) * ${r}))` }}
       >
-        <GeneratedVideo key={v.video} index={v.video} />
+        <FlickPlayer videos={f.variants.map((x) => x.video)} active={i} />
       </div>
       {f.variants.length > 1 && (
         <div role="tablist" aria-label="Variations" className="flex gap-2">

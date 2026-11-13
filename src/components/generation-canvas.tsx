@@ -25,7 +25,7 @@ import { SIZES } from "@/data"
 import { ratioOf } from "@/components/ratio-glyph"
 import { useDevState } from "@/dev/state"
 import { EditorPanel, type Picker } from "@/components/editor/editor-panel"
-import { GeneratedVideo } from "@/components/editor/generated-video"
+import { FlickPlayer } from "@/components/flick-player"
 import { CanvasStage } from "@/components/editor/canvas-stage"
 import { ElementToolbar, ToolbarGrip } from "@/components/editor/element-toolbar"
 import { useAgent, type EditorApi, type ElementSpec } from "@/ai/agent"
@@ -230,6 +230,8 @@ export function GenerationCanvas({
   const now = useClock(slides.map((s) => (s.startedAt ? s.startedAt + ms : 0)))
   const status = (s: Slide): SlideStatus => (!s.startedAt ? "empty" : s.job ? "generating" : now >= s.startedAt + ms ? "done" : "generating")
   const activeSlide = slides.find((s) => s.id === active) ?? slides[0]
+  /** the slides with a finished video, in strip order: what the player keeps loaded */
+  const ready = slides.filter((s) => s.video !== undefined && status(s) === "done")
   const activeStatus = status(activeSlide)
   const done = activeStatus === "done"
   const mainDone = status(slides[0]) === "done"
@@ -2077,11 +2079,8 @@ export function GenerationCanvas({
                   )}
                   {/* media is clipped to the frame; the element layer is not, so toolbars can sit above the frame edge */}
                   <div className={cn("absolute inset-0 overflow-hidden transition-opacity", stale(activeSlide) && "opacity-50")}>
-                    <GeneratedVideo
-                      key={activeSlide.id}
-                      index={activeSlide.video!}
-                      playing={videoPlaying}
-                    />
+                    {/* every finished variation is loaded; a switch carries the playhead over */}
+                    <FlickPlayer videos={ready.map((x) => x.video!)} active={Math.max(0, ready.findIndex((x) => x.id === activeSlide.id))} playing={videoPlaying} />
                   </div>
                   <CanvasStage elements={elements} setElements={setElements} selected={selected} setSelected={setSelected} editing={editing} setEditing={setEditing} ratio={ratio} thumbs={thumbs} activeThumb={activeThumb} feedOf={feedOf} onEditFeed={editFeed} onFeedValue={setFeedValue} feeds={feeds} onAddFeed={addFeed} onSeedFeed={seedFeed} onRenameFeed={renameFeed} onDeleteFeed={deleteFeed} hovered={hovered} selectedThumb={thumbSel} onSelectThumb={pickThumb} readOnly={previewing} onThumb={(n) => included[n] && select(included[n].id)} />
                 </>

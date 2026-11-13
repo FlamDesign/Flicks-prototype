@@ -194,6 +194,9 @@ const SECTIONS: Section[] = [
               <B>Account menu:</B> Account, Credits, Ad Balance, Help Center (opens in a new tab), Theme (light, dark, system), Log out.
             </>,
             <>
+              <B>Playing a Flick:</B> wherever a Flick plays (the editor canvas, the Flick page, the shared viewer, the Campaigns and Embeds previews) every variation’s video is loaded and stacked and only the active one shows; switching carries the playhead over, so the next video continues from the same moment with a short cross-fade, as a real Flick does. Muted and looping; a play button appears if the browser blocks autoplay.
+            </>,
+            <>
               <B>Overlays:</B> menus (dropdown, context, select), popovers and the command palette are all solid popover surfaces, never translucent: they sit over photos and video frames, so a frosted surface would read as a grey wash and cost legibility. Menu rows highlight with the accent token (a step stronger in dark mode).
             </>,
             <>
