@@ -82,7 +82,7 @@ export function EmbedsPage({ openEmbed, onRemixFlick, onOpenFlick }: { openEmbed
                 <button type="button" onClick={() => setView(e.id)} className="flex w-full flex-col gap-2.5 rounded-2xl p-2 text-left ring-1 ring-foreground/10 transition hover:ring-foreground/20 focus-ring">
                   <span className="relative grid aspect-square place-items-center overflow-hidden rounded-xl bg-muted">
                     {e.flick ? <img loading="lazy" decoding="async" src={e.flick.image} alt="" className="absolute inset-0 size-full object-cover" /> : <span className="text-xs text-muted-foreground">No Flick yet</span>}
-                    <span className="absolute bottom-2 left-2 rounded-md bg-black/50 px-1.5 py-0.5 text-xs font-medium tabular-nums text-white backdrop-blur-sm">{e.size}</span>
+                    <span className="absolute bottom-2 left-2 rounded-md bg-black/70 px-1.5 py-0.5 text-xs font-medium tabular-nums text-white backdrop-blur-sm">{e.size}</span>
                   </span>
                   {/* the same card as a placement in a campaign: name, status with a dot, numbers */}
                   <span className="flex flex-col gap-1 px-1 pb-1">

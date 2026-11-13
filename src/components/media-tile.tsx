@@ -113,5 +113,5 @@ export function MediaTile({
 
 /** A small label on a tile: length, size, a count. */
 export function TileBadge({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <span className={cn("flex items-center gap-1 rounded-md bg-black/50 px-1.5 py-0.5 text-xs font-medium tabular-nums text-white backdrop-blur-sm", className)}>{children}</span>
+  return <span className={cn("flex items-center gap-1 rounded-md bg-black/70 px-1.5 py-0.5 text-xs font-medium tabular-nums text-white backdrop-blur-sm", className)}>{children}</span>
 }
