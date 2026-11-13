@@ -40,10 +40,14 @@ jobs:
           API="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects"
           AUTH="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
           code=$(curl -s -o /dev/null -w "%{http_code}" -H "$AUTH" "$API/$PROJECT")
+          CONF='"deployment_configs":{"production":{"compatibility_date":"2025-09-01"},"preview":{"compatibility_date":"2025-09-01"}}'
           if [ "$code" = "404" ]; then
-            curl -fsS -X POST -H "$AUTH" -H "Content-Type: application/json" -d "{\"name\":\"$PROJECT\",\"production_branch\":\"main\"}" "$API" > /dev/null
+            curl -fsS -X POST -H "$AUTH" -H "Content-Type: application/json" -d "{\"name\":\"$PROJECT\",\"production_branch\":\"main\",$CONF}" "$API" > /dev/null
             echo "Created the Pages project $PROJECT"
-          elif [ "$code" != "200" ]; then
+          elif [ "$code" = "200" ]; then
+            # wrangler needs the project's deployment settings to exist
+            curl -fsS -X PATCH -H "$AUTH" -H "Content-Type: application/json" -d "{\"production_branch\":\"main\",$CONF}" "$API/$PROJECT" > /dev/null
+          else
             echo "::error::Cloudflare answered $code for the Pages project. The token needs Cloudflare Pages: Edit (Account) permission."
             exit 1
           fi
