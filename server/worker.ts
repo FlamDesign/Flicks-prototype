@@ -73,10 +73,10 @@ export default {
   async fetch(req: Request, env: Env, ctx?: { waitUntil(p: Promise<unknown>): void }): Promise<Response> {
     const origin = req.headers.get("origin")
     const allowed = (env.ALLOWED_ORIGINS ?? "").split(",").map((s) => s.trim()).filter(Boolean)
-    // browsers from other sites are turned away; scripts outside a browser still need the passcode
-    if (origin && allowed.length && !allowed.includes(origin)) return json({ error: "origin_not_allowed" }, 403)
-    // an allowed origin may be a pattern: https://*.flicks.pages.dev covers every branch's site
+    // an allowed origin may be a pattern: https://*.flicks-6sa.pages.dev covers every branch's site
     const originOk = (o: string) => allowed.some((a) => (a.includes("*") ? new RegExp(`^${a.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^.]+")}$`).test(o) : a === o))
+    // browsers from other sites are turned away; scripts outside a browser still need the passcode
+    if (origin && allowed.length && !originOk(origin)) return json({ error: "origin_not_allowed" }, 403)
     const cors = corsHeaders(origin && (allowed.length === 0 || originOk(origin)) ? origin : null)
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors })
 
