@@ -3,8 +3,9 @@
  * what to build, calling the tools below; the editor carries them out. Without a connection, the
  * chat shows "Couldn't connect to the AI server." and nothing else happens.
  */
+import { agentConfig, createSession, interrupt, managedOn, sessionTurn, toEvents } from "@/ai/managed"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { AiError, MESSAGES, aspectOf, cancelQueuedImages, keepable, generateImage, mockVideos, pollImage, imageBlock, library, shareable, sharedNow, type LibraryItem, isLive, readWebsite, siteImage, streamChat, type Block, type Message, type Tool } from "@/ai/client"
+import { AiError, MESSAGES, aiConfig, aspectOf, cancelQueuedImages, keepable, generateImage, mockVideos, pollImage, imageBlock, library, shareable, sharedNow, type LibraryItem, isLive, readWebsite, siteImage, streamChat, type Block, type ChatResult, type Message, type Tool } from "@/ai/client"
 import type { Paint, ShapeKind } from "@/components/editor/elements"
 import type { TemplateRef } from "@/data"
 import { shotPrompt, type Brand, type Design, type Plan, type PlanVariation, type Shot, type VideoMode } from "@/ai/design"
@@ -825,14 +826,7 @@ function activityFrom(name: string, json: string): string | undefined {
   return undefined
 }
 
-export function systemPrompt(s: ProjectState) {
-  // the skills for the step, in full, so no rounds are spent reading them: flicks, voice and
-  // interruptions always; intent, research, concepts and formats before the storyboard; storyboard,
-  // references and formats while it's drafted; build, changes, references and formats after the build
-  const idea = !s.storyboarding && !s.planned
-  const names = ["flicks", "voice", "interruptions", ...(idea ? ["intent", "research", "concepts", "formats"] : []), ...(s.storyboarding && !s.planned ? ["storyboard", "references", "formats", "build"] : []), ...(s.planned ? ["build", "changes", "references", "formats"] : [])]
-  const always = names.map((n) => findSkill(n)).filter((x): x is NonNullable<ReturnType<typeof findSkill>> => !!x)
-  return `You are the creative partner inside Flicks by Flam, an AI interactive content tool. You help the user make a Flick, step by step.
+const mechanics = () => `You are the creative partner inside Flicks by Flam, an AI interactive content tool. You help the user make a Flick, step by step.
 
 Flam's skills decide WHAT you ask, suggest, make and say; follow them over your own habits. The skills for this step are below in full: never read_skill one that's below. Read any other skill with read_skill right before the step it covers; skip ones listed in skills_read.
 
@@ -847,7 +841,25 @@ How the app works (the mechanics; the skills say what to do with them):
 - Videos: Variation 1 is the first video in state.videos (role "reference"); the others are made from it after the user presses Make the others below the chat. set_variation with regenerate true proposes a remake (the app shows a Make card); approve_variation_1 when the user says in words they're happy; make_proposed_video when they approve a proposal in words; add_variation adds one. Videos the user adds arrive as three stills and their length (15 s at most). The app wakes you when a video lands and when a build is complete. When the state has sample_videos, the videos are test clips: don't judge or remake them.
 - The layout: update_design, add_element, edit_element, remove_element and arrange_elements place and change elements; the design list in the state gives each element's id, type, text and position; positions are % of the frame. The thumbnail strip is an element too. vary_field, same_for_all, rename_feed and set_variation change feeds (text, prices, links, button text per variation). view_flick shows a variation as viewers see it (variation "all" for every one); review_flick checks the whole Flick. list_versions, restore_version and save_version are the canvas history.
 - Mentions: @Image 1 / @Video 1 are that message's own files in order; @<element name> is a saved element listed in saved_elements; a [Mentions: ...] line maps each to image ids: use exactly those ids. @<variation name> means that variation, @Brand the brand kit.
-- Never end a reply by saying you'll do something next: call the tool in the same reply. End a turn only with a question for the user (ask_user, request_assets, propose_concepts, propose_plan) or when the work is done.
+- Never end a reply by saying you'll do something next: call the tool in the same reply. End a turn only with a question for the user (ask_user, request_assets, propose_concepts, propose_plan) or when the work is done.`
+
+/** The fixed prompt for the managed agent: the mechanics and every skill in full (the state comes with each turn) */
+export function managedSystemPrompt() {
+  return `${mechanics()}
+
+${SKILLS.map((x) => `# Skill: ${x.name}\n${x.body}`).join("\n\n---\n\n")}
+
+Every skill is above in full: read_skill is never needed. Each video's cost in credits is in the state (video_cost). The current project (videos, design, feeds, images, issues) comes as JSON in a system note with each turn, kept up to date by the app; it replaces any earlier copy. When the state names a recipe, the intent skill says how to treat its form.`
+}
+
+export function systemPrompt(s: ProjectState) {
+  // the skills for the step, in full, so no rounds are spent reading them: flicks, voice and
+  // interruptions always; intent, research, concepts and formats before the storyboard; storyboard,
+  // references and formats while it's drafted; build, changes, references and formats after the build
+  const idea = !s.storyboarding && !s.planned
+  const names = ["flicks", "voice", "interruptions", ...(idea ? ["intent", "research", "concepts", "formats"] : []), ...(s.storyboarding && !s.planned ? ["storyboard", "references", "formats", "build"] : []), ...(s.planned ? ["build", "changes", "references", "formats"] : [])]
+  const always = names.map((n) => findSkill(n)).filter((x): x is NonNullable<ReturnType<typeof findSkill>> => !!x)
+  return `${mechanics()}
 
 ${always.map((x) => `# Skill: ${x.name}\n${x.body}`).join("\n\n---\n\n")}
 
@@ -1898,13 +1910,21 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         }
         if (!isLive()) throw new AiError("not_connected", MESSAGES.not_connected)
         const ask = (r: typeof req) => streamChat(r, onText, abort.current!.signal, onTool, onJson)
+        const managed = managedOn()
         // if the API refuses how earlier searches or thinking were sent back, send them once more as plain notes
-        const res = await ask(req).catch((e) => {
-          if (e instanceof Error && /tool_result|thinking|signature/i.test(e.message)) return ask(cachedRequest(systemPrompt(now), msgs.current, now, true, now.storyboarding || now.planned))
-          throw e
-        })
+        const res: ChatResult & { calls?: number } = managed
+          ? await (async () => {
+              const sess = await ensureSession(now.title)
+              const events = toEvents(msgs.current.slice(sent.current), now)
+              sent.current = msgs.current.length
+              return sessionTurn(sess, events, onText, abort.current!.signal, onTool, usage)
+            })()
+          : await ask(req).catch((e) => {
+              if (e instanceof Error && /tool_result|thinking|signature/i.test(e.message)) return ask(cachedRequest(systemPrompt(now), msgs.current, now, true, now.storyboarding || now.planned))
+              throw e
+            })
         // what this project has cost in tokens so far (shown on the Dev metrics page)
-        usage.current = { calls: usage.current.calls + 1, input: usage.current.input + res.usage.input, cached: usage.current.cached + res.usage.cached, written: usage.current.written + res.usage.written, output: usage.current.output + res.usage.output }
+        usage.current = { calls: usage.current.calls + (res.calls ?? 1), input: usage.current.input + res.usage.input, cached: usage.current.cached + res.usage.cached, written: usage.current.written + res.usage.written, output: usage.current.output + res.usage.output }
         const text = res.content.flatMap((b) => (b.type === "text" && !b.text.startsWith("(Started a web") ? [b.text] : [])).join("\n\n")
         if (text.trim()) patch(itemId, { text, streaming: false } as Partial<Item>)
         else setItems((list) => list.filter((x) => x.id !== itemId))
@@ -1973,6 +1993,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       // a cut-off stream can surface as a network error: what counts is whether it was stopped here
       const aborted = !!abort.current?.signal.aborted || (e instanceof AiError && e.code === "aborted") || (e instanceof DOMException && e.name === "AbortError")
       if (aborted) {
+        if (session.current) void interrupt(session.current)
         // what it had written stays, in the chat and in its memory, marked as stopped (so the two match)
         const said = (itemsRef.current.find((x) => x.id === replyId && x.kind === "assistant") as { text?: string } | undefined)?.text?.trim() ?? ""
         // stopped while its tools ran: the reply (with its tool calls) is already in memory, so every
@@ -2024,6 +2045,17 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     void turn()
   }
   const usage = useRef<ChatUsage>({ calls: 0, input: 0, cached: 0, written: 0, output: 0 })
+  /** the managed session for this project (Dev switch "Chat: managed agent"), and how far msgs has been sent to it */
+  const session = useRef<string | null>(null)
+  const sent = useRef(0)
+  const ensureSession = async (title: string) => {
+    if (session.current) return session.current
+    const cfg = await agentConfig()
+    if (!cfg) throw new AiError("agent_not_set_up", "The managed agent isn't set up yet (Dev → Chat → Set up the agent).")
+    session.current = await createSession(cfg, title || "Flick", aiConfig.get().model)
+    sent.current = 0
+    return session.current
+  }
   const notify = useCallback((text: string, wake = true) => {
     notes.current.push({ text, wake })
     flushRef.current()
@@ -2296,7 +2328,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   }, [turn])
 
   // the chat is saved with its project (with the AI server connected): reopening it picks up here
-  type SavedChat = { items: Item[]; msgs: Message[]; pending: typeof pending.current; ready: Block[]; held: Record<string, string | Block[]>; images: ProjectImage[]; read: string[]; draft: Design; /** saved mid-turn: a reload offers to carry on */ inTurn?: boolean; /** the user dismissed the offer to carry on: don't offer again until something new happens */ resumeDismissed?: boolean; notes?: { text: string; wake: boolean }[]; /** tokens this project has cost, over every call */ usage?: ChatUsage }
+  type SavedChat = { items: Item[]; msgs: Message[]; pending: typeof pending.current; ready: Block[]; held: Record<string, string | Block[]>; images: ProjectImage[]; read: string[]; draft: Design; /** saved mid-turn: a reload offers to carry on */ inTurn?: boolean; /** the user dismissed the offer to carry on: don't offer again until something new happens */ resumeDismissed?: boolean; notes?: { text: string; wake: boolean }[]; /** tokens this project has cost, over every call */ usage?: ChatUsage; /** the managed session (Dev switch): its id and how many messages it has been sent */ managed?: { session: string; sent: number } }
   type ChatUsage = { calls: number; input: number; cached: number; written: number; output: number }
   // files that only live in this browser are saved by their server address, so they still open after a reload
   const lasting = (i: ProjectImage): ProjectImage => ({ ...i, url: /^blob:/.test(i.url) ? (sharedNow(i.url) ?? i.url) : i.url, ...(i.poster && /^blob:/.test(i.poster) ? { poster: sharedNow(i.poster) ?? i.poster } : {}) })
@@ -2333,6 +2365,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     resumeDismissed: resumeDismissed.current,
     notes: notes.current,
     usage: usage.current,
+    managed: session.current ? { session: session.current, sent: sent.current } : undefined,
   })
   /** saved at safe points mid-turn (after the user's message, after each step), so a reload loses nothing */
   const checkpoint = (now = false) => {
@@ -2376,6 +2409,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
             if (saved.draft) mergeDraft(saved.draft)
             notes.current = saved.notes ?? []
             usage.current = saved.usage ?? usage.current
+            session.current = saved.managed?.session ?? null
+            sent.current = saved.managed?.sent ?? 0
             // cards whose answer is already in memory are answered (a card list saved a moment before an answer)
             const resultOf = (id?: string) => {
               for (const m of saved.msgs) if (m.role === "user" && Array.isArray(m.content)) for (const b of m.content) if (b.type === "tool_result" && (b as { tool_use_id?: string }).tool_use_id === id) return String(typeof (b as { content?: unknown }).content === "string" ? (b as { content: string }).content : "answered")

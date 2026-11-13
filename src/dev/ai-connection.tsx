@@ -1,10 +1,12 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AI_MODELS, aiConfig, health, isLive, useAiConfig, type Health } from "@/ai/client"
 import { cn } from "@/lib/utils"
+import { agentConfig, setupAgent, type AgentConfig } from "@/ai/managed"
+import { managedSystemPrompt, TOOLS } from "@/ai/agent"
 
 /** State manager > AI: where the chat's AI server is, its passcode (this device only) and the model. */
 export function AiConnection() {
@@ -73,6 +75,42 @@ export function AiConnection() {
         </p>
       )}
       <p className="text-xs text-muted-foreground">Without an address and passcode the chat can’t start: it shows “Couldn’t connect to the AI server.” Setup steps are in server/README.md.</p>
+      <ManagedAgent live={isLive(c)} model={c.model} />
     </section>
+  )
+}
+
+/** The managed agent (the chat loop run by Anthropic): made or updated from the app's prompt, skills and tools */
+function ManagedAgent({ live, model }: { live: boolean; model: string }) {
+  const [cfg, setCfg] = useState<AgentConfig | null | undefined>(undefined)
+  const [state, setState] = useState<{ busy?: boolean; text?: string; fail?: boolean }>({})
+  useEffect(() => {
+    if (live) void agentConfig().then(setCfg)
+  }, [live])
+  const run = async () => {
+    setState({ busy: true })
+    try {
+      const next = await setupAgent(managedSystemPrompt(), TOOLS, model)
+      setCfg(next)
+      setState({ text: `${cfg ? "Updated" : "Created"} the agent (version ${next.version ?? 1}). New chats with the Dev switch on use it.` })
+    } catch (e) {
+      setState({ fail: true, text: e instanceof Error ? e.message : "Couldn't set up the agent." })
+    }
+  }
+  return (
+    <div className="space-y-2 border-t pt-3">
+      <div className="flex items-center justify-between">
+        <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Managed agent</h4>
+        <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", cfg ? "bg-brand/10 text-brand" : "bg-muted text-muted-foreground")}>{cfg ? `Version ${cfg.version ?? 1}` : "Not set up"}</span>
+      </div>
+      <p className="text-xs text-muted-foreground">The chat loop run on the AI side: the prompt, every skill and the tools go up as one agent; projects get a session each. Set it up again after a skill or tool change. Turn it on per browser with the Dev widget's Managed agent switch.</p>
+      <div className="flex items-center gap-3">
+        <Button size="sm" variant="outline" disabled={!live || state.busy} onClick={run}>
+          {state.busy ? "Setting up…" : cfg ? "Update the agent" : "Set up the agent"}
+        </Button>
+        {state.text && <p className={cn("text-xs", state.fail ? "text-destructive" : "text-foreground")}>{state.text}</p>}
+      </div>
+      {cfg && <p className="text-xs text-muted-foreground">Agent {cfg.agentId} · model {cfg.model ?? "default"} · set up {new Date(cfg.at).toLocaleString()}</p>}
+    </div>
   )
 }

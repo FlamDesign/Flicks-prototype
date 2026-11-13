@@ -1,11 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Analytics01Icon, ApiIcon, DashboardSquare01Icon, DragDropVerticalIcon, File01Icon, Mail01Icon, FlashIcon, TestTubeIcon } from "@hugeicons/core-free-icons"
+import { Analytics01Icon, ApiIcon, DashboardSquare01Icon, DragDropVerticalIcon, File01Icon, Mail01Icon, ChatBotIcon, FlashIcon, TestTubeIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { useDevActions } from "@/dev/dev-actions"
 import { mockVideos } from "@/ai/client"
+import { managedOn, setManaged } from "@/ai/managed"
 
 const KEY = "flam.devWidget"
 const MARGIN = 8
@@ -30,6 +31,7 @@ export function DevWidget({ onStateManager, onComponents, onPrd, onEmails, onReq
   // slides left to keep it there), and the bar never runs off either edge of the screen.
   const [open, setOpen] = useState(false)
   const [mock, setMock] = useState(mockVideos)
+  const [managed, setManagedOn] = useState(managedOn)
   const [shift, setShift] = useState(0)
   const anchor = useRef<{ el: Element; x: number } | null>(null)
   const expand = (target: EventTarget | null) => {
@@ -191,6 +193,28 @@ export function DevWidget({ onStateManager, onComponents, onPrd, onEmails, onReq
           </Button>
         </TooltipTrigger>
         <TooltipContent>{mock ? "On: videos come back as sample clips after a short wait; nothing is generated. Click to turn off." : "Off: videos are really generated. Click to use sample clips for testing."}</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            role="switch"
+            aria-checked={managed}
+            aria-label="Managed agent"
+            onClick={() => (setManaged(!managed), setManagedOn(!managed))}
+            className={cn(
+              "relative h-7 gap-1.5 rounded-lg text-xs font-normal transition-none hover:bg-white/10 hover:text-white dark:hover:bg-white/10",
+              managed ? "bg-white/20 text-white" : "text-white/70",
+              open ? "px-2" : "w-7 px-0",
+            )}
+          >
+            <HugeiconsIcon icon={ChatBotIcon} className="size-3.5" />
+            {open && <span className="animate-in fade-in-0 duration-150">Managed agent {managed ? "on" : "off"}</span>}
+            <span aria-hidden className={cn("size-1.5 rounded-full", managed ? "bg-brand" : "bg-white/30", !open && "absolute right-1 top-1")} />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{managed ? "On: new chats run through a managed session on the AI server (the agent set up on the Chat page). Click to turn off." : "Off: the chat loop runs in this browser. Click to run new chats through the managed agent."}</TooltipContent>
       </Tooltip>
       <span aria-hidden className="mx-0.5 h-4 w-px bg-white/20" />
       {tools.map((t) => (

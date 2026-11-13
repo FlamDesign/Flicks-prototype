@@ -100,6 +100,9 @@ async function fail(res: Response): Promise<never> {
   // a server-side failure (5xx, or a gateway timeout) reads as a plain line with Retry, never a status code
   throw new AiError(code, MESSAGES[code] ?? body.message ?? (res.status >= 500 ? "The chat is unavailable right now. Try again in a moment." : `The AI server answered ${res.status}.`))
 }
+export async function apiCall(path: string, init?: RequestInit) {
+  return call(path, init)
+}
 async function call(path: string, init?: RequestInit) {
   let res: Response
   try {
