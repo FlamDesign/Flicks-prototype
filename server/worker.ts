@@ -433,15 +433,8 @@ export default {
         const items: Record<string, unknown>[] = rows.map((r, i) => ({ ...r, job: libs[i] ? jobOf(JSON.parse(libs[i]!) as Record<string, unknown>) : undefined }))
         // jobs from before the log began: rebuilt from the library (prompt and inputs only)
         const seen = new Set(rows.map((r) => r.request_id))
-        const keys: string[] = []
-        let cursor: string | undefined
-        do {
-          const pg = await env.USAGE!.list({ prefix: "lib:", limit: 1000, cursor })
-          keys.push(...pg.keys.map((k) => k.name))
-          cursor = pg.list_complete ? undefined : pg.cursor
-        } while (cursor && keys.length < 3000)
-        const older = (await Promise.all(keys.filter((k) => !seen.has(k.slice(4))).map((k) => env.USAGE!.get(k))))
-          .flatMap((x) => (x ? [JSON.parse(x) as Record<string, unknown>] : []))
+        // from the index: one read for the whole library
+        const older = (await libraryItems(env, ctx)).filter((r) => !seen.has(r.id)).map((r) => r as Record<string, unknown>)
           .filter((x) => x.model !== "upload" && typeof x.model === "string" && String(x.model).startsWith("/"))
           .map((x) => ({ at: x.created, ms: 0, path: x.model, payload: { prompt: x.prompt, ...(Array.isArray(x.refs) && x.refs.length ? { image_urls: x.refs } : {}) }, status: 200, request_id: x.id, earlier: true, job: jobOf(x) }))
         const all = [...items, ...older].sort((a, b) => Number(b.at) - Number(a.at)).slice(0, limit)
@@ -455,19 +448,7 @@ export default {
         libraryUrl = `${url.origin}/library`
         const edge = await caches.default.match(libraryUrl).catch(() => undefined)
         if (edge) return new Response(edge.body, { headers: { ...cors, "content-type": "application/json", "x-library-cache": "edge" } })
-        let items = libraryCache && Date.now() - libraryCache.at < LIBRARY_CACHE_MS ? libraryCache.items : undefined
-        if (!items) {
-          const keys: string[] = []
-          let cursor: string | undefined
-          do {
-            const page = await env.USAGE!.list({ prefix: "lib:", limit: 1000, cursor })
-            keys.push(...page.keys.map((k) => k.name))
-            cursor = page.list_complete ? undefined : page.cursor
-          } while (cursor && keys.length < 5000)
-          items = (await Promise.all(keys.map((k) => env.USAGE!.get(k)))).flatMap((x) => (x ? [JSON.parse(x) as LibraryRecord] : []))
-          items.sort((a, b) => b.created - a.created)
-          libraryCache = { at: Date.now(), items }
-        }
+        const items = await libraryItems(env, ctx)
         // deleted from Assets: still listed, flagged hidden (the app keeps it out of lists but can
         // still name it where a video was made from it); the record and file stay
         const body = JSON.stringify({ items: items.map((x) => ({ ...x, file: x.saved ? `${url.origin}/file/${x.id}` : undefined })) })
@@ -665,15 +646,68 @@ async function take(env: Env, key: string, cap: number) {
  * A storage write that never throws: false when it didn't happen (on the free plan, KV allows
  * 1,000 writes a day; past that every write fails until the day resets at 00:00 UTC).
  */
-type LibraryRecord = { created: number; id: string; saved?: boolean; hidden?: boolean }
+type LibraryRecord = { created: number; id: string; saved?: boolean; hidden?: boolean; prompt?: string; error?: string; [k: string]: unknown }
 const LIBRARY_CACHE_MS = 20_000
+const INDEX_KEY = "lib:index"
+/** how often the index is rebuilt from the records themselves (a write that raced another is healed) */
+const INDEX_REBUILD_MS = 10 * 60_000
 let libraryCache: { at: number; items: LibraryRecord[] } | undefined
 let libraryUrl: string | undefined
+let indexRebuiltAt = 0
+
+/** what the list carries per record: the fields Assets shows, with long prompts and errors cut short */
+const indexEntry = (r: LibraryRecord): LibraryRecord => ({ ...r, prompt: typeof r.prompt === "string" ? r.prompt.slice(0, 400) : r.prompt, error: typeof r.error === "string" ? r.error.slice(0, 120) : r.error, refs: Array.isArray(r.refs) ? r.refs.slice(0, 8) : r.refs })
+
+/** every record, read one by one (seconds for thousands): only to build the index */
+async function scanLibrary(env: Env) {
+  const keys: string[] = []
+  let cursor: string | undefined
+  do {
+    const page = await env.USAGE!.list({ prefix: "lib:", limit: 1000, cursor })
+    keys.push(...page.keys.filter((k) => k.name !== INDEX_KEY).map((k) => k.name))
+    cursor = page.list_complete ? undefined : page.cursor
+  } while (cursor && keys.length < 5000)
+  const items = (await Promise.all(keys.map((k) => env.USAGE!.get(k)))).flatMap((x) => (x ? [indexEntry(JSON.parse(x) as LibraryRecord)] : []))
+  items.sort((a, b) => b.created - a.created)
+  return items
+}
+
+/**
+ * The library list comes from one record (the index) kept up to date on every write, so a listing
+ * is one read instead of thousands. Rebuilt from the records now and then, in the background.
+ */
+async function libraryItems(env: Env, ctx?: { waitUntil(p: Promise<unknown>): void }) {
+  if (libraryCache && Date.now() - libraryCache.at < LIBRARY_CACHE_MS) return libraryCache.items
+  let items: LibraryRecord[] | undefined
+  const raw = await env.USAGE!.get(INDEX_KEY)
+  if (raw) items = JSON.parse(raw) as LibraryRecord[]
+  if (!items) {
+    items = await scanLibrary(env)
+    indexRebuiltAt = Date.now()
+    await env.USAGE!.put(INDEX_KEY, JSON.stringify(items)).catch(() => {})
+  } else if (Date.now() - indexRebuiltAt > INDEX_REBUILD_MS) {
+    indexRebuiltAt = Date.now()
+    ctx?.waitUntil(scanLibrary(env).then((fresh) => (libraryCache = { at: Date.now(), items: fresh }, env.USAGE!.put(INDEX_KEY, JSON.stringify(fresh)))).catch(() => {}))
+  }
+  libraryCache = { at: Date.now(), items }
+  return items
+}
+
+/** a library write lands in the index too (the record replaces its earlier entry) */
+async function indexWrite(env: Env, value: string) {
+  const rec = indexEntry(JSON.parse(value) as LibraryRecord)
+  const raw = await env.USAGE!.get(INDEX_KEY)
+  const items = raw ? (JSON.parse(raw) as LibraryRecord[]) : libraryCache?.items
+  if (!items) return
+  const next = [rec, ...items.filter((x) => x.id !== rec.id)].sort((a, b) => b.created - a.created)
+  libraryCache = { at: Date.now(), items: next }
+  await env.USAGE!.put(INDEX_KEY, JSON.stringify(next))
+}
 
 async function put(env: Env, key: string, value: string | ArrayBuffer, opts?: KVNamespacePutOptions) {
-  if (key.startsWith("lib:")) {
-    libraryCache = undefined
+  if (key.startsWith("lib:") && key !== INDEX_KEY) {
     if (libraryUrl) await caches.default.delete(libraryUrl).catch(() => {})
+    if (env.USAGE && typeof value === "string") await indexWrite(env, value).catch(() => (libraryCache = undefined))
   }
   if (!env.USAGE) return true
   try {
