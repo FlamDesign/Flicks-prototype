@@ -1027,6 +1027,9 @@ const SECTIONS: Section[] = [
           <>
             <B>Where:</B> dev tools are in every build except captures; they never ship with a production build.
           </>,
+          <>
+            <B>Checks:</B> scripts/check-ui.sh keeps classes on the preset (static, quick); scripts/check-contrast.sh measures every page’s text against its background in light and dark (WCAG 4.5:1, 3:1 for large text) on the deployed site, to run after any token change. Page load time is off by default.
+          </>,
         ]}
       />
     ),

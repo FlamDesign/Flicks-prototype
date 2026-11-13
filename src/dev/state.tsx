@@ -54,7 +54,7 @@ export const NEW_USER: DevState = {
   projectsEmpty: true,
   embedsEmpty: true,
   // how long pages show their skeleton when opened
-  pageLoadMs: 400,
+  pageLoadMs: 0,
   assetsEmpty: true,
   templatesEmpty: false,
   generations: 0,
