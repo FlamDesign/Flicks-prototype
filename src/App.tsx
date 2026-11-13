@@ -281,8 +281,10 @@ export default function App() {
     : page === "Template" ? { page, id: previewTemplate?.id }
     : { page }
   const routeKey = `${route.page}|${route.kind ?? ""}|${route.id ?? ""}`
+  // the address only starts following the page once the one the app opened on has been applied
+  const routeReady = useRef(false)
   useEffect(() => {
-    if (dev.loggedIn && dev.onboarded) showRoute(route)
+    if (routeReady.current && dev.loggedIn && dev.onboarded) showRoute(route)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeKey, dev.loggedIn, dev.onboarded])
   const applyRoute = (r: Route) => {
@@ -329,13 +331,17 @@ export default function App() {
     // the address the app opened on; a project or Flick not in this browser yet waits for the saved ones
     const first = currentRoute()
     const needsLibrary = (r: Route) => (r.page === "Generate" && !getLibrary().projects.some((x) => x.id === r.id)) || (r.page === "Flick" && !getLibrary().flicks.some((f) => f.id === r.id))
+    const apply = (r: Route) => {
+      applyRouteRef.current(r)
+      routeReady.current = true
+    }
     if (first.page !== "Create" && !location.hash.includes("start=")) {
       if (needsLibrary(first)) {
-        const once = () => (window.removeEventListener("flam:sync-ready", once), applyRouteRef.current(first))
+        const once = () => (window.removeEventListener("flam:sync-ready", once), window.removeEventListener("flam:sync-failed", once), apply(first))
         window.addEventListener("flam:sync-ready", once)
         window.addEventListener("flam:sync-failed", once)
-      } else applyRouteRef.current(first)
-    }
+      } else apply(first)
+    } else routeReady.current = true
     const on = () => applyRouteRef.current(currentRoute())
     window.addEventListener("popstate", on)
     return () => window.removeEventListener("popstate", on)
