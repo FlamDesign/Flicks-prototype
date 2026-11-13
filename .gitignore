@@ -14,3 +14,4 @@ tests/screens/diff/
 tests/e2e/files/
 tests/e2e/runs/
 tests/e2e/*.out
+dist-pages/

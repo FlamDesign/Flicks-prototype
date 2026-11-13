@@ -75,7 +75,9 @@ export default {
     const allowed = (env.ALLOWED_ORIGINS ?? "").split(",").map((s) => s.trim()).filter(Boolean)
     // browsers from other sites are turned away; scripts outside a browser still need the passcode
     if (origin && allowed.length && !allowed.includes(origin)) return json({ error: "origin_not_allowed" }, 403)
-    const cors = corsHeaders(origin && (allowed.length === 0 || allowed.includes(origin)) ? origin : null)
+    // an allowed origin may be a pattern: https://*.flicks.pages.dev covers every branch's site
+    const originOk = (o: string) => allowed.some((a) => (a.includes("*") ? new RegExp(`^${a.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^.]+")}$`).test(o) : a === o))
+    const cors = corsHeaders(origin && (allowed.length === 0 || originOk(origin)) ? origin : null)
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors })
 
     try {

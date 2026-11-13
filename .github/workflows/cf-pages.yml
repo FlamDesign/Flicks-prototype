@@ -1,0 +1,54 @@
+name: Deploy site
+
+# Every branch deploys to Cloudflare Pages: main is the site (https://flicks.pages.dev), any other
+# branch gets its own address (https://<branch>.flicks.pages.dev). Needs the same Cloudflare token
+# as the AI server, with Cloudflare Pages: Edit added to it.
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PROJECT: flicks
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Check for committed secrets
+        run: ./scripts/scan-secrets.sh
+      - run: npm ci
+      - run: npx vite build -c vite.pages.config.ts
+        env:
+          # the AI server's address (a repository variable, not a secret); the passcode is typed in dev tools
+          VITE_AI_URL: ${{ vars.AI_SERVER_URL }}
+      - name: Make sure the Pages project exists (main is its production branch)
+        run: |
+          API="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects"
+          AUTH="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+          code=$(curl -s -o /dev/null -w "%{http_code}" -H "$AUTH" "$API/$PROJECT")
+          if [ "$code" = "404" ]; then
+            curl -fsS -X POST -H "$AUTH" -H "Content-Type: application/json" -d "{\"name\":\"$PROJECT\",\"production_branch\":\"main\"}" "$API" > /dev/null
+            echo "Created the Pages project $PROJECT"
+          elif [ "$code" != "200" ]; then
+            echo "::error::Cloudflare answered $code for the Pages project. The token needs Cloudflare Pages: Edit (Account) permission."
+            exit 1
+          fi
+      - name: Deploy
+        run: npx -y wrangler@4 pages deploy dist-pages --project-name "$PROJECT" --branch "${{ github.ref_name }}" --commit-dirty=true
+      - name: Show the address
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then echo "Site: https://$PROJECT.pages.dev" >> "$GITHUB_STEP_SUMMARY"; else echo "Site: https://${{ github.ref_name }}.$PROJECT.pages.dev" >> "$GITHUB_STEP_SUMMARY"; fi
