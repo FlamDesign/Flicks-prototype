@@ -25,38 +25,56 @@ export const setManaged = (on: boolean) => {
   }
 }
 
-export type AgentConfig = { agentId: string; environmentId: string; version?: number; model?: string; at: number }
+export type AgentConfig = { agentId: string; environmentId: string; version?: number; model?: string; at: number; /** the skills uploaded to Anthropic, by name: id and the version the agent uses */ skills?: Record<string, { id: string; version: string; hash: string }> }
 const CONFIG_KEY = "agent-config"
 export const agentConfig = () => loadSaved<AgentConfig>(CONFIG_KEY).catch(() => null)
 
 const api = async <T>(path: string, init?: RequestInit): Promise<T> => (await apiCall(`/agent${path}`, init)).json() as Promise<T>
 const post = <T>(path: string, body: unknown) => api<T>(path, { method: "POST", body: JSON.stringify(body) })
 
-/** The built-in sandbox tools the agent keeps: web search and page reads; files only for skills */
+/** The built-in sandbox tools the agent keeps: web search, page reads, and read (how it opens its skills) */
 const TOOLSET = {
   type: "agent_toolset_20260401",
   default_config: { enabled: false },
   configs: [
+    { name: "read", enabled: true },
     { name: "web_search", enabled: true },
     { name: "web_fetch", enabled: true },
   ],
+}
+
+const hashOf = async (text: string) => Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text))), (b) => b.toString(16).padStart(2, "0")).join("").slice(0, 16)
+
+/** Uploads a skill (a SKILL.md) as a new skill or a new version of the one already up; unchanged skills are left as they are */
+async function uploadSkill(name: string, text: string, have?: { id: string; version: string; hash: string }) {
+  const hash = await hashOf(text)
+  if (have && have.hash === hash) return have
+  const form = new FormData()
+  form.append("files[]", new Blob([text], { type: "text/markdown" }), `${name}/SKILL.md`)
+  if (!have) form.append("display_name", `Flicks: ${name}`)
+  const res = await apiCall(have ? `/agent/v1/skills/${have.id}/versions` : "/agent/v1/skills", { method: "POST", body: form })
+  const made = (await res.json()) as { id?: string; skill_id?: string; version?: string; latest_version?: string }
+  return { id: have?.id ?? made.id!, version: String(made.latest_version ?? made.version ?? ""), hash }
 }
 
 /**
  * Makes (or updates) the agent on Anthropic's side from the app's own prompt and tools, and the
  * sandbox it runs in. Called from the Dev page; the ids are kept on the server for every browser.
  */
-export async function setupAgent(system: string, tools: Tool[], model: string): Promise<AgentConfig> {
+export async function setupAgent(system: string, tools: Tool[], model: string, skills: { name: string; text: string }[]): Promise<AgentConfig> {
   const have = await agentConfig()
   let environmentId = have?.environmentId
   if (!environmentId) {
     const env = await post<{ id: string }>("/v1/environments", { name: "Flicks chat", description: "Where the Flicks chat agent runs: web search and page reads only." })
     environmentId = env.id
   }
+  // the skills live on Anthropic's side: a changed one gets a new version, the rest stay
+  const up: NonNullable<AgentConfig["skills"]> = {}
+  for (const sk of skills) up[sk.name] = await uploadSkill(sk.name, sk.text, have?.skills?.[sk.name])
   const custom = tools.map((t) => ({ type: "custom", name: t.name, description: t.description ?? "", input_schema: t.input_schema ?? { type: "object", properties: {} } }))
-  const body = { name: "Flicks chat", description: "The creative partner inside Flicks by Flam.", model: { id: model }, system, tools: [TOOLSET, ...custom] }
+  const body = { name: "Flicks chat", description: "The creative partner inside Flicks by Flam.", model: { id: model }, system, tools: [TOOLSET, ...custom], skills: Object.values(up).map((x) => ({ type: "custom", skill_id: x.id, version: x.version })) }
   const agent = have?.agentId ? await post<{ id: string; version?: number }>(`/v1/agents/${have.agentId}`, body) : await post<{ id: string; version?: number }>("/v1/agents", body)
-  const cfg: AgentConfig = { agentId: agent.id, environmentId, version: agent.version, model, at: Date.now() }
+  const cfg: AgentConfig = { agentId: agent.id, environmentId, version: agent.version, model, at: Date.now(), skills: up }
   await save(CONFIG_KEY, cfg)
   return cfg
 }

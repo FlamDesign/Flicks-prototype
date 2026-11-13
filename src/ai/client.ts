@@ -106,7 +106,10 @@ export async function apiCall(path: string, init?: RequestInit) {
 async function call(path: string, init?: RequestInit) {
   let res: Response
   try {
-    res = await fetch(base() + path, { ...init, headers: { ...headers(), ...(init?.headers ?? {}) } })
+    const h: Record<string, string> = { ...headers(), ...((init?.headers as Record<string, string>) ?? {}) }
+    // a form sets its own boundary: the browser writes that header
+    if (init?.body instanceof FormData) delete h["content-type"]
+    res = await fetch(base() + path, { ...init, headers: h })
   } catch {
     throw new AiError("network", MESSAGES.network)
   }

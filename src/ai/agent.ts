@@ -843,13 +843,22 @@ How the app works (the mechanics; the skills say what to do with them):
 - Mentions: @Image 1 / @Video 1 are that message's own files in order; @<element name> is a saved element listed in saved_elements; a [Mentions: ...] line maps each to image ids: use exactly those ids. @<variation name> means that variation, @Brand the brand kit.
 - Never end a reply by saying you'll do something next: call the tool in the same reply. End a turn only with a question for the user (ask_user, request_assets, propose_concepts, propose_plan) or when the work is done.`
 
-/** The fixed prompt for the managed agent: the mechanics and every skill in full (the state comes with each turn) */
+/**
+ * The fixed prompt for the managed agent: the mechanics, and the list of skills it reads with its
+ * read tool (they live on Anthropic's side; the state comes with each turn as a system note).
+ */
 export function managedSystemPrompt() {
   return `${mechanics()}
 
-${SKILLS.map((x) => `# Skill: ${x.name}\n${x.body}`).join("\n\n---\n\n")}
+Flam's skills are files you open with the read tool (the skills listed in your context, one folder each with a SKILL.md). Read a skill right before the step it covers, in the same reply, and follow it over your own habits:
+- At the start of a project (before your first reply): flicks, voice, interruptions and intent, in one round of reads.
+- Before any web research of a brand, a product or a page: research.
+- Before proposing concepts: concepts. Before the storyboard: storyboard, references and formats.
+- Before making a video or placing the layout: build (and references for sheets and reference images).
+- For any change the user asks for after the storyboard: changes.
+${SKILLS.map((x) => `- ${x.name}: ${x.description} (${x.when})`).join("\n")}
 
-Every skill is above in full: read_skill is never needed. Each video's cost in credits is in the state (video_cost). The current project (videos, design, feeds, images, issues) comes as JSON in a system note with each turn, kept up to date by the app; it replaces any earlier copy. When the state names a recipe, the intent skill says how to treat its form.`
+Each video's cost in credits is in the state (video_cost). The current project (videos, design, feeds, images, issues) comes as JSON in a system note with each turn, kept up to date by the app; it replaces any earlier copy. When the state names a recipe, the intent skill says how to treat its form. The read_skill tool is not needed: the files above are the skills.`
 }
 
 export function systemPrompt(s: ProjectState) {
