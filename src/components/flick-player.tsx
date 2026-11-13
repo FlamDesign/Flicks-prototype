@@ -17,26 +17,22 @@ export function FlickPlayer({ videos, active, playing = true, className, fade = 
   const [blocked, setBlocked] = useState(false)
   const canWebm = typeof document !== "undefined" && document.createElement("video").canPlayType("video/webm; codecs=vp9") !== ""
 
-  // the active video plays; the others sit at the same moment, ready
+  // every video plays (muted) so each one is buffered and at the same moment; a switch only changes
+  // which one shows, after lining the newly shown one up with the one it replaces
   useEffect(() => {
     const prev = refs.current[last.current]
     const t = prev?.currentTime ?? 0
     for (const [k, el] of refs.current.entries()) {
       if (!el) continue
       el.muted = true
-      if (k === active) {
-        // the same moment (modulo its own length, in case the lengths differ)
-        if (prev && prev !== el && Number.isFinite(el.duration) && el.duration > 0) el.currentTime = t % el.duration
-        else if (prev && prev !== el) el.currentTime = t
-        if (playing) el.play().then(() => setBlocked(false)).catch(() => setBlocked(true))
-        else el.pause()
-      } else if (!el.paused) el.pause()
+      if (k === active && prev && prev !== el && Number.isFinite(el.duration) && el.duration > 0 && Math.abs(el.currentTime - (t % el.duration)) > 0.1) el.currentTime = t % el.duration
+      if (playing) el.play().then(() => k === active && setBlocked(false)).catch(() => k === active && setBlocked(true))
+      else el.pause()
     }
     last.current = active
   }, [active, playing, videos.join(",")])
 
-  // paused ones follow the active one now and then, so a switch never seeks far (a seek on a
-  // buffered video is instant; a cold one shows its poster for a frame)
+  // the hidden ones are kept in step with the shown one (loops of different lengths drift)
   useEffect(() => {
     const id = setInterval(() => {
       const cur = refs.current[active]
@@ -44,6 +40,9 @@ export function FlickPlayer({ videos, active, playing = true, className, fade = 
       for (const [k, el] of refs.current.entries()) if (el && k !== active && Number.isFinite(el.duration) && el.duration > 0 && Math.abs(el.currentTime - (cur.currentTime % el.duration)) > 0.5) el.currentTime = cur.currentTime % el.duration
     }, 1000)
     return () => clearInterval(id)
+  }, [active])
+
+  return () => clearInterval(id)
   }, [active])
 
   return (
@@ -59,7 +58,7 @@ export function FlickPlayer({ videos, active, playing = true, className, fade = 
             loop
             playsInline
             preload="auto"
-            autoPlay={playing && k === active}
+            autoPlay={playing}
             aria-hidden={k !== active}
             onPlay={() => k === active && setBlocked(false)}
             className={cn("absolute inset-0 size-full object-cover", fade && "transition-opacity duration-150", k === active ? "opacity-100" : "pointer-events-none opacity-0")}
