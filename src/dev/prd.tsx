@@ -194,6 +194,9 @@ const SECTIONS: Section[] = [
               <B>Account menu:</B> Account, Credits, Ad Balance, Help Center (opens in a new tab), Theme (light, dark, system), Log out.
             </>,
             <>
+              <B>Overlays:</B> menus (dropdown, context, select), popovers and the command palette are all solid popover surfaces, never translucent: they sit over photos and video frames, so a frosted surface would read as a grey wash and cost legibility. Menu rows highlight with the accent token (a step stronger in dark mode).
+            </>,
+            <>
               <B>Notifications:</B> stacked toasts at the top center (if the AI server can\u2019t be reached when the app opens, one says projects and Flicks are kept in this browser until it is back). Empty states inside a page use the small EmptyState (a dashed box with a title and a line, no drawing); page-level ones have the drawing. Newest in front, older ones peek behind; hover to spread them out. Each closes after 5
               seconds, paused while hovered. A toast can carry a description and one action.
             </>,
