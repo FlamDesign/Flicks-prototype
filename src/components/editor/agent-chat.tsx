@@ -222,9 +222,18 @@ function ErrorText({ text: raw0 }: { text: string }) {
 
 /** what reading each guide meant, said as the work it was */
 const SKILL_DONE: Record<string, string> = {
+  flicks: "got the brief",
+  intent: "read the inputs",
+  research: "looked into the brand",
+  concepts: "explored concepts",
+  storyboard: "drafted the storyboard",
+  references: "set up the references",
+  formats: "checked the format",
+  build: "set up the shoot",
+  changes: "worked out the change",
+  // older chats
   brief: "shaped the brief",
   categories: "found the angle",
-  concepts: "explored concepts",
   brand: "studied the brand",
   shots: "blocked out the shots",
   video: "directed the videos",

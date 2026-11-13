@@ -1951,7 +1951,18 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         // what it looked up on the web, shown as quiet lines
         for (const b of res.content)
           if (b.type === "server_tool_use") {
-            const q = (b.input ?? {}) as { query?: string; url?: string }
+            const q = (b.input ?? {}) as { query?: string; url?: string; file_path?: string }
+            // the managed agent reading one of its skills: the same quiet "skills" line as read_skill
+            const skill = b.name === "read" ? /\/skills\/([^/]+)\/SKILL\.md$/.exec(String(q.file_path ?? ""))?.[1] : undefined
+            if (b.name === "read") {
+              if (skill)
+                setItems((list) => {
+                  const last = list[list.length - 1]
+                  if (last?.kind === "skill") return [...list.slice(0, -1), { ...last, names: [...new Set([...last.names, skill])] }]
+                  return [...list, { id: id(), at: Date.now(), kind: "skill", names: [skill] }]
+                })
+              continue
+            }
             add(b.name === "web_search" ? { kind: "browse", what: "search", text: String(q.query ?? "") } : { kind: "browse", what: "read", text: String(q.url ?? "a page").replace(/^https?:\/\/(www\.)?/, "").slice(0, 80), url: q.url })
           }
         // a long search can pause the turn: send it back as it is to carry on
