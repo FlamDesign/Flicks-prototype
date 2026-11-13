@@ -407,7 +407,7 @@ export default {
       }
 
       // saved app data, so projects and chats survive a reload and follow you to other devices
-      const st = url.pathname.match(/^\/store\/(state|elements|chat-[\w-]{4,80})$/)
+      const st = url.pathname.match(/^\/store\/(state|elements|agent-config|chat-[\w-]{4,80})$/)
       if (st && req.method === "GET") return new Response((await env.USAGE?.get(`store:${st[1]}`)) ?? "null", { headers: { ...cors, "content-type": "application/json", "cache-control": "no-store" } })
       if (st && req.method === "PUT") {
         const text = await req.text()
