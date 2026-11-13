@@ -112,8 +112,9 @@
 }
 
 .dark {
-  /* changed: lifted, ordered surfaces (shell 0.2, page 0.235, cards 0.265, popovers 0.275, muted 0.3),
-     warmed to stone (hue 56) to match the light theme */
+  /* changed: lifted, ordered surfaces (shell 0.2, page 0.235, cards 0.265, popovers 0.275, muted 0.33,
+     accent 0.38), warmed to stone (hue 56) to match the light theme. Muted and accent sit a clear step
+     above the popover, so a hovered row or menu item reads as lit, not as a faint smudge */
   --background: oklch(0.235 0.006 56);
   --foreground: oklch(0.97 0.002 84);
   --card: oklch(0.265 0.007 56);
@@ -127,11 +128,11 @@
   --brand: oklch(0.62 0.165 47.5);
   --guide: oklch(0.72 0.22 15);
   --brand-foreground: oklch(0.987 0.022 95.277);
-  --secondary: oklch(0.31 0.008 56);
+  --secondary: oklch(0.33 0.008 56);
   --secondary-foreground: oklch(0.97 0.002 84);
-  --muted: oklch(0.3 0.008 56);
+  --muted: oklch(0.33 0.008 56);
   --muted-foreground: oklch(0.72 0.012 70);
-  --accent: oklch(0.32 0.008 56);
+  --accent: oklch(0.38 0.009 56);
   --accent-foreground: oklch(0.97 0.002 84);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
@@ -146,7 +147,7 @@
   --sidebar-foreground: oklch(0.97 0.002 84);
   --sidebar-primary: oklch(0.94 0.004 84);
   --sidebar-primary-foreground: oklch(0.216 0.006 56.043);
-  --sidebar-accent: oklch(0.27 0.008 56);
+  --sidebar-accent: oklch(0.29 0.008 56);
   --sidebar-accent-foreground: oklch(0.97 0.002 84);
   --sidebar-border: oklch(1 0 0 / 8%);
   --sidebar-ring: oklch(0.553 0.013 58.071);

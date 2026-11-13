@@ -81,7 +81,7 @@ export function DateFilter({ value, onChange, className, label = "Date" }: { val
                 key={p.value}
                 type="button"
                 onClick={() => (onChange({ preset: p.value }), setOpen(false))}
-                className="flex h-9 w-full items-center justify-between gap-2 whitespace-nowrap rounded-xl px-2.5 text-left text-sm outline-none hover:bg-muted focus-visible:bg-muted"
+                className="flex h-9 w-full items-center justify-between gap-2 whitespace-nowrap rounded-xl px-2.5 text-left text-sm outline-none hover:bg-accent focus-visible:bg-accent"
               >
                 {p.label}
                 {value.preset === p.value && !custom && <HugeiconsIcon icon={Tick02Icon} className="size-4" />}
@@ -91,7 +91,7 @@ export function DateFilter({ value, onChange, className, label = "Date" }: { val
               type="button"
               onClick={() => setCustom(true)}
               aria-expanded={custom}
-              className={cn("flex h-9 w-full items-center justify-between gap-2 whitespace-nowrap rounded-xl px-2.5 text-left text-sm outline-none hover:bg-muted focus-visible:bg-muted", custom && "bg-muted")}
+              className={cn("flex h-9 w-full items-center justify-between gap-2 whitespace-nowrap rounded-xl px-2.5 text-left text-sm outline-none hover:bg-accent focus-visible:bg-accent", custom && "bg-muted")}
             >
               Custom range
               {value.preset === "custom" ? <HugeiconsIcon icon={Tick02Icon} className="size-4" /> : <HugeiconsIcon icon={ArrowRight01Icon} className="size-4 text-muted-foreground" />}
