@@ -162,6 +162,24 @@ export default {
         return new Response(upstream.body, { headers: { ...cors, "content-type": "text/event-stream", "cache-control": "no-store" } })
       }
 
+      // Managed Agents (the chat loop run by Anthropic): the app talks to the API through here, with the
+      // key added. Only the agent, environment, skill and session routes pass; a session's event stream
+      // is handed back as it comes.
+      if (url.pathname.startsWith("/agent/v1/")) {
+        if (!env.ANTHROPIC_API_KEY) return json({ error: "claude_not_set_up" }, 503, cors)
+        const path = url.pathname.slice("/agent".length)
+        if (!/^\/v1\/(agents|environments|skills|sessions)(\/|$)/.test(path)) return json({ error: "not_found" }, 404, cors)
+        if (req.method === "POST" && /^\/v1\/sessions\/[^/]+\/events$/.test(path) && !(await take(env, `chat:${day}`, caps.chats))) return json({ error: "daily_limit", what: "chat" }, 429, cors)
+        const headers: Record<string, string> = { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2026-10-21", "anthropic-beta": "managed-agents-2026-04-01" }
+        const type = req.headers.get("content-type")
+        if (type) headers["content-type"] = type
+        const upstream = await fetch(`https://api.anthropic.com${path}${url.search}`, { method: req.method, headers, body: req.method === "GET" || req.method === "DELETE" ? undefined : req.body, ...(req.body ? { duplex: "half" } : {}) } as RequestInit)
+        const out = new Headers(cors)
+        out.set("content-type", upstream.headers.get("content-type") ?? "application/json")
+        out.set("cache-control", "no-store")
+        return new Response(upstream.body, { status: upstream.status, headers: out })
+      }
+
       if (req.method === "POST" && url.pathname === "/upload") {
         if (!(await take(env, `up:${day}`, 300))) return json({ error: "daily_limit", what: "uploads" }, 429, cors)
         const type = (req.headers.get("content-type") ?? "").split(";")[0]
