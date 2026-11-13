@@ -42,9 +42,6 @@ export function FlickPlayer({ videos, active, playing = true, className, fade = 
     return () => clearInterval(id)
   }, [active])
 
-  return () => clearInterval(id)
-  }, [active])
-
   return (
     <div className={cn("absolute inset-0", className)}>
       {videos.map((v, k) => {
