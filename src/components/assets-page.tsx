@@ -53,6 +53,7 @@ const fileName = (a: Asset) => (a.source === "Uploaded" && /\.\w{2,4}$/.test(a.n
 
 type Kind = "all" | "video" | "image"
 type Source = "all" | "Uploaded" | "Generated"
+const PAGE_SIZE = 96
 
 /** true once the element has scrolled into view (and stays true), so a grid of hundreds loads only what shows */
 function useSeen<T extends HTMLElement>() {
@@ -66,6 +67,20 @@ function useSeen<T extends HTMLElement>() {
     return () => io.disconnect()
   }, [seen])
   return { ref, seen }
+}
+
+/** the foot of the grid: when it scrolls into view the next page of tiles is added */
+function More({ onSeen, left }: { onSeen: () => void; left: number }) {
+  const { ref, seen } = useSeen<HTMLDivElement>()
+  useEffect(() => {
+    if (seen) onSeen()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seen])
+  return (
+    <div ref={ref} className="flex h-10 items-center justify-center text-xs text-muted-foreground">
+      {left} more
+    </div>
+  )
 }
 
 /**
@@ -120,8 +135,11 @@ export function AssetsPage({ onCreate, onUse }: { onCreate: () => void; onUse: (
   const [dates, setDates] = useState<DateFilterValue>(ALL_DATES)
   const shown = useMemo(() => list.filter((a) => (kind === "all" || a.kind === kind) && (source === "all" || a.source === source) && inDateFilter(a.createdAt, dates)), [list, kind, source, dates])
   const filtering = kind !== "all" || source !== "all" || dates.preset !== "all"
+  // the grid grows as the user scrolls: a page of tiles at a time, so thousands don't mount at once
+  const [limit, setLimit] = useState(PAGE_SIZE)
+  useEffect(() => setLimit(PAGE_SIZE), [kind, source, dates])
   const groups = useMemo(() => {
-    const sorted = [...shown].sort((a, b) => b.createdAt - a.createdAt)
+    const sorted = [...shown].sort((a, b) => b.createdAt - a.createdAt).slice(0, limit)
     const out: { label: string; items: Asset[] }[] = []
     for (const a of sorted) {
       const label = dayLabel(a.createdAt)
@@ -130,8 +148,9 @@ export function AssetsPage({ onCreate, onUse }: { onCreate: () => void; onUse: (
       else out.push({ label, items: [a] })
     }
     return out
-  }, [shown])
+  }, [shown, limit])
   const ordered = groups.flatMap((g) => g.items)
+
   const openIndex = ordered.findIndex((a) => a.id === openId)
   const viewerItems: ViewerItem[] = useMemo(
     () =>
@@ -256,6 +275,7 @@ export function AssetsPage({ onCreate, onUse }: { onCreate: () => void; onUse: (
               </ul>
             </section>
           ))}
+          {limit < shown.length && <More key={limit} onSeen={() => setLimit((n) => n + PAGE_SIZE)} left={shown.length - limit} />}
         </div>
       )}
       </Loading>
