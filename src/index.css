@@ -88,7 +88,7 @@
   --secondary: oklch(0.954 0.008 84);
   --secondary-foreground: oklch(0.216 0.006 56.043);
   --muted: oklch(0.954 0.008 84);
-  --muted-foreground: oklch(0.553 0.013 58.071);
+  --muted-foreground: oklch(0.5 0.013 58.071);
   --accent: oklch(0.954 0.008 84);
   --accent-foreground: oklch(0.216 0.006 56.043);
   --destructive: oklch(0.577 0.245 27.325);
@@ -125,7 +125,7 @@
   --primary: oklch(0.94 0.004 84);
   --primary-foreground: oklch(0.216 0.006 56.043);
   /* new: the preset's dark amber, a step brighter to sit on the lifted surfaces */
-  --brand: oklch(0.62 0.165 47.5);
+  --brand: oklch(0.56 0.16 47.5);
   --guide: oklch(0.72 0.22 15);
   --brand-foreground: oklch(0.987 0.022 95.277);
   --secondary: oklch(0.33 0.008 56);
