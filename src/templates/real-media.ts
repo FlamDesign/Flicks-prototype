@@ -28,7 +28,7 @@ export const REAL_BRANDS = [
 export type RealSlug = (typeof REAL_BRANDS)[number]["slug"]
 
 /** a real Flick's file, relative to the page (works on the site and in the single-file build) */
-export const realFile = (slug: RealSlug, name: string) => `real/${slug}/${name}`
+export const realFile = (slug: RealSlug, name: string) => `${import.meta.env.BASE_URL}real/${slug}/${name}`
 
 /** every real video in order: brand by brand, variations 1 to 3 */
 export const REAL_VIDEOS = REAL_BRANDS.flatMap((b) =>

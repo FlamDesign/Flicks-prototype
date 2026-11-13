@@ -1,3 +1,6 @@
+
+/** a file from public/, by an address that works on any page (the site is served from its host's root; a relative build keeps "./") */
+const pub = (path: string) => `${import.meta.env.BASE_URL}${path}`
 /**
  * Recipes: ready-made ways to start a Flick from what the user already has. Each one asks for just
  * what it needs in a short form, then hands everything to the AI chat with the recipe named, so the
@@ -37,10 +40,10 @@ export type Recipe = {
 }
 
 const M = (id: string, labels: string[], still = false) => ({
-  clips: labels.map((_, i) => `recipes/${id}/${"abc"[i]}.mp4`),
-  posters: labels.map((_, i) => `recipes/${id}/${"abc"[i]}.jpg`),
+  clips: labels.map((_, i) => pub(`recipes/${id}/${"abc"[i]}.mp4`)),
+  posters: labels.map((_, i) => pub(`recipes/${id}/${"abc"[i]}.jpg`)),
   labels,
-  ...(still ? { still: `recipes/${id}/still.jpg` } : {}),
+  ...(still ? { still: pub(`recipes/${id}/still.jpg`) } : {}),
 })
 
 const VIDEO: Slot = { key: "video", kind: "video", label: "Your video", hint: "Up to 15 seconds. Longer videos are trimmed.", min: 1, max: 1 }
@@ -97,7 +100,7 @@ export const RECIPES: Recipe[] = [
     frame: true,
     lengths: [4, 8, 12],
     note: "What should move? A slow push-in, the product spinning…",
-    media: { ...M("make-it-move", ["Moving"]), still: "recipes/make-it-move/still.jpg" },
+    media: { ...M("make-it-move", ["Moving"]), still: pub("recipes/make-it-move/still.jpg") },
     steps: [
       ["Add your image", "A product shot or a finished ad."],
       ["Choose start or end", "The video opens on it, or builds up to it."],

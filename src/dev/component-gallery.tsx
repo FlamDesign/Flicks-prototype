@@ -719,7 +719,7 @@ const ENTRIES: Entry[] = [
     render: () => (
       <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
         <Dropzone items={[]} onBrowse={() => {}} onFiles={() => {}} accept="video" title="Drop your video here" hint="MP4, MOV or WebM · up to 15s" />
-        <Dropzone items={[{ id: "1", name: "White", kind: "video", poster: "recipes/product-swap/a.jpg", meta: "0:05" }, { id: "2", name: "Still", kind: "image", url: "recipes/make-it-move/still.jpg" }]} onBrowse={() => {}} onFiles={() => {}} onRemove={() => {}} accept="media" max={5} hint="photos or videos" />
+        <Dropzone items={[{ id: "1", name: "White", kind: "video", poster: `${import.meta.env.BASE_URL}recipes/product-swap/a.jpg`, meta: "0:05" }, { id: "2", name: "Still", kind: "image", url: `${import.meta.env.BASE_URL}recipes/make-it-move/still.jpg` }]} onBrowse={() => {}} onFiles={() => {}} onRemove={() => {}} accept="media" max={5} hint="photos or videos" />
       </div>
     ),
   },

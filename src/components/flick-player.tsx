@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
  * swap reads as one scene changing, not a restart). Muted, looping; a play button if autoplay is
  * blocked. Used by the editor canvas, the Flick page and the shared viewer.
  */
-export function FlickPlayer({ videos, active, playing = true, className, fade = true }: { videos: number[]; active: number; playing?: boolean; className?: string; /** a short cross-fade on switch */ fade?: boolean }) {
+export function FlickPlayer({ videos, active, playing = true, className, fade = false }: { videos: number[]; active: number; playing?: boolean; className?: string; /** a short cross-fade on switch */ fade?: boolean }) {
   const refs = useRef<(HTMLVideoElement | null)[]>([])
   const last = useRef(active)
   const [blocked, setBlocked] = useState(false)
