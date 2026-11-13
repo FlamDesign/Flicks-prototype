@@ -170,7 +170,7 @@ export default {
         const path = url.pathname.slice("/agent".length)
         if (!/^\/v1\/(agents|environments|skills|sessions)(\/|$)/.test(path)) return json({ error: "not_found" }, 404, cors)
         if (req.method === "POST" && /^\/v1\/sessions\/[^/]+\/events$/.test(path) && !(await take(env, `chat:${day}`, caps.chats))) return json({ error: "daily_limit", what: "chat" }, 429, cors)
-        const headers: Record<string, string> = { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2026-10-21", "anthropic-beta": "managed-agents-2026-04-01" }
+        const headers: Record<string, string> = { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2026-10-21", "anthropic-beta": path.startsWith("/v1/skills") ? "managed-agents-2026-04-01,skills-2025-10-02" : "managed-agents-2026-04-01" }
         const type = req.headers.get("content-type")
         if (type) headers["content-type"] = type
         const upstream = await fetch(`https://api.anthropic.com${path}${url.search}`, { method: req.method, headers, body: req.method === "GET" || req.method === "DELETE" ? undefined : req.body, ...(req.body ? { duplex: "half" } : {}) } as RequestInit)
