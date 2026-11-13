@@ -5,7 +5,7 @@ const { chromium } = require("playwright")
 const fs = require("fs")
 const path = require("path")
 
-const SITE = process.env.SITE || "https://agent.flicks-6sa.pages.dev/"
+const SITE = process.env.SITE || "https://agent.flam-flicks.pages.dev/"
 const FILES = path.join(__dirname, "files")
 
 function file(name) {
