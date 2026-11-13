@@ -114,23 +114,18 @@ const STOP_MESSAGES: Record<string, string> = {
   refusal: "The chat declined to continue with this.",
 }
 
+type Callbacks = { onText: (text: string) => void; signal?: AbortSignal; onTool?: (name: string) => void; usage?: { current: Usage & { calls: number } } }
+type Reply = ChatResult & { calls: number }
+
 /**
  * One reply from the session: sends the events, then reads the stream until the session goes idle.
- * `onText` gets the words as they land; tool calls come back as tool_use blocks whose ids are the
- * session's event ids (the app answers them with results carrying those ids).
+ * `onText` gets the words as they land (token by token); tool calls come back as tool_use blocks
+ * whose ids are the session's event ids (the app answers them with results carrying those ids).
  */
-export async function sessionTurn(sessionId: string, events: Ev[], onText: (text: string) => void, signal?: AbortSignal, onTool?: (name: string) => void, usage?: { current: Usage & { calls: number } }): Promise<ChatResult & { calls: number }> {
+export async function sessionTurn(sessionId: string, events: Ev[], cb: Callbacks): Promise<Reply> {
+  const reply = collector(cb)
   // the stream first, so nothing sent is missed
-  let res: Response
-  try {
-    res = await apiCall(`/agent/v1/sessions/${sessionId}/events/stream`, { signal, headers: { accept: "text/event-stream" } })
-  } catch (e) {
-    if (signal?.aborted) throw new AiError("aborted", "Stopped")
-    throw e
-  }
-  if (!res.body) throw new AiError("network", MESSAGES.network)
-  const reader = res.body.getReader()
-  const dec = new TextDecoder()
+  const reader = await openStream(sessionId, cb.signal)
   if (events.length) {
     await post(`/v1/sessions/${sessionId}/events`, { events }).catch(async (e) => {
       await reader.cancel().catch(() => {})
@@ -139,21 +134,137 @@ export async function sessionTurn(sessionId: string, events: Ev[], onText: (text
       throw e
     })
   }
+  await readStream(reader, reply, cb.signal)
+  return reply.result()
+}
+
+/**
+ * After a reload mid-reply: what the session did since the app's last message is replayed from its
+ * event log, and if it's still working the stream is joined. "unsent": the app's last message never
+ * reached the session (the page closed before it went), so the caller sends it; "stalled": it did,
+ * but no reply came, so the caller nudges.
+ */
+export async function rejoinTurn(sessionId: string, lastSent: Message | undefined, cb: Callbacks): Promise<Reply | "unsent" | "stalled"> {
+  const reply = collector(cb)
+  const page = await api<{ data: Ev[] }>(`/v1/sessions/${sessionId}/events?order=desc&limit=200`)
+  const log = [...page.data].reverse()
+  const isUser = (e: Ev) => typeof e.type === "string" && e.type.startsWith("user.")
+  let at = -1
+  for (let i = log.length - 1; i >= 0; i--)
+    if (isUser(log[i])) {
+      at = i
+      break
+    }
+  // was the app's last message the one the session saw last?
+  const last = at >= 0 ? log[at] : undefined
+  const mine = lastSent?.content ?? []
+  const sentText = mine.find((b): b is Extract<Block, { type: "text" }> => b.type === "text")?.text
+  const sentIds = mine.flatMap((b) => (b.type === "tool_result" ? [b.tool_use_id] : []))
+  const theirs = last?.type === "user.message" ? ((last.content as { text?: string }[]) ?? []).map((b) => b.text).find(Boolean) : last?.type === "user.custom_tool_result" ? String(last.custom_tool_use_id) : undefined
+  // a system note (the state) follows the message: step back to the message itself
+  const seen = !!last && ((sentText !== undefined && theirs === sentText) || (sentIds.length > 0 && log.slice(Math.max(0, at - sentIds.length), at + 1).some((e) => sentIds.includes(String(e.custom_tool_use_id)))))
+  if (!seen) return "unsent"
+  for (const e of log.slice(at + 1)) {
+    reply.handle(e)
+    if (reply.stopped()) return reply.result()
+  }
+  const s = await api<{ status: string }>(`/v1/sessions/${sessionId}`)
+  if (s.status !== "running") {
+    // idle with nothing new after the message: the reply never started (or was lost)
+    if (!reply.any()) return "stalled"
+    return reply.result()
+  }
+  const reader = await openStream(sessionId, cb.signal)
+  await readStream(reader, reply, cb.signal)
+  return reply.result()
+}
+
+async function openStream(sessionId: string, signal?: AbortSignal) {
+  let res: Response
+  try {
+    res = await apiCall(`/agent/v1/sessions/${sessionId}/events/stream?event_deltas=true`, { signal, headers: { accept: "text/event-stream" } })
+  } catch (e) {
+    if (signal?.aborted) throw new AiError("aborted", "Stopped")
+    throw e
+  }
+  if (!res.body) throw new AiError("network", MESSAGES.network)
+  return res.body.getReader()
+}
+
+/** Reads server-sent events until the reply is complete */
+async function readStream(reader: ReadableStreamDefaultReader<Uint8Array>, reply: ReturnType<typeof collector>, signal?: AbortSignal) {
+  const dec = new TextDecoder()
+  let buf = ""
+  try {
+    for (;;) {
+      const { value, done } = await reader.read()
+      if (done) break
+      buf += dec.decode(value, { stream: true })
+      let i: number
+      while ((i = buf.indexOf("\n\n")) >= 0) {
+        const chunk = buf.slice(0, i)
+        buf = buf.slice(i + 2)
+        const data = chunk
+          .split("\n")
+          .filter((l) => l.startsWith("data:"))
+          .map((l) => l.slice(5).trim())
+          .join("\n")
+        if (!data) continue
+        let ev: Ev
+        try {
+          ev = JSON.parse(data) as Ev
+        } catch {
+          continue
+        }
+        reply.handle(ev)
+        if (reply.stopped()) break
+      }
+      if (reply.stopped()) break
+    }
+  } finally {
+    await reader.cancel().catch(() => {})
+  }
+  if (signal?.aborted) throw new AiError("aborted", "Stopped")
+  if (!reply.stopped()) throw new AiError("network", "The chat's stream ended early.")
+}
+
+/** Gathers one reply out of session events: words (with token previews), tool calls, usage, and the stop */
+function collector({ onText, onTool, usage }: Callbacks) {
   const content: Block[] = []
   let calls = 0
   let text = ""
   let stop = ""
-  let buf = ""
+  // words still arriving for a message (event_delta previews), by the message's event id
+  const drafts = new Map<string, string>()
+  const show = () => {
+    const live = [...drafts.values()].filter(Boolean).join("\n\n")
+    onText([text, live].filter(Boolean).join("\n\n"))
+  }
   const handle = (ev: Ev) => {
     switch (ev.type) {
+      case "event_start": {
+        const e = ev.event as { type?: string; id?: string } | undefined
+        if (e?.type === "agent.message" && e.id) drafts.set(e.id, "")
+        break
+      }
+      case "event_delta": {
+        const d = ev.delta as { type?: string; content?: { type?: string; text?: string } } | undefined
+        const id = String(ev.event_id)
+        if (d?.content?.type === "text" && d.content.text && drafts.has(id)) {
+          drafts.set(id, drafts.get(id) + d.content.text)
+          show()
+        }
+        break
+      }
       case "agent.message": {
+        drafts.delete(String(ev.id))
         const blocks = (ev.content as { type: string; text?: string }[]) ?? []
         for (const b of blocks)
           if (b.type === "text" && b.text) {
             content.push({ type: "text", text: b.text })
             text = text ? `${text}\n\n${b.text}` : b.text
-            onText(text)
           }
+        show()
         break
       }
       case "agent.custom_tool_use":
@@ -187,38 +298,12 @@ export async function sessionTurn(sessionId: string, events: Ev[], onText: (text
         throw new AiError("claude_error", "This project's chat session has ended.")
     }
   }
-  try {
-    for (;;) {
-      const { value, done } = await reader.read()
-      if (done) break
-      buf += dec.decode(value, { stream: true })
-      let i: number
-      while ((i = buf.indexOf("\n\n")) >= 0) {
-        const chunk = buf.slice(0, i)
-        buf = buf.slice(i + 2)
-        const data = chunk
-          .split("\n")
-          .filter((l) => l.startsWith("data:"))
-          .map((l) => l.slice(5).trim())
-          .join("\n")
-        if (!data) continue
-        let ev: Ev
-        try {
-          ev = JSON.parse(data) as Ev
-        } catch {
-          continue
-        }
-        handle(ev)
-        if (stop) break
-      }
-      if (stop) break
-    }
-  } finally {
-    await reader.cancel().catch(() => {})
+  return {
+    handle,
+    stopped: () => !!stop,
+    any: () => content.length > 0,
+    result: (): Reply => ({ content, stop: stop === "requires_action" ? "tool_use" : "end_turn", usage: { input: 0, cached: 0, written: 0, output: 0 }, calls }),
   }
-  if (signal?.aborted) throw new AiError("aborted", "Stopped")
-  if (!stop) throw new AiError("network", "The chat's stream ended early.")
-  return { content, stop: stop === "requires_action" ? "tool_use" : "end_turn", usage: { input: 0, cached: 0, written: 0, output: 0 }, calls }
 }
 
 /** Stops the reply in progress on the server (the app's Stop button) */

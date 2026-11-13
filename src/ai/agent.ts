@@ -3,7 +3,7 @@
  * what to build, calling the tools below; the editor carries them out. Without a connection, the
  * chat shows "Couldn't connect to the AI server." and nothing else happens.
  */
-import { agentConfig, createSession, interrupt, managedOn, sessionTurn, toEvents } from "@/ai/managed"
+import { agentConfig, createSession, interrupt, managedOn, rejoinTurn, sessionTurn, toEvents } from "@/ai/managed"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { AiError, MESSAGES, aiConfig, aspectOf, cancelQueuedImages, keepable, generateImage, mockVideos, pollImage, imageBlock, library, shareable, sharedNow, type LibraryItem, isLive, readWebsite, siteImage, streamChat, type Block, type ChatResult, type Message, type Tool } from "@/ai/client"
 import type { Paint, ShapeKind } from "@/components/editor/elements"
@@ -1924,9 +1924,19 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         const res: ChatResult & { calls?: number } = managed
           ? await (async () => {
               const sess = await ensureSession(now.title)
+              const cb = { onText, signal: abort.current!.signal, onTool, usage }
+              // back after a reload mid-reply: pick up what the session did meanwhile
+              if (rejoin.current) {
+                rejoin.current = false
+                const got = await rejoinTurn(sess, msgs.current[sent.current - 1], cb)
+                if (got === "unsent") sent.current = Math.min(sent.current, Math.max(0, msgs.current.length - 1))
+                else if (got === "stalled") msgs.current.push({ role: "user", content: [{ type: "text", text: "(The app is back after a reload. Carry on from where you were.)" }] })
+                else return got
+              }
               const events = toEvents(msgs.current.slice(sent.current), now)
               sent.current = msgs.current.length
-              return sessionTurn(sess, events, onText, abort.current!.signal, onTool, usage)
+              checkpoint()
+              return sessionTurn(sess, events, cb)
             })()
           : await ask(req).catch((e) => {
               if (e instanceof Error && /tool_result|thinking|signature/i.test(e.message)) return ask(cachedRequest(systemPrompt(now), msgs.current, now, true, now.storyboarding || now.planned))
@@ -2057,6 +2067,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   /** the managed session for this project (Dev switch "Chat: managed agent"), and how far msgs has been sent to it */
   const session = useRef<string | null>(null)
   const sent = useRef(0)
+  /** set after a reload mid-reply: the next turn rejoins the session instead of sending */
+  const rejoin = useRef(false)
   const ensureSession = async (title: string) => {
     if (session.current) return session.current
     const cfg = await agentConfig()
@@ -2437,7 +2449,15 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
             for (const x of list) if (x.kind === "image" && x.state === "working" && x.job) resumeImage(x.id, x.job, x.target)
             // the page closed mid-turn, with the user's message (or a step's results) unanswered
             resumeDismissed.current = !!saved.resumeDismissed
-            setItems(saved.msgs.at(-1)?.role === "user" && !pending.current.length && !saved.resumeDismissed ? [...list, { id: crypto.randomUUID(), kind: "resume" } as Item] : list)
+            const midReply = saved.msgs.at(-1)?.role === "user" && !pending.current.length
+            // a managed session kept working while the page was away: rejoin it, no card
+            if (midReply && session.current && managedOn()) {
+              setItems(list)
+              rejoin.current = true
+              setTimeout(() => void turn(), 0)
+              return
+            }
+            setItems(midReply && !saved.resumeDismissed ? [...list, { id: crypto.randomUUID(), kind: "resume" } as Item] : list)
           } else if (opts.fresh !== false) begin()
         })
       return
