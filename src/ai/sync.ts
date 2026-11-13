@@ -95,7 +95,7 @@ export function saver(key: string, ms = 8000, maxMs = 45000, prepare?: (value: u
 }
 
 /** `deleted`: when each project or Flick was deleted, so another tab's older list can't bring it back */
-type Saved = LibraryState & { made?: SampleVideo[]; deleted?: Record<string, number> }
+type Saved = Omit<LibraryState, "synced"> & { made?: SampleVideo[]; deleted?: Record<string, number> }
 
 const MONTH = 30 * 24 * 3600 * 1000
 /** projects and Flicks deleted here (by id, when): sent with every save */
@@ -209,6 +209,7 @@ export function startSync() {
     } catch (e) {
       console.warn("Couldn't load saved projects", e)
       // the app keeps working from this browser's copy; the pages say so once
+      library.syncFailed()
       window.dispatchEvent(new CustomEvent("flam:sync-failed"))
     }
     ready = true

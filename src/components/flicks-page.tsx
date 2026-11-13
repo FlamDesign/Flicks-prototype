@@ -29,7 +29,8 @@ type MenuItem = { label: string; icon: typeof Copy01Icon; onSelect: () => void; 
 /** Projects: editable drafts. Opening one opens the editor. */
 export function ProjectsPage({ onOpen, onCreate }: { onOpen: (p: Project) => void; onCreate: () => void }) {
   // the onboarding sample project is kept for Help and the tour, but never listed
-  const projects = useLibrary().projects.filter((p) => p.id !== SAMPLE_ID)
+  const lib = useLibrary()
+  const projects = lib.projects.filter((p) => p.id !== SAMPLE_ID)
   const toast = useToast()
   return (
     <>
@@ -38,6 +39,7 @@ export function ProjectsPage({ onOpen, onCreate }: { onOpen: (p: Project) => voi
         // start loading the editor when a card is pointed at, so opening feels instant
         warm={() => void import("@/components/generation-canvas")}
         description="Drafts you’re working on."
+        ready={lib.synced}
         searchLabel="Search projects"
         dateLabel="Last edited"
         items={projects.map((p) => ({
@@ -81,7 +83,7 @@ export function ProjectsPage({ onOpen, onCreate }: { onOpen: (p: Project) => voi
 
 /** Flicks: exported and fixed. Opening one opens its page (link, embed, ads, analytics, Remix). */
 export function FlicksPage({ onOpen, onRemix, onProjects }: { onOpen: (f: FlickRecord) => void; onRemix: (f: FlickRecord) => void; onProjects: () => void }) {
-  const { flicks } = useLibrary()
+  const { flicks, synced } = useLibrary()
   const { placements } = useAds()
   const toast = useToast()
   const [pendingDelete, setPendingDelete] = useState<FlickRecord | null>(null)
@@ -93,6 +95,7 @@ export function FlicksPage({ onOpen, onRemix, onProjects }: { onOpen: (f: FlickR
         title="Flicks"
         warm={() => void import("@/components/flick-page")}
         description="Flicks ready to share, embed in website or serve in ads."
+        ready={synced}
         searchLabel="Search Flicks"
         dateLabel="Created"
         items={flicks.map((f) => ({
@@ -160,6 +163,7 @@ function LibraryList({
   onOpen,
   menu,
   empty,
+  ready,
 }: {
   title: string
   description: string
@@ -172,6 +176,8 @@ function LibraryList({
   menu: (it: Item) => MenuItem[]
   empty: { title: string; text: string; action?: React.ReactNode }
   warm?: () => void
+  /** false while the server's copy is still on its way: the skeleton shows, never a stand-in list */
+  ready?: boolean
 }) {
   const [query, setQuery] = useState("")
   const [size, setSize] = useState("all")
@@ -214,7 +220,9 @@ function LibraryList({
       <div className="mt-6">
         {/* searching or filtering fetches again */}
         <Loading k={[query.trim(), size, dates]} skipFirst skeleton={<CardsSkeleton count={8} cols="grid-cols-2 gap-x-4 sm:grid-cols-3 lg:grid-cols-4" />}>
-        {list.length ? (
+        {ready === false ? (
+          <CardsSkeleton count={8} cols="grid-cols-2 gap-x-4 sm:grid-cols-3 lg:grid-cols-4" />
+        ) : list.length ? (
           <div className="grid grid-cols-2 gap-x-6 sm:grid-cols-3 lg:grid-cols-4">
             {list.map((it) => (
               <Card key={it.id} it={it} when={when(it.at, now)} whenTitle={whenTitle(it.at)} onOpen={() => onOpen(it)} menu={menu(it)} warm={warm} />

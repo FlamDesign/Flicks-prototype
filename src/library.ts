@@ -81,8 +81,17 @@ const sampleProjects = (): Project[] =>
 
 // ---------- store ----------
 
-export type LibraryState = { projects: Project[]; flicks: FlickRecord[] }
-let state: LibraryState = { projects: sampleProjects(), flicks: FLICKS.map(sampleFlick) }
+export type LibraryState = { projects: Project[]; flicks: FlickRecord[]; /** the server's copy is in (or there is no server): the lists are real */ synced: boolean }
+/** with the AI server set up the lists start empty until its copy arrives; without one, the samples */
+const serverSetUp = () => {
+  try {
+    const c = JSON.parse(localStorage.getItem("flam.ai") ?? "{}") as { passcode?: string }
+    return !!c.passcode?.trim()
+  } catch {
+    return false
+  }
+}
+let state: LibraryState = serverSetUp() ? { projects: [], flicks: [], synced: false } : { projects: sampleProjects(), flicks: FLICKS.map(sampleFlick), synced: true }
 const listeners = new Set<() => void>()
 /** true while a change shouldn't be saved to the server (dev resets, loading what the server sent) */
 let quiet = false
@@ -116,11 +125,15 @@ const uid = (p: string) => `${p}_${Math.random().toString(36).slice(2, 8)}`
 export const library = {
   /** dev tools: the samples, or nothing */
   reset({ projects, flicks }: { projects: boolean; flicks: boolean }) {
-    set(() => ({ projects: projects ? sampleProjects() : [], flicks: flicks ? FLICKS.map(sampleFlick) : [] }), true)
+    set((s) => ({ ...s, projects: projects ? sampleProjects() : [], flicks: flicks ? FLICKS.map(sampleFlick) : [] }), true)
   },
   /** what the server saved replaces what's here */
   load(saved: { projects: Project[]; flicks: FlickRecord[] }) {
-    set(() => ({ projects: saved.projects.map(realCover), flicks: saved.flicks }), true)
+    set(() => ({ projects: saved.projects.map(realCover), flicks: saved.flicks, synced: true }), true)
+  },
+  /** the server couldn't be reached: what's here is what there is */
+  syncFailed() {
+    set((s) => ({ ...s, synced: true }), true)
   },
   /** create or update a project (the editor saves as you work) */
   saveProject(p: Partial<Project> & { id: string }) {
@@ -167,6 +180,7 @@ export const library = {
       exporting: { from: Date.now(), until: Date.now() + f.ms },
     }
     set((s) => ({
+      ...s,
       flicks: [flick, ...s.flicks],
       projects: s.projects.map((p) => (p.id === f.projectId ? { ...p, exports: [flick.id, ...p.exports] } : p)),
     }))
@@ -181,6 +195,7 @@ export const library = {
   },
   deleteFlick(id: string) {
     set((s) => ({
+      ...s,
       flicks: s.flicks.filter((f) => f.id !== id),
       projects: s.projects.map((p) => ({ ...p, exports: p.exports.filter((x) => x !== id) })),
     }))
