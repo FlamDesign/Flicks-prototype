@@ -212,6 +212,8 @@ export function startSync() {
       window.dispatchEvent(new CustomEvent("flam:sync-failed"))
     }
     ready = true
+    // the saved projects are in: a page opened by address can find its project now
+    window.dispatchEvent(new CustomEvent("flam:sync-ready"))
   }
   void go()
   aiConfig.subscribe(() => void go())

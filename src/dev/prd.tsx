@@ -190,6 +190,9 @@ const SECTIONS: Section[] = [
               <B>Loading everywhere else:</B> anything that would fetch shows a skeleton for the same moment: the workspace setup form (progress, title, fields and Continue) before it appears; the editor while a project opens (rail, canvas, strip and prompts; a project made with the chat that hasn’t generated yet shows the chat instead: the plan steps and the conversation centered, with the message box at the bottom); the templates on Create (on arrival and when filtered); searching or filtering Projects, Flicks and Assets; changing Analytics\u2019 tab, period, country, source or what\u2019s open (a chart and lists); Usage history filters and pages; the editor\u2019s Images, Layouts and Feeds panels and the image picker; Version history; CPM rates; the Flick picker for a placement; embeds in Add to embed. Buttons that save, create, delete, restore or add show a spinner in place of their label (same width, disabled) before they act. All of it follows Page load time; 0 turns it off.
             </>,
             <>
+              <B>Addresses:</B> every page has its own: / (Create), /projects, /p/&lt;project&gt;, /flicks, /f/&lt;flick&gt;, /assets, /campaigns and /campaigns/&lt;placement&gt;, /embeds and /embeds/&lt;embed&gt;, /analytics and /analytics/&lt;kind&gt;/&lt;id&gt;, /templates/&lt;id&gt;, /ad-balance, /credits, /account. The address follows the page; Back and Forward work; a reload or a pasted link opens the page it names (a project or Flick that isn’t in this browser yet waits for the saved ones; one that doesn’t exist opens its list). The site is hosted on Cloudflare Pages, so any address serves the app: main is the site, every other branch has its own address (&lt;branch&gt;.flicks-6sa.pages.dev).
+            </>,
+            <>
               <B>Account menu:</B> Account, Credits, Ad Balance, Help Center (opens in a new tab), Theme (light, dark, system), Log out.
             </>,
             <>

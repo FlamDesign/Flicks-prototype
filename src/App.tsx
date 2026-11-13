@@ -21,8 +21,9 @@ import { useDevAction } from "@/dev/dev-actions"
 import { AccountSkeleton, ChatSkeleton, DetailSkeleton, EditorSkeleton, FlickPageSkeleton, GridSkeleton, PageLoader, TableSkeleton } from "@/components/page-skeletons"
 import { WelcomeGiftDialog, WELCOME_CREDITS } from "@/components/welcome-gift-page"
 import { type Generation } from "@/components/generation-canvas"
-import { templateRef, type Template } from "@/data"
+import { TEMPLATES, templateRef, type Template } from "@/data"
 import { getLibrary, library, useLibrary, type FlickRecord, type Project } from "@/library"
+import { currentRoute, routed, showRoute, type Route } from "@/lib/route"
 import { copyChat, safeSnap } from "@/ai/copy-chat"
 import { DEV_TOOLS, useDevState } from "@/dev/state"
 import { DevWidget } from "@/dev/dev-widget"
@@ -269,6 +270,77 @@ export default function App() {
     setPage(p)
     scroller.current?.scrollTo({ top: 0 })
   }
+  // every page has its own address (see lib/route.ts): the address follows the page, and Back,
+  // Forward or a reload open the page the address names
+  const route: Route =
+    page === "Generate" ? { page, id: generation?.id }
+    : page === "Flick" ? { page, id: flickId ?? undefined }
+    : page === "Campaigns" ? { page, id: adsTarget ?? undefined }
+    : page === "Embeds" ? { page, id: embedTarget ?? undefined }
+    : page === "Analytics" ? (analyticsTarget ? { page, kind: analyticsTarget.kind, id: analyticsTarget.id } : { page })
+    : page === "Template" ? { page, id: previewTemplate?.id }
+    : { page }
+  const routeKey = `${route.page}|${route.kind ?? ""}|${route.id ?? ""}`
+  useEffect(() => {
+    if (dev.loggedIn && dev.onboarded) showRoute(route)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeKey, dev.loggedIn, dev.onboarded])
+  const applyRoute = (r: Route) => {
+    switch (r.page) {
+      case "Generate": {
+        const p = getLibrary().projects.find((x) => x.id === r.id)
+        if (p) openProject(p)
+        else navigate("Projects")
+        break
+      }
+      case "Flick":
+        if (r.id && getLibrary().flicks.some((f) => f.id === r.id)) openFlickPage(r.id)
+        else navigate("Flicks")
+        break
+      case "Campaigns":
+        setAdsTarget(r.id ?? null)
+        setNavCount((n) => n + 1)
+        setPage("Campaigns")
+        break
+      case "Embeds":
+        setEmbedTarget(r.id ?? null)
+        setNavCount((n) => n + 1)
+        setPage("Embeds")
+        break
+      case "Analytics":
+        setAnalyticsTarget(r.id && r.kind ? ({ kind: r.kind, id: r.id } as AnalyticsTarget) : null)
+        setNavCount((n) => n + 1)
+        setPage("Analytics")
+        break
+      case "Template": {
+        const t = TEMPLATES.find((x) => x.id === r.id)
+        if (t) openTemplate(t)
+        else navigate("Create")
+        break
+      }
+      default:
+        navigate(r.page)
+    }
+  }
+  const applyRouteRef = useRef(applyRoute)
+  applyRouteRef.current = applyRoute
+  useEffect(() => {
+    if (!routed()) return
+    // the address the app opened on; a project or Flick not in this browser yet waits for the saved ones
+    const first = currentRoute()
+    const needsLibrary = (r: Route) => (r.page === "Generate" && !getLibrary().projects.some((x) => x.id === r.id)) || (r.page === "Flick" && !getLibrary().flicks.some((f) => f.id === r.id))
+    if (first.page !== "Create" && !location.hash.includes("start=")) {
+      if (needsLibrary(first)) {
+        const once = () => (window.removeEventListener("flam:sync-ready", once), applyRouteRef.current(first))
+        window.addEventListener("flam:sync-ready", once)
+        window.addEventListener("flam:sync-failed", once)
+      } else applyRouteRef.current(first)
+    }
+    const on = () => applyRouteRef.current(currentRoute())
+    window.addEventListener("popstate", on)
+    return () => window.removeEventListener("popstate", on)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   // a new video: Create, with the prompt box focused
   const newVideo = () => {
     navigate("Create")
