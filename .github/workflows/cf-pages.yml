@@ -1,7 +1,7 @@
 name: Deploy site
 
-# Every branch deploys to Cloudflare Pages: main is the site (https://flicks.pages.dev), any other
-# branch gets its own address (https://<branch>.flicks.pages.dev). Needs the same Cloudflare token
+# Every branch deploys to Cloudflare Pages: main is the site (https://flicks-6sa.pages.dev), any other
+# branch gets its own address (https://<branch>.flicks-6sa.pages.dev). Needs the same Cloudflare token
 # as the AI server, with Cloudflare Pages: Edit added to it.
 on:
   push:
@@ -55,4 +55,5 @@ jobs:
         run: npx -y wrangler@4 pages deploy dist-pages --project-name "$PROJECT" --branch "${{ github.ref_name }}" --commit-dirty=true
       - name: Show the address
         run: |
-          if [ "${{ github.ref_name }}" = "main" ]; then echo "Site: https://$PROJECT.pages.dev" >> "$GITHUB_STEP_SUMMARY"; else echo "Site: https://${{ github.ref_name }}.$PROJECT.pages.dev" >> "$GITHUB_STEP_SUMMARY"; fi
+          HOST=$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PROJECT" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.parse(s).result.subdomain||""))')
+          if [ "${{ github.ref_name }}" = "main" ]; then echo "Site: https://$HOST" >> "$GITHUB_STEP_SUMMARY"; else echo "Site: https://${{ github.ref_name }}.$HOST" >> "$GITHUB_STEP_SUMMARY"; fi
