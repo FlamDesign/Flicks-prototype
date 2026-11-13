@@ -103,3 +103,14 @@ export function AiLibrary() {
     </section>
   )
 }
+
+/** the Library tab of the Dev AI dialog */
+export function AiLibraryPanel() {
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto p-5">
+      <div className="mx-auto max-w-2xl">
+        <AiLibrary />
+      </div>
+    </div>
+  )
+}

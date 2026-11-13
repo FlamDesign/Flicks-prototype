@@ -2,7 +2,6 @@ import { useEffect, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { RefreshIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Spinner } from "@/components/ui/spinner"
 import { aiConfig, isLive } from "@/ai/client"
 import { loadSaved } from "@/ai/sync"
@@ -82,7 +81,7 @@ const pct = (us: SavedUsage[]) => {
  * storyboard, how many videos it made and how long it ran. The averages at the top are what flow
  * changes should move: fewer turns and questions to the storyboard, more chats handed over.
  */
-export function ChatMetricsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+export function MetricsPanel() {
   const [rows, setRows] = useState<ChatMetrics[] | null>(null)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
@@ -108,9 +107,9 @@ export function ChatMetricsDialog({ open, onOpenChange }: { open: boolean; onOpe
     }
   }
   useEffect(() => {
-    if (open && !rows) void load()
+    if (!rows) void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
+  }, [])
   const reached = rows?.filter((r) => r.toStoryboard !== undefined) ?? []
   const summary = rows && [
     ["Chats", String(rows.length)],
@@ -124,12 +123,11 @@ export function ChatMetricsDialog({ open, onOpenChange }: { open: boolean; onOpe
     ["From cache", pct(rows.filter((r) => r.usage).map((r) => r.usage!))],
   ]
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[85vh] flex-col gap-3 sm:max-w-4xl">
-        <DialogHeader>
-          <DialogTitle>Chat metrics</DialogTitle>
-          <DialogDescription>How far each chat got, and what it took to get there. Averages first; what flow changes should move.</DialogDescription>
-        </DialogHeader>
+    <div className="flex h-full min-h-0 w-full flex-col gap-3 p-6">
+        <div className="flex flex-col gap-1.5">
+          <h3 className="text-sm font-medium">Chat metrics</h3>
+          <p className="text-sm text-muted-foreground">How far each chat got, and what it took to get there. Averages first; what flow changes should move.</p>
+        </div>
         <div className="flex items-center gap-2">
           <Button size="sm" variant="outline" onClick={load} disabled={loading} className="gap-1.5">
             {loading ? <Spinner className="size-3.5" /> : <HugeiconsIcon icon={RefreshIcon} className="size-3.5" />}
@@ -187,7 +185,6 @@ export function ChatMetricsDialog({ open, onOpenChange }: { open: boolean; onOpe
             </tbody>
           </table>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
   )
 }

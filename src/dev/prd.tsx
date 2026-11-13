@@ -1,7 +1,5 @@
 import { useRef, useState } from "react"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { DevBadge } from "@/dev/state-manager"
 import { cn } from "@/lib/utils"
 
 /** Bump when the PRD changes. */
@@ -1005,10 +1003,32 @@ const SECTIONS: Section[] = [
       />
     ),
   },
+  {
+    id: "dev",
+    title: "28. Dev tools",
+    body: (
+      <UL
+        items={[
+          <>
+            <B>The pill:</B> one small DEV pill floats on every screen (sign-in, onboarding, the app, the editor); drag its grip to move it, double-click the grip to put it back. Two dots show whether Sample videos and Managed agent are on; a flash shows when the screen has a shortcut. Click the pill, or press ⌘., for the menu.
+          </>,
+          <>
+            <B>The menu:</B> Switches (Sample videos: videos come back as sample clips, nothing is generated; Managed agent: new chats run through the agent on the AI side; Page load time: pages show their skeletons for a moment), This screen (the shortcuts the screen offers, such as opening the emailed sign-in link or resetting onboarding), and Open: State, AI, Docs. The footer shows today’s chat replies, images and videos against the server’s caps.
+          </>,
+          <>
+            <B>State:</B> the UI states by tab (Account, Credits, History, Create, Flicks, Ads), with New user and Reset all. <B>AI:</B> Connection (server address, passcode, model, the managed agent’s setup and skills), Requests (every job sent to the media server), Chat metrics (how far each chat got and what it cost) and Library (the server’s saved work). <B>Docs:</B> the PRD, the Components gallery and the Emails.
+          </>,
+          <>
+            <B>Where:</B> dev tools are in every build except captures; they never ship with a production build.
+          </>,
+        ]}
+      />
+    ),
+  },
 ]
 
 /** In-app product requirements document. */
-export function PrdDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+export function PrdPanel() {
   const [current, setCurrent] = useState(SECTIONS[0].id)
   const scroller = useRef<HTMLDivElement>(null)
   // highlight the section in view
@@ -1025,15 +1045,14 @@ export function PrdDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[min(820px,92vh)] gap-0 overflow-hidden p-0 sm:max-w-5xl">
+    <div className="flex h-full min-h-0 w-full">
         <aside className="flex w-60 shrink-0 flex-col border-r bg-muted/40 p-3">
-          <DialogHeader className="gap-1 px-2 pb-3 pt-1 text-left">
-            <DialogTitle className="flex items-center gap-2 text-base">
-              PRD <DevBadge />
-            </DialogTitle>
-            <DialogDescription className="text-xs">Flicks Create · updated {PRD_UPDATED}</DialogDescription>
-          </DialogHeader>
+          <div className="flex flex-col gap-1 px-2 pb-3 pt-1 text-left">
+            <h3 className="flex items-center gap-2 text-sm font-medium">
+              PRD
+            </h3>
+            <p className="text-xs">Flicks Create · updated {PRD_UPDATED}</p>
+          </div>
           <nav aria-label="Sections" className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
             {SECTIONS.map((s) => (
               <Button
@@ -1062,7 +1081,6 @@ export function PrdDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
             ))}
           </article>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
   )
 }

@@ -10,8 +10,6 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { DEFAULTS, FIELDS, TABS, useDevState, type DevState, type Field, type Tab } from "@/dev/state"
 import { cn } from "@/lib/utils"
-import { AiConnection } from "@/dev/ai-connection"
-import { AiLibrary } from "@/dev/ai-library"
 
 export function DevBadge({ className }: { className?: string }) {
   return (
@@ -83,12 +81,6 @@ export function StateManager({ open, onOpenChange }: { open: boolean; onOpenChan
             </Button>
           </div>
           <div className="flex-1 space-y-3 overflow-y-auto p-5">
-            {tab === "AI" && (
-              <div className="space-y-3">
-                <AiConnection />
-                <AiLibrary />
-              </div>
-            )}
             {groups.map((g) => (
               <section key={g} className="space-y-3 rounded-xl border p-4">
                 <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{g}</h4>

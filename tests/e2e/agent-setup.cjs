@@ -8,8 +8,8 @@ const { open } = require("./lib.cjs")
 ;(async () => {
   const run = await open("agent-setup")
   const { p, log } = run
-  await p.getByRole("button", { name: "State manager" }).click()
-  await p.getByRole("tab", { name: "AI" }).or(p.getByRole("button", { name: "AI", exact: true })).first().click()
+  await p.getByRole("button", { name: "Dev menu" }).click()
+  await p.getByRole("menuitem", { name: /^AI/ }).click()
   const btn = p.getByRole("button", { name: /Set up the agent|Update the agent/ })
   await btn.waitFor({ timeout: 15000 })
   log("pressing", await btn.innerText())

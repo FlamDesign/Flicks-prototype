@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Copy01Icon, Download01Icon, Search01Icon, SmartPhone01Icon, ComputerIcon, Moon02Icon, Sun03Icon, Tick02Icon } from "@hugeicons/core-free-icons"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -63,7 +62,7 @@ function download(name: string, text: string, type: string) {
 
 const GUIDE = "guide"
 
-export function EmailGallery({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+export function EmailsPanel() {
   const [current, setCurrent] = useState(EMAILS[0].id)
   const [q, setQ] = useState("")
   const list = EMAILS.filter((e) => `${e.name} ${e.subject} ${e.area}`.toLowerCase().includes(q.trim().toLowerCase()))
@@ -71,17 +70,16 @@ export function EmailGallery({ open, onOpenChange }: { open: boolean; onOpenChan
   const counts = { P0: EMAILS.filter((e) => e.priority === "P0").length, P1: EMAILS.filter((e) => e.priority === "P1").length, P2: EMAILS.filter((e) => e.priority === "P2").length }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[min(820px,92vh)] gap-0 overflow-hidden p-0 sm:max-w-6xl">
+    <div className="flex h-full min-h-0 w-full">
         <aside className="flex w-64 shrink-0 flex-col border-r bg-muted/50 p-3">
-          <DialogHeader className="gap-1 px-2 pb-3 pt-1 text-left">
-            <DialogTitle className="flex items-center gap-2 text-base">
-              Emails <Badge variant="secondary" className="font-mono text-xs">DEV</Badge>
-            </DialogTitle>
-            <DialogDescription className="text-xs">
+          <div className="flex flex-col gap-1 px-2 pb-3 pt-1 text-left">
+            <h3 className="flex items-center gap-2 text-sm font-medium">
+              Emails
+            </h3>
+            <p className="text-xs">
               {EMAILS.length} emails · {counts.P0} P0 · {counts.P1} P1 · {counts.P2} P2
-            </DialogDescription>
-          </DialogHeader>
+            </p>
+          </div>
           <div className="relative mb-2 px-1">
             <HugeiconsIcon icon={Search01Icon} className="pointer-events-none absolute left-3.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" aria-label="Search emails" className="h-8 bg-background pl-8 text-sm" />
@@ -117,8 +115,7 @@ export function EmailGallery({ open, onOpenChange }: { open: boolean; onOpenChan
           </nav>
         </aside>
         <main className="flex min-w-0 flex-1 flex-col">{current === GUIDE ? <Guidelines /> : <EmailView key={current} e={EMAILS.find((x) => x.id === current)!} />}</main>
-      </DialogContent>
-    </Dialog>
+      </div>
   )
 }
 

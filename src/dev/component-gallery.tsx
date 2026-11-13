@@ -18,7 +18,6 @@ import { AddToEmbed, NewEmbedDialog } from "@/embeds/embeds-ui"
 import { AddFundsDialog, AdBalanceChip, NewPlacementDialog, RatesDialog, ServeInAds } from "@/ads/ads-ui"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Add01Icon, ArrowRight01Icon, Delete02Icon, Search01Icon } from "@hugeicons/core-free-icons"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -53,7 +52,6 @@ import { SlidesStrip, type Slide, type SlideStatus } from "@/components/editor/s
 import { useToast } from "@/components/ui-extra/toaster"
 import { GENERATED_VIDEOS, type CanvasElement } from "@/components/editor/elements"
 import { ReferenceThumb } from "@/components/prompt-composer"
-import { DevBadge } from "@/dev/state-manager"
 import { cn } from "@/lib/utils"
 import { AgentItemView, ApprovalDock, QuestionDeck, threadGroups } from "@/components/editor/agent-chat"
 import { BriefUpdate } from "@/components/editor/brief-card"
@@ -882,7 +880,7 @@ function ToastDemo() {
 /* ---------- the panel ---------- */
 
 /** Dev-only: every component and its states, like a small storybook. */
-export function ComponentGallery({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+export function ComponentsPanel() {
   useForcedStates()
   const [current, setCurrent] = useState(ENTRIES[0].name)
   const [q, setQ] = useState("")
@@ -891,15 +889,14 @@ export function ComponentGallery({ open, onOpenChange }: { open: boolean; onOpen
   const kinds = (["UI", "Editor", "Feedback", "Ads"] as const).filter((k) => list.some((e) => e.kind === k))
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[min(760px,90vh)] gap-0 overflow-hidden p-0 sm:max-w-5xl">
+    <div className="flex h-full min-h-0 w-full">
         <aside className="flex w-56 shrink-0 flex-col border-r bg-muted/50 p-3">
-          <DialogHeader className="gap-1 px-2 pb-3 pt-1 text-left">
-            <DialogTitle className="flex items-center gap-2 text-base">
-              Components <DevBadge />
-            </DialogTitle>
-            <DialogDescription className="text-xs">Dev only. Every component and its states.</DialogDescription>
-          </DialogHeader>
+          <div className="flex flex-col gap-1 px-2 pb-3 pt-1 text-left">
+            <h3 className="flex items-center gap-2 text-sm font-medium">
+              Components
+            </h3>
+            <p className="text-xs">Dev only. Every component and its states.</p>
+          </div>
           <div className="relative mb-2 px-1">
             <HugeiconsIcon icon={Search01Icon} className="pointer-events-none absolute left-3.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" aria-label="Search components" className="h-8 bg-background pl-8 text-sm" />
@@ -934,8 +931,7 @@ export function ComponentGallery({ open, onOpenChange }: { open: boolean; onOpen
             {entry.render()}
           </div>
         </main>
-      </DialogContent>
-    </Dialog>
+      </div>
   )
 }
 

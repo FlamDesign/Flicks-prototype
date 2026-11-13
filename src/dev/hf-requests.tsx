@@ -3,7 +3,6 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Alert02Icon, Copy01Icon, Image01Icon, RefreshIcon, Search01Icon, Tick02Icon, Video01Icon } from "@hugeicons/core-free-icons"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 import { Switch } from "@/components/ui/switch"
@@ -52,7 +51,7 @@ const payloadOf = (r: HfRequest) => (r.payload && typeof r.payload === "object" 
  * Every job the app sent to Higgsfield through the AI server, newest first: the model, what it was
  * for, what was sent (prompt, numbered inputs, settings), how long it took and what came back.
  */
-export function HfRequests({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+export function RequestsPanel() {
   const [items, setItems] = useState<HfRequest[] | null>(null)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
@@ -84,13 +83,12 @@ export function HfRequests({ open, onOpenChange }: { open: boolean; onOpenChange
     }
   }
   useEffect(() => {
-    if (!open) return
     void load()
     if (!live) return
     const t = setInterval(load, 10_000)
     return () => clearInterval(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, live])
+  }, [live])
   const keyOf = (r: HfRequest) => `${r.at}-${r.request_id ?? r.path}`
   const shown = useMemo(
     () =>
@@ -110,11 +108,10 @@ export function HfRequests({ open, onOpenChange }: { open: boolean; onOpenChange
   }, [items])
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[min(860px,92vh)] flex-col gap-0 overflow-hidden p-0 sm:max-w-6xl">
-        <DialogHeader className="gap-3 border-b px-5 py-4">
+    <div className="flex h-full min-h-0 w-full flex-col">
+        <div className="flex flex-col gap-3 border-b px-5 py-4">
           <div className="flex items-center gap-3 pr-8">
-            <DialogTitle>Higgsfield requests</DialogTitle>
+            <h3 className="text-sm font-medium">Higgsfield requests</h3>
             <span className="text-xs tabular-nums text-muted-foreground">
               {counts.done} completed · {counts.waiting} sent · {counts.failed + counts.rejected} failed
             </span>
@@ -127,7 +124,7 @@ export function HfRequests({ open, onOpenChange }: { open: boolean; onOpenChange
               Refresh
             </Button>
           </div>
-          <DialogDescription className="sr-only">Jobs the app sent to Higgsfield through the AI server, with their inputs and outcomes.</DialogDescription>
+          <p className="sr-only">Jobs the app sent to Higgsfield through the AI server, with their inputs and outcomes.</p>
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative w-64">
               <HugeiconsIcon icon={Search01Icon} className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -150,7 +147,7 @@ export function HfRequests({ open, onOpenChange }: { open: boolean; onOpenChange
               </TabsList>
             </Tabs>
           </div>
-        </DialogHeader>
+        </div>
 
         {!isLive() ? (
           <Empty text="Connect the AI server (AI connection in State manager) to see requests." />
@@ -200,8 +197,7 @@ export function HfRequests({ open, onOpenChange }: { open: boolean; onOpenChange
             {picked ? <Detail key={keyOf(picked)} r={picked} onChecked={load} /> : <div />}
           </div>
         )}
-      </DialogContent>
-    </Dialog>
+      </div>
   )
 }
 

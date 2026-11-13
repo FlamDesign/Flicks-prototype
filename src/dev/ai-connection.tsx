@@ -115,3 +115,14 @@ function ManagedAgent({ live, model }: { live: boolean; model: string }) {
     </div>
   )
 }
+
+/** the Connection tab of the Dev AI dialog: the server, the model and the managed agent */
+export function AiConnectionPanel() {
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto p-5">
+      <div className="mx-auto max-w-2xl">
+        <AiConnection />
+      </div>
+    </div>
+  )
+}

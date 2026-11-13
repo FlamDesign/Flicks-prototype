@@ -101,7 +101,7 @@ const CAPTURING = typeof location !== "undefined" && location.hash.includes("cap
 
 type Preset<V> = { label: string; value: V }
 /** Tabs in the State manager, in display order. */
-export const TABS = ["Account", "Credits", "History", "Create", "AI", "Flicks", "Ads"] as const
+export const TABS = ["Account", "Credits", "History", "Create", "Flicks", "Ads"] as const
 export type Tab = (typeof TABS)[number]
 
 type Base<K extends keyof DevState> = { key: K; tab: Tab; group: string; label: string; hint?: string }
