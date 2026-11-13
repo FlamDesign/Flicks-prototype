@@ -182,7 +182,7 @@ export async function rejoinTurn(sessionId: string, lastSent: Message | undefine
 async function openStream(sessionId: string, signal?: AbortSignal) {
   let res: Response
   try {
-    res = await apiCall(`/agent/v1/sessions/${sessionId}/events/stream?event_deltas=true`, { signal, headers: { accept: "text/event-stream" } })
+    res = await apiCall(`/agent/v1/sessions/${sessionId}/events/stream?event_deltas=agent.message`, { signal, headers: { accept: "text/event-stream" } })
   } catch (e) {
     if (signal?.aborted) throw new AiError("aborted", "Stopped")
     throw e
