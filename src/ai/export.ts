@@ -1,4 +1,4 @@
-import { AiError, bakeFlick, flickStatus, isLive, mockVideos, shareable, videoAspectOf } from "@/ai/client"
+import { AiError, bakeFlick, flickStatus, isLive, mockVideos, shareable } from "@/ai/client"
 import { library, type FlickRecord } from "@/library"
 import { videoAt } from "@/components/editor/elements"
 
@@ -26,8 +26,18 @@ export async function bakeRequest(name: string, size: string, variants: { video:
       return { video_url, ...(thumb && /^https:/.test(thumb) ? { thumbnail_url: thumb } : {}) }
     }),
   )
-  // our videos aren't the API's own generations, so it needs their shape: the one they were made in
-  return { name, aspect_ratio: videoAspectOf(size), videos }
+  // our videos aren't the API's own generations, so it needs the Flick's shape: its exact size as a
+  // ratio (300×250 → 6:5), which the share page frames the videos in
+  return { name, aspect_ratio: aspectOf(size), videos }
+}
+
+/** "300×250" → "6:5": the Flick's own shape, reduced */
+export function aspectOf(size: string) {
+  const [w, h] = size.split("×").map(Number)
+  if (!w || !h) return "16:9"
+  const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a)
+  const g = gcd(w, h)
+  return `${w / g}:${h / g}`
 }
 
 /** sends the bake and records the API's id on the Flick (or the failure, with Try again) */
