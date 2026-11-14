@@ -467,12 +467,31 @@ export default {
       const st = url.pathname.match(/^\/store\/(state|elements|agent-config|chat-[\w-]{4,80})$/)
       if (st && req.method === "GET") return new Response((await env.USAGE?.get(`store:${st[1]}`)) ?? "null", { headers: { ...cors, "content-type": "application/json", "cache-control": "no-store" } })
       if (st && req.method === "PUT") {
-        const text = await req.text()
+        let text = await req.text()
         if (text.length > 20_000_000) return json({ error: "too_large" }, 413, cors)
+        let value: unknown
         try {
-          JSON.parse(text)
+          value = JSON.parse(text)
         } catch {
           return json({ error: "not_json" }, 400, cors)
+        }
+        // the library: deletions stick. A tab that last synced before a deletion would send the
+        // deleted projects back whole, so the server keeps every tombstone it has seen and drops
+        // anything an older tombstone covers, whatever a client sends.
+        if (st[1] === "state" && value && typeof value === "object") {
+          const v = value as { projects?: { id: string; editedAt?: number }[]; flicks?: { id: string; editedAt?: number }[]; deleted?: Record<string, number> }
+          const prev = JSON.parse((await env.USAGE?.get("store:state")) ?? "null") as { deleted?: Record<string, number> } | null
+          const tomb: Record<string, number> = { ...(prev?.deleted ?? {}) }
+          for (const [id, at] of Object.entries(v.deleted ?? {})) if (typeof at === "number") tomb[id] = Math.max(tomb[id] ?? 0, at)
+          const old = Date.now() - 90 * 24 * 3600 * 1000
+          for (const [id, at] of Object.entries(tomb)) if (at < old) delete tomb[id]
+          const keep = (x: { id: string; editedAt?: number }) => !(tomb[x.id] && tomb[x.id] >= (x.editedAt ?? 0))
+          const dropped = (v.projects?.length ?? 0) + (v.flicks?.length ?? 0)
+          if (Array.isArray(v.projects)) v.projects = v.projects.filter(keep)
+          if (Array.isArray(v.flicks)) v.flicks = v.flicks.filter(keep)
+          v.deleted = tomb
+          if (dropped !== (v.projects?.length ?? 0) + (v.flicks?.length ?? 0)) console.log("state: dropped", dropped - (v.projects?.length ?? 0) - (v.flicks?.length ?? 0), "deleted items a client sent back")
+          text = JSON.stringify(v)
         }
         if (!(await put(env, `store:${st[1]}`, text))) return json({ error: "storage_full" }, 507, cors)
         return json({ ok: true }, 200, cors)

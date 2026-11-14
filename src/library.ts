@@ -228,6 +228,9 @@ export const library = {
   },
 }
 
+/** a built-in sample (never saved to the server; they come with the app) */
+export const isSample = (x: { id: string; sample?: boolean }) => !!x.sample || PROJECTS.some((p) => p.id === x.id) || FLICKS.some((f) => f.id === x.id)
+
 export const totalViews = (f: FlickRecord) => f.variants.reduce((a, v) => a + v.views, 0)
 /** the Flick's address: its share page on the Flicks API when it has one, else the prototype's */
 export const flickLink = (f: FlickRecord) => f.remote?.url ?? `https://flamapp.ai/f/${f.link.slug}`
