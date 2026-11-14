@@ -167,7 +167,7 @@ export const platformLabel = (p: Placement) => (p.platform === OTHER_PLATFORM ? 
 
 export const flickRef = (f: Flick): FlickRef => ({ id: f.id, name: f.name, size: f.size, image: f.image, editedAt: f.editedAt, video: f.video })
 /** Flicks that can go in a placement: ready Flicks of the same size (never projects, nor ones still exporting). */
-export const flicksFor = (size: string) => getLibrary().flicks.filter((f) => f.size === size && !f.exporting).map(flickRef)
+export const flicksFor = (size: string) => getLibrary().flicks.filter((f) => f.size === size && !f.exporting && f.remote?.status !== "failed").map(flickRef)
 
 // ---------- sample data ----------
 

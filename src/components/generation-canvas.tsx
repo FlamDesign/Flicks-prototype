@@ -31,6 +31,7 @@ import { ElementToolbar, ToolbarGrip } from "@/components/editor/element-toolbar
 import { useAgent, type EditorApi, type ElementSpec } from "@/ai/agent"
 import { boxOf, buildDesign, color as colorOf, contrast, describeDesign, elementFor, fontName, freeY, headlineLimit, feedOfField, FIELD_FEED, FIELDS, patchDesign, restack, type Brand, type Field } from "@/ai/design"
 import { cancelJob, generateVideo, isLive, posterOf, shareable, useAiConfig, videoAspectOf, type VideoInput } from "@/ai/client"
+import { BAKE_MS, bakeRequest, liveExport, startBake } from "@/ai/export"
 import { loadLibrary, nameOf as libraryName } from "@/lib/library"
 import { listNames } from "@/lib/format"
 import { isTyping } from "@/lib/keys"
@@ -1655,6 +1656,8 @@ export function GenerationCanvas({
       ? [{ text: "Generate videos for every variation before export.", blocking: true }]
       : []),
     ...(includeRef && !slides[0].thumb ? [{ text: "Add a thumbnail for Variation 1 to export.", blocking: true }] : []),
+    // the Flicks API bakes at most four videos into one Flick
+    ...(liveExport() && included.length > 4 ? [{ text: `A Flick holds up to four variations; this has ${included.length}. Leave some out of the Flick to export.`, blocking: true }] : []),
     ...included.filter(stale).map((s) => ({ text: `${nameOf(s)} was made from an older Variation 1` })),
     ...feeds
       .filter((f) => included.some((s) => !s.feeds?.[f.id]?.trim()))
@@ -1735,7 +1738,15 @@ export function GenerationCanvas({
     const snap = snapNow()
     const variants = included.map((x) => ({ name: nameOf(x), video: x.video ?? generation.video, poster: x.thumb ?? videoAt(x.video ?? generation.video).poster }))
     saveProject()
-    const flick = library.exportFlick({ projectId: generation.id, name, size: generation.size, image: poster, video: generation.video, variants, start: Math.max(0, included.findIndex((x) => x.id === start)), snap, base, ms: dev.publishSeconds * 1000 })
+    // with the server set up and real videos, the Flicks API bakes the Flick (the watcher in App
+    // follows it to its share page); with Sample videos on it's the prototype's timer
+    const live = liveExport()
+    const flick = library.exportFlick({ projectId: generation.id, name, size: generation.size, image: poster, video: generation.video, variants, start: Math.max(0, included.findIndex((x) => x.id === start)), snap, base, ms: live ? BAKE_MS : dev.publishSeconds * 1000, remote: live ? { status: "processing", request: { name, videos: [] } } : undefined })
+    if (live)
+      bakeRequest(name, variants).then(
+        (request) => (library.setRemote(flick.id, { request }), startBake(flick.id, request)),
+        (e: unknown) => library.setRemote(flick.id, { status: "failed", error: e instanceof Error ? e.message : "The export couldn't be sent." }),
+      )
     // the latest checkpoint is this exact canvas: mark it; otherwise save a new one
     const exported = { flickId: flick.id, name }
     const next = versions.at(-1)?.sig === sig && !versions.at(-1)?.exported

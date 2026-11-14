@@ -16,7 +16,8 @@ import { DeleteFlickDialog } from "@/components/flicks-page"
 import { videoAt } from "@/components/editor/elements"
 import { FlickStage, ServeInAds } from "@/ads/ads-ui"
 import { compact, flickRef, useAds } from "@/ads/ads"
-import { flickLink, library, totalViews, useExportProgress, useLibrary, type FlickRecord } from "@/library"
+import { exportFailed, flickLink, library, totalViews, useExportProgress, useLibrary, type FlickRecord } from "@/library"
+import { BAKE_MS, startBake } from "@/ai/export"
 import { Progress } from "@/components/ui/progress"
 import { useDevAction } from "@/dev/dev-actions"
 import { fullDate } from "@/data"
@@ -74,6 +75,13 @@ export function FlickPage({
   const inUse = inPlacements.length
   const startPoster = f.variants[f.start]?.poster ?? f.image
   const copyLink = () => (navigator.clipboard?.writeText(link), toast("Link copied"))
+  const failed = exportFailed(f)
+  // a real export that didn't bake: the same videos again, on the user's press
+  const retry = () => {
+    if (!f.remote?.request.videos.length) return
+    library.retryExport(f.id, BAKE_MS)
+    void startBake(f.id, f.remote.request)
+  }
 
   return (
     <div className={PAGE}>
@@ -116,7 +124,7 @@ export function FlickPage({
         }
       />
       <p className="mt-1 text-sm text-muted-foreground">
-        {f.exporting ? `Preparing… ${Math.round(progress * 100)}%` : `Created ${fullDate(f.editedAt)}`}
+        {f.exporting ? `Preparing… ${Math.round(progress * 100)}%` : failed ? "Export failed" : `Created ${fullDate(f.editedAt)}`}
         {project && (
           <>
             {" "}from{" "}
@@ -133,7 +141,7 @@ export function FlickPage({
           <div className="relative">
             <FlickStage key={f.id} flick={flickRef(f)} videos={f.variants.map((v) => v.video)} start={f.start} />
           </div>
-          {!f.exporting && <Analytics f={f} onAnalytics={onAnalytics} />}
+          {!f.exporting && !failed && <Analytics f={f} onAnalytics={onAnalytics} />}
         </div>
 
         {/* right: everything to do with it (once it's ready) */}
@@ -148,14 +156,35 @@ export function FlickPage({
               <p className="text-xs text-muted-foreground">You can share the link, serve it in ads or embed it on your website when it’s ready.</p>
             </section>
           </div>
+        ) : failed ? (
+          <div className="flex min-w-0 flex-col gap-4">
+            <section className="flex flex-col gap-3 rounded-2xl p-4 ring-1 ring-foreground/10 sm:p-5" aria-live="polite">
+              <span className="text-sm font-medium">This Flick couldn’t be made</span>
+              <p className="text-sm text-muted-foreground">{f.remote?.error ?? "Something went wrong while it was being made."}</p>
+              <div className="flex flex-wrap gap-2">
+                {f.remote?.request.videos.length ? (
+                  <Button size="sm" onClick={retry}>
+                    Try again
+                  </Button>
+                ) : project ? (
+                  <Button size="sm" onClick={() => onOpenProject(project.id)}>
+                    Export again from the project
+                  </Button>
+                ) : null}
+                <Button size="sm" variant="outline" onClick={() => setConfirmDelete(true)}>
+                  Delete Flick
+                </Button>
+              </div>
+            </section>
+          </div>
         ) : (
         <div className="flex min-w-0 flex-col gap-4">
           <Card title="Link">
             <div className="flex items-center gap-1 rounded-xl bg-muted/70 py-1 pl-3 pr-1">
               <span className="min-w-0 flex-1 truncate text-sm">{link.replace("https://", "")}</span>
               <IconAction label="Copy link" icon={Copy01Icon} onClick={copyLink} />
-              {/* in the prototype the link opens the viewer here (phones too); the real link is flamapp.ai/f/… */}
-              <IconAction label="Visit link" icon={ArrowUpRight01Icon} href={`${location.origin}${location.pathname}#f/${f.link.slug}`} />
+              {/* a real Flick's link is its share page; in the prototype the link opens the viewer here (phones too) */}
+              <IconAction label="Visit link" icon={ArrowUpRight01Icon} href={f.remote?.url ?? `${location.origin}${location.pathname}#f/${f.link.slug}`} />
             </div>
             {/* how it unfurls in messages and posts */}
             <div className="flex items-center gap-3">

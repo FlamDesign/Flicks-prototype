@@ -23,6 +23,7 @@ import { WelcomeGiftDialog, WELCOME_CREDITS } from "@/components/welcome-gift-pa
 import { type Generation } from "@/components/generation-canvas"
 import { TEMPLATES, templateRef, type Template } from "@/data"
 import { getLibrary, library, useLibrary, type FlickRecord, type Project } from "@/library"
+import { checkBake } from "@/ai/export"
 import { currentRoute, routed, showRoute, type Route } from "@/lib/route"
 import { copyChat, safeSnap } from "@/ai/copy-chat"
 import { DEV_TOOLS, useDevState } from "@/dev/state"
@@ -616,19 +617,48 @@ function SyncWatcher() {
   return null
 }
 
+/**
+ * Follows exports in progress. A prototype export is ready when its timer runs out. A real one
+ * (on the Flicks API) is asked about every 10 s until the API says completed (its share page is
+ * kept on the Flick) or failed (the Flick shows the error and Try again); one that never got an id
+ * (the page closed as it was sent) is marked failed after a minute, never re-sent on its own.
+ */
 function ExportWatcher({ onOpen }: { onOpen: (id: string) => void }) {
   const { flicks } = useLibrary()
   const toast = useToast()
   const running = flicks.filter((f) => f.exporting)
-  const key = running.map((f) => f.id).join(",")
+  const key = running.map((f) => `${f.id}:${f.remote?.id ?? ""}`).join(",")
   useEffect(() => {
-    const timers = running.map((f) =>
-      setTimeout(() => {
-        library.finishExport(f.id)
-        toast({ title: `“${f.name}” is ready`, description: "Share it, embed it or serve it in ads.", action: { label: "View Flick", onClick: () => onOpen(f.id) } })
-      }, Math.max(0, f.exporting!.until - Date.now())),
-    )
-    return () => timers.forEach(clearTimeout)
+    const ready = (f: FlickRecord) => toast({ title: `“${f.name}” is ready`, description: "Share it, embed it or serve it in ads.", action: { label: "View Flick", onClick: () => onOpen(f.id) } })
+    const timers = running
+      .filter((f) => !f.remote)
+      .map((f) =>
+        setTimeout(() => {
+          library.finishExport(f.id)
+          ready(f)
+        }, Math.max(0, f.exporting!.until - Date.now())),
+      )
+    const remote = running.filter((f) => f.remote)
+    let stop = false
+    const poll = async () => {
+      for (const f of remote) {
+        if (stop) return
+        if (!f.remote!.id) {
+          if (Date.now() - f.exporting!.from > 60_000) library.setRemote(f.id, { status: "failed", error: "The export didn't start." })
+          continue
+        }
+        const r = await checkBake(f)
+        if (r === "ready") ready(f)
+        if (r === "failed") toast({ title: `“${f.name}” couldn't be exported`, description: getLibrary().flicks.find((x) => x.id === f.id)?.remote?.error, action: { label: "View Flick", onClick: () => onOpen(f.id) } })
+      }
+    }
+    const id = remote.length ? setInterval(poll, 10_000) : undefined
+    if (remote.length) void poll()
+    return () => {
+      stop = true
+      timers.forEach(clearTimeout)
+      if (id) clearInterval(id)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key])
   return null

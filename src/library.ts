@@ -42,8 +42,13 @@ export type FlickRecord = Flick & {
   /** the canvas it was exported from, so Remix starts from the same state */
   snap?: unknown
   base?: unknown
-  /** exporting: when it started and when it's ready; gone once ready */
+  /** exporting: when it started and when it's expected; gone once ready (or failed) */
   exporting?: { from: number; until: number }
+  /**
+   * The real Flick on the Flicks API (exports made with the server): its id there, where it stands,
+   * and its share page once completed. Kept with what was sent, so a failed bake can be tried again.
+   */
+  remote?: { id?: string; status: "processing" | "completed" | "failed"; url?: string; error?: string; request: { name: string; videos: { video_url: string; thumbnail_url?: string }[] } }
 }
 
 export const slugify = (s: string) =>
@@ -163,7 +168,7 @@ export const library = {
   },
   /** export a project as it is now: a new, fixed Flick */
   /** runs in the background for `ms`; the Flick shows as exporting until then */
-  exportFlick(f: { projectId: string; name: string; size: string; image: string; video: number; variants: Omit<FlickVariant, "views">[]; start: number; snap: unknown; base: unknown; ms: number }): FlickRecord {
+  exportFlick(f: { projectId: string; name: string; size: string; image: string; video: number; variants: Omit<FlickVariant, "views">[]; start: number; snap: unknown; base: unknown; ms: number; remote?: FlickRecord["remote"] }): FlickRecord {
     const flick: FlickRecord = {
       id: uid("f"),
       name: f.name,
@@ -178,6 +183,7 @@ export const library = {
       snap: f.snap,
       base: f.base,
       exporting: { from: Date.now(), until: Date.now() + f.ms },
+      remote: f.remote,
     }
     set((s) => ({
       ...s,
@@ -187,8 +193,16 @@ export const library = {
     return flick
   },
   /** an export finished */
-  finishExport(id: string) {
-    set((s) => ({ ...s, flicks: s.flicks.map((f) => (f.id === id ? { ...f, exporting: undefined, editedAt: Date.now() } : f)) }))
+  finishExport(id: string, remote?: FlickRecord["remote"]) {
+    set((s) => ({ ...s, flicks: s.flicks.map((f) => (f.id === id ? { ...f, exporting: undefined, editedAt: Date.now(), ...(remote ? { remote } : {}) } : f)) }))
+  },
+  /** where a real export stands on the Flicks API (its id once started, its error if it failed) */
+  setRemote(id: string, patch: Partial<NonNullable<FlickRecord["remote"]>>) {
+    set((s) => ({ ...s, flicks: s.flicks.map((f) => (f.id === id && f.remote ? { ...f, remote: { ...f.remote, ...patch }, ...(patch.status === "failed" ? { exporting: undefined } : {}) } : f)) }))
+  },
+  /** try a failed export again (the user pressed Try again): the same videos, a new bake */
+  retryExport(id: string, ms: number) {
+    set((s) => ({ ...s, flicks: s.flicks.map((f) => (f.id === id && f.remote ? { ...f, exporting: { from: Date.now(), until: Date.now() + ms }, remote: { ...f.remote, id: undefined, status: "processing", error: undefined } } : f)) }))
   },
   updateLink(id: string, patch: Partial<LinkSettings>) {
     set((s) => ({ ...s, flicks: s.flicks.map((f) => (f.id === id ? { ...f, link: { ...f.link, ...patch } } : f)) }))
@@ -215,7 +229,10 @@ export const library = {
 }
 
 export const totalViews = (f: FlickRecord) => f.variants.reduce((a, v) => a + v.views, 0)
-export const flickLink = (f: FlickRecord) => `https://flamapp.ai/f/${f.link.slug}`
+/** the Flick's address: its share page on the Flicks API when it has one, else the prototype's */
+export const flickLink = (f: FlickRecord) => f.remote?.url ?? `https://flamapp.ai/f/${f.link.slug}`
+/** a real export that didn't bake */
+export const exportFailed = (f: FlickRecord) => f.remote?.status === "failed"
 
 /** Export progress, 0 to 1, re-rendering while it runs; 1 when it isn't exporting. */
 export function useExportProgress(f?: FlickRecord) {
@@ -227,5 +244,6 @@ export function useExportProgress(f?: FlickRecord) {
     return () => clearInterval(id)
   }, [ex])
   if (!ex) return 1
-  return Math.min(1, Math.max(0, (now - ex.from) / (ex.until - ex.from)))
+  // a real bake has no fixed length: the bar nears the end and waits for the API
+  return Math.min(f?.remote ? 0.95 : 1, Math.max(0, (now - ex.from) / (ex.until - ex.from)))
 }

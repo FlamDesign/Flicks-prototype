@@ -19,9 +19,11 @@
  *   DELETE /library/:id   marks an item hidden (deleted from Assets); its record and file stay, so Flicks and references keep working
  *   POST /read            reads a public web page for the chat: product, prices, images, colours, text
  *   GET  /img?u=          a website's image, passed through (sites often refuse to be shown elsewhere)
+ *   POST /flick           bakes 2 to 4 finished videos into a real Flick on the Flicks API; returns { id, status }
+ *   GET  /flick/:id       that Flick's status; { status, url? } where url is its share page once completed
  *
  * Every request needs the passcode (x-flicks-pass header). Daily caps limit spend if it leaks.
- * Secrets (set by the deploy action): ANTHROPIC_API_KEY, HIGGSFIELD_API_KEY (or HIGGSFIELD_KEY_ID + HIGGSFIELD_KEY_SECRET), PASSCODE.
+ * Secrets (set by the deploy action): ANTHROPIC_API_KEY, HIGGSFIELD_API_KEY (or HIGGSFIELD_KEY_ID + HIGGSFIELD_KEY_SECRET), FLICKS_API_KEY, PASSCODE.
  */
 
 interface KV {
@@ -38,6 +40,11 @@ export interface Env {
   HIGGSFIELD_KEY_SECRET?: string
   /** the single key open.higgsfield.ai gives (it holds the ID and secret, joined by a colon); preferred when set */
   HIGGSFIELD_API_KEY?: string
+  /** Flam's Flicks API (flix-svc): bakes finished videos into a Flick with a share page */
+  FLICKS_API_KEY?: string
+  /** its base, e.g. https://fi.development.flamapis.com/flix-svc/api/v1 (dev by default) */
+  FLICKS_API_BASE?: string
+  DAILY_FLICK_CAP?: string
   PASSCODE?: string
   /** comma-separated origins allowed to call from a browser */
   ALLOWED_ORIGINS?: string
@@ -108,7 +115,7 @@ export default {
 
       const url = new URL(req.url)
       const day = new Date().toISOString().slice(0, 10)
-      const caps = { images: num(env.DAILY_IMAGE_CAP, 50), chats: num(env.DAILY_CHAT_CAP, 500), videos: num(env.DAILY_VIDEO_CAP, 20) }
+      const caps = { images: num(env.DAILY_IMAGE_CAP, 50), chats: num(env.DAILY_CHAT_CAP, 500), videos: num(env.DAILY_VIDEO_CAP, 20), flicks: num(env.DAILY_FLICK_CAP, 50) }
       // the library: every generation is recorded when it starts and copied here when it finishes
       // (Higgsfield deletes its copies after 7 days and can't list past requests)
       type Meta = { project?: string; variation?: string; purpose?: string; chat?: boolean; resolution?: string; test?: boolean }
@@ -128,15 +135,59 @@ export default {
             claude: !!env.ANTHROPIC_API_KEY,
             images: hasHf(env),
             videos: hasHf(env),
+            flicks: !!env.FLICKS_API_KEY,
             // asks Higgsfield about a request that doesn't exist: 401 means the key is wrong
             images_key: hasHf(env) ? await hfKeyCheck(env) : "missing",
             models: MODELS,
             caps,
-            used: { images: await count(env, `img:${day}`), chats: await count(env, `chat:${day}`), videos: await count(env, `vid:${day}`) },
+            used: { images: await count(env, `img:${day}`), chats: await count(env, `chat:${day}`), videos: await count(env, `vid:${day}`), flicks: await count(env, `flick:${day}`) },
           },
           200,
           cors,
         )
+      }
+
+      // a real Flick: the Flicks API bakes the finished videos (one per variation, in order) and
+      // gives back a share page. Videos go by public address; one Higgsfield no longer serves is
+      // swapped for our kept copy. A Flick costs no credits on the API; the daily cap is a guard.
+      if (req.method === "POST" && url.pathname === "/flick") {
+        if (!env.FLICKS_API_KEY) return json({ error: "flicks_not_set_up" }, 503, cors)
+        const body = (await req.json()) as { name?: string; videos?: { video_url?: string; thumbnail_url?: string }[]; aspect_ratio?: string }
+        const videos = Array.isArray(body.videos) ? body.videos.filter((v) => typeof v.video_url === "string") : []
+        if (videos.length < 2 || videos.length > 4) return json({ error: "bad_request", message: "A Flick takes 2 to 4 videos." }, 400, cors)
+        if (!(await take(env, `flick:${day}`, caps.flicks))) return json({ error: "daily_limit", what: "flick" }, 429, cors)
+        const index = await libraryItems(env, ctx)
+        const resolve = async (u: string) => {
+          if (u.startsWith(`${url.origin}/file/`)) return u
+          // our kept copy of a video the maker has since deleted (the API fetches at bake time)
+          const kept = index.find((x) => x.saved && x.source === u)
+          const alive = await fetch(u, { method: "HEAD", redirect: "follow" }).then((r) => r.ok, () => false)
+          if (alive) return u
+          return kept ? `${url.origin}/file/${kept.id}` : u
+        }
+        const sent = {
+          name: typeof body.name === "string" && body.name.trim() ? body.name.trim().slice(0, 80) : "Flick",
+          loop: true,
+          ...(typeof body.aspect_ratio === "string" ? { aspect_ratio: body.aspect_ratio } : {}),
+          videos: await Promise.all(videos.map(async (v) => ({ video_url: await resolve(v.video_url!), ...(typeof v.thumbnail_url === "string" && /^https:/.test(v.thumbnail_url) ? { thumbnail_url: v.thumbnail_url } : {}) }))),
+        }
+        const t0 = Date.now()
+        const res = await flicksApi(env, "/template-flicks", { method: "POST", body: JSON.stringify(sent) })
+        const text = await res.text()
+        if (ctx) ctx.waitUntil(logFlicks(env, "/template-flicks", sent, res.status, text, t0))
+        const out = flicksData(text)
+        if (!res.ok || !out?.id) return json({ error: "flicks_api", status: res.status, message: flicksMessage(text, res.status) }, res.status >= 500 ? 502 : res.status === 401 ? 503 : 400, cors)
+        return json({ id: String(out.id), status: String(out.status ?? "processing") }, 200, cors)
+      }
+      const flickId = url.pathname.match(/^\/flick\/([\w-]{6,64})$/)
+      if (req.method === "GET" && flickId) {
+        if (!env.FLICKS_API_KEY) return json({ error: "flicks_not_set_up" }, 503, cors)
+        const res = await flicksApi(env, `/template-flicks/${flickId[1]}`)
+        const text = await res.text()
+        const out = flicksData(text)
+        if (!res.ok || !out) return json({ error: "flicks_api", status: res.status, message: flicksMessage(text, res.status) }, res.status === 404 ? 404 : res.status >= 500 ? 502 : 400, cors)
+        const status = String(out.status ?? "processing")
+        return json({ id: flickId[1], status, url: typeof out.preview_url === "string" ? out.preview_url : undefined, error: status === "failed" ? String(out.error ?? out.message ?? "The Flick couldn't be made.") : undefined }, 200, cors)
       }
 
       if (req.method === "POST" && url.pathname === "/chat") {
@@ -609,6 +660,39 @@ async function logRequest(env: Env, url: string, body: unknown, res: Response, t
   const at = Date.now()
   const entry = { at: t0, ms: at - t0, path: url.replace(hfBase(env), ""), payload, status: res.status, request_id: out.request_id, error: res.ok ? undefined : text.slice(0, 600) }
   // newest first when listed: the key counts down
+  await put(env, `req:${String(9e12 - t0).padStart(13, "0")}:${crypto.randomUUID().slice(0, 6)}`, JSON.stringify(entry), { expirationTtl: 60 * 60 * 24 * 30 })
+}
+
+// ---------- the Flicks API (flix-svc) ----------
+
+const FLICKS_API_DEFAULT = "https://fi.development.flamapis.com/flix-svc/api/v1"
+const flicksBase = (env: Env) => (env.FLICKS_API_BASE || FLICKS_API_DEFAULT).replace(/\/+$/, "")
+function flicksApi(env: Env, path: string, init: RequestInit = {}) {
+  return fetch(flicksBase(env) + path, { ...init, headers: { "content-type": "application/json", "x-flicks-api-key": env.FLICKS_API_KEY!, ...((init.headers as Record<string, string>) ?? {}) } })
+}
+/** every answer is { status, error, message, data }: the part that matters */
+function flicksData(text: string): Record<string, unknown> | null {
+  try {
+    const o = JSON.parse(text) as { data?: unknown }
+    return o && typeof o.data === "object" && o.data ? (o.data as Record<string, unknown>) : null
+  } catch {
+    return null
+  }
+}
+function flicksMessage(text: string, status: number) {
+  try {
+    const o = JSON.parse(text) as { message?: unknown; error?: unknown }
+    const m = typeof o.message === "string" ? o.message : typeof o.error === "string" ? o.error : ""
+    if (m) return m.slice(0, 300)
+  } catch {
+    /* not JSON */
+  }
+  return status === 401 ? "The Flicks API key was refused." : `The Flicks API answered ${status}.`
+}
+/** the bake shows in the Requests panel like any other job */
+async function logFlicks(env: Env, path: string, payload: unknown, status: number, text: string, t0: number) {
+  const out = flicksData(text)
+  const entry = { at: t0, ms: Date.now() - t0, path: `flicks:${path}`, payload, status, request_id: out?.id ? String(out.id) : undefined, error: status < 400 ? undefined : text.slice(0, 600) }
   await put(env, `req:${String(9e12 - t0).padStart(13, "0")}:${crypto.randomUUID().slice(0, 6)}`, JSON.stringify(entry), { expirationTtl: 60 * 60 * 24 * 30 })
 }
 

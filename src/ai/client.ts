@@ -86,6 +86,7 @@ export const MESSAGES: Record<string, string> = {
   storage_full: "Today's storage writes are used up, so uploads can't be kept until 4 pm Pacific (midnight UTC). Chat and generation still work.",
   claude_not_set_up: "Dev: the AI server has no chat key yet.",
   images_not_set_up: "Dev: the AI server has no image key yet.",
+  flicks_not_set_up: "Dev: the AI server has no Flicks API key yet, so Export isn't connected.",
   server_not_set_up: NOT_CONNECTED,
   network: NOT_CONNECTED,
 }
@@ -117,7 +118,7 @@ async function call(path: string, init?: RequestInit) {
   return res
 }
 
-export type Health = { ok: boolean; claude: boolean; images: boolean; videos?: boolean; image_model?: string; images_key?: "ok" | "invalid" | "missing" | "unknown"; caps: { images: number; chats: number; videos?: number }; used: { images: number; chats: number; videos?: number } }
+export type Health = { ok: boolean; claude: boolean; images: boolean; videos?: boolean; /** the Flicks API key is set: exports make real Flicks */ flicks?: boolean; image_model?: string; images_key?: "ok" | "invalid" | "missing" | "unknown"; caps: { images: number; chats: number; videos?: number; flicks?: number }; used: { images: number; chats: number; videos?: number; flicks?: number } }
 export const health = async () => (await (await call("/health")).json()) as Health
 
 /* ---------- chat ---------- */
@@ -454,6 +455,23 @@ export async function generateVideo(input: VideoInput & { aspect: string; second
   throw new AiError("video_timeout", "The video is taking too long. Try again.")
 }
 
+/* ---------- Flicks (the Flicks API) ---------- */
+
+export type FlickStatus = { id: string; status: "processing" | "completed" | "failed" | string; url?: string; error?: string }
+
+/**
+ * Bakes finished videos (one per variation, in order, 2 to 4 of them) into a real Flick on Flam's
+ * Flicks API, through the server. Returns the API's id; flickStatus follows it to its share page.
+ */
+export async function bakeFlick(input: { name: string; videos: { video_url: string; thumbnail_url?: string }[] }): Promise<FlickStatus> {
+  const res = await steady("/flick", { method: "POST", body: JSON.stringify(input) })
+  return (await res.json()) as FlickStatus
+}
+export async function flickStatus(id: string): Promise<FlickStatus> {
+  const res = await steady(`/flick/${encodeURIComponent(id)}`)
+  return (await res.json()) as FlickStatus
+}
+
 /** a still from a generated video (through the server, so the browser may read its pixels) */
 export async function posterOf(videoUrl: string): Promise<string | undefined> {
   try {
@@ -500,7 +518,7 @@ export type HfRequest = {
 }
 export const requestLog = async (limit = 150) => ((await (await call(`/requests?limit=${limit}`)).json()) as { items: HfRequest[] }).items
 /** asks Higgsfield again how a job is doing (the server saves the outcome on the log) */
-export const jobStatus = async (kind: "image" | "video", id: string) => (await (await call(`/${kind}/${id}`)).json()) as { status?: string; url?: string }
+export const jobStatus = async (kind: "image" | "video" | "flick", id: string) => (await (await call(`/${kind}/${id}`)).json()) as { status?: string; url?: string }
 /** keeps copies of finished media the app still has links to (Higgsfield deletes its own after 7 days) */
 export const importToLibrary = async (items: { url: string; kind: "image" | "video"; prompt?: string; name?: string; created?: number }[]) =>
   ((await (await call("/library/import", { method: "POST", body: JSON.stringify({ items }) })).json()) as { imported: number }).imported
