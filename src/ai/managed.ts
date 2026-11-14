@@ -9,12 +9,12 @@ import { loadSaved, save } from "@/ai/sync"
  * its sandbox are made once (setupAgent) and remembered on the server.
  */
 
-/** Dev switch: the chat runs through a managed session instead of the browser loop */
+/** Dev switch: the chat runs through a managed session (the default) instead of the browser loop */
 export const managedOn = () => {
   try {
-    return localStorage.getItem("flam.managed") === "1"
+    return localStorage.getItem("flam.managed") !== "0"
   } catch {
-    return false
+    return true
   }
 }
 export const setManaged = (on: boolean) => {
