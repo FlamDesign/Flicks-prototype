@@ -126,7 +126,7 @@ export function tagFor(p: Placement, format: TagFormat): string {
 
 // ---------- model ----------
 
-export type FlickRef = { id: string; name: string; size: string; image: string; editedAt?: number; video?: number }
+export type FlickRef = { id: string; name: string; size: string; image: string; editedAt?: number; video?: number; /** the real Flick's share page on the Flicks API: shown in place of the prototype's player */ url?: string }
 export type HistoryEntry = { flick: FlickRef; from: number; to?: number; impressions: number; spend: number; clicks: number }
 export type Placement = {
   id: string
@@ -165,7 +165,7 @@ export type AdTxn = {
 /** The platform as shown; empty until one is chosen on the placement. */
 export const platformLabel = (p: Placement) => (p.platform === OTHER_PLATFORM ? p.otherPlatform || "Other" : p.platform)
 
-export const flickRef = (f: Flick): FlickRef => ({ id: f.id, name: f.name, size: f.size, image: f.image, editedAt: f.editedAt, video: f.video })
+export const flickRef = (f: Flick & { remote?: { url?: string } }): FlickRef => ({ id: f.id, name: f.name, size: f.size, image: f.image, editedAt: f.editedAt, video: f.video, ...(f.remote?.url ? { url: f.remote.url } : {}) })
 /** Flicks that can go in a placement: ready Flicks of the same size (never projects, nor ones still exporting). */
 export const flicksFor = (size: string) => getLibrary().flicks.filter((f) => f.size === size && !f.exporting && f.remote?.status !== "failed").map(flickRef)
 

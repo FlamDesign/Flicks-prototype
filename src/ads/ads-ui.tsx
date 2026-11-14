@@ -669,6 +669,11 @@ export function LiveFlick({ flick, tall, fit, videos: given, start = 0 }: { flic
         // never stretched: one side sets the size and the shape follows (wide by width, tall by height)
         style={{ aspectRatio: `${w} / ${h}`, containerType: "size", ...(fit ? { width: `min(100cqw, calc(100cqh * ${w / h}))` } : {}) }}
       >
+        {/* a real Flick plays from the Flicks API's share page, exactly as viewers get it */}
+        {flick.url ? (
+          <iframe src={flick.url} title={flick.name} allow="autoplay" className="absolute inset-0 size-full border-0" />
+        ) : (
+          <>
         <FlickPlayer videos={videos} active={active} />
         <div role="radiogroup" aria-label="Variations" className="absolute inset-x-0 bottom-[5%] flex justify-center gap-[3cqmin]">
           {videos.map((v, k) => (
@@ -685,6 +690,8 @@ export function LiveFlick({ flick, tall, fit, videos: given, start = 0 }: { flic
             </button>
           ))}
         </div>
+          </>
+        )}
       </div>
     </div>
   )
