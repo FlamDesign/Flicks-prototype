@@ -485,7 +485,8 @@ export default {
           for (const [id, at] of Object.entries(v.deleted ?? {})) if (typeof at === "number") tomb[id] = Math.max(tomb[id] ?? 0, at)
           const old = Date.now() - 90 * 24 * 3600 * 1000
           for (const [id, at] of Object.entries(tomb)) if (at < old) delete tomb[id]
-          const keep = (x: { id: string; editedAt?: number }) => !(tomb[x.id] && tomb[x.id] >= (x.editedAt ?? 0))
+          // the app's built-in samples (sample projects, Flicks f1, f2…) come with the app, not the server
+          const keep = (x: { id: string; editedAt?: number; sample?: boolean }) => !(tomb[x.id] && tomb[x.id] >= (x.editedAt ?? 0)) && !x.sample && !/^(f\d+|p\d+|sample-p)$/.test(x.id)
           const dropped = (v.projects?.length ?? 0) + (v.flicks?.length ?? 0)
           if (Array.isArray(v.projects)) v.projects = v.projects.filter(keep)
           if (Array.isArray(v.flicks)) v.flicks = v.flicks.filter(keep)
