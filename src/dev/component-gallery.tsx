@@ -274,7 +274,7 @@ const ENTRIES: Entry[] = [
   {
     name: "Export Flick",
     kind: "Editor",
-    about: "Top-right of the editor. Name (prefilled from the project) and the checks; exports in the background (spinner on the button while one runs).",
+    about: "Top-right of the editor. Name (prefilled from the project) and the checks; exports in the background (spinner on the button while one runs). With the server set up the Flicks API bakes the Flick (2 to 4 variations) and its share page becomes the link.",
     render: () => (
       <ExportControl title="Rain-ready boots launch" issues={[{ text: "@price is empty on some variations" }]} poster={GENERATED_VIDEOS[5].poster} count={3} size="1920×1080" last={{ name: "Rain-ready boots launch", at: Date.now() - 7_200_000 }} busy onExport={() => {}} />
     ),
