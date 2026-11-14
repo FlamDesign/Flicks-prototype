@@ -626,12 +626,13 @@ function SyncWatcher() {
 function ExportWatcher({ onOpen }: { onOpen: (id: string) => void }) {
   const { flicks } = useLibrary()
   const toast = useToast()
-  const running = flicks.filter((f) => f.exporting)
+  // a real export still processing on the API counts as running even when a save raced its finish
+  const running = flicks.filter((f) => f.exporting || f.remote?.status === "processing")
   const key = running.map((f) => `${f.id}:${f.remote?.id ?? ""}`).join(",")
   useEffect(() => {
     const ready = (f: FlickRecord) => toast({ title: `“${f.name}” is ready`, description: "Share it, embed it or serve it in ads.", action: { label: "View Flick", onClick: () => onOpen(f.id) } })
     const timers = running
-      .filter((f) => !f.remote)
+      .filter((f) => !f.remote && f.exporting)
       .map((f) =>
         setTimeout(() => {
           library.finishExport(f.id)
@@ -644,7 +645,7 @@ function ExportWatcher({ onOpen }: { onOpen: (id: string) => void }) {
       for (const f of remote) {
         if (stop) return
         if (!f.remote!.id) {
-          if (Date.now() - f.exporting!.from > 60_000) library.setRemote(f.id, { status: "failed", error: "The export didn't start." })
+          if (Date.now() - (f.exporting?.from ?? f.editedAt) > 60_000) library.setRemote(f.id, { status: "failed", error: "The export didn't start." })
           continue
         }
         const r = await checkBake(f)
