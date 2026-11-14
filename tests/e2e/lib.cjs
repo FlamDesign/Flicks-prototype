@@ -26,10 +26,10 @@ async function open(name, { real = false } = {}) {
       localStorage.setItem("flam.ai", JSON.stringify({ passcode: pc }))
       if (real) localStorage.setItem("flam.testVideos", "1")
       else localStorage.setItem("flam.mockVideos", "1")
-      // MANAGED=1: the chat runs through the managed agent (Dev switch)
-      if (managed) localStorage.setItem("flam.managed", "1")
+      // the managed agent is the default; MANAGED=0 runs the chat in the browser loop instead
+      localStorage.setItem("flam.managed", managed ? "1" : "0")
     } catch {}
-  }, { pc: process.env.FP, real, managed: process.env.MANAGED === "1" })
+  }, { pc: process.env.FP, real, managed: process.env.MANAGED !== "0" })
   const p = await ctx.newPage()
   const t0 = Date.now()
   const lines = []

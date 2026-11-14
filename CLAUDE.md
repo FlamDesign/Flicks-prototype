@@ -27,7 +27,7 @@ Prototype of Flam's Flicks "Create" web app: React + Vite + Tailwind v4 + shadcn
 - `scripts/check-ui.sh` and `scripts/scan-secrets.sh` must pass.
 - `scripts/check-contrast.sh` (needs `FP`) after any token or colour change.
 - Keep the PRD (`src/dev/prd.tsx`) and the Components gallery (`src/dev/component-gallery.tsx`) updated with every feature or UI change.
-- e2e drivers in `tests/e2e/` (`lib.cjs`, `brief.cjs`, `rejoin.cjs`, `agent-setup.cjs`, `contrast.cjs`); `SITE` defaults to the agent deploy, `SAMPLE=1` uses sample videos, `MANAGED=1` the managed agent.
+- e2e drivers in `tests/e2e/` (`lib.cjs`, `brief.cjs`, `rejoin.cjs`, `agent-setup.cjs`, `contrast.cjs`); `SITE` defaults to the agent deploy, `SAMPLE=1` uses sample videos, `MANAGED=0` the browser chat loop (the managed agent is the default).
 
 ## Design system
 
