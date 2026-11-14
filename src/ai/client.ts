@@ -463,7 +463,7 @@ export type FlickStatus = { id: string; status: "processing" | "completed" | "fa
  * Bakes finished videos (one per variation, in order, 2 to 4 of them) into a real Flick on Flam's
  * Flicks API, through the server. Returns the API's id; flickStatus follows it to its share page.
  */
-export async function bakeFlick(input: { name: string; videos: { video_url: string; thumbnail_url?: string }[] }): Promise<FlickStatus> {
+export async function bakeFlick(input: { name: string; aspect_ratio?: string; videos: { video_url: string; thumbnail_url?: string }[] }): Promise<FlickStatus> {
   const res = await steady("/flick", { method: "POST", body: JSON.stringify(input) })
   return (await res.json()) as FlickStatus
 }

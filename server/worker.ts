@@ -89,7 +89,8 @@ export default {
 
     try {
       // images made here: public, so <img> and the video model can load them
-      const file = new URL(req.url).pathname.match(/^\/file\/([\w-]{20,64})$/)
+      // an extension may follow the id (/file/<id>.mp4): some services name their download after it
+      const file = new URL(req.url).pathname.match(/^\/file\/([\w-]{20,64})(?:\.\w{2,5})?$/)
       if ((req.method === "GET" || req.method === "HEAD") && file) {
         const got = await env.USAGE?.getWithMetadata<{ type?: string }>(`file:${file[1]}`, "arrayBuffer")
         if (!got?.value) return json({ error: "not_found" }, 404, cors)
@@ -157,13 +158,16 @@ export default {
         if (videos.length < 2 || videos.length > 4) return json({ error: "bad_request", message: "A Flick takes 2 to 4 videos." }, 400, cors)
         if (!(await take(env, `flick:${day}`, caps.flicks))) return json({ error: "daily_limit", what: "flick" }, 429, cors)
         const index = await libraryItems(env, ctx)
+        // the API names its download after the address, so ours end in .mp4
+        const ours = (id: string) => `${url.origin}/file/${id}.mp4`
         const resolve = async (u: string) => {
-          if (u.startsWith(`${url.origin}/file/`)) return u
+          const mine = u.match(new RegExp(`^${url.origin.replace(/[.]/g, "\\.")}/file/([\\w-]{20,64})`))
+          if (mine) return ours(mine[1])
           // our kept copy of a video the maker has since deleted (the API fetches at bake time)
           const kept = index.find((x) => x.saved && x.source === u)
           const alive = await fetch(u, { method: "HEAD", redirect: "follow" }).then((r) => r.ok, () => false)
-          if (alive) return u
-          return kept ? `${url.origin}/file/${kept.id}` : u
+          if (alive && /\.\w{2,5}(\?|$)/.test(u)) return u
+          return kept ? ours(kept.id) : u
         }
         const sent = {
           name: typeof body.name === "string" && body.name.trim() ? body.name.trim().slice(0, 80) : "Flick",

@@ -1,4 +1,4 @@
-import { AiError, bakeFlick, flickStatus, isLive, mockVideos, shareable } from "@/ai/client"
+import { AiError, bakeFlick, flickStatus, isLive, mockVideos, shareable, videoAspectOf } from "@/ai/client"
 import { library, type FlickRecord } from "@/library"
 import { videoAt } from "@/components/editor/elements"
 
@@ -16,7 +16,7 @@ export const liveExport = () => isLive() && !mockVideos()
 export const BAKE_MS = 120_000
 
 /** the API's request for these variations: each video's public address and its thumbnail */
-export async function bakeRequest(name: string, variants: { video: number; poster?: string }[]): Promise<NonNullable<FlickRecord["remote"]>["request"]> {
+export async function bakeRequest(name: string, size: string, variants: { video: number; poster?: string }[]): Promise<NonNullable<FlickRecord["remote"]>["request"]> {
   const videos = await Promise.all(
     variants.map(async (v) => {
       const m = videoAt(v.video)
@@ -26,7 +26,8 @@ export async function bakeRequest(name: string, variants: { video: number; poste
       return { video_url, ...(thumb && /^https:/.test(thumb) ? { thumbnail_url: thumb } : {}) }
     }),
   )
-  return { name, videos }
+  // our videos aren't the API's own generations, so it needs their shape: the one they were made in
+  return { name, aspect_ratio: videoAspectOf(size), videos }
 }
 
 /** sends the bake and records the API's id on the Flick (or the failure, with Try again) */

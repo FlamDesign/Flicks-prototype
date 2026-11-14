@@ -1743,7 +1743,7 @@ export function GenerationCanvas({
     const live = liveExport()
     const flick = library.exportFlick({ projectId: generation.id, name, size: generation.size, image: poster, video: generation.video, variants, start: Math.max(0, included.findIndex((x) => x.id === start)), snap, base, ms: live ? BAKE_MS : dev.publishSeconds * 1000, remote: live ? { status: "processing", request: { name, videos: [] } } : undefined })
     if (live)
-      bakeRequest(name, variants).then(
+      bakeRequest(name, generation.size, variants).then(
         (request) => (library.setRemote(flick.id, { request }), startBake(flick.id, request)),
         (e: unknown) => library.setRemote(flick.id, { status: "failed", error: e instanceof Error ? e.message : "The export couldn't be sent." }),
       )

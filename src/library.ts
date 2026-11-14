@@ -48,7 +48,7 @@ export type FlickRecord = Flick & {
    * The real Flick on the Flicks API (exports made with the server): its id there, where it stands,
    * and its share page once completed. Kept with what was sent, so a failed bake can be tried again.
    */
-  remote?: { id?: string; status: "processing" | "completed" | "failed"; url?: string; error?: string; request: { name: string; videos: { video_url: string; thumbnail_url?: string }[] } }
+  remote?: { id?: string; status: "processing" | "completed" | "failed"; url?: string; error?: string; request: { name: string; aspect_ratio?: string; videos: { video_url: string; thumbnail_url?: string }[] } }
 }
 
 export const slugify = (s: string) =>
