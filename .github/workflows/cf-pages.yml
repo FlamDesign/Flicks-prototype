@@ -5,7 +5,9 @@ name: Deploy site
 # as the AI server, with Cloudflare Pages: Edit added to it.
 on:
   push:
-    branches: ["**"]
+    # main is production, agent the working branch; any other branch deploys on request
+    # (Actions → this workflow → Run workflow on that branch) and gets <branch>.flam-flicks.pages.dev
+    branches: [main, agent]
   workflow_dispatch:
 
 permissions:

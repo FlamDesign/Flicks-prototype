@@ -11,7 +11,7 @@ Prototype of Flam's Flicks "Create" web app: React + Vite + Tailwind v4 + shadcn
   Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
   Claude-Session: https://claude.ai/code/session_01Jhbj6G6tfy9W4mReeecGGH
   ```
-- Site deploys on push via `.github/workflows/cf-pages.yml` to Cloudflare Pages project `flam-flicks`: `main` → https://flam-flicks.pages.dev, any other branch → `https://<branch>.flam-flicks.pages.dev` (agent → https://agent.flam-flicks.pages.dev). Build config: `vite.pages.config.ts` (base `/`, outDir `dist-pages`). GitHub Pages is retired.
+- Site deploys on push via `.github/workflows/cf-pages.yml` to Cloudflare Pages project `flam-flicks`: `main` → https://flam-flicks.pages.dev, `agent` → https://agent.flam-flicks.pages.dev. Other branches deploy only when the workflow is run on them by hand (`gh workflow run cf-pages.yml -R FlamDesign/Flicks-prototype --ref <branch>`) and get `https://<branch>.flam-flicks.pages.dev`. Short-lived branches are deleted the day they merge; research lives in `research/`, not on a branch. Build config: `vite.pages.config.ts` (base `/`, outDir `dist-pages`). GitHub Pages is retired.
 - Wait for a deploy: `id=$(gh run list -R FlamDesign/Flicks-prototype -w cf-pages.yml -b agent -L 1 --json databaseId -q '.[0].databaseId'); gh run watch $id -R FlamDesign/Flicks-prototype --exit-status`
 - Worker deploy: `gh workflow run ai-server.yml -R FlamDesign/Flicks-prototype --ref agent`. Worker: https://flicks-ai.flick-prototype.workers.dev (`server/worker.ts`, `server/wrangler.toml`, KV).
 
