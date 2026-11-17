@@ -4,16 +4,16 @@ Prototype of Flam's Flicks "Create" web app: React + Vite + Tailwind v4 + shadcn
 
 ## Branches and deploys
 
-- Work on `agent`. `main` is production; fast-forward `main` to `agent` only when asked.
-- After each change: commit, `git push origin agent`. Pushing is fine; GitHub API writes (deleting branches, etc.) are blocked by the proxy.
+- Work on `dev`. `main` is production; fast-forward `main` to `dev` only when asked. Experiments go on their own short-lived branch off `dev`, deleted when merged or dropped.
+- After each change: commit, `git push origin dev`. Pushing is fine; GitHub API writes (deleting branches, etc.) are blocked by the proxy.
 - Commit trailer on every commit:
   ```
   Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
   Claude-Session: https://claude.ai/code/session_01Jhbj6G6tfy9W4mReeecGGH
   ```
-- Site deploys on push via `.github/workflows/cf-pages.yml` to Cloudflare Pages project `flam-flicks`: `main` → https://flam-flicks.pages.dev, `agent` → https://agent.flam-flicks.pages.dev. Other branches deploy only when the workflow is run on them by hand (`gh workflow run cf-pages.yml -R FlamDesign/Flicks-prototype --ref <branch>`) and get `https://<branch>.flam-flicks.pages.dev`. Short-lived branches are deleted the day they merge; research lives in `research/`, not on a branch. Build config: `vite.pages.config.ts` (base `/`, outDir `dist-pages`). GitHub Pages is retired.
-- Wait for a deploy: `id=$(gh run list -R FlamDesign/Flicks-prototype -w cf-pages.yml -b agent -L 1 --json databaseId -q '.[0].databaseId'); gh run watch $id -R FlamDesign/Flicks-prototype --exit-status`
-- Worker deploy: `gh workflow run ai-server.yml -R FlamDesign/Flicks-prototype --ref agent`. Worker: https://flicks-ai.flick-prototype.workers.dev (`server/worker.ts`, `server/wrangler.toml`, KV).
+- Site deploys on push via `.github/workflows/cf-pages.yml` to Cloudflare Pages project `flam-flicks`: `main` → https://flam-flicks.pages.dev, `dev` → https://dev.flam-flicks.pages.dev. Other branches deploy only when the workflow is run on them by hand (`gh workflow run cf-pages.yml -R FlamDesign/Flicks-prototype --ref <branch>`) and get `https://<branch>.flam-flicks.pages.dev`. Short-lived branches are deleted the day they merge; research lives in `research/`, not on a branch. Build config: `vite.pages.config.ts` (base `/`, outDir `dist-pages`). GitHub Pages is retired.
+- Wait for a deploy: `id=$(gh run list -R FlamDesign/Flicks-prototype -w cf-pages.yml -b dev -L 1 --json databaseId -q '.[0].databaseId'); gh run watch $id -R FlamDesign/Flicks-prototype --exit-status`
+- Worker deploy: `gh workflow run ai-server.yml -R FlamDesign/Flicks-prototype --ref dev`. Worker: https://flicks-ai.flick-prototype.workers.dev (`server/worker.ts`, `server/wrangler.toml`, KV).
 
 ## Secrets
 
@@ -27,7 +27,7 @@ Prototype of Flam's Flicks "Create" web app: React + Vite + Tailwind v4 + shadcn
 - `scripts/check-ui.sh` and `scripts/scan-secrets.sh` must pass.
 - `scripts/check-contrast.sh` (needs `FP`) after any token or colour change.
 - Keep the PRD (`src/dev/prd.tsx`) and the Components gallery (`src/dev/component-gallery.tsx`) updated with every feature or UI change.
-- e2e drivers in `tests/e2e/` (`lib.cjs`, `brief.cjs`, `rejoin.cjs`, `agent-setup.cjs`, `contrast.cjs`); `SITE` defaults to the agent deploy, `SAMPLE=1` uses sample videos, `LIVE_EXPORT=1` the Flicks API export (off by default), `MANAGED=0` the browser chat loop (the managed agent is the default).
+- e2e drivers in `tests/e2e/` (`lib.cjs`, `brief.cjs`, `rejoin.cjs`, `agent-setup.cjs`, `contrast.cjs`); `SITE` defaults to the dev deploy, `SAMPLE=1` uses sample videos, `LIVE_EXPORT=1` the Flicks API export (off by default), `MANAGED=0` the browser chat loop (the managed agent is the default).
 
 ## Design system
 

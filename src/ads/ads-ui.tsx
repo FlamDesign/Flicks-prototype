@@ -16,6 +16,7 @@ import { ALL_DATES, DateFilter, inDateFilter, type DateFilterValue } from "@/com
 import { RatioGlyph } from "@/components/ratio-glyph"
 import { FLICKS, SIZES, SIZE_GROUPS } from "@/data"
 import { useLibrary } from "@/library"
+import { FlickRender, snapOf } from "@/components/flick-render"
 import { REFERENCE_VIDEOS, inSet, videoAt } from "@/components/editor/elements"
 import { useDevState } from "@/dev/state"
 import { cn } from "@/lib/utils"
@@ -649,6 +650,9 @@ export function FlickStage({ flick, videos, start }: { flick: FlickRef; videos?:
  * Moves on by itself every few seconds until a thumbnail is tapped.
  */
 export function LiveFlick({ flick, tall, fit, videos: given, start = 0 }: { flick: FlickRef; tall?: boolean; videos?: number[]; start?: number; /** fill the parent container (FlickStage) at its ratio */ fit?: boolean }) {
+  // an exported Flick keeps its canvas: it plays with its layout, thumbnails and feed values
+  const record = useLibrary().flicks.find((f) => f.id === flick.id)
+  const snap = record ? snapOf(record) : null
   // a Flick's own variations when known; otherwise its product set's videos
   const i = Math.max(0, FLICKS.findIndex((f) => f.id === flick.id))
   const base = flick.video ?? FLICKS[i]?.video ?? REFERENCE_VIDEOS[i % REFERENCE_VIDEOS.length]
@@ -669,8 +673,12 @@ export function LiveFlick({ flick, tall, fit, videos: given, start = 0 }: { flic
         // never stretched: one side sets the size and the shape follows (wide by width, tall by height)
         style={{ aspectRatio: `${w} / ${h}`, containerType: "size", ...(fit ? { width: `min(100cqw, calc(100cqh * ${w / h}))` } : {}) }}
       >
-        {/* a real Flick plays from the Flicks API's share page, exactly as viewers get it */}
-        {flick.url ? (
+        {/* an exported Flick: the canvas as the creator left it. The API's share page (the hosted
+            Flick) can't carry the layout yet, so it stays the link; a sample Flick without a canvas
+            plays its videos with a plain strip */}
+        {record && snap ? (
+          <FlickRender flick={record} active={Math.min(active, record.variants.length - 1)} onActive={(k) => (setActive(k), setAuto(false))} />
+        ) : flick.url ? (
           <iframe src={flick.url} title={flick.name} allow="autoplay" className="absolute inset-0 size-full border-0" />
         ) : (
           <>

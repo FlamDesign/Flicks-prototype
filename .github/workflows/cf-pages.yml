@@ -5,9 +5,9 @@ name: Deploy site
 # as the AI server, with Cloudflare Pages: Edit added to it.
 on:
   push:
-    # main is production, agent the working branch; any other branch deploys on request
+    # main is production, dev the working branch; any other branch deploys on request
     # (Actions → this workflow → Run workflow on that branch) and gets <branch>.flam-flicks.pages.dev
-    branches: [main, agent]
+    branches: [main, dev]
   workflow_dispatch:
 
 permissions:
@@ -54,7 +54,7 @@ jobs:
             exit 1
           fi
       - name: Deploy
-        # main and agent often deploy the same commit; a per-branch commit hash keeps Pages from
+        # main and dev often deploy the same commit; a per-branch commit hash keeps Pages from
         # treating the second as a duplicate and leaving that branch's address on an older deploy
         run: |
           hash=$(printf '%s %s' "$GITHUB_SHA" "$GITHUB_REF_NAME" | sha1sum | cut -c1-40)

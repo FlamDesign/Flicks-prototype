@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { FlickPlayer } from "@/components/flick-player"
+import { FlickRender, snapOf } from "@/components/flick-render"
 import { FlicksLogo } from "@/components/brand"
 import { ratioOf } from "@/components/ratio-glyph"
 import { useLibrary } from "@/library"
@@ -34,11 +35,12 @@ export function FlickViewer({ slug }: { slug: string }) {
       {/* the frame keeps its exact ratio and fits the screen */}
       <div
         className="relative w-full overflow-hidden rounded-2xl bg-muted shadow-lg ring-1 ring-foreground/10"
-        style={{ aspectRatio: r, maxWidth: `min(28rem, calc((100dvh - 12rem) * ${r}))` }}
+        style={{ aspectRatio: r, maxWidth: `min(28rem, calc((100dvh - 12rem) * ${r}))`, containerType: "size" }}
       >
-        <FlickPlayer videos={f.variants.map((x) => x.video)} active={i} />
+        {snapOf(f) ? <FlickRender flick={f} active={i} onActive={setI} /> : <FlickPlayer videos={f.variants.map((x) => x.video)} active={i} />}
       </div>
-      {f.variants.length > 1 && (
+      {/* the picker under the frame, for a Flick whose canvas (with its own strip) isn't kept */}
+      {f.variants.length > 1 && !snapOf(f) && (
         <div role="tablist" aria-label="Variations" className="flex gap-2">
           {f.variants.map((x, k) => (
             <button

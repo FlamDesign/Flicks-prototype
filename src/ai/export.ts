@@ -1,6 +1,6 @@
 import { AiError, bakeFlick, flickStatus, isLive, mockVideos, shareable } from "@/ai/client"
 import { library, type FlickRecord } from "@/library"
-import { videoAt } from "@/components/editor/elements"
+import { videoAt, type CanvasElement } from "@/components/editor/elements"
 
 /**
  * Export on the Flicks API. With the server set up and real videos, an export sends the included
@@ -88,4 +88,20 @@ export async function checkBake(f: FlickRecord): Promise<"ready" | "failed" | "w
     return "failed"
   }
   return "waiting"
+}
+
+/**
+ * The layout a Flick keeps must outlive this browser: an image placed from a file before its
+ * upload finished still points at a blob: or data: address, so it is kept on the server now and
+ * the element rewritten. Elements already on https stay as they are.
+ */
+export async function durableElements(elements: CanvasElement[]): Promise<CanvasElement[]> {
+  if (!isLive()) return elements
+  return Promise.all(
+    elements.map(async (el) => {
+      if (el.kind !== "image" || !/^(blob:|data:)/.test(el.src)) return el
+      const src = await shareable(el.src, { purpose: "upload" }).catch(() => el.src)
+      return src === el.src ? el : ({ ...el, src } as CanvasElement)
+    }),
+  )
 }

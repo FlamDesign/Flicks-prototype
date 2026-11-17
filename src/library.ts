@@ -192,6 +192,10 @@ export const library = {
     }))
     return flick
   },
+  /** the Flick's kept canvas, once its images are on the server */
+  setSnap(id: string, snap: unknown) {
+    set((s) => ({ ...s, flicks: s.flicks.map((f) => (f.id === id ? { ...f, snap } : f)) }))
+  },
   /** an export finished */
   finishExport(id: string, remote?: FlickRecord["remote"]) {
     set((s) => ({ ...s, flicks: s.flicks.map((f) => (f.id === id ? { ...f, exporting: undefined, editedAt: Date.now(), ...(remote ? { remote } : {}) } : f)) }))

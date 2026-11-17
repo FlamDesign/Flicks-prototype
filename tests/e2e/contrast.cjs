@@ -41,7 +41,7 @@ const CHECK = `(() => {
     const { p } = run
     await p.evaluate((m) => localStorage.setItem("flam.appearance", m), mode)
     for (const path of PAGES) {
-      await p.goto(`${(process.env.SITE || "https://agent.flam-flicks.pages.dev/").replace(/\/$/, "")}${path}`, { waitUntil: "networkidle" })
+      await p.goto(`${(process.env.SITE || "https://dev.flam-flicks.pages.dev/").replace(/\/$/, "")}${path}`, { waitUntil: "networkidle" })
       await p.waitForTimeout(2500)
       const found = await p.evaluate(CHECK)
       const seen = new Map()

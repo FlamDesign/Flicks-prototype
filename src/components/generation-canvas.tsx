@@ -31,7 +31,7 @@ import { ElementToolbar, ToolbarGrip } from "@/components/editor/element-toolbar
 import { useAgent, type EditorApi, type ElementSpec } from "@/ai/agent"
 import { boxOf, buildDesign, color as colorOf, contrast, describeDesign, elementFor, fontName, freeY, headlineLimit, feedOfField, FIELD_FEED, FIELDS, patchDesign, restack, type Brand, type Field } from "@/ai/design"
 import { cancelJob, generateVideo, isLive, posterOf, shareable, useAiConfig, videoAspectOf, type VideoInput } from "@/ai/client"
-import { BAKE_MS, bakeRequest, liveExport, startBake } from "@/ai/export"
+import { BAKE_MS, bakeRequest, durableElements, liveExport, startBake } from "@/ai/export"
 import { loadLibrary, nameOf as libraryName } from "@/lib/library"
 import { listNames } from "@/lib/format"
 import { isTyping } from "@/lib/keys"
@@ -1742,6 +1742,8 @@ export function GenerationCanvas({
     // follows it to its share page); with Sample videos on it's the prototype's timer
     const live = liveExport()
     const flick = library.exportFlick({ projectId: generation.id, name, size: generation.size, image: poster, video: generation.video, variants, start: Math.max(0, included.findIndex((x) => x.id === start)), snap, base, ms: live ? BAKE_MS : dev.publishSeconds * 1000, remote: live ? { status: "processing", request: { name, videos: [] } } : undefined })
+    // the layout's images must be on the server, not in this browser's memory
+    if (snap.elements.some((el) => el.kind === "image" && /^(blob:|data:)/.test(el.src))) void durableElements(snap.elements).then((elements) => library.setSnap(flick.id, { ...snap, elements }))
     if (live)
       bakeRequest(name, generation.size, variants).then(
         (request) => (library.setRemote(flick.id, { request }), startBake(flick.id, request)),
