@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { PlayIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
-import { videoAt, wrapVideo } from "@/components/editor/elements"
+import { videoOf } from "@/components/editor/elements"
 import { cn } from "@/lib/utils"
 
 /**
@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils"
  * other transition between variations, here or in any other place a Flick plays. There is no
  * option for one on purpose; don't add one.
  */
-export function FlickPlayer({ videos, active, playing = true, className }: { videos: number[]; active: number; playing?: boolean; className?: string }) {
+export function FlickPlayer({ videos, srcs, active, playing = true, className }: { videos: number[]; /** the made videos' addresses, one per entry (undefined for a sample): the lookup that holds across devices */ srcs?: (string | undefined)[]; active: number; playing?: boolean; className?: string }) {
   const refs = useRef<(HTMLVideoElement | null)[]>([])
   const last = useRef(active)
   const [blocked, setBlocked] = useState(false)
@@ -34,7 +34,7 @@ export function FlickPlayer({ videos, active, playing = true, className }: { vid
       else el.pause()
     }
     last.current = active
-  }, [active, playing, videos.join(",")])
+  }, [active, playing, videos.join(","), (srcs ?? []).join(",")])
 
   // the hidden ones are kept in step with the shown one (loops of different lengths drift)
   useEffect(() => {
@@ -49,10 +49,10 @@ export function FlickPlayer({ videos, active, playing = true, className }: { vid
   return (
     <div className={cn("absolute inset-0", className)}>
       {videos.map((v, k) => {
-        const m = videoAt(wrapVideo(v))
+        const m = videoOf({ video: v, src: srcs?.[k] })
         return (
           <video
-            key={`${k}-${v}`}
+            key={`${k}-${srcs?.[k] ?? v}`}
             ref={(el) => void (refs.current[k] = el)}
             poster={m.poster}
             muted

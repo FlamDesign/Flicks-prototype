@@ -682,7 +682,7 @@ export function LiveFlick({ flick, tall, fit, videos: given, start = 0 }: { flic
           <iframe src={flick.url} title={flick.name} allow="autoplay" className="absolute inset-0 size-full border-0" />
         ) : (
           <>
-        <FlickPlayer videos={videos} active={active} />
+        <FlickPlayer videos={videos} srcs={given?.length ? record?.variants.map((v) => v.src) : undefined} active={active} />
         <div role="radiogroup" aria-label="Variations" className="absolute inset-x-0 bottom-[5%] flex justify-center gap-[3cqmin]">
           {videos.map((v, k) => (
             <button

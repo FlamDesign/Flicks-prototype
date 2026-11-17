@@ -53,6 +53,8 @@ export const GENERATED_VIDEOS: SampleVideo[] = [
 /** A plain gray frame for a video this device no longer has (see videoAt). */
 export const MISSING_POSTER = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="16" height="16" fill="#d6d3d1"/></svg>')
 const MADE_KEY = "flam.videos"
+/** how many videos come with the app (samples and the brand templates'); made videos follow */
+export const BUILT_IN_VIDEOS = GENERATED_VIDEOS.length
 try {
   const saved = JSON.parse(localStorage.getItem(MADE_KEY) ?? "[]") as SampleVideo[]
   saved.forEach((v) => GENERATED_VIDEOS.push({ ...v, set: "made", poster: v.poster || MISSING_POSTER }))
@@ -75,8 +77,33 @@ export function addMadeVideo(v: { name: string; size: string; mp4: string; poste
   }
   return GENERATED_VIDEOS.length - 1
 }
-/** a video index kept in range: wraps the samples and made videos, leaves real Flicks' videos as they are */
-export const wrapVideo = (i: number) => (i >= REAL_BASE ? i : i % GENERATED_VIDEOS.length)
+/**
+ * A sample video index kept in range (sample sets cycle). A made video's index is never wrapped:
+ * made videos are addressed by position in a list that differs per device, so an index past the end
+ * means "not loaded here", never "some sample instead".
+ */
+export const wrapVideo = (i: number) => (i >= REAL_BASE || i >= BUILT_IN_VIDEOS ? i : i % BUILT_IN_VIDEOS)
+/** a made video by its address, wherever it sits in this device's list (-1 when it isn't here) */
+export const madeIndex = (src?: string) => (src ? GENERATED_VIDEOS.findIndex((v) => v.set === "made" && v.mp4 === src) : -1)
+/**
+ * The video of something that remembers both its index and its address (a slide, a Flick's
+ * variation): the address wins, because positions shift between devices and reloads; the index is
+ * the fallback for samples and older records. A made video known by address but not in this
+ * device's list still plays from its address.
+ */
+export const videoOf = (x: { video?: number; src?: string }): SampleVideo => {
+  if (x.src) {
+    const k = madeIndex(x.src)
+    if (k >= 0) return GENERATED_VIDEOS[k]
+    return { name: "made", set: "made", size: "", mp4: x.src, poster: (x.video !== undefined && GENERATED_VIDEOS[x.video]?.mp4 === x.src && GENERATED_VIDEOS[x.video].poster) || MISSING_POSTER }
+  }
+  return videoAt(x.video !== undefined ? wrapVideo(x.video) : undefined)
+}
+/** the index to keep for something known by address: where it sits here, else what it had */
+export const videoIndexOf = (x: { video?: number; src?: string }) => {
+  const k = madeIndex(x.src)
+  return k >= 0 ? k : x.video
+}
 export const isMadeVideo = (i?: number) => i !== undefined && GENERATED_VIDEOS[i]?.set === "made"
 
 /**

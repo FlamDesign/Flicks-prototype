@@ -37,7 +37,7 @@ export function FlickViewer({ slug }: { slug: string }) {
         className="relative w-full overflow-hidden rounded-2xl bg-muted shadow-lg ring-1 ring-foreground/10"
         style={{ aspectRatio: r, maxWidth: `min(28rem, calc((100dvh - 12rem) * ${r}))`, containerType: "size" }}
       >
-        {snapOf(f) ? <FlickRender flick={f} active={i} onActive={setI} /> : <FlickPlayer videos={f.variants.map((x) => x.video)} active={i} />}
+        {snapOf(f) ? <FlickRender flick={f} active={i} onActive={setI} /> : <FlickPlayer videos={f.variants.map((x) => x.video)} srcs={f.variants.map((x) => x.src)} active={i} />}
       </div>
       {/* the picker under the frame, for a Flick whose canvas (with its own strip) isn't kept */}
       {f.variants.length > 1 && !snapOf(f) && (

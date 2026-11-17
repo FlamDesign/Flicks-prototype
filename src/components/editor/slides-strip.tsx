@@ -21,6 +21,8 @@ export type Slide = {
   prompt?: string
   refs?: Reference[]
   video?: number
+  /** a made video's address: the lookup that holds across devices (video is where it sits here) */
+  src?: string
   startedAt?: number
   name?: string // shown to viewers; defaults to "Variation n"
   /** permanent number given when the variation is added; never reused or renumbered */

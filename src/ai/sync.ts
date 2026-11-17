@@ -133,8 +133,15 @@ export function merge(mine: Saved, theirs: Saved | null): { merged: Saved; chang
     const k = v ? GENERATED_VIDEOS.findIndex((g) => g.mp4 === v.mp4) : -1
     return k < 0 ? i : k
   }
+  // indices become this tab's; a slide or variation that points at a made video also learns the
+  // video's address, so any later renumbering can't send it to the wrong video
   const renumber = <T,>(x: T): T =>
-    JSON.parse(JSON.stringify(x), (key, val) => (key === "video" && typeof val === "number" ? at(val) : key === "videos" && Array.isArray(val) ? val.map((n) => (typeof n === "number" ? at(n) : n)) : val))
+    JSON.parse(JSON.stringify(x), (key, val) => {
+      if (key === "video" && typeof val === "number") return at(val)
+      if (key === "videos" && Array.isArray(val)) return val.map((n) => (typeof n === "number" ? at(n) : n))
+      if (val && typeof val === "object" && !Array.isArray(val) && typeof val.video === "number" && val.src === undefined && GENERATED_VIDEOS[val.video]?.set === "made") return { ...val, src: GENERATED_VIDEOS[val.video].mp4 }
+      return val
+    })
   let changedHere = false
   const pick = <T extends { id: string; editedAt?: number }>(a: T[], b: T[]) => {
     const out: T[] = []

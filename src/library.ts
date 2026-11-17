@@ -32,7 +32,7 @@ export type Project = {
 
 /** image: undefined uses the starting variation, null means no image */
 export type LinkSettings = { slug: string; title: string; description: string; image?: string | null }
-export type FlickVariant = { name: string; video: number; poster: string; views: number }
+export type FlickVariant = { name: string; video: number; /** a made video's address (video is its position on the device that exported) */ src?: string; poster: string; views: number }
 export type FlickRecord = Flick & {
   /** the variations viewers switch between, in order, with their views */
   variants: FlickVariant[]

@@ -423,6 +423,7 @@ const SECTIONS: Section[] = [
             "A Make card pressed for a video that\u2019s still generating starts it again with the new prompt. Variations wait only until Variation 1 exists.",
             "When a video arrives, its thumbnail in the strip fades in with one soft glow.",
             "A variation that hasn't been generated shows the reference video faded underneath its elements.",
+            "A made video is found by its address (the file's URL kept on the variation and on an exported Flick\u2019s variation), never by its position in this device\u2019s video list: positions differ between devices and reloads, and an index past the end never falls back to a sample. What the canvas plays, what the chat is shown (frames, the reference video for variations) and what a Flick plays are the same video everywhere.",
             "Switching variations is an instant cut, everywhere a Flick plays (the canvas, the Flick page, the shared viewer, templates, the Campaigns and Embeds previews): never a cross-fade, slide, zoom or any other transition on the video or the thumbnail strip. This is settled; the player has no option for one.",
             "Wherever a finished Flick or template plays (template pages, the Flick page, campaigns, embeds, the shared viewer), it shows at its exact shape, as large as the space allows by width or height, never stretched; the video fills that shape.",
           ]}
