@@ -62,3 +62,26 @@ textured or busy backgrounds) and that case isn't in this material.
 - Variation 1 shows the pipeline isn't always aligned: a Flick with one re-generated variation
   falls back to full coding for that variation. The bake should measure alignment (PSNR against
   the base) and choose per variation.
+
+## Second set: same band, three backgrounds (`og-backgrounds/`, 16 Nov)
+
+Festival, garage, boardroom: 1440×1440 HEVC, 24 fps, 8 s, 193 frames. The poses align across the
+three, but the background, clothes and lighting all change (`backgrounds-3s-row.png`).
+
+| pair | luma PSNR, same frame |
+|---|---|
+| festival vs garage / boardroom, garage vs boardroom | 17.3 / 13.2 / 13.9 dB |
+| festival, consecutive frames | 31.7 dB |
+
+Joint encode (720×720, x264 slow, CRF 24):
+
+| encode | bytes |
+|---|---|
+| three separate files (keyframe every 1 s) | 3,895,002 |
+| three in a row, one stream (control) | 1,653,031 |
+| interleaved | 2,470,814 |
+
+Interleaving costs 49% more than the control. A background swap shares only the people, and even
+they are re-lit and re-dressed, so there is nothing for cross-variation prediction to use; these
+three are full streams under any scheme. As with variation 1 of the first set, the bake has to
+detect this (PSNR against the base) and not attempt a delta.
