@@ -11,6 +11,7 @@ import {
   type Feed,
   videoAt,
 } from "@/components/editor/elements";
+import { FlickPlayer } from "@/components/flick-player";
 import { CanvasStage } from "@/components/editor/canvas-stage";
 import type { Slide } from "@/components/editor/slides-strip";
 import { cn } from "@/lib/utils";
@@ -144,27 +145,8 @@ function TryFlick({ t }: { t: Template }) {
             containerType: "size",
           }}
         >
-          {videos.map((v, i) => {
-            const m = videoAt(v);
-            return (
-              <video
-                key={v}
-                autoPlay
-                muted
-                loop
-                playsInline
-                poster={m.poster}
-                aria-hidden
-                className={cn(
-                  "absolute inset-0 size-full object-cover",
-                  i === active ? "opacity-100" : "opacity-0",
-                )}
-              >
-                {m.webm && <source src={m.webm} type="video/webm" />}
-                <source src={m.mp4} type="video/mp4" />
-              </video>
-            );
-          })}
+          {/* the same player as everywhere a Flick plays: an instant cut on switch, the playhead carried over */}
+          <FlickPlayer videos={videos} active={active} />
           {snap ? (
             <CanvasStage
               elements={snap.elements}
@@ -219,7 +201,7 @@ function TryFlick({ t }: { t: Template }) {
                       aria-label={t.variants[i]?.label ?? `Variation ${i + 1}`}
                       onClick={() => (setActive(i), setAuto(false))}
                       className={cn(
-                        "relative aspect-square w-[16cqmin] min-w-8 overflow-hidden rounded-[3cqmin] outline-none transition-all duration-300 focus-visible:ring-2 focus-visible:ring-white",
+                        "relative aspect-square w-[16cqmin] min-w-8 overflow-hidden rounded-[3cqmin] outline-none focus-visible:ring-2 focus-visible:ring-white",
                         i === active
                           ? "scale-105 ring-2 ring-white"
                           : "opacity-70 hover:opacity-100",

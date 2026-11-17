@@ -41,7 +41,7 @@ Prototype of Flam's Flicks "Create" web app: React + Vite + Tailwind v4 + shadcn
 - The user's credits are the only credits; no dollar figures anywhere.
 - When the AI server is unreachable: "Couldn't connect to the AI server."
 - Keep the Sample videos dev switch.
-- Flicks (the format): every variation's video is loaded and plays muted; a switch carries the playhead over with an instant cut (`src/components/flick-player.tsx`).
+- Flicks (the format): every variation's video is loaded and plays muted; a switch carries the playhead over with an **instant cut**. Never a cross-fade, slide, zoom or any transition on a variation switch, on the video or the thumbnail strip, anywhere a Flick plays (canvas, Flick page, viewer, templates, previews). Settled for good; `FlickPlayer` (`src/components/flick-player.tsx`) is the only player and has no option for one.
 
 ## Architecture notes
 

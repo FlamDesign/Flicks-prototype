@@ -692,7 +692,7 @@ export function LiveFlick({ flick, tall, fit, videos: given, start = 0 }: { flic
               aria-checked={k === active}
               aria-label={`Variation ${k + 1}`}
               onClick={() => (setActive(k), setAuto(false))}
-              className={cn("aspect-square w-[16cqmin] min-w-7 overflow-hidden rounded-[3cqmin] outline-none transition-all focus-visible:ring-2 focus-visible:ring-white", k === active ? "scale-105 ring-2 ring-white" : "opacity-70 hover:opacity-100")}
+              className={cn("aspect-square w-[16cqmin] min-w-7 overflow-hidden rounded-[3cqmin] outline-none focus-visible:ring-2 focus-visible:ring-white", k === active ? "scale-105 ring-2 ring-white" : "opacity-70 hover:opacity-100")}
             >
               <img loading="lazy" decoding="async" src={videoAt(v).poster} alt="" className="size-full object-cover" />
             </button>

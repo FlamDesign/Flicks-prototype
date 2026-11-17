@@ -9,9 +9,13 @@ import { cn } from "@/lib/utils"
  * A Flick as viewers get it: every variation's video is loaded and stacked, only the active one
  * shows, and a switch carries the playhead over (the next video starts from the same moment, so the
  * swap reads as one scene changing, not a restart). Muted, looping; a play button if autoplay is
- * blocked. Used by the editor canvas, the Flick page and the shared viewer.
+ * blocked. Used by the editor canvas, the Flick page, the shared viewer and the template preview.
+ *
+ * RULE (product, settled): a switch is an instant cut. Never a cross-fade, a slide, a zoom or any
+ * other transition between variations, here or in any other place a Flick plays. There is no
+ * option for one on purpose; don't add one.
  */
-export function FlickPlayer({ videos, active, playing = true, className, fade = false }: { videos: number[]; active: number; playing?: boolean; className?: string; /** a short cross-fade on switch */ fade?: boolean }) {
+export function FlickPlayer({ videos, active, playing = true, className }: { videos: number[]; active: number; playing?: boolean; className?: string }) {
   const refs = useRef<(HTMLVideoElement | null)[]>([])
   const last = useRef(active)
   const [blocked, setBlocked] = useState(false)
@@ -58,7 +62,7 @@ export function FlickPlayer({ videos, active, playing = true, className, fade = 
             autoPlay={playing}
             aria-hidden={k !== active}
             onPlay={() => k === active && setBlocked(false)}
-            className={cn("absolute inset-0 size-full object-cover", fade && "transition-opacity duration-150", k === active ? "opacity-100" : "pointer-events-none opacity-0")}
+            className={cn("absolute inset-0 size-full object-cover", k === active ? "opacity-100" : "pointer-events-none opacity-0")}
           >
             {canWebm && m.webm && <source src={m.webm} type="video/webm" />}
             <source src={m.mp4} type="video/mp4" />
