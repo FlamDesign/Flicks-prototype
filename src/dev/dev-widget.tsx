@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Analytics01Icon, ChatBotIcon, DashboardSquare01Icon, DragDropVerticalIcon, File01Icon, FlashIcon, TestTubeIcon, Timer01Icon } from "@hugeicons/core-free-icons"
+import { Analytics01Icon, ChatBotIcon, DashboardSquare01Icon, DragDropVerticalIcon, File01Icon, FlashIcon, Rocket01Icon, TestTubeIcon, Timer01Icon } from "@hugeicons/core-free-icons"
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { useDevActions } from "@/dev/dev-actions"
 import { health, mockVideos, isLive, type Health } from "@/ai/client"
 import { managedOn, setManaged } from "@/ai/managed"
+import { liveExportOn, setLiveExport } from "@/ai/export"
 import { useDevState } from "@/dev/state"
 
 const KEY = "flam.devWidget"
@@ -15,7 +16,8 @@ const MARGIN = 8
 /**
  * Dev tools as one small floating pill, on every screen (sign-in, onboarding, the app and the
  * editor). Click it (or ⌘.) for the menu: the switches, this screen's shortcuts, and the three
- * dialogs (State, AI, Docs). Two dots on the pill show Sample videos and Managed agent. Drag the
+ * dialogs (State, AI, Docs). Two dots on the pill show Sample videos and Managed agent; Live
+ * export (exports baked on the Flicks API) is off by default until export is ready for production. Drag the
  * grip to move it; it remembers where it was left on this device.
  */
 export function DevWidget({ onState, onAi, onDocs }: { onState: () => void; onAi: () => void; onDocs: () => void }) {
@@ -32,6 +34,7 @@ export function DevWidget({ onState, onAi, onDocs }: { onState: () => void; onAi
   const [open, setOpen] = useState(false)
   const [mock, setMock] = useState(mockVideos)
   const [managed, setManagedOn] = useState(managedOn)
+  const [live, setLive] = useState(liveExportOn)
   const { state: dev, update: setDev } = useDevState()
   const slow = dev.pageLoadMs > 0
 
@@ -165,6 +168,10 @@ export function DevWidget({ onState, onAi, onDocs }: { onState: () => void; onAi
           <DropdownMenuCheckboxItem checked={managed} onCheckedChange={(v) => (setManaged(!!v), setManagedOn(!!v))}>
             <HugeiconsIcon icon={ChatBotIcon} className="size-4" />
             Managed agent
+          </DropdownMenuCheckboxItem>
+          <DropdownMenuCheckboxItem checked={live} onCheckedChange={(v) => (setLiveExport(!!v), setLive(!!v))}>
+            <HugeiconsIcon icon={Rocket01Icon} className="size-4" />
+            Live export
           </DropdownMenuCheckboxItem>
           <DropdownMenuCheckboxItem checked={slow} onCheckedChange={(v) => setDev({ pageLoadMs: v ? 400 : 0 })}>
             <HugeiconsIcon icon={Timer01Icon} className="size-4" />

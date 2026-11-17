@@ -9,8 +9,23 @@ import { videoAt } from "@/components/editor/elements"
  * export is the prototype's timer, as before.
  */
 
-/** real exports: the server is set up and the videos aren't samples */
-export const liveExport = () => isLive() && !mockVideos()
+/** Dev switch: exports go to the Flicks API (off by default until export is ready for production) */
+export const liveExportOn = () => {
+  try {
+    return localStorage.getItem("flam.liveExport") === "1"
+  } catch {
+    return false
+  }
+}
+export const setLiveExport = (on: boolean) => {
+  try {
+    localStorage.setItem("flam.liveExport", on ? "1" : "0")
+  } catch {
+    /* no storage */
+  }
+}
+/** real exports: the switch is on, the server is set up and the videos aren't samples */
+export const liveExport = () => liveExportOn() && isLive() && !mockVideos()
 
 /** how long a bake usually takes on the API (the progress bar's length; it waits past this) */
 export const BAKE_MS = 120_000

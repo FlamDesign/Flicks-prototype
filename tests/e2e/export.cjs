@@ -2,12 +2,13 @@
  * Exports an existing project as a real Flick on the Flicks API and waits for its share page:
  * opens the project (PROJECT, a name fragment; default the Enchantress one), presses Export,
  * confirms, and watches the Flick page until its link is the API's share page (or it fails).
- *   FP=<passcode> SITE=<site> [PROJECT="Three Shades"] node tests/e2e/export.cjs
+ *   FP=<passcode> SITE=<site> LIVE_EXPORT=1 [PROJECT="Three Shades"] node tests/e2e/export.cjs
  */
 const { open } = require("./lib.cjs")
 
 ;(async () => {
   const run = await open("export", { real: true })
+  if (process.env.LIVE_EXPORT !== "1") console.warn("LIVE_EXPORT=1 not set: this export will use the prototype timer, not the Flicks API")
   const { p, log } = run
   const want = process.env.PROJECT || "Three Shades"
   await p.getByRole("link", { name: "Projects" }).or(p.getByRole("button", { name: "Projects" })).first().click()
