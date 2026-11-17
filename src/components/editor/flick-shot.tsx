@@ -13,6 +13,8 @@ export type ShotInput = {
   /** the variation's video (a frame is taken from it) or, failing that, a still */
   video?: string
   poster?: string
+  /** the playing element for this video, when the canvas has one: its current frame needs no fetch */
+  playing?: HTMLVideoElement | null
   /** every variation's thumbnail, in strip order, and which one is this variation */
   thumbs: { poster?: string }[]
   active: number
@@ -42,21 +44,44 @@ async function local(url?: string): Promise<string | undefined> {
  * drawn on top, at the Flick's shape (1024 px on the long side). Made off screen with the same
  * stage the editor uses, so what Claude sees is what the user sees.
  */
-export async function renderFlickShot(input: ShotInput): Promise<Blob> {
+export async function renderFlickShot(input: ShotInput): Promise<{ blob: Blob; /** where the frame behind the design came from */ frame: "playing" | "video" | "still" | "none"; /** the moment shown, in seconds, when it's a frame of the video */ at?: number }> {
   const [w, h] = input.size.split(/[x×]/).map(Number)
   const r = w && h ? w / h : 1
   const W = Math.round(r >= 1 ? 1024 : 1024 * r)
   const H = Math.round(r >= 1 ? 1024 / r : 1024)
-  // the video's frame at about 1.5 s (past any fade-in), else its still
+  // the frame behind the design: what's playing on the canvas right now (no fetch, so it never
+  // times out), else a frame at about 1.5 s of the video, else its still. The result says which,
+  // so a stand-in is never passed off as the video.
   let frame: string | undefined
-  if (input.video) {
+  let from: "playing" | "video" | "still" | "none" = "none"
+  let at: number | undefined
+  const el = input.playing
+  if (el && el.readyState >= 2 && el.videoWidth) {
     try {
-      frame = URL.createObjectURL((await within(stillsAt(input.video, [1.5], 1024), 8000))[0])
+      const sc = Math.min(1, 1024 / Math.max(el.videoWidth, el.videoHeight))
+      const c = document.createElement("canvas")
+      c.width = Math.max(1, Math.round(el.videoWidth * sc))
+      c.height = Math.max(1, Math.round(el.videoHeight * sc))
+      c.getContext("2d")!.drawImage(el, 0, 0, c.width, c.height)
+      const blob = await new Promise<Blob | null>((ok) => c.toBlob(ok, "image/jpeg", 0.85))
+      if (blob) ((frame = URL.createObjectURL(blob)), (from = "playing"), (at = Math.round(el.currentTime * 10) / 10))
     } catch {
       frame = undefined
     }
   }
-  frame ??= await local(input.poster)
+  if (!frame && input.video) {
+    try {
+      frame = URL.createObjectURL((await within(stillsAt(input.video, [1.5], 1024), 20000))[0])
+      from = "video"
+      at = 1.5
+    } catch {
+      frame = undefined
+    }
+  }
+  if (!frame) {
+    frame = await local(input.poster)
+    if (frame) from = "still"
+  }
   const thumbs = await Promise.all(input.thumbs.map(async (t) => ({ poster: await local(t.poster) })))
 
   const host = document.createElement("div")
@@ -96,7 +121,7 @@ export async function renderFlickShot(input: ShotInput): Promise<Blob> {
     fonts ??= within(getFontEmbedCSS(node), 6000).catch(() => "")
     const css = await fonts
     const url = await within(toJpeg(node, { quality: 0.85, pixelRatio: 1, width: W, height: H, imagePlaceholder: "data:image/gif;base64,R0lGODlhAQABAAAAACw=", ...(css ? { fontEmbedCSS: css } : { skipFonts: true }) }), 20000)
-    return await (await fetch(url)).blob()
+    return { blob: await (await fetch(url)).blob(), frame: from, at }
   } finally {
     root.unmount()
     host.remove()

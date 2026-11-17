@@ -847,11 +847,14 @@ export function GenerationCanvas({
       const shown = list.filter((x) => x.id === "main" || x.startedAt)
       const made = status(sl) === "done" && sl.video !== undefined
       const v = sl.video !== undefined || sl.src ? videoOf(sl) : undefined
-      const blob = await renderFlickShot({
+      // the canvas's own player for this variation, when it's loaded: its frame needs no fetch
+      const playing = made && v?.mp4 ? [...document.querySelectorAll<HTMLVideoElement>("video")].find((el) => el.currentSrc === v.mp4 || [...el.querySelectorAll("source")].some((x) => x.src === v.mp4)) : null
+      const shot = await renderFlickShot({
         size: generation.size,
         elements: elementsNow.current,
         video: made ? v?.mp4 : undefined,
         poster: v?.poster,
+        playing,
         thumbs: shown.map((x) => ({ poster: x.thumb })),
         active: Math.max(0, shown.indexOf(sl)),
         feedOf: (id) => {
@@ -860,7 +863,12 @@ export function GenerationCanvas({
         },
       })
       const name = slideName(sl, list.indexOf(sl))
-      return { blob, name, note: made ? `${name}, a frame at 1.5 s` : `${name}: its video isn't made yet, so the frame behind the design is a stand-in` }
+      const note = !made
+        ? `${name}: its video isn't made yet, so the frame behind the design is a stand-in`
+        : shot.frame === "playing" || shot.frame === "video"
+          ? `${name}, a frame at ${shot.at ?? 1.5} s`
+          : `${name}: the video's frame couldn't be read just now, so the frame behind the design is its thumbnail or a stand-in, not the video`
+      return { blob: shot.blob, name, note }
     },
     setFormat(size, seconds) {
       const m = size.match(/^\s*(\d{2,4})\s*[x×]\s*(\d{2,4})\s*$/i)
@@ -1522,7 +1530,8 @@ export function GenerationCanvas({
         commitSlides(slidesNow.current.map((x) => (mine(x) && x.job ? { ...x, job: { ...x.job, status } } : x))),
       )).then(
         async ({ url, poster }) => {
-          const still = poster ?? (await posterOf(url)) ?? videoAt(sl.video ?? generation.video ?? 0).poster
+          // never another video's still: a frame of this one, else the gray stand-in
+          const still = poster ?? (await posterOf(url)) ?? MISSING_POSTER
           const video = addMadeVideo({ name: `${slideName(sl, slidesNow.current.indexOf(sl))}-${sl.startedAt}`, size: generation.size, mp4: url, poster: still })
           // the address is what holds across devices and reloads; the index is where it sits here
           patchJob({ video, src: url, job: undefined, failed: undefined })

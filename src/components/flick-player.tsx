@@ -55,6 +55,9 @@ export function FlickPlayer({ videos, srcs, active, playing = true, className }:
             key={`${k}-${srcs?.[k] ?? v}`}
             ref={(el) => void (refs.current[k] = el)}
             poster={m.poster}
+            // a made video (our server or Higgsfield's CDN, both CORS-open) can be drawn from, so a
+            // frame of it can be shown to the chat; other hosts may not allow it and stay as they are
+            crossOrigin={m.set === "made" ? "anonymous" : undefined}
             muted
             loop
             playsInline
