@@ -23,7 +23,9 @@ export function AiConnection() {
         ? `Connected, but the server has no ${missing.join(" or ")} yet.`
         : h.images_key === "invalid"
           ? "Connected, but Higgsfield doesn't accept the key. Put the whole key from open.higgsfield.ai in the HIGGSFIELD_API_KEY secret, then re-run the AI server workflow."
-          : "Connected. Claude and Higgsfield are ready."
+          : h.flicks
+            ? "Connected. Claude, Higgsfield and the Flicks API are ready: exports make real Flicks."
+            : "Connected. Claude and Higgsfield are ready. No Flicks API key yet, so Export isn't connected (add FLICKS_API_KEY and re-run the AI server workflow)."
       setTest({ state: missing.length || h.images_key === "invalid" ? "fail" : "ok", h, text })
     } catch (e) {
       setTest({ state: "fail", text: e instanceof Error ? e.message : "Couldn't connect." })
@@ -72,7 +74,7 @@ export function AiConnection() {
       </div>
       {test.h && (
         <p className="text-xs text-muted-foreground">
-          Today: {test.h.used.chats} of {test.h.caps.chats} chat replies, {test.h.used.images} of {test.h.caps.images} images.
+          Today: {test.h.used.chats} of {test.h.caps.chats} chat replies, {test.h.used.images} of {test.h.caps.images} images{test.h.caps.flicks !== undefined ? `, ${test.h.used.flicks ?? 0} of ${test.h.caps.flicks} Flicks` : ""}.
         </p>
       )}
       <p className="text-xs text-muted-foreground">Without an address and passcode the chat can’t start: it shows “Couldn’t connect to the AI server.” Setup steps are in server/README.md.</p>

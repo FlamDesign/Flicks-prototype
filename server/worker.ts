@@ -19,9 +19,11 @@
  *   DELETE /library/:id   marks an item hidden (deleted from Assets); its record and file stay, so Flicks and references keep working
  *   POST /read            reads a public web page for the chat: product, prices, images, colours, text
  *   GET  /img?u=          a website's image, passed through (sites often refuse to be shown elsewhere)
+ *   POST /flick           bakes 2 to 4 finished videos into a real Flick on the Flicks API; returns { id, status }
+ *   GET  /flick/:id       that Flick's status; { status, url? } where url is its share page once completed
  *
  * Every request needs the passcode (x-flicks-pass header). Daily caps limit spend if it leaks.
- * Secrets (set by the deploy action): ANTHROPIC_API_KEY, HIGGSFIELD_API_KEY (or HIGGSFIELD_KEY_ID + HIGGSFIELD_KEY_SECRET), PASSCODE.
+ * Secrets (set by the deploy action): ANTHROPIC_API_KEY, HIGGSFIELD_API_KEY (or HIGGSFIELD_KEY_ID + HIGGSFIELD_KEY_SECRET), FLICKS_API_KEY, PASSCODE.
  */
 
 interface KV {
@@ -38,6 +40,11 @@ export interface Env {
   HIGGSFIELD_KEY_SECRET?: string
   /** the single key open.higgsfield.ai gives (it holds the ID and secret, joined by a colon); preferred when set */
   HIGGSFIELD_API_KEY?: string
+  /** Flam's Flicks API (flix-svc): bakes finished videos into a Flick with a share page */
+  FLICKS_API_KEY?: string
+  /** its base, e.g. https://fi.development.flamapis.com/flix-svc/api/v1 (dev by default) */
+  FLICKS_API_BASE?: string
+  DAILY_FLICK_CAP?: string
   PASSCODE?: string
   /** comma-separated origins allowed to call from a browser */
   ALLOWED_ORIGINS?: string
@@ -82,7 +89,8 @@ export default {
 
     try {
       // images made here: public, so <img> and the video model can load them
-      const file = new URL(req.url).pathname.match(/^\/file\/([\w-]{20,64})$/)
+      // an extension may follow the id (/file/<id>.mp4): some services name their download after it
+      const file = new URL(req.url).pathname.match(/^\/file\/([\w-]{20,64})(?:\.\w{2,5})?$/)
       if ((req.method === "GET" || req.method === "HEAD") && file) {
         const got = await env.USAGE?.getWithMetadata<{ type?: string }>(`file:${file[1]}`, "arrayBuffer")
         if (!got?.value) return json({ error: "not_found" }, 404, cors)
@@ -108,7 +116,7 @@ export default {
 
       const url = new URL(req.url)
       const day = new Date().toISOString().slice(0, 10)
-      const caps = { images: num(env.DAILY_IMAGE_CAP, 50), chats: num(env.DAILY_CHAT_CAP, 500), videos: num(env.DAILY_VIDEO_CAP, 20) }
+      const caps = { images: num(env.DAILY_IMAGE_CAP, 50), chats: num(env.DAILY_CHAT_CAP, 500), videos: num(env.DAILY_VIDEO_CAP, 20), flicks: num(env.DAILY_FLICK_CAP, 50) }
       // the library: every generation is recorded when it starts and copied here when it finishes
       // (Higgsfield deletes its copies after 7 days and can't list past requests)
       type Meta = { project?: string; variation?: string; purpose?: string; chat?: boolean; resolution?: string; test?: boolean }
@@ -128,15 +136,62 @@ export default {
             claude: !!env.ANTHROPIC_API_KEY,
             images: hasHf(env),
             videos: hasHf(env),
+            flicks: !!env.FLICKS_API_KEY,
             // asks Higgsfield about a request that doesn't exist: 401 means the key is wrong
             images_key: hasHf(env) ? await hfKeyCheck(env) : "missing",
             models: MODELS,
             caps,
-            used: { images: await count(env, `img:${day}`), chats: await count(env, `chat:${day}`), videos: await count(env, `vid:${day}`) },
+            used: { images: await count(env, `img:${day}`), chats: await count(env, `chat:${day}`), videos: await count(env, `vid:${day}`), flicks: await count(env, `flick:${day}`) },
           },
           200,
           cors,
         )
+      }
+
+      // a real Flick: the Flicks API bakes the finished videos (one per variation, in order) and
+      // gives back a share page. Videos go by public address; one Higgsfield no longer serves is
+      // swapped for our kept copy. A Flick costs no credits on the API; the daily cap is a guard.
+      if (req.method === "POST" && url.pathname === "/flick") {
+        if (!env.FLICKS_API_KEY) return json({ error: "flicks_not_set_up" }, 503, cors)
+        const body = (await req.json()) as { name?: string; videos?: { video_url?: string; thumbnail_url?: string }[]; aspect_ratio?: string }
+        const videos = Array.isArray(body.videos) ? body.videos.filter((v) => typeof v.video_url === "string") : []
+        if (videos.length < 2 || videos.length > 4) return json({ error: "bad_request", message: "A Flick takes 2 to 4 videos." }, 400, cors)
+        if (!(await take(env, `flick:${day}`, caps.flicks))) return json({ error: "daily_limit", what: "flick" }, 429, cors)
+        const index = await libraryItems(env, ctx)
+        // the API names its download after the address, so ours end in .mp4
+        const ours = (id: string) => `${url.origin}/file/${id}.mp4`
+        const resolve = async (u: string) => {
+          const mine = u.match(new RegExp(`^${url.origin.replace(/[.]/g, "\\.")}/file/([\\w-]{20,64})`))
+          if (mine) return ours(mine[1])
+          // our kept copy of a video the maker has since deleted (the API fetches at bake time)
+          const kept = index.find((x) => x.saved && x.source === u)
+          const alive = await fetch(u, { method: "HEAD", redirect: "follow" }).then((r) => r.ok, () => false)
+          if (alive && /\.\w{2,5}(\?|$)/.test(u)) return u
+          return kept ? ours(kept.id) : u
+        }
+        const sent = {
+          name: typeof body.name === "string" && body.name.trim() ? body.name.trim().slice(0, 80) : "Flick",
+          loop: true,
+          ...(typeof body.aspect_ratio === "string" ? { aspect_ratio: body.aspect_ratio } : {}),
+          videos: await Promise.all(videos.map(async (v) => ({ video_url: await resolve(v.video_url!), ...(typeof v.thumbnail_url === "string" && /^https:/.test(v.thumbnail_url) ? { thumbnail_url: v.thumbnail_url } : {}) }))),
+        }
+        const t0 = Date.now()
+        const res = await flicksApi(env, "/template-flicks", { method: "POST", body: JSON.stringify(sent) })
+        const text = await res.text()
+        if (ctx) ctx.waitUntil(logFlicks(env, "/template-flicks", sent, res.status, text, t0))
+        const out = flicksData(text)
+        if (!res.ok || !out?.id) return json({ error: "flicks_api", status: res.status, message: flicksMessage(text, res.status) }, res.status >= 500 ? 502 : res.status === 401 ? 503 : 400, cors)
+        return json({ id: String(out.id), status: String(out.status ?? "processing") }, 200, cors)
+      }
+      const flickId = url.pathname.match(/^\/flick\/([\w-]{6,64})$/)
+      if (req.method === "GET" && flickId) {
+        if (!env.FLICKS_API_KEY) return json({ error: "flicks_not_set_up" }, 503, cors)
+        const res = await flicksApi(env, `/template-flicks/${flickId[1]}`)
+        const text = await res.text()
+        const out = flicksData(text)
+        if (!res.ok || !out) return json({ error: "flicks_api", status: res.status, message: flicksMessage(text, res.status) }, res.status === 404 ? 404 : res.status >= 500 ? 502 : 400, cors)
+        const status = String(out.status ?? "processing")
+        return json({ id: flickId[1], status, url: typeof out.preview_url === "string" ? out.preview_url : undefined, error: status === "failed" ? String(out.error ?? out.message ?? "The Flick couldn't be made.") : undefined }, 200, cors)
       }
 
       if (req.method === "POST" && url.pathname === "/chat") {
@@ -412,12 +467,32 @@ export default {
       const st = url.pathname.match(/^\/store\/(state|elements|agent-config|chat-[\w-]{4,80})$/)
       if (st && req.method === "GET") return new Response((await env.USAGE?.get(`store:${st[1]}`)) ?? "null", { headers: { ...cors, "content-type": "application/json", "cache-control": "no-store" } })
       if (st && req.method === "PUT") {
-        const text = await req.text()
+        let text = await req.text()
         if (text.length > 20_000_000) return json({ error: "too_large" }, 413, cors)
+        let value: unknown
         try {
-          JSON.parse(text)
+          value = JSON.parse(text)
         } catch {
           return json({ error: "not_json" }, 400, cors)
+        }
+        // the library: deletions stick. A tab that last synced before a deletion would send the
+        // deleted projects back whole, so the server keeps every tombstone it has seen and drops
+        // anything an older tombstone covers, whatever a client sends.
+        if (st[1] === "state" && value && typeof value === "object") {
+          const v = value as { projects?: { id: string; editedAt?: number }[]; flicks?: { id: string; editedAt?: number }[]; deleted?: Record<string, number> }
+          const prev = JSON.parse((await env.USAGE?.get("store:state")) ?? "null") as { deleted?: Record<string, number> } | null
+          const tomb: Record<string, number> = { ...(prev?.deleted ?? {}) }
+          for (const [id, at] of Object.entries(v.deleted ?? {})) if (typeof at === "number") tomb[id] = Math.max(tomb[id] ?? 0, at)
+          const old = Date.now() - 90 * 24 * 3600 * 1000
+          for (const [id, at] of Object.entries(tomb)) if (at < old) delete tomb[id]
+          // the app's built-in samples (sample projects, Flicks f1, f2…) come with the app, not the server
+          const keep = (x: { id: string; editedAt?: number; sample?: boolean }) => !(tomb[x.id] && tomb[x.id] >= (x.editedAt ?? 0)) && !x.sample && !/^(f\d+|p\d+|sample-p)$/.test(x.id)
+          const dropped = (v.projects?.length ?? 0) + (v.flicks?.length ?? 0)
+          if (Array.isArray(v.projects)) v.projects = v.projects.filter(keep)
+          if (Array.isArray(v.flicks)) v.flicks = v.flicks.filter(keep)
+          v.deleted = tomb
+          if (dropped !== (v.projects?.length ?? 0) + (v.flicks?.length ?? 0)) console.log("state: dropped", dropped - (v.projects?.length ?? 0) - (v.flicks?.length ?? 0), "deleted items a client sent back")
+          text = JSON.stringify(v)
         }
         if (!(await put(env, `store:${st[1]}`, text))) return json({ error: "storage_full" }, 507, cors)
         return json({ ok: true }, 200, cors)
@@ -609,6 +684,39 @@ async function logRequest(env: Env, url: string, body: unknown, res: Response, t
   const at = Date.now()
   const entry = { at: t0, ms: at - t0, path: url.replace(hfBase(env), ""), payload, status: res.status, request_id: out.request_id, error: res.ok ? undefined : text.slice(0, 600) }
   // newest first when listed: the key counts down
+  await put(env, `req:${String(9e12 - t0).padStart(13, "0")}:${crypto.randomUUID().slice(0, 6)}`, JSON.stringify(entry), { expirationTtl: 60 * 60 * 24 * 30 })
+}
+
+// ---------- the Flicks API (flix-svc) ----------
+
+const FLICKS_API_DEFAULT = "https://fi.development.flamapis.com/flix-svc/api/v1"
+const flicksBase = (env: Env) => (env.FLICKS_API_BASE || FLICKS_API_DEFAULT).replace(/\/+$/, "")
+function flicksApi(env: Env, path: string, init: RequestInit = {}) {
+  return fetch(flicksBase(env) + path, { ...init, headers: { "content-type": "application/json", "x-flicks-api-key": env.FLICKS_API_KEY!, ...((init.headers as Record<string, string>) ?? {}) } })
+}
+/** every answer is { status, error, message, data }: the part that matters */
+function flicksData(text: string): Record<string, unknown> | null {
+  try {
+    const o = JSON.parse(text) as { data?: unknown }
+    return o && typeof o.data === "object" && o.data ? (o.data as Record<string, unknown>) : null
+  } catch {
+    return null
+  }
+}
+function flicksMessage(text: string, status: number) {
+  try {
+    const o = JSON.parse(text) as { message?: unknown; error?: unknown }
+    const m = typeof o.message === "string" ? o.message : typeof o.error === "string" ? o.error : ""
+    if (m) return m.slice(0, 300)
+  } catch {
+    /* not JSON */
+  }
+  return status === 401 ? "The Flicks API key was refused." : `The Flicks API answered ${status}.`
+}
+/** the bake shows in the Requests panel like any other job */
+async function logFlicks(env: Env, path: string, payload: unknown, status: number, text: string, t0: number) {
+  const out = flicksData(text)
+  const entry = { at: t0, ms: Date.now() - t0, path: `flicks:${path}`, payload, status, request_id: out?.id ? String(out.id) : undefined, error: status < 400 ? undefined : text.slice(0, 600) }
   await put(env, `req:${String(9e12 - t0).padStart(13, "0")}:${crypto.randomUUID().slice(0, 6)}`, JSON.stringify(entry), { expirationTtl: 60 * 60 * 24 * 30 })
 }
 

@@ -20,9 +20,11 @@ const STATE: Record<State, { label: string; variant: "secondary" | "outline" | "
   failed: { label: "Failed", variant: "destructive" },
   rejected: { label: "Rejected", variant: "destructive" },
 }
-const kindOf = (r: HfRequest): "image" | "video" => r.job?.kind ?? (/video|seedance|kling|veo/i.test(r.path) ? "video" : "image")
+const kindOf = (r: HfRequest): "image" | "video" | "flick" => r.job?.kind ?? (r.path.startsWith("flicks:") ? "flick" : /video|seedance|kling|veo/i.test(r.path) ? "video" : "image")
 /** "/bytedance/seedance-2.5/video-edit" → "Seedance 2.5 · video edit" */
 const modelName = (path: string) => {
+  // a bake on the Flicks API
+  if (path.startsWith("flicks:")) return "Flicks API · Flick"
   const parts = path.split("/").filter(Boolean)
   const nice = (s: string) => s.replace(/[-_]/g, " ").replace(/\bv(\d)/i, "v$1")
   if (parts[0] === "bytedance") return `${nice(parts[1] ?? "")} · ${nice(parts.slice(2).join(" ") || "")}`.replace(/^seedance/, "Seedance")

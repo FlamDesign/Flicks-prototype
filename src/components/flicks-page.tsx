@@ -15,14 +15,14 @@ import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator,
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useToast } from "@/components/ui-extra/toaster"
 import { SIZES, formatEdited, fullDate } from "@/data"
-import { flickLink, library, useExportProgress, useLibrary, type FlickRecord, type Project } from "@/library"
+import { exportFailed, flickLink, library, useExportProgress, useLibrary, type FlickRecord, type Project } from "@/library"
 import { SAMPLE_ID } from "@/onboarding/sample"
 import { copyChat } from "@/ai/copy-chat"
 import { useAds } from "@/ads/ads"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
 
-type Item = { id: string; name: string; size: string; at: number; image: string; exporting?: { from: number; until: number }; details?: string[] }
+type Item = { id: string; name: string; size: string; at: number; image: string; exporting?: { from: number; until: number }; /** a real bake that has no fixed length */ remote?: boolean; /** a real export that didn't bake */ failed?: boolean; details?: string[] }
 const plural = (n: number, word: string) => `${n.toLocaleString("en-US")} ${word}${n === 1 ? "" : "s"}`
 type MenuItem = { label: string; icon: typeof Copy01Icon; onSelect: () => void; destructive?: boolean }
 
@@ -105,6 +105,8 @@ export function FlicksPage({ onOpen, onRemix, onProjects }: { onOpen: (f: FlickR
           at: f.editedAt,
           image: f.image,
           exporting: f.exporting,
+          remote: !!f.remote,
+          failed: exportFailed(f),
           details: "variants" in f && Array.isArray(f.variants) ? [plural(f.variants.length, "variation"), `${plural(f.variants.reduce((n: number, v: { views: number }) => n + v.views, 0), "view")}`] : undefined,
         }))}
         when={(t, now) => formatEdited(t, now).replace("Edited", "Created")}
@@ -273,11 +275,12 @@ function Card({ it, when, whenTitle, onOpen, menu, warm }: { it: Item; when: str
         >
           <MediaTile
             src={it.image}
-            dim={!!it.exporting}
-            details={!it.exporting && it.details?.length ? <p className="flex flex-wrap gap-x-2">{it.details.map((d, i) => <span key={i}>{i > 0 && <span className="mr-2 text-white/50">·</span>}{d}</span>)}</p> : undefined}
+            dim={!!it.exporting || it.failed}
+            details={!it.exporting && !it.failed && it.details?.length ? <p className="flex flex-wrap gap-x-2">{it.details.map((d, i) => <span key={i}>{i > 0 && <span className="mr-2 text-white/50">·</span>}{d}</span>)}</p> : undefined}
             className="group-focus-visible:ring-2 group-focus-visible:ring-ring"
           >
-            {it.exporting && <ExportingOverlay exporting={it.exporting} />}
+            {it.exporting && <ExportingOverlay exporting={it.exporting} remote={it.remote} />}
+            {it.failed && <span className="absolute inset-x-2.5 bottom-2.5 rounded-lg bg-background/90 px-2.5 py-2 text-xs font-medium text-destructive shadow-sm backdrop-blur">Export failed · open to try again</span>}
           </MediaTile>
           <div className="flex items-start gap-2 px-0.5 pt-2.5">
             <div className="min-w-0 flex-1 space-y-0.5">
@@ -331,8 +334,8 @@ function Card({ it, when, whenTitle, onOpen, menu, warm }: { it: Item; when: str
 }
 
 /** On a card while its Flick exports in the background: a label and the progress. */
-function ExportingOverlay({ exporting }: { exporting: { from: number; until: number } }) {
-  const p = useExportProgress({ exporting } as FlickRecord)
+function ExportingOverlay({ exporting, remote }: { exporting: { from: number; until: number }; remote?: boolean }) {
+  const p = useExportProgress({ exporting, remote: remote ? {} : undefined } as unknown as FlickRecord)
   return (
     <div className="absolute inset-x-2.5 bottom-2.5 flex flex-col gap-1.5 rounded-lg bg-background/90 px-2.5 py-2 shadow-sm backdrop-blur">
       <span className="flex items-center gap-1.5 text-xs font-medium">

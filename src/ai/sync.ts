@@ -6,7 +6,7 @@
  */
 import { aiConfig, isLive, shareable } from "@/ai/client"
 import { GENERATED_VIDEOS, type SampleVideo } from "@/components/editor/elements"
-import { library, watchLibrary, type LibraryState } from "@/library"
+import { isSample, library, watchLibrary, type LibraryState } from "@/library"
 import { elements, type FlickElement } from "@/lib/elements"
 
 const base = () => aiConfig.get().url.trim().replace(/\/+$/, "")
@@ -82,7 +82,16 @@ export function saver(key: string, ms = 8000, maxMs = 45000, prepare?: (value: u
     waiting = false
     first = undefined
     const value = latest
-    void (prepare ? prepare(value, keepalive).catch(() => value) : Promise.resolve(value)).then((v) => save(key, v, keepalive)).catch((e) => console.warn("Couldn't save", key, e))
+    // when preparing fails (the server's copy couldn't be fetched to merge with) nothing is sent:
+    // the value waits for the next change or the next flush
+    void (prepare ? prepare(value, keepalive) : Promise.resolve(value))
+      .then((v) => save(key, v, keepalive))
+      .catch((e) => {
+        waiting = true
+        clearTimeout(timer)
+        timer = setTimeout(run, 30000)
+        console.warn("Couldn't save", key, e)
+      })
   }
   flushers.add((closing) => run(closing))
   return (value: unknown) => {
@@ -144,8 +153,10 @@ export function merge(mine: Saved, theirs: Saved | null): { merged: Saved; chang
     // newest first, as the lists show them
     return out.sort((p, q) => (q.editedAt ?? 0) - (p.editedAt ?? 0))
   }
-  const projects = pick(mine.projects, theirs.projects)
-  const flicks = pick(mine.flicks, theirs.flicks)
+  // the built-in samples come with the app: a tab that showed them before the server was set up
+  // doesn't send them along
+  const projects = pick(mine.projects, theirs.projects).filter((p) => !isSample(p))
+  const flicks = pick(mine.flicks, theirs.flicks).filter((f) => !isSample(f))
   if (projects.length !== mine.projects.length || flicks.length !== mine.flicks.length) changedHere = true
   return { merged: { projects, flicks, made: GENERATED_VIDEOS.filter((v) => v.set === "made"), deleted: { ...deleted } }, changedHere }
 }
@@ -169,7 +180,11 @@ export function startSync() {
     // the server's copy as last seen: a closing page merges with it (it can't wait to fetch a fresh one)
     let lastTheirs: Saved | null = null
     const put = saver("state", 8000, 45000, async (mine, closing) => {
-      const theirs = closing ? lastTheirs : await loadSaved<Saved>("state").catch(() => lastTheirs)
+      // never save over the server's copy without merging with it: a tab that can't fetch it waits
+      // for the next change, and a closing tab merges with the copy it last saw (the server keeps
+      // deletions either way, so an old copy can't bring deleted projects back)
+      const theirs = closing ? lastTheirs : await loadSaved<Saved>("state")
+      if (!theirs) throw new Error("no server copy to merge with")
       const { merged, changedHere } = merge(mine as Saved, theirs)
       lastTheirs = merged
       if (changedHere) library.load(merged)
@@ -184,7 +199,7 @@ export function startSync() {
         for (const id of now) delete deleted[id]
       }
       ids = now
-      if (ready && !silent) put({ projects: s.projects, flicks: s.flicks, made: GENERATED_VIDEOS.filter((v) => v.set === "made"), deleted: { ...deleted } } satisfies Saved)
+      if (ready && !silent) put({ projects: s.projects.filter((p) => !isSample(p)), flicks: s.flicks.filter((f) => !isSample(f)), made: GENERATED_VIDEOS.filter((v) => v.set === "made"), deleted: { ...deleted } } satisfies Saved)
     })
     // elements (named products, characters, logos) follow the user too
     let elementsReady = false
