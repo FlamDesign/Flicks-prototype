@@ -54,7 +54,11 @@ jobs:
             exit 1
           fi
       - name: Deploy
-        run: npx -y wrangler@4 pages deploy dist-pages --project-name "$PROJECT" --branch "${{ github.ref_name }}" --commit-dirty=true
+        # main and agent often deploy the same commit; a per-branch commit hash keeps Pages from
+        # treating the second as a duplicate and leaving that branch's address on an older deploy
+        run: |
+          hash=$(printf '%s %s' "$GITHUB_SHA" "$GITHUB_REF_NAME" | sha1sum | cut -c1-40)
+          npx -y wrangler@4 pages deploy dist-pages --project-name "$PROJECT" --branch "${{ github.ref_name }}" --commit-hash "$hash" --commit-message "${{ github.ref_name }} @ ${GITHUB_SHA::7}" --commit-dirty=true
       - name: Show the address
         run: |
           HOST=$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PROJECT" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.parse(s).result.subdomain||""))')
