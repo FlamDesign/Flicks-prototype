@@ -25,18 +25,40 @@ other variations' frames, and loses because each variation's own previous frame 
 references back. The saving against "separate" (34%) comes only from the longer GOP (keyframe
 every 4 s instead of 1 s) and more references, which the separate files could use too.
 
-Why: the variations are separate generations, not one render with a swap. At the same instant
-they differ in pose, framing and scale (see `frame-6s-row.png`): luma PSNR between v1 and v2 at
-the same frame is 17.5 dB, against 28.7 dB between two consecutive frames of v1. Temporal
-prediction inside a variation is far better than prediction across variations, so joint coding
-can't help, with any codec, until generation produces pixel-aligned variations.
+Correction (same night): that comparison used variation 1, which is the odd one out. Variations
+2, 3 and 4 are swaps on one base and are pixel-aligned; 1 is a separate generation.
+
+| pair | luma PSNR, same frame |
+|---|---|
+| v1 vs v2 / v3 / v4 | 17.5 / 19.1 / 18.2 dB |
+| v2 vs v3, v2 vs v4, v3 vs v4 | 31.0 / 34.9 / 33.2 dB |
+| one clip, consecutive frames | 28.7 dB |
+
+So across 2, 3, 4 the other variation's frame predicts better than the clip's own previous frame,
+and the difference image (`diff-v2-v3-3s.png`) is the dress alone: the mask exists in the data.
+
+Joint encode of 2, 3, 4 only (same settings, 72 fps interleave, 8 refs):
+
+| encode | bytes |
+|---|---|
+| three separate files | 2,691,067 |
+| three in a row, one stream (control) | 1,568,184 |
+| interleaved | 1,594,072 |
+
+Still no byte gain, and now the reason is different: the background is a static studio, which
+temporal prediction already codes for almost nothing. What costs bytes is the dress, and the dress
+differs between variations, so it has to be coded per variation either way. Cross-variation
+prediction only saves bytes when the shared part is expensive to code in time (moving camera,
+textured or busy backgrounds) and that case isn't in this material.
 
 ## What this means
 
-- No compression gain is available from joint encoding of today's generated variations.
-- A switch under 10 ms needs every variation decoded in parallel (the current player does this).
-  The levers are per-file: bitrate and resolution for the slot, keyframe interval, `faststart`,
-  and loading order (active first, others while it plays).
-- Joint coding becomes worth revisiting only when the generator keeps the base render and swaps
-  a region (then even a base + per-variation overlay, no mask needed from the model: the diff is
-  the mask).
+- Bytes: on studio-style content, joint coding saves nothing. On content with motion or busy
+  backgrounds shared across aligned variations it should, and that needs a clip to measure.
+- Decode: aligned variations make a base + delta stream possible (the "xstream" mechanism in
+  `vertex-player-teardown.md`): decode the base and only the active variation's delta, 2× one
+  video instead of N×, one file, instant switch at a group boundary. That is a real win for
+  phones even when bytes are equal.
+- Variation 1 shows the pipeline isn't always aligned: a Flick with one re-generated variation
+  falls back to full coding for that variation. The bake should measure alignment (PSNR against
+  the base) and choose per variation.
