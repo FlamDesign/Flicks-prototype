@@ -85,7 +85,7 @@ export function AgentItemView({ item, agent, ctx }: { item: Item; agent: Agent; 
     case "assistant":
       return (
         <div className="flex flex-col gap-2">
-          {item.text && <Said text={item.text} streaming={item.streaming} />}
+          {item.text && <Said text={withoutTry(item.text)} streaming={item.streaming} />}
           {!item.text && !item.streaming && !item.stopped && <Said text={item.text} streaming={item.streaming} />}
           {item.stopped && (
             <span className="flex flex-wrap items-center gap-1.5 px-1 text-xs text-muted-foreground">
@@ -576,7 +576,8 @@ function ImageTile({ item, agent, ctx }: { item: Extract<Item, { kind: "image" }
             </Button>
           </span>
         )}
-        {item.state === "done" && !item.placed && (
+        {/* a look guides the video; it isn't a picture for the canvas */}
+      {item.state === "done" && !item.placed && item.purpose !== "look" && (
           <Button size="xs" variant="secondary" disabled={added} onClick={() => (ctx.addToCanvas(item.url!), setAdded(true))} className="absolute inset-x-1 bottom-1">
             {added ? "Added" : "Add"}
           </Button>
@@ -586,6 +587,14 @@ function ImageTile({ item, agent, ctx }: { item: Extract<Item, { kind: "image" }
     </figure>
   )
 }
+
+/**
+ * The hand-over ends with the chat's own next steps on a last line, "Try: A | B": shown as the
+ * suggestion chips above the composer, never as text.
+ */
+const TRY = /\n*^Try:[ \t]*(.+)$/m
+export const withoutTry = (text: string) => text.replace(TRY, "").trimEnd()
+export const triesOf = (text: string) => (TRY.exec(text)?.[1] ?? "").split("|").map((t) => t.trim().replace(/\.$/, "")).filter((t) => t.length > 2 && t.length <= 48).slice(0, 2)
 
 /** the chat's own words: paragraphs, bullets and **bold** */
 function Said({ text: said, streaming }: { text: string; streaming?: boolean }) {
@@ -1043,6 +1052,8 @@ function directionOf(v: PlanVariation, i: number, plan: Plan) {
 function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>; agent: Agent; ctx: AgentCtx }) {
   const plan = item.plan
   const [open, setOpen] = useState(false)
+  // a later storyboard exists (this one was replaced), or it was set aside for a typed message
+  const newer = agent.items.some((x) => x.kind === "plan" && x.id !== item.id && x.at > item.at)
   // approved (or replaced): one line, opens to read
   if (item.state !== "open")
     return (
@@ -1051,7 +1062,7 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
           <HugeiconsIcon icon={item.state === "approved" ? Tick02Icon : Cancel01Icon} className="size-3.5 text-muted-foreground" />
           <span className="text-sm font-medium">{plan.title}</span>
           <span className="text-xs text-muted-foreground">
-            {item.state === "approved" ? `${plan.variations.length} variations` : "Replaced by a newer storyboard"}
+            {item.state === "approved" ? `${plan.variations.length} variations` : newer ? "Replaced by a newer storyboard" : "Set aside for your message"}
           </span>
           <HugeiconsIcon icon={ArrowDown01Icon} className={cn("ml-auto size-3.5 text-muted-foreground transition-transform", open && "rotate-180")} />
         </button>
@@ -1307,7 +1318,7 @@ function BuildTile({ video: v, still, ratio, waiting, direction }: { video: Buil
             <span className={cn("absolute inset-x-1.5 bottom-1.5 flex min-w-0 items-center gap-1 truncate rounded-md bg-background/90 px-1.5 py-0.5 text-xs tabular-nums text-muted-foreground backdrop-blur", v.retry && "hidden")}>
               {v.state === "generating" ? (
                 <>
-                  {pct !== undefined ? `Generating · ${pct}%` : v.status === "queued" ? "Up next" : `${STATUS[v.status ?? ""] ?? "Generating"} · ${secs < 60 ? `${secs}s` : `${Math.floor(secs / 60)}m`}`}
+                  {v.status === "waiting" ? "Waiting for your OK" : pct !== undefined ? `Generating · ${pct}%` : v.status === "queued" ? "Up next" : `${STATUS[v.status ?? ""] ?? "Generating"} · ${secs < 60 ? `${secs}s` : `${Math.floor(secs / 60)}m`}`}
                 </>
               ) : v.failed ? (
                 <span className="truncate text-destructive" title={v.failed}>
@@ -1393,7 +1404,7 @@ function ImageCard({ item, ctx, agent }: { item: Extract<Item, { kind: "image" }
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="text-sm font-medium">{item.state === "working" ? `${what}: ${item.status === "queued" ? "up next" : "generating"}…` : item.state === "failed" ? "Image failed" : what}</span>
         <span className={cn("text-xs text-muted-foreground", item.state !== "failed" && "truncate")}>
-          {item.state === "failed" ? noNames(item.error ?? "") : item.purpose === "view" ? "As viewers see it" : item.state === "done" && item.placed ? "Added to the Flick" : item.state === "working" && item.startedAt ? <Elapsed since={item.startedAt} /> : "Ready to add"}
+          {item.state === "failed" ? noNames(item.error ?? "") : item.purpose === "view" ? "As viewers see it" : item.purpose === "look" && item.state === "done" ? "The video follows this look" : item.state === "done" && item.placed ? "Added to the Flick" : item.state === "working" && item.startedAt ? <Elapsed since={item.startedAt} /> : "Ready to add"}
         </span>
       </span>
       {item.state === "failed" && (
@@ -1402,7 +1413,8 @@ function ImageCard({ item, ctx, agent }: { item: Extract<Item, { kind: "image" }
           Retry
         </Button>
       )}
-      {item.state === "done" && !item.placed && (
+      {/* a look guides the video; it isn't a picture for the canvas */}
+      {item.state === "done" && !item.placed && item.purpose !== "look" && (
         <Button size="xs" variant="outline" disabled={added} onClick={() => (ctx.addToCanvas(item.url!), setAdded(true))}>
           {added ? "Added" : "Add to canvas"}
         </Button>
@@ -1432,8 +1444,8 @@ export function QuickReplies({ agent, ctx }: { agent: Agent; ctx: AgentCtx }) {
     ...failed.slice(0, 2).map((v) => `Make ${v.name} again`),
     ...(issue ? [`Fix: ${issue.length > 60 ? `${issue.slice(0, 57).trimEnd()}…` : issue}`] : []),
     ...(links ? ["Set the missing links"] : []),
-    "Make the headline shorter",
-    "Try a bolder button",
+    // the chat's own suggestions for this Flick (the last line of its hand-over)
+    ...triesOf(last.text),
     ...(videos.length < 5 ? ["Add another variation"] : []),
   ]
     .filter((t) => !asked.includes(t.toLowerCase()))

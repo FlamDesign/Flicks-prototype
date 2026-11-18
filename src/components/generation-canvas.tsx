@@ -1368,6 +1368,79 @@ export function GenerationCanvas({
       check(!noThumb.length, "Every variation has a thumbnail", `No thumbnail: ${noThumb.join(", ")}.`)
       return { pass, fail }
     },
+    /**
+     * Text against the video itself: each headline, label or line of copy is compared with the part
+     * of every variation's still it sits on (a shape behind it counts as its own backdrop, so it's
+     * skipped). Text needs 3:1 against what's behind it, or it can't be read while the video plays.
+     */
+    async readability() {
+      const out: string[] = []
+      const els = elementsNow.current.filter((e) => !e.hidden)
+      const texts = els.filter((e): e is Extract<CanvasElement, { kind: "text" }> => e.kind === "text")
+      if (!texts.length) return out
+      const list = (includeRef ? slidesNow.current : slidesNow.current.slice(1)).filter((x) => isMadeVideo(x.video))
+      const W = 96
+      const H = Math.max(8, Math.round(W * ratio))
+      const frames: { name: string; data: Uint8ClampedArray }[] = []
+      for (const sl of list) {
+        const src = videoAt(sl.video).poster
+        if (!src || src === MISSING_POSTER) continue
+        const img = await new Promise<HTMLImageElement | null>((ok) => {
+          const i = new Image()
+          i.crossOrigin = "anonymous"
+          i.onload = () => ok(i)
+          i.onerror = () => ok(null)
+          i.src = src
+        })
+        if (!img) continue
+        try {
+          const c = document.createElement("canvas")
+          c.width = W
+          c.height = H
+          const g = c.getContext("2d")!
+          // the video covers the frame, centered
+          const k = Math.max(W / img.naturalWidth, H / img.naturalHeight)
+          g.drawImage(img, (W - img.naturalWidth * k) / 2, (H - img.naturalHeight * k) / 2, img.naturalWidth * k, img.naturalHeight * k)
+          frames.push({ name: nameOfSlide(sl), data: g.getImageData(0, 0, W, H).data })
+        } catch {
+          // a still this page may not read: nothing to compare
+        }
+      }
+      if (!frames.length) return out
+      const hex = (n: number) => Math.round(n).toString(16).padStart(2, "0")
+      const backdrops = els.filter((e) => e.kind === "shape" || e.kind === "image").map((e) => boxOf(e, ratio))
+      for (const e of texts) {
+        const values = e.feed ? list.map((x) => x.feeds?.[e.feed!] ?? "") : [e.text]
+        const longest = values.reduce((a, b) => (b.length > a.length ? b : a), "")
+        const b = boxOf(e, ratio, longest)
+        const cx = (b.l + b.r) / 2
+        const cy = (b.t + b.b) / 2
+        if (backdrops.some((s) => s.l <= cx && s.r >= cx && s.t <= cy && s.b >= cy)) continue
+        const ink = e.color ?? defaultInk(e)
+        let worst: { name: string; c: number } | undefined
+        for (const f of frames) {
+          const x0 = Math.max(0, Math.floor((b.l / 100) * W))
+          const x1 = Math.min(W, Math.ceil((b.r / 100) * W))
+          const y0 = Math.max(0, Math.floor((b.t / 100) * H))
+          const y1 = Math.min(H, Math.ceil((b.b / 100) * H))
+          let r = 0, gr = 0, bl = 0, n = 0
+          for (let y = y0; y < y1; y++)
+            for (let x = x0; x < x1; x++) {
+              const i = (y * W + x) * 4
+              r += f.data[i]
+              gr += f.data[i + 1]
+              bl += f.data[i + 2]
+              n++
+            }
+          if (!n) continue
+          const c = contrast(ink, `#${hex(r / n)}${hex(gr / n)}${hex(bl / n)}`)
+          if (c !== undefined && (!worst || c < worst.c)) worst = { name: f.name, c }
+        }
+        if (worst && worst.c < 3)
+          out.push(`Text “${(longest || e.role || "text").slice(0, 24)}” (id ${e.id.slice(0, 6)}) is hard to read over the video on ${worst.name}: ${worst.c.toFixed(1)}:1 against what's behind it; needs 3:1. Use white or black text (whichever reads), move it to a calmer part of the frame, or put a soft shape behind it.`)
+      }
+      return out
+    },
     setThumbnail(target, url) {
       const sl = findSlide(target)
       if (!sl) return `Error: No variation called “${target}”.`
@@ -1428,7 +1501,7 @@ export function GenerationCanvas({
   useEffect(() => {
     if (!needsReview || toldReady.current === mainNow.startedAt || sawMaking.current !== mainNow.startedAt) return
     toldReady.current = mainNow.startedAt ?? 0
-    agent.notify("(App: Variation 1 is ready. Look at it once with view_flick and fix only clear clashes (text over the product or faces, the strip over the action). Then end with one short line asking the user to play it and press Make the others below the chat, or say what to change. Don't ask with ask_user.)")
+    agent.notify("(App: Variation 1 is ready. Look at it once with view_flick and fix only clear clashes (text over the product or faces, the strip over the action). Then end with one short line asking the user to play it and press Make the others below the chat, or say what to change. Don't ask with ask_user. If your last message already said this, end the turn without writing anything.)")
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needsReview, mainNow.startedAt])
   const changeRef = () => {

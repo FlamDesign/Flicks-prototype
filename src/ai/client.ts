@@ -91,7 +91,9 @@ export const MESSAGES: Record<string, string> = {
   network: NOT_CONNECTED,
 }
 async function fail(res: Response): Promise<never> {
-  const body = (await res.json().catch(() => ({}))) as { error?: string; message?: string; what?: string }
+  const raw = (await res.json().catch(() => ({}))) as { error?: string | { type?: string; message?: string }; message?: string; what?: string }
+  // the chat service's own errors come as { error: { type, message } }: kept whole for Details
+  const body = typeof raw.error === "object" && raw.error ? { error: raw.error.type ?? `http_${res.status}`, message: `${raw.error.type ?? "error"} (status ${res.status}): ${raw.error.message ?? ""}`, what: raw.what } : (raw as { error?: string; message?: string; what?: string })
   const code = body.error ?? `http_${res.status}`
   // which daily limit: images, videos or the chat itself (they reset at midnight UTC)
   if (code === "daily_limit" && body.what) {
@@ -99,7 +101,7 @@ async function fail(res: Response): Promise<never> {
     throw new AiError(`daily_limit_${body.what}`, `Dev: today's ${what} limit on the AI server is reached. It resets at midnight UTC.`)
   }
   // a server-side failure (5xx, or a gateway timeout) reads as a plain line with Retry, never a status code
-  throw new AiError(code, MESSAGES[code] ?? body.message ?? (res.status >= 500 ? "The chat is unavailable right now. Try again in a moment." : `The AI server answered ${res.status}.`))
+  throw new AiError(code, MESSAGES[code] ?? body.message ?? (res.status >= 500 ? "The chat is unavailable right now. Try again in a moment." : `The chat couldn't take that (status ${res.status}). Try again.`))
 }
 export async function apiCall(path: string, init?: RequestInit) {
   return call(path, init)

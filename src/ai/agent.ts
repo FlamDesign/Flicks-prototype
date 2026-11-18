@@ -8,7 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { AiError, MESSAGES, aiConfig, aspectOf, cancelQueuedImages, keepable, generateImage, mockVideos, pollImage, imageBlock, library, shareable, sharedNow, type LibraryItem, isLive, readWebsite, siteImage, streamChat, type Block, type ChatResult, type Message, type Tool } from "@/ai/client"
 import type { Paint, ShapeKind } from "@/components/editor/elements"
 import type { TemplateRef } from "@/data"
-import { shotPrompt, type Brand, type Design, type Plan, type PlanVariation, type Shot, type VideoMode } from "@/ai/design"
+import { contrast, shotPrompt, type Brand, type Design, type Plan, type PlanVariation, type Shot, type VideoMode } from "@/ai/design"
 import { findSkill, SKILLS } from "@/ai/skills"
 import { loadSaved, save, saver, saveWaitingNow, webSource } from "@/ai/sync"
 import { blobUrl, probeVideo, sameUrl, stillsAt } from "@/lib/media"
@@ -85,6 +85,8 @@ export type EditorApi = {
   addImageToCanvas(url: string): string
   /** the build skill's checks: what passes, what to fix */
   review(): { pass: string[]; fail: string[] }
+  /** text that can't be read against the video behind it (compared with each variation's still) */
+  readability(): Promise<string[]>
 }
 
 /** an element as the chat describes it: positions are % of the frame (x, y = its anchor point) */
@@ -1630,8 +1632,6 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           return WAIT
         }
         case "propose_plan": {
-          // a newer plan replaces any open one
-          setItems((list) => list.map((x) => (x.kind === "plan" && x.state === "open" ? { ...x, state: "skipped" } : x)))
           const raw = { ...(input as unknown as Plan), reference: referenceOf(input) }
           if (!raw.variations?.length) return "Error: a plan needs at least two variations."
           raw.variations = raw.variations.map((v) => ({ ...v, prompt: String(v.prompt ?? "") }))
@@ -1667,6 +1667,12 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           }
           // the look the user picked carries into the plan's design
           const plan = { ...raw, design: { ...draft.current, ...(raw.design ?? {}), thumbnails: { ...draft.current.thumbnails, ...(raw.design?.thumbnails ?? {}) } } }
+          // a button nobody can read is caught here, not after the build
+          const bc = contrast(plan.design?.button_text_color, plan.design?.button_color)
+          if (bc !== undefined && bc < 3)
+            return `Not shown: the button's text (${plan.design?.button_text_color}) on its color (${plan.design?.button_color}) is ${bc.toFixed(1)}:1; it needs 3:1. Pick a text color that reads (white or near-black) and call propose_plan again.`
+          // a newer plan replaces any open one (only now that this one is going to show)
+          setItems((list) => list.map((x) => (x.kind === "plan" && x.state === "open" ? { ...x, state: "skipped" } : x)))
           const vars = plan.variations.slice(0, 5)
           const itemId = add({ kind: "plan", toolId: u.id, plan: { ...plan, variations: vars, design: plan.design ?? {} }, state: "open", previews: [] })
           pending.current.push({ toolId: u.id, itemId })
@@ -1717,6 +1723,9 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         case "review_flick": {
           if (standIn()) return STAND_IN
           const r = a.review()
+          const unreadable = await a.readability().catch(() => [])
+          if (unreadable.length) r.fail.push(...unreadable)
+          else r.pass.push("Text reads over the video")
           // thumbnails still generating aren't missing: they're on their way
           const pending = pendingThumbs.current
           r.fail = r.fail.flatMap((f) => {

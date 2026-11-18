@@ -10,8 +10,8 @@ import { aiConfig, isLive } from "@/ai/client"
 
 const tried = new WeakSet<Element>()
 /** an address of the maker's, not ours and not local */
-const foreign = (u: string) => /^https:\/\//.test(u) && !u.startsWith(aiConfig.get().url.trim().replace(/\/+$/, "")) && !u.startsWith(location.origin)
-const keptUrl = (u: string) => `${aiConfig.get().url.trim().replace(/\/+$/, "")}/kept?u=${encodeURIComponent(u)}`
+export const foreign = (u: string) => /^https:\/\//.test(u) && !u.startsWith(aiConfig.get().url.trim().replace(/\/+$/, "")) && !u.startsWith(location.origin)
+export const keptUrl = (u: string) => `${aiConfig.get().url.trim().replace(/\/+$/, "")}/kept?u=${encodeURIComponent(u)}`
 
 export function watchKeptFiles() {
   if (typeof window === "undefined") return

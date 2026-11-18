@@ -103,6 +103,20 @@ export function toEvents(msgs: Message[], state: unknown): Ev[] {
     if (plain.length) out.push({ type: "user.message", content: plain })
   }
   if (!out.length) return out
+  // While the session waits on a card (a question, the storyboard, a photo request) it takes only
+  // that card's result: a message sent with it is refused. So words typed past a card ride inside
+  // the last result before them, marked as the user's own.
+  const folded: Ev[] = []
+  let lastResult = -1
+  for (const e of out) {
+    if (e.type === "user.custom_tool_result") lastResult = folded.push(e) - 1
+    else if (e.type === "user.message" && lastResult >= 0) {
+      const r = folded[lastResult]
+      folded[lastResult] = { ...r, content: [...(r.content as Block[]), { type: "text", text: "The user's own message, written in the chat box (act on it as their request):" }, ...(e.content as Block[])] }
+    } else folded.push(e)
+  }
+  out.length = 0
+  out.push(...folded)
   // the project state rides with every turn as privileged context, so it never reads as the user's words
   out.push({ type: "system.message", content: [{ type: "text", text: `Current project (JSON):\n${JSON.stringify(state)}` }] })
   return out
@@ -123,7 +137,11 @@ type Reply = ChatResult & { calls: number }
  * whose ids are the session's event ids (the app answers them with results carrying those ids).
  */
 export async function sessionTurn(sessionId: string, events: Ev[], cb: Callbacks): Promise<Reply> {
-  const reply = collector(cb)
+  // a Stop still on its way goes first, or it would stop this turn instead of the last one
+  await stopping
+  // with something sent, the reply starts at the session taking it: an "idle" that arrives before
+  // that belongs to the turn that was just stopped, not to this one
+  const reply = collector(cb, events.length > 0)
   // the stream first, so nothing sent is missed
   const reader = await openStream(sessionId, cb.signal)
   if (events.length) {
@@ -229,11 +247,13 @@ async function readStream(reader: ReadableStreamDefaultReader<Uint8Array>, reply
 }
 
 /** Gathers one reply out of session events: words (with token previews), tool calls, usage, and the stop */
-function collector({ onText, onTool, usage }: Callbacks) {
+function collector({ onText, onTool, usage }: Callbacks, awaitStart = false) {
   const content: Block[] = []
   let calls = 0
   let text = ""
   let stop = ""
+  /** the session has taken what this turn sent (its echo, or the session running again) */
+  let started = !awaitStart
   // words still arriving for a message (event_delta previews), by the message's event id
   const drafts = new Map<string, string>()
   const show = () => {
@@ -241,6 +261,11 @@ function collector({ onText, onTool, usage }: Callbacks) {
     onText([text, live].filter(Boolean).join("\n\n"))
   }
   const handle = (ev: Ev) => {
+    if (!started) {
+      if (ev.type === "user.message" || ev.type === "user.custom_tool_result" || ev.type === "system.message" || ev.type === "session.status_running" || ev.type === "span.model_request_start") started = true
+      // the end of the turn before this one (stopped for this message): not this reply's end
+      else if (ev.type === "session.status_idle" || ev.type === "session.thread_status_idle") return
+    }
     switch (ev.type) {
       case "event_start": {
         const e = ev.event as { type?: string; id?: string } | undefined
@@ -307,6 +332,8 @@ function collector({ onText, onTool, usage }: Callbacks) {
 }
 
 /** Stops the reply in progress on the server (the app's Stop button) */
-export const interrupt = (sessionId: string) => post(`/v1/sessions/${sessionId}/events`, { events: [{ type: "user.interrupt" }] }).catch(() => {})
+export const interrupt = (sessionId: string) => (stopping = post(`/v1/sessions/${sessionId}/events`, { events: [{ type: "user.interrupt" }] }).then(() => {}, () => {}))
+/** the last Stop sent, so the next turn's message never overtakes it */
+let stopping: Promise<void> = Promise.resolve()
 
 export const managedModel = () => aiConfig.get().model

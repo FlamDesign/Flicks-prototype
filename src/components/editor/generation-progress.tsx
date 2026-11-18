@@ -1,5 +1,7 @@
 import { useState } from "react"
 import { Spinner } from "@/components/ui/spinner"
+import { isLive } from "@/ai/client"
+import { foreign, keptUrl } from "@/lib/kept"
 import { cn } from "@/lib/utils"
 
 /**
@@ -25,6 +27,11 @@ export function GeneratingGradient({ sweep, spinner, className }: { sweep?: bool
 export function PictureSlot({ src, alt = "", className, imgClassName }: { src?: string; alt?: string; className?: string; imgClassName?: string }) {
   const [loaded, setLoaded] = useState<string | undefined>()
   const [broken, setBroken] = useState<string | undefined>()
+  // the maker's address has expired: the server's kept copy is asked for by that address, once
+  const [kept, setKept] = useState<string | undefined>()
+  const given = src
+  if (src && kept === src && isLive()) src = keptUrl(src)
+  const fail = () => (given && kept !== given && isLive() && foreign(given) ? setKept(given) : setBroken(src))
   const ready = !!src && loaded === src
   // a picture that can't load stops animating: plain muted and says so, not "still working"
   if (src && broken === src)
@@ -37,7 +44,7 @@ export function PictureSlot({ src, alt = "", className, imgClassName }: { src?: 
     <span className={cn("absolute inset-0 block overflow-hidden", className)}>
       {!ready && <GeneratingGradient sweep />}
       {!ready && !src && <span className="absolute bottom-1.5 left-1.5 rounded-md bg-background/90 px-1.5 py-0.5 text-xs text-muted-foreground">Drawing…</span>}
-      {src && <img src={src} alt={alt} decoding="async" onLoad={() => setLoaded(src)} onError={() => setBroken(src)} ref={(n) => void (n?.complete && n.naturalWidth && loaded !== src && setLoaded(src))} className={cn("absolute inset-0 size-full object-cover transition-opacity duration-300", ready ? "opacity-100" : "opacity-0", imgClassName)} />}
+      {src && <img src={src} alt={alt} decoding="async" onLoad={() => setLoaded(src)} onError={fail} ref={(n) => void (n?.complete && n.naturalWidth && loaded !== src && setLoaded(src))} className={cn("absolute inset-0 size-full object-cover transition-opacity duration-300", ready ? "opacity-100" : "opacity-0", imgClassName)} />}
     </span>
   )
 }

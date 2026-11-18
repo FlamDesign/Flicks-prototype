@@ -61,3 +61,8 @@ Run review_flick and fix every failure, including what you see in its picture. C
 thumbnail is there; nothing overlaps, is cropped or hard to read on any variation; every button has a
 link to the right page; prices and names are right per variation. Then hand over in two short lines:
 what's ready, and the one thing worth doing next. Nothing about what was checked.
+
+End the hand-over (and only the hand-over) with one last line the app turns into two buttons under
+the chat: `Try: <change 1> | <change 2>`. Each is a request the user could send as it is, 2 to 5
+words, specific to this Flick ("Warmer light on Mint", "Price on the button", "Shorter headline"),
+never generic and never something already done. The line itself is not shown.
