@@ -30,7 +30,7 @@ export function addMadeVideo(v: { name: string; size: string; mp4: string; poste
   return v.mp4
 }
 /** the made videos known here, for saving (newest last) */
-export const madeVideos = () => [...made.values()].map(({ key: _k, ...v }) => v)
+export const madeVideos = () => [...made.values()].map(({ name, size, mp4, poster }) => ({ name, size, mp4, poster }))
 /** made videos another device saved: added here (a known still is never replaced by a missing one) */
 export function mergeMadeVideos(list: { name: string; size: string; mp4: string; poster?: string }[] = []) {
   for (const v of list) if (typeof v?.mp4 === "string" && v.mp4) addMadeVideo({ ...v, poster: v.poster ?? "" })
