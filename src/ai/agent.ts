@@ -1990,6 +1990,18 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
             msgs.current.push({ role: "user", content: [{ type: "text", text: "(Go ahead: do it now with your tools, in this turn.)" }] })
             continue
           }
+          // a card was just answered (a question, a concept, photos) and the reply is only words that
+          // ask for nothing: the chat would go quiet with the answer unused. Once, tell it to carry on.
+          const before = msgs.current.at(-2)
+          const answeredCard =
+            before?.role === "user" &&
+            Array.isArray(before.content) &&
+            before.content.some((b) => b.type === "tool_result" && itemsRef.current.some((x) => (x.kind === "question" || x.kind === "assets") && x.toolId === b.tool_use_id))
+          if (!nudged && !built && answeredCard && !/\?/.test(text) && !pending.current.length) {
+            nudged = true
+            msgs.current.push({ role: "user", content: [{ type: "text", text: "(App: the user has answered the card above; their answer is in its result. Carry on with the next step now, with your tools.)" }] })
+            continue
+          }
           break
         }
         // the same call again in one reply means it's going round in circles: stop it

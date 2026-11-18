@@ -307,7 +307,7 @@ async function runCase(id) {
   } else await start(run, c)
   // a resumed case has already had its early interruptions
   const resumed = !!process.env.RESUME
-  let redirected = resumed || !c.redirect, stopped = resumed || !c.stop, busy = 0, sbSaid = 0, changed = !c.changeFirst, approved = false, reload1 = !c.reloads, reload2 = !c.reloads
+  let redirected = resumed || !c.redirect, stopped = resumed || !c.stop, busy = 0, sbSaid = 0, changed = !c.changeFirst, approved = false, reload1 = resumed || !c.reloads, reload2 = !c.reloads
   const policy = {
     onQuestion: answerer(run, c, record),
     pick: pickFor(c, record, run),
@@ -467,7 +467,18 @@ async function exportOnly(projectId, name) {
   await p.goto(new URL(`/p/${projectId}`, p.url()).href, { waitUntil: "networkidle" })
   await p.waitForTimeout(10000)
   await run.shot("opened")
+  // SAY="…": a message for the chat first (the final check a closed tab missed, a change), waited out
+  if (process.env.SAY) {
+    await say(p, process.env.SAY)
+    log("said:", process.env.SAY)
+    await p.waitForTimeout(5000)
+    const r = await drive(run, {}, (x) => idle(x) && !x.drawing, { timeout: 12 * 60_000, label: "say" })
+    record.notes.push(`said "${process.env.SAY}": ${r ? (r.lastReply ?? "").replace(/\s+/g, " ").slice(0, 300) : "timed out"}`)
+    await p.waitForTimeout(3000)
+    await run.shot("after-say")
+  }
   await exportFlick(run, record, mark)
+  await savedChat(run)
   fs.writeFileSync(path.join(run.out, "export.json"), JSON.stringify(record, null, 2))
   console.log("EXPORTED", name, JSON.stringify({ share: record.share, flickUrl: record.flickUrl, failed: record.exportFailed, notes: record.notes }))
   await run.b.close()

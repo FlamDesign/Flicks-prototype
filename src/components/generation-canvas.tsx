@@ -1797,7 +1797,8 @@ export function GenerationCanvas({
     const t = setTimeout(() => saveProject(), 500)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [title, sig, versions, dirty])
+    // the size and length are the project's too (the chat sets them before anything is on the canvas)
+  }, [title, sig, versions, dirty, generation.size, generation.duration])
   const lib = useLibrary()
   const project = lib.projects.find((p) => p.id === generation.id)
   const lastFlick = project?.exports[0] ? lib.flicks.find((f) => f.id === project.exports[0]) : undefined
