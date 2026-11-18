@@ -4,6 +4,7 @@ import "./index.css"
 import App from "./App"
 import { DevStateProvider } from "@/dev/state"
 import { startSync } from "@/ai/sync"
+import { startSampleData } from "@/sample-data"
 import { SmallScreenNotice } from "@/components/small-screen"
 import { MotionRoot } from "@/components/arrive"
 
@@ -59,6 +60,8 @@ function Root() {
 
 // projects, Flicks and AI chats load from and save to the AI server when a passcode is set
 startSync()
+// campaigns, embeds and analytics: a sample built from the account's own Flicks once they arrive
+startSampleData()
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

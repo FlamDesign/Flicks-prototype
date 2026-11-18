@@ -4,6 +4,9 @@ import { HelpCircleIcon } from "@hugeicons/core-free-icons"
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { FlicksLogo } from "@/components/brand"
+import { PasscodeGate } from "@/components/passcode-gate"
+import { finishedFlicks } from "@/sample-data"
+import { isLive, useAiConfig } from "@/ai/client"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { RecipeCards } from "@/components/recipes"
@@ -16,7 +19,6 @@ import { Toaster } from "@/components/ui-extra/toaster"
 import { FlicksPage, ProjectsPage } from "@/components/flicks-page"
 import { CoachLayer } from "@/onboarding/coach"
 import { CAPTURE, onboarding } from "@/onboarding/onboarding"
-import { SAMPLE_ID, sampleProject } from "@/onboarding/sample"
 import { useDevAction } from "@/dev/dev-actions"
 import { AccountSkeleton, ChatSkeleton, DetailSkeleton, EditorSkeleton, FlickPageSkeleton, GridSkeleton, PageLoader, TableSkeleton } from "@/components/page-skeletons"
 import { WelcomeGiftDialog, WELCOME_CREDITS } from "@/components/welcome-gift-page"
@@ -32,7 +34,7 @@ import { OpenAnalytics } from "@/analytics/open-analytics"
 import type { AnalyticsTarget } from "@/analytics/analytics-page"
 import type { Profile } from "@/components/onboarding-page"
 import { embeds } from "@/embeds/embeds"
-import { ads } from "@/ads/ads"
+import { ads, flickRef } from "@/ads/ads"
 import { useToast } from "@/components/ui-extra/toaster"
 
 // pages and dev tools load when first opened, so the first screen arrives sooner
@@ -69,6 +71,7 @@ export default function App() {
   const openEmbed = (id: string) => (setEmbedTarget(id), setPage("Embeds"))
   const [generation, setGeneration] = useState<Generation | null>(null)
   const { state: dev, update: setDev } = useDevState()
+  const live = isLive(useAiConfig())
   // the Flick page open
   const [flickId, setFlickId] = useState<string | null>(null)
   const openFlickPage = (id: string) => {
@@ -77,32 +80,18 @@ export default function App() {
     setPage("Flick")
     scroller.current?.scrollTo({ top: 0 })
   }
-  /** how a sample opens when it has no saved canvas: made already, from its product set */
-  const sampleBase = (size: string, video: number) => ({
-    // sunglasses 0–4, boots 5–7, dresses 8–9
-    prompt: FLICK_PROMPTS[video < 5 ? 0 : video < 8 ? 1 : 2],
-    size,
-    references: 0,
-    refs: [],
-    startedAt: 1,
-    video,
-  })
+  /** a record saved before projects kept how they opened: a plain project of its size */
+  const plainBase = (size: string, video: number) => ({ prompt: "", size, references: 0, refs: [], startedAt: 1, video })
   // open a project in the editor, as it was left
   const openProject = (p: Project) => {
-    const base = (p.base as Omit<Generation, "id"> | undefined) ?? sampleBase(p.size, p.video)
-    setGeneration({ ...base, id: p.id, resume: { title: p.name, snap: p.snap, versions: p.versions }, sample: !p.snap && !p.base, back: "Projects" })
+    const base = (p.base as Omit<Generation, "id"> | undefined) ?? plainBase(p.size, p.video)
+    setGeneration({ ...base, id: p.id, resume: { title: p.name, snap: p.snap, versions: p.versions }, back: "Projects" })
     setPage("Generate")
   }
   // Remix: a new project from a Flick's exact state, named "<Flick>_copy"
   const remix = (f: FlickRecord) => {
-    const base = (f.base as Omit<Generation, "id"> | undefined) ?? sampleBase(f.size, f.video ?? 0)
-    setGeneration({ ...base, id: crypto.randomUUID(), resume: { title: `${f.name}_copy`, snap: f.snap }, sample: !f.snap, remixOf: f.name, back: "Flick" })
-    setPage("Generate")
-  }
-  // onboarding: the sample project and Help
-  const openSample = () => {
-    const s = sampleProject()
-    setGeneration({ ...s.generation, resume: { title: s.title, snap: s.snap, versions: getLibrary().projects.find((p) => p.id === SAMPLE_ID)?.versions }, back: page === "Generate" ? "Create" : page })
+    const base = (f.base as Omit<Generation, "id"> | undefined) ?? plainBase(f.size, f.video ?? 0)
+    setGeneration({ ...base, id: crypto.randomUUID(), resume: { title: `${f.name}_copy`, snap: f.snap }, remixOf: f.name, back: "Flick" })
     setPage("Generate")
   }
   const remixById = (id: string) => {
@@ -120,13 +109,16 @@ export default function App() {
     library.reset({ projects: !dev.projectsEmpty, flicks: !dev.flicksEmpty })
   }, [dev.projectsEmpty, dev.flicksEmpty])
   const embedsFirst = useRef(true)
+  // the samples are built from the account's own Flicks (src/sample-data.ts)
   useEffect(() => {
     if (embedsFirst.current) return void (embedsFirst.current = false)
-    embeds.reset(dev.embedsEmpty)
+    if (dev.embedsEmpty) embeds.clear()
+    else embeds.seed(finishedFlicks(getLibrary().flicks).map(flickRef))
   }, [dev.embedsEmpty])
   useEffect(() => {
     if (adsFirst.current) return void (adsFirst.current = false)
-    ads.reset(dev.adsEmpty)
+    if (dev.adsEmpty) ads.clear()
+    else ads.seed(finishedFlicks(getLibrary().flicks).map(flickRef))
     setDev({ adBalance: dev.adsEmpty ? 0 : 2747 })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dev.adsEmpty])
@@ -235,13 +227,19 @@ export default function App() {
     document.title = name && page !== "Create" ? `${name} · Flicks` : "Flicks"
   }, [page, previewTemplate])
   // dev tools float on every screen
-  // links from the Help Center open the app on the sample project, or start the tour there
+  // a link from the Help Center starts the editor tour in the latest project (once the server's copy is in)
   useEffect(() => {
     const h = location.hash
-    if (!h.includes("start=")) return
+    if (!h.includes("start=tour")) return
     history.replaceState(null, "", location.pathname + location.search)
-    openSample()
-    if (h.includes("start=tour")) setTimeout(() => onboarding.startTour(0), 600)
+    const go = () => {
+      const p = getLibrary().projects[0]
+      if (!p) return
+      openProject(p)
+      setTimeout(() => onboarding.startTour(0), 600)
+    }
+    if (getLibrary().synced) go()
+    else window.addEventListener("flam:sync-ready", go, { once: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const devLayer = DEV_TOOLS && !CAPTURE && (
@@ -347,6 +345,17 @@ export default function App() {
   newVideoRef.current = newVideo
   const dark = appearance === "dark" || (appearance === "auto" && isDark())
   const toggleTheme = () => setAppearance(isDark() ? "light" : "dark")
+
+  // the server first: without its passcode there is nothing to show
+  if (!live)
+    return (
+      <TooltipProvider delayDuration={300}>
+        <Toaster>
+          <PasscodeGate />
+          {devLayer}
+        </Toaster>
+      </TooltipProvider>
+    )
 
   if (dev.loggedIn && !dev.onboarded)
     return (
@@ -667,13 +676,6 @@ function ExportWatcher({ onOpen }: { onOpen: (id: string) => void }) {
 
 /** A chat-made project that hasn't generated yet opens in the chat view (no canvas yet). */
 const chatPlanning = (g: Generation) => !!g.agent && !(g.resume?.snap as { slides?: { startedAt?: number }[] } | undefined)?.slides?.[0]?.startedAt
-
-/** What the sample Flicks' reference videos were made from, matching their product set. */
-const FLICK_PROMPTS = [
-  "Athlete in black tee against a sunlit concrete wall, slow push-in, gold-lens sport sunglasses, then a street run at golden hour",
-  "Wheat leather 6-inch boot on wet black rock in heavy rain, slow macro push along the stitching, then a splash as the boot lands",
-  "Model in a rust tiered halter gown walking a sunlit stone alley, then a slow twirl seen from above, warm golden light",
-]
 
 /** One toast after onboarding. */
 function Welcome({ name, onShown }: { name: string; onShown: () => void }) {

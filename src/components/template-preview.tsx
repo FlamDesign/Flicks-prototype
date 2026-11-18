@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { TEMPLATES, SIZES, type Template } from "@/data";
 import { TemplateCard } from "@/components/template-card";
 import {
-  inSet,
   type CanvasElement,
   type Feed,
   videoAt,
@@ -114,7 +113,7 @@ function TryFlick({ t }: { t: Template }) {
   // the reference video and its variations, one per variant the template comes with
   const videos = snap
     ? included.map((s) => s.video ?? base)
-    : [...new Set(t.variants.map((_, i) => inSet(base, i)))];
+    : [base];
   const [active, setActive] = useState(0);
   const [auto, setAuto] = useState(true);
   useEffect(() => {

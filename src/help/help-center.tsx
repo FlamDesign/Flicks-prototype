@@ -43,7 +43,6 @@ const guideFromHash = () => {
   return m && guideById(m[1]) ? m[1] : null;
 };
 const TRY = {
-  sample: { label: "Try it in the sample project", hash: "#start=sample" },
   tour: { label: "Take the editor tour", hash: "#start=tour" },
   app: { label: "Try it in Flicks", hash: "" },
 } as const;
@@ -190,18 +189,7 @@ function Home({ onSearch }: { onSearch: (q: string) => void }) {
       </section>
 
       <section aria-label="Get going" className="grid gap-3 sm:grid-cols-2">
-        <QuickStart
-          icon={SparklesIcon}
-          title="Open the sample project"
-          text="A finished Flick with variations, feeds and thumbnails to look around and change."
-          onClick={() => openInNewTab(TRY.sample.hash)}
-        />
-        <QuickStart
-          icon={Navigation03Icon}
-          title="Take the editor tour"
-          text="Six stops through the editor, in the sample project."
-          onClick={() => openInNewTab(TRY.tour.hash)}
-        />
+        <QuickStart icon={Navigation03Icon} title="Take the editor tour" text="Six stops through the editor, in your latest project." onClick={() => openInNewTab(TRY.tour.hash)} />
       </section>
 
       {GROUPS.map((group) => (

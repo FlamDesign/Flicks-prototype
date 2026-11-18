@@ -1,6 +1,6 @@
 import * as fmt from "@/lib/format"
 import { useSyncExternalStore } from "react"
-import { FLICKS, type Flick } from "@/data"
+import type { Flick } from "@/data"
 import { getLibrary } from "@/library"
 
 /**
@@ -169,97 +169,75 @@ export const flickRef = (f: Flick & { remote?: { url?: string } }): FlickRef => 
 /** Flicks that can go in a placement: ready Flicks of the same size (never projects, nor ones still exporting). */
 export const flicksFor = (size: string) => getLibrary().flicks.filter((f) => f.size === size && !f.exporting && f.remote?.status !== "failed").map(flickRef)
 
-// ---------- sample data ----------
+// ---------- sample data, from the account's own Flicks ----------
 
 const HOUR = 3_600_000
 const DAY = 24 * HOUR
-const NOW = Date.now()
-const byId = (id: string) => flickRef(FLICKS.find((f) => f.id === id)!)
-
-const SAMPLE_CAMPAIGNS: Campaign[] = [
-  { id: "c1", name: "Holiday 2026", createdAt: NOW - 12 * DAY },
-  { id: "c2", name: "Spring launch", createdAt: NOW - 30 * DAY },
+const SAMPLE_PLATFORMS = ["The Trade Desk", "DV360", "Campaign Manager 360", "Amazon DSP"]
+const COUNTRY_SETS: Record<string, number>[] = [
+  { US: 120_000, GB: 52_000, JP: 38_000, IN: 36_000 },
+  { US: 60_000, IN: 200_000, ID: 90_000, AE: 60_000 },
+  { US: 40_000, SG: 30_000, JP: 25_000, MY: 42_000 },
+  { US: 210_000, CA: 44_000, GB: 31_000 },
+  { IN: 150_000, AE: 48_000, SA: 22_000 },
 ]
-const mk = (p: Omit<Placement, "impressions" | "spend" | "clicks">): Placement => {
+/** a steady pseudo-random click-through rate per Flick, 1.2% to 3% */
+const sampleCtr = (id: string) => 0.012 + (id.charCodeAt(id.length - 1) % 7) * 0.003
+const withTotals = (p: Omit<Placement, "impressions" | "spend" | "clicks">): Placement => {
   const impressions = Object.values(p.byCountry).reduce((a, b) => a + b, 0)
   const spend = Object.entries(p.byCountry).reduce((a, [c, n]) => a + (n / 1000) * cpmFor(c), 0)
-  return { ...p, impressions, spend, clicks: 0 }
-}
-const SAMPLE_PLACEMENTS: Placement[] = [
-  mk({
-    id: "pl_8f2k1a",
-    campaignId: "c1",
-    name: "Living room hero 16:9",
-    size: "1920×1080",
-    platform: "The Trade Desk",
-    flick: byId("f1"),
-    history: [
-      { flick: byId("f1"), from: NOW - 6 * DAY, impressions: 182_000, spend: 1_786, clicks: 0 },
-      { flick: byId("f9"), from: NOW - 11 * DAY, to: NOW - 6 * DAY, impressions: 64_000, spend: 610, clicks: 0 },
-    ],
-    byCountry: { US: 120_000, GB: 52_000, JP: 38_000, IN: 36_000 },
-    createdAt: NOW - 11 * DAY,
-  }),
-  mk({
-    id: "pl_3m9q7c",
-    campaignId: "c1",
-    name: "Camera bundle MREC",
-    size: "300×250",
-    platform: "DV360",
-    flick: byId("f4"),
-    history: [{ flick: byId("f4"), from: NOW - 9 * DAY, impressions: 410_000, spend: 1_520, clicks: 0 }],
-    byCountry: { US: 60_000, IN: 200_000, ID: 90_000, AE: 60_000 },
-    createdAt: NOW - 9 * DAY,
-  }),
-  mk({
-    id: "pl_5t1w4d",
-    campaignId: "c1",
-    name: "Stories 9:16",
-    size: "1080×1920",
-    platform: OTHER_PLATFORM,
-    otherPlatform: "Moloco",
-    history: [],
-    byCountry: {},
-    createdAt: NOW - 2 * DAY,
-  }),
-  mk({
-    id: "pl_7r6y2e",
-    campaignId: "c2",
-    name: "Square feed",
-    size: "1080×1080",
-    platform: "Campaign Manager 360",
-    flick: byId("f3"),
-    history: [
-      { flick: byId("f3"), from: NOW - 18 * DAY, impressions: 96_000, spend: 820, clicks: 0 },
-      { flick: byId("f10"), from: NOW - 30 * DAY, to: NOW - 18 * DAY, impressions: 41_000, spend: 330, clicks: 0 },
-    ],
-    byCountry: { US: 40_000, SG: 30_000, JP: 25_000, MY: 42_000 },
-    createdAt: NOW - 30 * DAY,
-  }),
-]
-// a steady sample click-through rate per Flick, 1.2% to 3%
-const sampleCtr = (id: string) => 0.012 + (id.charCodeAt(id.length - 1) % 7) * 0.003
-// keep each live Flick's history row in step with the placement's totals; clicks from the sample rate
-for (const p of SAMPLE_PLACEMENTS) {
-  const past = p.history.slice(1)
-  if (p.history[0]) {
-    p.history[0].impressions = Math.max(0, p.impressions - past.reduce((a, h) => a + h.impressions, 0))
-    p.history[0].spend = Math.max(0, p.spend - past.reduce((a, h) => a + h.spend, 0))
+  const out: Placement = { ...p, impressions, spend, clicks: 0 }
+  // the live Flick's history row in step with the totals; clicks from the sample rate
+  const past = out.history.slice(1)
+  if (out.history[0]) {
+    out.history[0].impressions = Math.max(0, impressions - past.reduce((a, h) => a + h.impressions, 0))
+    out.history[0].spend = Math.max(0, spend - past.reduce((a, h) => a + h.spend, 0))
   }
-  for (const h of p.history) h.clicks = Math.round(h.impressions * sampleCtr(h.flick.id))
-  p.clicks = p.history.reduce((a, h) => a + h.clicks, 0)
+  for (const h of out.history) h.clicks = Math.round(h.impressions * sampleCtr(h.flick.id))
+  out.clicks = out.history.reduce((a, h) => a + h.clicks, 0)
+  return out
 }
 
-const sampleLedger = (): AdTxn[] => {
-  const out: AdTxn[] = [
-    { id: "t-f3", at: NOW - 3 * DAY, kind: "funds", amount: 2_000, label: "Funds added", invoice: "FLM-AD-1003" },
-    { id: "t-f2", at: NOW - 14 * DAY, kind: "funds", amount: 5_000, label: "Funds added", invoice: "FLM-AD-1002" },
-    { id: "t-f1", at: NOW - 31 * DAY, kind: "funds", amount: 1_000, label: "Funds added", invoice: "FLM-AD-1001" },
+/**
+ * Sample campaigns and placements built from the account's finished Flicks (the ones the Flicks
+ * page shows), so every number on Campaigns, Ad Balance and Analytics points at a real Flick. Up to
+ * five placements across two campaigns; a placement's earlier Flick comes from the same size when
+ * there is one. Steady pseudo-random figures, so the same Flicks give the same sample every time.
+ */
+export function buildSampleAds(flicks: FlickRef[], now = Date.now()): { campaigns: Campaign[]; placements: Placement[]; ledger: AdTxn[] } {
+  const campaigns: Campaign[] = [
+    { id: "c_sample1", name: "Holiday 2026", createdAt: now - 12 * DAY },
+    { id: "c_sample2", name: "Always-on retail", createdAt: now - 30 * DAY },
   ]
-  // spend, summarised by day and country: each placement's impressions spread over the days it has run
+  const placements: Placement[] = flicks.slice(0, 5).map((f, i) => {
+    const earlier = flicks.find((x) => x.size === f.size && x.id !== f.id)
+    const age = [11, 9, 2, 30, 16][i]
+    const history = earlier && i % 2 === 0 ? [{ flick: f, from: now - Math.round(age * 0.55) * DAY, impressions: 0, spend: 0, clicks: 0 }, { flick: earlier, from: now - age * DAY, to: now - Math.round(age * 0.55) * DAY, impressions: 64_000, spend: 610, clicks: 0 }] : [{ flick: f, from: now - age * DAY, impressions: 0, spend: 0, clicks: 0 }]
+    return withTotals({
+      id: `pl_sample${i + 1}`,
+      campaignId: campaigns[i < 3 ? 0 : 1].id,
+      name: `${f.name} · ${f.size}`,
+      size: f.size,
+      platform: SAMPLE_PLATFORMS[i % SAMPLE_PLATFORMS.length],
+      flick: f,
+      history,
+      byCountry: i === 2 ? {} : COUNTRY_SETS[i % COUNTRY_SETS.length],
+      createdAt: now - age * DAY,
+    })
+  })
+  return { campaigns, placements, ledger: sampleLedger(placements, now) }
+}
+
+/** the Ad Balance ledger behind sample placements: funds added, then each one's spend by day and country */
+function sampleLedger(placements: Placement[], now: number): AdTxn[] {
+  const out: AdTxn[] = [
+    { id: "t-f3", at: now - 3 * DAY, kind: "funds", amount: 2_000, label: "Funds added", invoice: "FLM-AD-1003" },
+    { id: "t-f2", at: now - 14 * DAY, kind: "funds", amount: 5_000, label: "Funds added", invoice: "FLM-AD-1002" },
+    { id: "t-f1", at: now - 31 * DAY, kind: "funds", amount: 1_000, label: "Funds added", invoice: "FLM-AD-1001" },
+  ]
   let i = 0
-  for (const p of SAMPLE_PLACEMENTS) {
-    const days = Math.max(1, Math.min(14, Math.floor((NOW - p.createdAt) / DAY)))
+  for (const p of placements) {
+    const days = Math.max(1, Math.min(14, Math.floor((now - p.createdAt) / DAY)))
     for (const [c, n] of Object.entries(p.byCountry)) {
       const batches = n / 1000
       // uneven days (a steady pseudo-random weight per day and country), in whole batches of 1,000, adding up to the total
@@ -272,7 +250,7 @@ const sampleLedger = (): AdTxn[] => {
         if (share <= 0) continue
         out.push({
           id: `t-s${i++}`,
-          at: NOW - d * DAY - ((i * 37) % 10) * HOUR - HOUR,
+          at: now - d * DAY - ((i * 37) % 10) * HOUR - HOUR,
           kind: "spend",
           amount: -(share * cpmFor(c)),
           label: `${(share * 1000).toLocaleString("en-US")} impressions`,
@@ -285,13 +263,12 @@ const sampleLedger = (): AdTxn[] => {
   }
   return out.sort((a, b) => b.at - a.at)
 }
-/** The sample balance: funds added minus spend. */
-export const SAMPLE_BALANCE = Math.round(sampleLedger().reduce((a, t) => a + t.amount, 0) * 100) / 100
 
 // ---------- store ----------
 
 type AdsState = { campaigns: Campaign[]; placements: Placement[]; ledger: AdTxn[] }
-let state: AdsState = { campaigns: SAMPLE_CAMPAIGNS, placements: SAMPLE_PLACEMENTS, ledger: sampleLedger() }
+/** empty until the sample is seeded from the account's Flicks (see src/sample-data.ts) or the user adds to it */
+let state: AdsState = { campaigns: [], placements: [], ledger: [] }
 const listeners = new Set<() => void>()
 const set = (fn: (s: AdsState) => AdsState) => {
   state = fn(state)
@@ -311,9 +288,12 @@ export const ctr = (clicks: number, impressions: number) => (impressions ? `${((
 export const avgCpm = (spend: number, impressions: number) => (impressions ? usd((spend / impressions) * 1000) : "—")
 
 export const ads = {
-  /** for the dev tools: sample data, or nothing at all */
-  reset(empty: boolean) {
-    set(() => (empty ? { campaigns: [], placements: [], ledger: [] } : { campaigns: SAMPLE_CAMPAIGNS, placements: SAMPLE_PLACEMENTS, ledger: sampleLedger() }))
+  /** the sample built from the account's Flicks (dev tools and first load), or nothing at all */
+  seed(flicks: FlickRef[]) {
+    set(() => buildSampleAds(flicks))
+  },
+  clear() {
+    set(() => ({ campaigns: [], placements: [], ledger: [] }))
   },
   addCampaign(name: string) {
     const c = { id: uid("c"), name, createdAt: Date.now() }

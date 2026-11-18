@@ -16,7 +16,6 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 import { useToast } from "@/components/ui-extra/toaster"
 import { SIZES, formatEdited, fullDate } from "@/data"
 import { exportFailed, flickLink, library, useExportProgress, useLibrary, type FlickRecord, type Project } from "@/library"
-import { SAMPLE_ID } from "@/onboarding/sample"
 import { copyChat } from "@/ai/copy-chat"
 import { useAds } from "@/ads/ads"
 import { Progress } from "@/components/ui/progress"
@@ -30,7 +29,7 @@ type MenuItem = { label: string; icon: typeof Copy01Icon; onSelect: () => void; 
 export function ProjectsPage({ onOpen, onCreate }: { onOpen: (p: Project) => void; onCreate: () => void }) {
   // the onboarding sample project is kept for Help and the tour, but never listed
   const lib = useLibrary()
-  const projects = lib.projects.filter((p) => p.id !== SAMPLE_ID)
+  const projects = lib.projects
   const toast = useToast()
   return (
     <>

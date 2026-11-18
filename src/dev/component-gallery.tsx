@@ -50,7 +50,10 @@ import { FeedsPanel, FeedsTitle, type FeedVideo } from "@/components/editor/feed
 import type { Feed } from "@/components/editor/elements"
 import { SlidesStrip, type Slide, type SlideStatus } from "@/components/editor/slides-strip"
 import { useToast } from "@/components/ui-extra/toaster"
-import { GENERATED_VIDEOS, type CanvasElement } from "@/components/editor/elements"
+import type { CanvasElement } from "@/components/editor/elements"
+import { REAL_VIDEOS } from "@/templates/real-media"
+/** demo pictures for the gallery: frames of the real brand Flicks */
+const GENERATED_VIDEOS = REAL_VIDEOS
 import { ReferenceThumb } from "@/components/prompt-composer"
 import { cn } from "@/lib/utils"
 import { AgentItemView, ApprovalDock, QuestionDeck, threadGroups } from "@/components/editor/agent-chat"

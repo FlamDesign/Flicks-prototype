@@ -423,7 +423,8 @@ async function mockVideo(input: { prompt: string; resume?: string; onId?: (id: s
   }
   if (fail > 0) throw new AiError("video_failed", "The video didn't generate. Try again.")
   const { GENERATED_VIDEOS } = await import("@/components/editor/elements")
-  const samples = GENERATED_VIDEOS.filter((v) => v.set !== "made" && v.mp4)
+  // only the stand-ins that come with the app for this switch, never a template's video
+  const samples = GENERATED_VIDEOS.filter((v) => v.set === "sample" && v.mp4)
   let h = 0
   for (const c of input.prompt) h = (h * 31 + c.charCodeAt(0)) >>> 0
   const v = samples[h % samples.length]

@@ -1,6 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from "react"
-import { FLICKS, PROJECTS, type Flick } from "@/data"
-import { GENERATED_VIDEOS, inSet, videoAt } from "@/components/editor/elements"
+import type { Flick } from "@/data"
+import { videoAt } from "@/components/editor/elements"
 import { safeSnap } from "@/ai/copy-chat"
 
 /**
@@ -17,7 +17,7 @@ export type Project = {
   size: string
   editedAt: number
   image: string
-  /** the sample product set it plays */
+  /** its reference video (a made video's index on the device that saved it; slides keep the address) */
   video: number
   /** how the editor first opened it (prompt, size, template...), to reopen it the same way */
   base?: unknown
@@ -26,8 +26,6 @@ export type Project = {
   versions: Checkpoint[]
   /** Flicks exported from it, newest first */
   exports: string[]
-  /** a built-in sample: opens with sample variations */
-  sample?: boolean
 }
 
 /** image: undefined uses the starting variation, null means no image */
@@ -58,45 +56,18 @@ export const slugify = (s: string) =>
     .replace(/^-+|-+$/g, "")
     .slice(0, 40)
 
-/** A variation's name from its sample video ("sunglasses-3-sapphire" → "Sapphire"). */
+/** A variation's name from its video's name ("Teal-1794900516856" → "Teal"), else "Variation n". */
 export const variantName = (video: number, i: number) => {
-  const part = videoAt(video)?.name.split("-")[2]
-  return part ? part.charAt(0).toUpperCase() + part.slice(1) : `Variation ${i + 1}`
+  const name = videoAt(video)?.name ?? ""
+  const part = name.split("-")[0]
+  return part && part !== "missing" && part !== "made" ? part.charAt(0).toUpperCase() + part.slice(1) : `Variation ${i + 1}`
 }
-
-// ---------- sample data ----------
-
-const sampleFlick = (f: Flick, i: number): FlickRecord => {
-  const base = f.video ?? 0
-  // a steady pseudo-random total; the starting variation gets the most views
-  const total = 4_000 + ((i * 7919) % 23) * 1_100
-  const shares = [0.52, 0.29, 0.19]
-  return {
-    ...f,
-    variants: [0, 1, 2].map((k) => {
-      const video = inSet(base, k)
-      return { name: variantName(video, k), video, poster: videoAt(video).poster, views: Math.round(total * shares[k]) }
-    }),
-    start: 0,
-    link: { slug: `${slugify(f.name)}-${(i * 2654435761).toString(36).slice(-4)}`, title: "", description: "" },
-  }
-}
-const sampleProjects = (): Project[] =>
-  PROJECTS.map((p) => ({ ...p, sample: true, versions: [], exports: FLICKS.filter((f) => f.projectId === p.id).map((f) => f.id) }))
 
 // ---------- store ----------
 
-export type LibraryState = { projects: Project[]; flicks: FlickRecord[]; /** the server's copy is in (or there is no server): the lists are real */ synced: boolean }
-/** with the AI server set up the lists start empty until its copy arrives; without one, the samples */
-const serverSetUp = () => {
-  try {
-    const c = JSON.parse(localStorage.getItem("flam.ai") ?? "{}") as { passcode?: string }
-    return !!c.passcode?.trim()
-  } catch {
-    return false
-  }
-}
-let state: LibraryState = serverSetUp() ? { projects: [], flicks: [], synced: false } : { projects: sampleProjects(), flicks: FLICKS.map(sampleFlick), synced: true }
+export type LibraryState = { projects: Project[]; flicks: FlickRecord[]; /** the server's copy is in: the lists are real */ synced: boolean }
+/** everything lives on the AI server: the lists start empty until its copy arrives */
+let state: LibraryState = { projects: [], flicks: [], synced: false }
 const listeners = new Set<() => void>()
 /** true while a change shouldn't be saved to the server (dev resets, loading what the server sent) */
 let quiet = false
@@ -120,21 +91,16 @@ export const useLibrary = () =>
 /** for code outside React (the ads picker, the editor's save) */
 export const getLibrary = () => state
 
-/** the built-in sample videos' stills: stand-ins, never a chat project's own picture */
-const SAMPLE_POSTERS = new Set(GENERATED_VIDEOS.filter((v) => v.set !== "made").map((v) => v.poster))
-/** a project made with the AI chat that saved a sample still as its picture (before it had a video of its own) shows the placeholder instead */
-const realCover = (p: Project): Project => ((p.base as { agent?: unknown } | undefined)?.agent && SAMPLE_POSTERS.has(p.image) ? { ...p, image: "" } : p)
-
 const uid = (p: string) => `${p}_${Math.random().toString(36).slice(2, 8)}`
 
 export const library = {
-  /** dev tools: the samples, or nothing */
+  /** dev tools: clears the lists on this device (the server's copy comes back on the next load) */
   reset({ projects, flicks }: { projects: boolean; flicks: boolean }) {
-    set((s) => ({ ...s, projects: projects ? sampleProjects() : [], flicks: flicks ? FLICKS.map(sampleFlick) : [] }), true)
+    set((s) => ({ ...s, projects: projects ? [] : s.projects, flicks: flicks ? [] : s.flicks }), true)
   },
   /** what the server saved replaces what's here */
   load(saved: { projects: Project[]; flicks: FlickRecord[] }) {
-    set(() => ({ projects: saved.projects.map(realCover), flicks: saved.flicks, synced: true }), true)
+    set(() => ({ projects: saved.projects, flicks: saved.flicks, synced: true }), true)
   },
   /** the server couldn't be reached: what's here is what there is */
   syncFailed() {
@@ -231,9 +197,6 @@ export const library = {
     }))
   },
 }
-
-/** a built-in sample (never saved to the server; they come with the app) */
-export const isSample = (x: { id: string; sample?: boolean }) => !!x.sample || PROJECTS.some((p) => p.id === x.id) || FLICKS.some((f) => f.id === x.id)
 
 export const totalViews = (f: FlickRecord) => f.variants.reduce((a, v) => a + v.views, 0)
 /** the Flick's address: its share page on the Flicks API when it has one, else the prototype's */

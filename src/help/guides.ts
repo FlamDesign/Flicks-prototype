@@ -10,7 +10,7 @@ export type Guide = {
   summary: string
   tips: string[]
   /** where "Try it" opens the app */
-  tryIt?: "sample" | "tour" | "app"
+  tryIt?: "tour" | "app"
   related?: string[]
   frames: Frame[]
 }
@@ -64,7 +64,6 @@ const TEXT: GuideText[] = [
       "Make 2 to 5. You need at least 2 to export.",
       "Remaking Variation 1 marks the other variations with a red dot. Make them again so they match.",
     ],
-    tryIt: "sample",
     related: ["starting", "thumbnails"],
   },
   {
@@ -73,7 +72,6 @@ const TEXT: GuideText[] = [
     title: "Choose where the Flick starts",
     summary: "The starting variation is the one viewers see first.",
     tips: ["Variation 1 is in the Flick like every other variation."],
-    tryIt: "sample",
     related: ["variations"],
   },
   {
@@ -82,7 +80,6 @@ const TEXT: GuideText[] = [
     title: "Add text, images and buttons",
     summary: "Everything on the canvas is placed once and shared by every variation. Change one, change all.",
     tips: ["Use feeds for anything that should differ per variation, like a price.", "Layers, in the left rail, lists everything on the canvas."],
-    tryIt: "sample",
     related: ["feeds", "links"],
   },
   {
@@ -91,7 +88,6 @@ const TEXT: GuideText[] = [
     title: "Link a button",
     summary: "A button can open a link when viewers tap it.",
     tips: ["Link it to a feed to send each variation somewhere different, like that color’s product page."],
-    tryIt: "sample",
     related: ["feeds"],
   },
   {
@@ -100,7 +96,6 @@ const TEXT: GuideText[] = [
     title: "Dynamic content with feeds",
     summary: "A feed is a value each variation sets for itself, like a price or a shop link. Make one from the { } tab on text, a button or its link.",
     tips: ["Empty values are flagged before you export.", "Text feeds fill text; link feeds fill button links."],
-    tryIt: "sample",
     related: ["design", "links"],
   },
   {
@@ -109,7 +104,6 @@ const TEXT: GuideText[] = [
     title: "Thumbnails",
     summary: "The thumbnail strip lets viewers switch variations. Each variation needs a thumbnail image.",
     tips: ["Use a crop that tells colorways apart at a glance.", "Variation 1 needs a thumbnail too."],
-    tryIt: "sample",
     related: ["variations", "preview"],
   },
   {
@@ -118,7 +112,6 @@ const TEXT: GuideText[] = [
     title: "Preview",
     summary: "See it the way viewers will: tap the thumbnails, try the buttons.",
     tips: ["Switch back to Design to keep editing."],
-    tryIt: "sample",
     related: ["export"],
   },
   {
@@ -127,7 +120,6 @@ const TEXT: GuideText[] = [
     title: "Version history",
     summary: "Projects save as you work. Go back to any earlier version from the file menu.",
     tips: ["Versions you exported are marked, with a link to the Flick."],
-    tryIt: "sample",
     related: ["export"],
   },
   {

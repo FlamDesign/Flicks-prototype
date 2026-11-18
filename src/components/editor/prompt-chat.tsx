@@ -21,8 +21,8 @@ export type HistoryItem = {
   refs: { url: string; name: string; media?: "image" | "video"; poster?: string }[]
   /** the reference video was attached automatically (variations) */
   fromReference?: boolean
-  /** the sample video it produced, and when it started (to tell if it's still generating) */
-  video: number
+  /** the video it produced (none until it arrives), and when it started (to tell if it's still generating) */
+  video?: number
   startedAt: number
   /** generated together with the reference video (Regenerate all) */
   batch?: boolean
@@ -72,7 +72,7 @@ export function PromptChat({
   history: HistoryItem[]
   /** the video's current name (names can change after the fact) */
   nameOf: (slideId: string) => string | undefined
-  posterOf: (video: number) => string
+  posterOf: (video?: number) => string
   /** still generating this item */
   isGenerating: (h: HistoryItem) => boolean
   /** the latest video for its slide (older ones were replaced) */

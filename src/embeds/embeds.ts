@@ -1,6 +1,5 @@
 import { useSyncExternalStore } from "react"
-import { FLICKS } from "@/data"
-import { flickRef, type FlickRef } from "@/ads/ads"
+import type { FlickRef } from "@/ads/ads"
 
 /**
  * Embeds: a fixed-size slot on a website or app with one code snippet. Like a placement, the Flick
@@ -34,32 +33,37 @@ export function embedCodeFor(e: Embed, platform: EmbedPlatform): string {
   return [`// Gradle: implementation("ai.flamapp:flicks:1.+")`, `import ai.flamapp.flicks.FlickEmbedView`, ``, `val embed = FlickEmbedView(context, embedId = "${e.id}")`, `embed.aspectRatio = ${w}f / ${h}f`, `container.addView(embed)`].join("\n")
 }
 
-// ---------- sample data ----------
+// ---------- sample data, from the account's own Flicks ----------
 
 const DAY = 86_400_000
-const NOW = Date.now()
-const byId = (id: string) => flickRef(FLICKS.find((f) => f.id === id)!)
-const h = (id: string, fromDays: number, toDays: number | undefined, views: number, ctr: number): EmbedHistory => ({
-  flick: byId(id),
-  from: NOW - fromDays * DAY,
-  to: toDays === undefined ? undefined : NOW - toDays * DAY,
+const h = (flick: FlickRef, now: number, fromDays: number, toDays: number | undefined, views: number, ctr: number): EmbedHistory => ({
+  flick,
+  from: now - fromDays * DAY,
+  to: toDays === undefined ? undefined : now - toDays * DAY,
   views,
   clicks: Math.round(views * ctr),
 })
-const mk = (e: Omit<Embed, "views" | "clicks">): Embed => ({
+const withTotals = (e: Omit<Embed, "views" | "clicks">): Embed => ({
   ...e,
   views: e.history.reduce((a, x) => a + x.views, 0),
   clicks: e.history.reduce((a, x) => a + x.clicks, 0),
 })
-const SAMPLE: Embed[] = [
-  mk({ id: "em_h7q2ka", name: "Homepage hero", size: "1920×1080", flick: byId("f9"), history: [h("f9", 5, undefined, 21_400, 0.034), h("f1", 20, 5, 48_900, 0.027)], createdAt: NOW - 20 * DAY }),
-  mk({ id: "em_p3x8vd", name: "Product page gallery", size: "1080×1080", flick: byId("f3"), history: [h("f3", 9, undefined, 12_300, 0.041)], createdAt: NOW - 9 * DAY }),
-  mk({ id: "em_a9m1rt", name: "App home banner", size: "1080×1920", flick: byId("f12"), history: [h("f12", 14, undefined, 30_800, 0.022)], createdAt: NOW - 14 * DAY }),
-]
+/** Sample embeds built from the account's finished Flicks: up to three, steady figures. */
+export function buildSampleEmbeds(flicks: FlickRef[], now = Date.now()): Embed[] {
+  const spots = ["Homepage hero", "Product page gallery", "App home banner"]
+  return flicks.slice(0, 3).map((f, i) => {
+    const earlier = flicks.find((x) => x.size === f.size && x.id !== f.id)
+    const live = [5, 9, 14][i]
+    const history = [h(f, now, live, undefined, [21_400, 12_300, 30_800][i], [0.034, 0.041, 0.022][i])]
+    if (earlier && i === 0) history.push(h(earlier, now, 20, 5, 48_900, 0.027))
+    return withTotals({ id: `em_sample${i + 1}`, name: spots[i], size: f.size, flick: f, history, createdAt: now - (i === 0 ? 20 : live) * DAY })
+  })
+}
 
 // ---------- store ----------
 
-let state: { embeds: Embed[] } = { embeds: SAMPLE }
+/** empty until the sample is seeded from the account's Flicks (see src/sample-data.ts) or the user adds to it */
+let state: { embeds: Embed[] } = { embeds: [] }
 const listeners = new Set<() => void>()
 const set = (fn: (s: typeof state) => typeof state) => {
   state = fn(state)
@@ -74,8 +78,12 @@ export const useEmbeds = () =>
 const uid = () => `em_${Math.random().toString(36).slice(2, 8)}`
 
 export const embeds = {
-  reset(empty: boolean) {
-    set(() => ({ embeds: empty ? [] : SAMPLE }))
+  /** the sample built from the account's Flicks (dev tools and first load), or nothing at all */
+  seed(flicks: FlickRef[]) {
+    set(() => ({ embeds: buildSampleEmbeds(flicks) }))
+  },
+  clear() {
+    set(() => ({ embeds: [] }))
   },
   add(e: { name: string; size: string; flick?: FlickRef }) {
     const now = Date.now()

@@ -48,7 +48,7 @@ Prototype of Flam's Flicks "Create" web app: React + Vite + Tailwind v4 + shadcn
 - Routes in `src/lib/route.ts`, active only when `import.meta.env.BASE_URL === "/"`; `public/_redirects` serves `index.html` for every path. Public media paths get `BASE_URL` prefixed (`pub()` in `src/recipes.ts`, `src/templates/real-media.ts`).
 - AI: `src/ai/agent.ts` (tools, system prompt, turn loop), `src/ai/managed.ts` (Anthropic Managed Agents: agent, environment, sessions, streaming, rejoin), `src/ai/client.ts` (`apiCall`), skills in `src/ai/skills/*.md` uploaded as Skills. Agent config stored at Worker `/store/agent-config`.
 - Worker routes: `/chat`, `/library` (backed by `lib:index`), `/file`, `/store`, `/requests`, `/media`, `/health`, `/agent/v1/*` proxy. `ALLOWED_ORIGINS` supports `*` patterns.
-- Library: `LibraryState { projects, flicks, synced }`; starts empty when the server is set up, samples otherwise. Sample project is hidden from Projects.
+- Library: `LibraryState { projects, flicks, synced }`; always starts empty and fills from the server. There is no sample library, no sample project and no mode without a server: a device without the passcode sees the passcode gate (`src/components/passcode-gate.tsx`) first. Campaigns, embeds and analytics are a sample built from the account's own finished Flicks on each visit (`src/sample-data.ts`). The only sample media are the five stand-in clips for the Sample videos switch (`set: "sample"` in `GENERATED_VIDEOS`), used nowhere else.
 - Dev tools: floating pill `DevWidget` (⌘.) with switches and the State / AI / Docs dialogs (`src/dev/`).
 
 ## Working style

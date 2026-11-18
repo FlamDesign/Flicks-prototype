@@ -14,35 +14,20 @@ import poster2 from "@/assets/video/poster-2.jpg"
 import poster3 from "@/assets/video/poster-3.jpg"
 import poster4 from "@/assets/video/poster-4.jpg"
 import poster5 from "@/assets/video/poster-5.jpg"
-import shoe1mp4 from "@/assets/video/shoe-1-wheat.mp4"
-import shoe2mp4 from "@/assets/video/shoe-2-black.mp4"
-import shoe3mp4 from "@/assets/video/shoe-3-brown.mp4"
-import dress1mp4 from "@/assets/video/dress-1-rust.mp4"
-import dress2mp4 from "@/assets/video/dress-2-ombre.mp4"
-import shoe1poster from "@/assets/video/shoe-1-wheat.jpg"
-import shoe2poster from "@/assets/video/shoe-2-black.jpg"
-import shoe3poster from "@/assets/video/shoe-3-brown.jpg"
-import dress1poster from "@/assets/video/dress-1-rust.jpg"
-import dress2poster from "@/assets/video/dress-2-ombre.jpg"
 import { BRAND_VIDEOS, type BrandSet } from "@/templates/brand-assets"
 import { REAL_BASE, REAL_VIDEOS, type RealSlug } from "@/templates/real-media"
 
-export type SampleVideo = { name: string; set: "sunglasses" | "boots" | "dress" | "made" | BrandSet | `real-${RealSlug}`; size: string; mp4: string; webm?: string; poster: string }
+export type SampleVideo = { name: string; set: "sample" | "made" | BrandSet | `real-${RealSlug}`; size: string; mp4: string; webm?: string; poster: string }
 /**
- * Sample generated videos, in three product sets. The first of each set is its reference video;
- * the rest are its variations. Sunglasses are 9:16 with WebM + MP4; boots and dresses are MP4 only.
+ * Videos that come with the app: five stand-ins for the Sample videos dev switch (used nowhere
+ * else), then the brand templates' videos. Made videos are appended at run time.
  */
 export const GENERATED_VIDEOS: SampleVideo[] = [
-  { name: "sunglasses-1-gold", set: "sunglasses", size: "1080×1920", webm: gen1webm, mp4: gen1mp4, poster: poster1 },
-  { name: "sunglasses-2", set: "sunglasses", size: "1080×1920", webm: gen2webm, mp4: gen2mp4, poster: poster2 },
-  { name: "sunglasses-3-sapphire", set: "sunglasses", size: "1080×1920", webm: gen3webm, mp4: gen3mp4, poster: poster3 },
-  { name: "sunglasses-4-white", set: "sunglasses", size: "1080×1920", webm: gen4webm, mp4: gen4mp4, poster: poster4 },
-  { name: "sunglasses-5-black", set: "sunglasses", size: "1080×1920", webm: gen5webm, mp4: gen5mp4, poster: poster5 },
-  { name: "shoe-1-wheat", set: "boots", size: "1920×1080", mp4: shoe1mp4, poster: shoe1poster },
-  { name: "shoe-2-black", set: "boots", size: "1440×1440", mp4: shoe2mp4, poster: shoe2poster },
-  { name: "shoe-3-brown", set: "boots", size: "1440×1440", mp4: shoe3mp4, poster: shoe3poster },
-  { name: "dress-1-rust", set: "dress", size: "1440×1440", mp4: dress1mp4, poster: dress1poster },
-  { name: "dress-2-ombre", set: "dress", size: "1440×1440", mp4: dress2mp4, poster: dress2poster },
+  { name: "sample-1", set: "sample", size: "1080×1920", webm: gen1webm, mp4: gen1mp4, poster: poster1 },
+  { name: "sample-2", set: "sample", size: "1080×1920", webm: gen2webm, mp4: gen2mp4, poster: poster2 },
+  { name: "sample-3", set: "sample", size: "1080×1920", webm: gen3webm, mp4: gen3mp4, poster: poster3 },
+  { name: "sample-4", set: "sample", size: "1080×1920", webm: gen4webm, mp4: gen4mp4, poster: poster4 },
+  { name: "sample-5", set: "sample", size: "1080×1920", webm: gen5webm, mp4: gen5mp4, poster: poster5 },
   // brand templates' videos come after the samples (see templates/brand-assets.ts)
   ...BRAND_VIDEOS,
 ]
@@ -52,6 +37,8 @@ export const GENERATED_VIDEOS: SampleVideo[] = [
  */
 /** A plain gray frame for a video this device no longer has (see videoAt). */
 export const MISSING_POSTER = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="16" height="16" fill="#d6d3d1"/></svg>')
+/** neutral frames for a mock-up before any video exists (storyboard previews): three soft tones */
+export const PLACEHOLDER_FRAMES = ["#d6d3d1", "#a8a29e", "#78716c"].map((c) => "data:image/svg+xml;utf8," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="16" height="16" fill="${c}"/></svg>`))
 const MADE_KEY = "flam.videos"
 /** how many videos come with the app (samples and the brand templates'); made videos follow */
 export const BUILT_IN_VIDEOS = GENERATED_VIDEOS.length
@@ -113,24 +100,6 @@ export const isMadeVideo = (i?: number) => i !== undefined && GENERATED_VIDEOS[i
 export const videoAt = (i?: number): SampleVideo =>
   (i !== undefined && (i >= REAL_BASE ? REAL_VIDEOS[i - REAL_BASE] : GENERATED_VIDEOS[i])) || { name: "missing", set: "made", size: "1080×1080", mp4: "", poster: MISSING_POSTER }
 
-/** How many of GENERATED_VIDEOS are the generic samples (the rest belong to brand templates). */
-export const SAMPLE_VIDEO_COUNT = 10
-/** Each new generation from the home box starts the next set: sunglasses, boots, dresses. */
-export const REFERENCE_VIDEOS = [0, 5, 8]
-/** The video `step` places along from `base` within its set, so variations stay the same product. */
-export const inSet = (base: number, step: number) => {
-  // a real Flick's videos: its three, in order
-  if (base >= REAL_BASE) {
-    const set = REAL_VIDEOS[base - REAL_BASE]?.set
-    const ids = REAL_VIDEOS.flatMap((v, i) => (v.set === set ? [REAL_BASE + i] : []))
-    return ids.length ? ids[(Math.max(0, ids.indexOf(base)) + step) % ids.length] : base
-  }
-  const set = GENERATED_VIDEOS[base]?.set ?? "sunglasses"
-  const ids = GENERATED_VIDEOS.flatMap((v, i) => (v.set === set ? [i] : []))
-  return ids[(Math.max(0, ids.indexOf(base)) + step) % ids.length]
-}
-
-/** Horizontal anchor: x is the element's left edge, center or right edge. */
 export type Align = "left" | "center" | "right"
 
 export type TextVariant = "heading" | "subheading" | "body" | "caption" | "label"

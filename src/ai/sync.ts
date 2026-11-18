@@ -6,7 +6,7 @@
  */
 import { aiConfig, isLive, shareable } from "@/ai/client"
 import { GENERATED_VIDEOS, type SampleVideo } from "@/components/editor/elements"
-import { isSample, library, watchLibrary, type LibraryState } from "@/library"
+import { library, watchLibrary, type LibraryState } from "@/library"
 import { elements, type FlickElement } from "@/lib/elements"
 
 const base = () => aiConfig.get().url.trim().replace(/\/+$/, "")
@@ -160,10 +160,8 @@ export function merge(mine: Saved, theirs: Saved | null): { merged: Saved; chang
     // newest first, as the lists show them
     return out.sort((p, q) => (q.editedAt ?? 0) - (p.editedAt ?? 0))
   }
-  // the built-in samples come with the app: a tab that showed them before the server was set up
-  // doesn't send them along
-  const projects = pick(mine.projects, theirs.projects).filter((p) => !isSample(p))
-  const flicks = pick(mine.flicks, theirs.flicks).filter((f) => !isSample(f))
+  const projects = pick(mine.projects, theirs.projects)
+  const flicks = pick(mine.flicks, theirs.flicks)
   if (projects.length !== mine.projects.length || flicks.length !== mine.flicks.length) changedHere = true
   return { merged: { projects, flicks, made: GENERATED_VIDEOS.filter((v) => v.set === "made"), deleted: { ...deleted } }, changedHere }
 }
@@ -206,7 +204,7 @@ export function startSync() {
         for (const id of now) delete deleted[id]
       }
       ids = now
-      if (ready && !silent) put({ projects: s.projects.filter((p) => !isSample(p)), flicks: s.flicks.filter((f) => !isSample(f)), made: GENERATED_VIDEOS.filter((v) => v.set === "made"), deleted: { ...deleted } } satisfies Saved)
+      if (ready && !silent) put({ projects: s.projects, flicks: s.flicks, made: GENERATED_VIDEOS.filter((v) => v.set === "made"), deleted: { ...deleted } } satisfies Saved)
     })
     // elements (named products, characters, logos) follow the user too
     let elementsReady = false

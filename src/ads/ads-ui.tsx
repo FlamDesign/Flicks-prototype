@@ -14,10 +14,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useToast } from "@/components/ui-extra/toaster"
 import { ALL_DATES, DateFilter, inDateFilter, type DateFilterValue } from "@/components/ui-extra/date-filter"
 import { RatioGlyph } from "@/components/ratio-glyph"
-import { FLICKS, SIZES, SIZE_GROUPS } from "@/data"
+import { SIZES, SIZE_GROUPS } from "@/data"
 import { useLibrary } from "@/library"
 import { FlickRender, snapOf } from "@/components/flick-render"
-import { REFERENCE_VIDEOS, inSet, videoAt } from "@/components/editor/elements"
+import { videoAt } from "@/components/editor/elements"
 import { useDevState } from "@/dev/state"
 import { cn } from "@/lib/utils"
 import { FlickPlayer } from "@/components/flick-player"
@@ -653,10 +653,8 @@ export function LiveFlick({ flick, tall, fit, videos: given, start = 0 }: { flic
   // an exported Flick keeps its canvas: it plays with its layout, thumbnails and feed values
   const record = useLibrary().flicks.find((f) => f.id === flick.id)
   const snap = record ? snapOf(record) : null
-  // a Flick's own variations when known; otherwise its product set's videos
-  const i = Math.max(0, FLICKS.findIndex((f) => f.id === flick.id))
-  const base = flick.video ?? FLICKS[i]?.video ?? REFERENCE_VIDEOS[i % REFERENCE_VIDEOS.length]
-  const videos = given?.length ? given : [...new Set([0, 1, 2].map((n) => inSet(base, n)))]
+  // the Flick's own variations: given by the caller, else from its record
+  const videos = given?.length ? given : record?.variants.length ? record.variants.map((v) => v.video) : [flick.video ?? 0]
   const [active, setActive] = useState(Math.min(start, videos.length - 1))
   const [auto, setAuto] = useState(true)
   useEffect(() => {

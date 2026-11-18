@@ -39,7 +39,7 @@ import { GeneratingGradient } from "@/components/editor/generation-progress"
 import { AgentComposer, ApprovalDock, isDocked, QuestionDeck, QuickReplies, threadGroups, type AgentCtx } from "@/components/editor/agent-chat"
 import { PlanningView, PlanSteps } from "@/components/editor/planning-view"
 import { renderFlickShot } from "@/components/editor/flick-shot"
-import { addMadeVideo, videoOf, videoIndexOf, canRotate, SHAPES, SHAPE_GREY, isBox, isMadeVideo, MISSING_POSTER, BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, defaultFill, defaultInk, inSet, clampStrip, fitStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload, videoAt, wrapVideo } from "@/components/editor/elements"
+import { addMadeVideo, videoOf, videoIndexOf, PLACEHOLDER_FRAMES, canRotate, SHAPES, SHAPE_GREY, isBox, isMadeVideo, MISSING_POSTER, BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, defaultFill, defaultInk, clampStrip, fitStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload, videoAt } from "@/components/editor/elements"
 
 export type Generation = {
   id: string
@@ -59,8 +59,6 @@ export type Generation = {
   fromAsset?: boolean
   /** reopening a project: its name, the canvas as it was left and its saved versions */
   resume?: { title: string; snap?: unknown; versions?: Checkpoint[] }
-  /** a built-in sample project: opens with its videos already made */
-  sample?: boolean
   /** where Back goes */
   back?: string
   /** a remix: the name of the Flick it started from */
@@ -145,12 +143,6 @@ export function GenerationCanvas({
       }
       return savedSnap.slides.map(placed).map((x, i) => (lost(x) ? { ...x, n: x.n ?? (i || undefined), job: undefined, startedAt: Date.now() } : { ...x, n: x.n ?? (i || undefined), job: going(x) ? x.job : undefined, startedAt: x.startedAt ? (going(x) ? x.startedAt : 1) : undefined }))
     }
-    // a sample project: the reference video and two variations, all made long ago (startedAt 1)
-    if (generation.sample)
-      return [
-        { ...main, startedAt: 1 },
-        ...[1, 2].map((n) => ({ id: crypto.randomUUID(), n, prompt: "", refs: [], video: inSet(generation.video, n), startedAt: 1, used: { prompt: VARIATION_PROMPTS[n - 1], refs: [], fromReference: true } })),
-      ]
     return [main, { id: crypto.randomUUID(), n: 1 }, { id: crypto.randomUUID(), n: 2 }]
   })
   const [active, setActive] = useState("main")
@@ -249,16 +241,7 @@ export function GenerationCanvas({
   // one set of elements shared by every video: a change on any video applies to all
   const [elements, setShared] = useState<CanvasElement[]>(() =>
     // a template comes with its headline and call to action already placed
-    savedSnap
-      ? savedSnap.elements
-      : generation.sample
-      ? [
-          { id: crypto.randomUUID(), kind: "text", variant: "subheading", text: generation.remixOf ?? generation.resume?.title ?? "", x: 50, y: 14, align: "center" },
-          { id: crypto.randomUUID(), kind: "button", variant: "pill", text: BUTTON_TEXT, x: 50, y: 52, align: "center" },
-          // its strip is already there, so opening it doesn't count as a change
-          { ...newStrip(2, "horizontal", ratio), id: crypto.randomUUID() },
-        ]
-      : [],
+    savedSnap ? savedSnap.elements : [],
   )
   // thumbnail strips can't leave the frame, whatever moved or resized them
   const keepStrips = (els: CanvasElement[]) => els.map((e) => (e.kind === "strip" ? clampStrip(e, included.length, ratio) : e))
@@ -463,7 +446,7 @@ export function GenerationCanvas({
   }
   // the main video gets a strip once it's ready
   // (a sample or a saved canvas already has its strip)
-  const stripAdded = useRef(!!generation.sample || !!savedSnap)
+  const stripAdded = useRef(!!savedSnap)
   useEffect(() => {
     if (!mainDone || stripAdded.current) return
     stripAdded.current = true
@@ -497,8 +480,6 @@ export function GenerationCanvas({
     setEditing(null)
   }
 
-  // variations step through the sample video set (sample videos only)
-  const nextVideo = useRef(1)
   // a variation made before the reference video was last regenerated needs regenerating too
   const stale = (s: Slide) => s.id !== "main" && !!s.startedAt && !!slides[0].startedAt && s.startedAt < slides[0].startedAt && mainDone
   // the prompt box stays open while videos generate: a new prompt for a video that's still being
@@ -513,7 +494,7 @@ export function GenerationCanvas({
   /* ---------- the chat that plans the Flick (started from Create with the chat on) ---------- */
   // every project is a chat project; one opened from before the chat (or copied) starts with an idle chat
   const agentMode = true
-  const fresh = !generation.resume && !generation.copy && !generation.sample && !generation.fromAsset
+  const fresh = !generation.resume && !generation.copy && !generation.fromAsset
   const [brand, setBrand] = useState<Brand | undefined>()
   // tools can run before React re-renders: they read the latest slides from here
   const liveRef = useRef(false)
@@ -558,9 +539,10 @@ export function GenerationCanvas({
     const now = Date.now()
     const main = slidesNow.current[0]
     const startedAt = id === "main" ? now : main.startedAt && now < main.startedAt + ms ? main.startedAt + ms + 1 : now
-    const video = inSet(generation.video ?? 0, nextVideo.current++)
+    // no stand-in while it's made: the slide has no video until its own arrives
+    const video = undefined
     // a regenerate keeps what the video is made from (first frame, images, method)
-    commitSlides(slidesNow.current.map((x) => (x.id === id ? { ...x, video, startedAt, prompt: "", refs: [], used: { prompt, refs: [], fromReference: id !== "main", media: { ...(x.used?.media ?? {}), ...(opts?.keep_seconds !== undefined ? { keep_seconds: opts.keep_seconds } : {}) } } } : x)))
+    commitSlides(slidesNow.current.map((x) => (x.id === id ? { ...x, video, src: undefined, startedAt, prompt: "", refs: [], used: { prompt, refs: [], fromReference: id !== "main", media: { ...(x.used?.media ?? {}), ...(opts?.keep_seconds !== undefined ? { keep_seconds: opts.keep_seconds } : {}) } } } : x)))
     setHistory((h) => [...h, { id: crypto.randomUUID(), slideId: id, prompt, refs: [], fromReference: id !== "main", video, startedAt, at: now }])
     return true
   }
@@ -944,7 +926,8 @@ export function GenerationCanvas({
               name: v.name.trim(),
               prompt: "",
               refs: [],
-              video: inSet(base, i + 1),
+              // no stand-in: the slide has no video until its own arrives
+              video: undefined,
               // made from the reference video, so they start once it's ready
               startedAt: made(vars[0]) ? now + ms + 1 : now,
               used: { prompt: v.prompt, refs: [], fromReference: true, media: v.media },
@@ -1434,7 +1417,7 @@ export function GenerationCanvas({
     const now = Date.now()
     commitSlides(
       slidesNow.current.map((x, i) =>
-        i === 0 ? { ...x, approvedRef: x.startedAt } : again.some((a) => a.id === x.id) ? { ...x, video: inSet(generation.video ?? 0, nextVideo.current++), startedAt: now + i, job: { status: "waiting", since: now }, failed: undefined } : x,
+        i === 0 ? { ...x, approvedRef: x.startedAt } : again.some((a) => a.id === x.id) ? { ...x, video: undefined, src: undefined, startedAt: now + i, job: { status: "waiting", since: now }, failed: undefined } : x,
       ),
     )
     if (!byChat) {
@@ -1615,7 +1598,8 @@ export function GenerationCanvas({
   const chatting = true
   // planning: nothing generated yet, so no editor tools; just the chat and a live preview
   const planning = agentMode && !slides[0].startedAt
-  const samplePosters = [1, 2, 3, 4, 5].map((i) => videoAt(inSet(generation.video ?? 0, i)).poster)
+  // storyboard mock-ups before any video exists: the project's reference pictures, else neutral frames
+  const samplePosters = [...(generation.refs ?? []).filter((r) => !r.failed).map((r) => r.url), ...PLACEHOLDER_FRAMES]
   const agentCtx: AgentCtx = {
     videoCost: VIDEO_COST,
     credits: dev.credits,
@@ -1718,7 +1702,7 @@ export function GenerationCanvas({
   const [panel, setPanel] = useState<"history" | null>(null)
 
   // the project saves as you work, so it's in Projects with everything as you left it
-  const { copy: _copy, resume: _resume, sample: _sample, back: _back, remixOf: _remixOf, ...base } = generation
+  const { copy: _copy, resume: _resume, back: _back, remixOf: _remixOf, ...base } = generation
   const startSlide = slides.find((x) => x.id === start) ?? slides[1] ?? slides[0]
   // a chat project's picture is only ever its own: a thumbnail or a finished video's still; until then, none (the card shows a placeholder)
   const ownPoster = (x?: Slide) => x?.thumb ?? (isMadeVideo(x?.video) || x?.src ? videoOf(x!).poster : undefined)
@@ -1726,7 +1710,7 @@ export function GenerationCanvas({
     ? (ownPoster(startSlide) ?? slides.map(ownPoster).find(Boolean) ?? "")
     : (startSlide.thumb ?? videoOf(startSlide.video !== undefined || startSlide.src ? startSlide : { video: generation.video })?.poster ?? videoAt(generation.video).poster)
   const saveProject = (extra?: { versions?: Checkpoint<Snap>[] }) =>
-    library.saveProject({ id: generation.id, name: title || "Untitled project", size: generation.size, image: poster, video: generation.video, base, snap: snapNow(), versions: extra?.versions ?? versions, sample: generation.sample })
+    library.saveProject({ id: generation.id, name: title || "Untitled project", size: generation.size, image: poster, video: generation.video, base, snap: snapNow(), versions: extra?.versions ?? versions })
   const deleted = useRef(false)
   // A project exists because the user did something. A template opened and left untouched, or a saved project
   // reopened and only looked at, is never saved (no new card in Projects, no bumped "edited" time): saving starts
@@ -2231,7 +2215,7 @@ export function GenerationCanvas({
               const s = slides.find((x) => x.id === id)
               return s && nameOf(s)
             }}
-            posterOf={(v) => videoAt(wrapVideo(v)).poster}
+            posterOf={(v) => videoAt(v).poster}
             isGenerating={(h) => {
               const s = slides.find((x) => x.id === h.slideId)
               return !!s && s.startedAt === h.startedAt && status(s) === "generating"
@@ -2302,7 +2286,6 @@ function ZoomTool({ label, onClick, disabled, children }: { label: string; onCli
 /** a video the chat asked for, waiting for the user's Make */
 type VideoProposal = { id: string; slideId: string; name: string; prompt: string; change?: string; keep_seconds?: number; cost: number; at: number }
 
-const VARIATION_PROMPTS = ["Same scene, the second colorway", "Same scene, the third colorway, warmer light"]
 
 function useClock(deadlines: number[]) {
   const [now, setNowState] = useState(() => Date.now())
