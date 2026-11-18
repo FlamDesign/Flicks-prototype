@@ -93,7 +93,7 @@ export function useMediaAdd(onAdd: (items: PickedMedia[]) => void, opts: { proje
           it.duration = (await probeVideo(url)).duration
           it.poster = URL.createObjectURL((await stillsAt(url, [Math.min(0.5, it.duration / 2)], 480))[0])
         } catch {
-          toast({ kind: "error", title: `${f.name} can’t be read`, description: "Try an MP4 or MOV file." })
+          toast({ kind: "error", title: `${f.name} can’t be played here`, description: "Export it as an H.264 MP4 (not HEVC) and add it again." })
           continue
         }
       }

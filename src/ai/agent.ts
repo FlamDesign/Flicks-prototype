@@ -1120,7 +1120,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         shows.push(it.poster!)
         videoIds.push(it.id)
       } catch {
-        names.push(`${f.name} (a video that couldn't be read)`)
+        names.push(`${f.name} (a video this browser can't play, probably HEVC: it is NOT in the project. Tell the user to export it as an H.264 MP4 and add it again; don't plan around it)`)
       }
     }
     return { blocks, line: names.length ? `[Added: ${names.join(", ")}]` : "", shows, photoIds, videoIds }

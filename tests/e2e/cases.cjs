@@ -14,7 +14,8 @@ const { open, drop, drive, say, finish, savedChat } = require("./lib.cjs")
 
 const REPO = path.join(__dirname, "..", "..")
 const fileAt = (rel, name) => {
-  const p = path.join(REPO, rel)
+  // CLIPS=<folder>: where the user's own films for the upload cases are (H.264 copies)
+  const p = rel.startsWith("clips/") ? path.join(process.env.CLIPS || path.join(REPO, "research/compress/og"), rel.slice(6)) : path.join(REPO, rel)
   const ext = path.extname(p).slice(1)
   const type = ext === "mp4" ? "video/mp4" : ext === "webm" ? "video/webm" : ext === "png" ? "image/png" : "image/jpeg"
   return { name: name ?? path.basename(p), type, b64: fs.readFileSync(p).toString("base64") }
@@ -108,7 +109,7 @@ const CASES = {
     name: "c9-own-video-zifan-16x9",
     label: "Fashion · Product swap from the user's own video · 16:9",
     prompt: "This is our Maison ZIFAN film. Keep it as it is for the first variation and make two more with the same shot: the set in black, and in deep red. maisonzifan.com",
-    files: [["research/compress/og/video-4.mp4", "zifan-film.mp4"]],
+    files: [["clips/zifan-4.mp4", "zifan-film.mp4"]],
     brand: "Maison ZIFAN",
     where: /link|website|banner/i,
     size: "1920x1080",
@@ -118,7 +119,7 @@ const CASES = {
     name: "c10-clips-zifan-16x9",
     label: "Fashion · Clips to Flick, nothing generated · 16:9",
     prompt: "Three finished Maison ZIFAN films. Make a Flick out of them as they are, one per variation.",
-    files: [["research/compress/og/video-1.mp4", "zifan-1.mp4"], ["research/compress/og/video-2.mp4", "zifan-2.mp4"], ["research/compress/og/video-3.mp4", "zifan-3.mp4"]],
+    files: [["clips/zifan-1.mp4", "zifan-1.mp4"], ["clips/zifan-2.mp4", "zifan-2.mp4"], ["clips/zifan-3.mp4", "zifan-3.mp4"]],
     brand: "Maison ZIFAN",
     where: /website|banner|link/i,
     size: "1920x1080",
@@ -207,7 +208,7 @@ const pickFor = (c, record, run) => (q) => {
 }
 
 const idle = (v) => !v.busy && !v.question && !v.approve && !v.review && !v.make && !v.assets
-const handedOver = (v) => v.suggestions && !v.busy
+const handedOver = (v) => v.suggestions && !v.busy && !v.drawing
 
 async function runCase(id) {
   const c = CASES[id]

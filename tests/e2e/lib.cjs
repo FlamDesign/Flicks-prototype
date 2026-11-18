@@ -120,7 +120,9 @@ async function look(p) {
     const make = btn(/^Make · \d+$/)?.closest('[role="group"]')?.getAttribute("aria-label") ?? null
     const credits = [...document.querySelectorAll("*")].find((e) => e.childElementCount === 0 && /^\d[\d,]* credits$/.test((e.textContent ?? "").trim()))?.textContent?.trim() ?? null
     const lastReply = [...document.querySelectorAll("[data-reply]")].at(-1)?.innerText?.slice(0, 300) ?? null
-    return { question, assets, approve, review, resume, suggestions, busy, errors: [...new Set(errors)], chip, tryAgain, building, make, credits, lastReply }
+    // pictures still being drawn (thumbnails, looks)
+    const drawing = [...document.querySelectorAll("*")].some((e) => e.childElementCount === 0 && /^(Drawing…|Thumbnail.*generating…)$/.test((e.textContent ?? "").trim()) && e.offsetParent)
+    return { drawing, question, assets, approve, review, resume, suggestions, busy, errors: [...new Set(errors)], chip, tryAgain, building, make, credits, lastReply }
   })
 }
 

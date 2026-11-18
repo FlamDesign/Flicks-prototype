@@ -69,6 +69,7 @@ export const sameUrl = <T extends Blob>(f: T, url: string): T => {
   return f
 }
 
+export const UNPLAYABLE = "This video can't be played here. Export it as an H.264 MP4 (not HEVC) and add it again."
 /** A video's length and size, read from its metadata. */
 export function probeVideo(url: string): Promise<{ duration: number; width: number; height: number }> {
   return new Promise((ok, no) => {
@@ -76,8 +77,10 @@ export function probeVideo(url: string): Promise<{ duration: number; width: numb
     v.preload = "metadata"
     v.muted = true
     v.crossOrigin = "anonymous"
-    v.onloadedmetadata = () => ok({ duration: v.duration, width: v.videoWidth, height: v.videoHeight })
-    v.onerror = () => no(new Error("This video can't be read."))
+    // a file whose picture this browser can't decode (HEVC on most browsers) still has a length
+    // but no size: it would play as a black frame, so it's refused like any unreadable file
+    v.onloadedmetadata = () => (v.videoWidth && v.videoHeight ? ok({ duration: v.duration, width: v.videoWidth, height: v.videoHeight }) : no(new Error(UNPLAYABLE)))
+    v.onerror = () => no(new Error(UNPLAYABLE))
     v.src = url
   })
 }
