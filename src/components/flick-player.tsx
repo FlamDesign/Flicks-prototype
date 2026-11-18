@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { PlayIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
-import { videoOf } from "@/components/editor/elements"
+import { videoAt, type VideoKey } from "@/components/editor/elements"
 import { cn } from "@/lib/utils"
 
 /**
@@ -15,11 +15,10 @@ import { cn } from "@/lib/utils"
  * other transition between variations, here or in any other place a Flick plays. There is no
  * option for one on purpose; don't add one.
  */
-export function FlickPlayer({ videos, srcs, active, playing = true, className }: { videos: number[]; /** the made videos' addresses, one per entry (undefined for a sample): the lookup that holds across devices */ srcs?: (string | undefined)[]; active: number; playing?: boolean; className?: string }) {
+export function FlickPlayer({ videos, active, playing = true, className }: { /** the variations' videos, by key */ videos: VideoKey[]; active: number; playing?: boolean; className?: string }) {
   const refs = useRef<(HTMLVideoElement | null)[]>([])
   const last = useRef(active)
   const [blocked, setBlocked] = useState(false)
-  const canWebm = typeof document !== "undefined" && document.createElement("video").canPlayType("video/webm; codecs=vp9") !== ""
 
   // every video plays (muted) so each one is buffered and at the same moment; a switch only changes
   // which one shows, after lining the newly shown one up with the one it replaces
@@ -34,7 +33,7 @@ export function FlickPlayer({ videos, srcs, active, playing = true, className }:
       else el.pause()
     }
     last.current = active
-  }, [active, playing, videos.join(","), (srcs ?? []).join(",")])
+  }, [active, playing, videos.join(",")])
 
   // the hidden ones are kept in step with the shown one (loops of different lengths drift)
   useEffect(() => {
@@ -49,10 +48,10 @@ export function FlickPlayer({ videos, srcs, active, playing = true, className }:
   return (
     <div className={cn("absolute inset-0", className)}>
       {videos.map((v, k) => {
-        const m = videoOf({ video: v, src: srcs?.[k] })
+        const m = videoAt(v)
         return (
           <video
-            key={`${k}-${srcs?.[k] ?? v}`}
+            key={`${k}-${v}`}
             ref={(el) => void (refs.current[k] = el)}
             poster={m.poster}
             // a made video (our server or Higgsfield's CDN, both CORS-open) can be drawn from, so a
@@ -67,7 +66,6 @@ export function FlickPlayer({ videos, srcs, active, playing = true, className }:
             onPlay={() => k === active && setBlocked(false)}
             className={cn("absolute inset-0 size-full object-cover", k === active ? "opacity-100" : "pointer-events-none opacity-0")}
           >
-            {canWebm && m.webm && <source src={m.webm} type="video/webm" />}
             <source src={m.mp4} type="video/mp4" />
           </video>
         )

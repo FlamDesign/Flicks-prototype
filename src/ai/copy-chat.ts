@@ -44,7 +44,7 @@ export async function copyChat(fromId: string, toId: string, title: string) {
   return true
 }
 
-type SlideLike = { job?: { status: string; id?: string }; startedAt?: number; video?: number; used?: unknown }
+type SlideLike = { job?: { status: string; id?: string }; startedAt?: number; video?: string; used?: unknown }
 /** The canvas for a copy: videos still being made are left unmade, so the copy carries no running work. */
 export function safeSnap<S extends { slides: SlideLike[] }>(snap: S): S {
   const going = (x: SlideLike) => !!x.job?.id || x.job?.status === "waiting"

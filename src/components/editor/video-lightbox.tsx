@@ -1,4 +1,4 @@
-import { GENERATED_VIDEOS, videoOf } from "@/components/editor/elements"
+import { videoAt } from "@/components/editor/elements"
 import type { Slide } from "@/components/editor/slides-strip"
 import { MediaViewer, type ViewerItem } from "@/components/media-viewer"
 
@@ -13,7 +13,6 @@ export function VideoLightbox({
   onChange,
   nameOf,
   size,
-  referencePoster,
 }: {
   /** generated videos only, in strip order */
   slides: Slide[]
@@ -22,22 +21,21 @@ export function VideoLightbox({
   nameOf: (s: Slide) => string
   size: string
   ratio?: number
-  referencePoster: string
 }) {
   const items: ViewerItem[] = slides.map((s) => {
     const used = s.used ?? { prompt: s.prompt ?? "", refs: s.refs ?? [], fromReference: s.id !== "main" }
-    const v = videoOf(s.video !== undefined || s.src ? s : { video: 0 })
-    const ref = GENERATED_VIDEOS.find((g) => g.poster === referencePoster)
+    const v = videoAt(s.video)
+    // the reference video (Variation 1), when it's made
+    const ref = slides[0]?.video ? videoAt(slides[0].video) : undefined
     return {
       id: s.id,
       kind: "video",
       src: v.mp4,
-      webm: v.webm,
       poster: v.poster,
       name: `${nameOf(s)}.mp4`,
       prompt: used.prompt || undefined,
       refs: [
-        ...(used.fromReference && ref ? [{ kind: "video" as const, src: ref.mp4, webm: ref.webm, poster: ref.poster, name: "Variation 1", source: "Generated" as const }] : []),
+        ...(used.fromReference && ref ? [{ kind: "video" as const, src: ref.mp4, poster: ref.poster, name: "Variation 1", source: "Generated" as const }] : []),
         ...used.refs.map((r) => ({ kind: "image" as const, src: r.url, name: r.name, source: "Uploaded" as const })),
       ],
       details: [

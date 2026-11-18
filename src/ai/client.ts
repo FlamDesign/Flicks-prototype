@@ -405,6 +405,17 @@ export const mockVideos = () => {
     return false
   }
 }
+/**
+ * The five stand-in clips for the Sample videos dev switch, kept on the AI server like every made
+ * video (so a project made with them is addressed the same way, by a lasting address). Used nowhere else.
+ */
+const SAMPLE_CLIPS = [
+  ["up-220b9972-6e16-4a42-81c3-888e7e16723c", "up-36018883-196e-4d3a-b1df-75393bd990ae"],
+  ["up-b2daaa33-6f3b-416c-85a1-1f26ef6f5b19", "up-254a6f04-ff32-410d-9d04-47a46b67e5db"],
+  ["up-1ffaf4c7-d115-4710-ae90-741d489d74c9", "up-e829058c-fb77-474e-82bf-04c4b03ca37c"],
+  ["up-02ba4892-de83-458b-8a86-eaa3bf1ce5ef", "up-2cb4098f-4305-45c2-a261-182a14d027e7"],
+  ["up-21d63f3a-be07-4973-9cca-ba36df2e7968", "up-ddb69f8d-39e2-4ff1-827f-413469b686f3"],
+].map(([v, p]) => ({ mp4: `https://flicks-ai.flick-prototype.workers.dev/file/${v}.mp4`, poster: `https://flicks-ai.flick-prototype.workers.dev/file/${p}.jpg` }))
 async function mockVideo(input: { prompt: string; resume?: string; onId?: (id: string) => void }, onStatus?: (status: string) => void, signal?: AbortSignal): Promise<{ url: string; poster?: string }> {
   const id = input.resume ?? `mock-${crypto.randomUUID()}`
   input.onId?.(id)
@@ -422,14 +433,11 @@ async function mockVideo(input: { prompt: string; resume?: string; onId?: (id: s
     /* no storage: no failures */
   }
   if (fail > 0) throw new AiError("video_failed", "The video didn't generate. Try again.")
-  const { GENERATED_VIDEOS } = await import("@/components/editor/elements")
-  // only the stand-ins that come with the app for this switch, never a template's video
-  const samples = GENERATED_VIDEOS.filter((v) => v.set === "sample" && v.mp4)
   let h = 0
   for (const c of input.prompt) h = (h * 31 + c.charCodeAt(0)) >>> 0
-  const v = samples[h % samples.length]
+  const v = SAMPLE_CLIPS[h % SAMPLE_CLIPS.length]
   onStatus?.("completed")
-  return { url: new URL(v.mp4, location.href).href, poster: new URL(v.poster, location.href).href }
+  return { url: v.mp4, poster: v.poster }
 }
 
 export async function generateVideo(input: VideoInput & { aspect: string; seconds: number; meta?: GenMeta; resume?: string; onId?: (id: string) => void }, onStatus?: (status: string) => void, signal?: AbortSignal): Promise<{ url: string; poster?: string }> {

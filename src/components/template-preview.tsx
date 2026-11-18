@@ -95,7 +95,7 @@ const CYCLE = 4500;
  * to the next every few seconds, pausing for a while after a tap.
  */
 function TryFlick({ t }: { t: Template }) {
-  const base = t.video ?? 0;
+  const base = t.video ?? "";
   // a complete project (brand or saved template): its own videos, design and feeds, as viewers get it
   const snap = t.saved as
     | {

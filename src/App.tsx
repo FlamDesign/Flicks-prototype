@@ -81,7 +81,7 @@ export default function App() {
     scroller.current?.scrollTo({ top: 0 })
   }
   /** a record saved before projects kept how they opened: a plain project of its size */
-  const plainBase = (size: string, video: number) => ({ prompt: "", size, references: 0, refs: [], startedAt: 1, video })
+  const plainBase = (size: string, video?: string) => ({ prompt: "", size, references: 0, refs: [], startedAt: 1, video })
   // open a project in the editor, as it was left
   const openProject = (p: Project) => {
     const base = (p.base as Omit<Generation, "id"> | undefined) ?? plainBase(p.size, p.video)
@@ -90,7 +90,7 @@ export default function App() {
   }
   // Remix: a new project from a Flick's exact state, named "<Flick>_copy"
   const remix = (f: FlickRecord) => {
-    const base = (f.base as Omit<Generation, "id"> | undefined) ?? plainBase(f.size, f.video ?? 0)
+    const base = (f.base as Omit<Generation, "id"> | undefined) ?? plainBase(f.size, f.video)
     setGeneration({ ...base, id: crypto.randomUUID(), resume: { title: `${f.name}_copy`, snap: f.snap }, remixOf: f.name, back: "Flick" })
     setPage("Generate")
   }
@@ -198,7 +198,7 @@ export default function App() {
       `Its copy is only an example of tone and length: headline “${t.headline}”, button “${t.cta}”. Write mine fresh.`,
       `Use my own brand and product, not the template’s: ask me what they are, and for photos if you need them.`,
     ].join("\n")
-    setGeneration({ id: crypto.randomUUID(), prompt, size: t.size, duration: ref.duration, references: 0, refs: [], startedAt: 0, video: 0, agent: true, fromTemplate: ref })
+    setGeneration({ id: crypto.randomUUID(), prompt, size: t.size, duration: ref.duration, references: 0, refs: [], startedAt: 0, agent: true, fromTemplate: ref })
     setPage("Generate")
     setTemplate(null)
   }
@@ -466,7 +466,7 @@ export default function App() {
                   // a new chat project with this video (or photo) attached as a reference; the chat plans from it
                   const ref = { id: a.id, name: a.name, url: a.url, loading: false, media: a.kind }
                   const prompt = a.kind === "video" ? "Make a Flick from this video. Use it as it is for Variation 1." : "Make a Flick with this image as the product reference."
-                  setGeneration({ id: crypto.randomUUID(), prompt, size: "1080×1080", duration: 8, references: 1, refs: [ref], startedAt: 0, video: 0, agent: true, back: "Assets" })
+                  setGeneration({ id: crypto.randomUUID(), prompt, size: "1080×1080", duration: 8, references: 1, refs: [ref], startedAt: 0, agent: true, back: "Assets" })
                   setPage("Generate")
                 }}
               />
@@ -527,7 +527,7 @@ export default function App() {
                 <PromptComposer
                   onGenerate={(g) => {
                     // nothing generates yet: the chat plans the Flick first, asks where it runs and sets the size (a square until then)
-                    setGeneration({ ...g, size: "1080×1080", duration: 8, id: crypto.randomUUID(), startedAt: 0, video: 0, agent: true })
+                    setGeneration({ ...g, size: "1080×1080", duration: 8, id: crypto.randomUUID(), startedAt: 0, agent: true })
                     setPage("Generate")
                     setTemplate(null)
                   }}
@@ -558,7 +558,6 @@ export default function App() {
                         references: r.refs.length,
                         refs: r.refs,
                         startedAt: 0,
-                        video: 0,
                         agent: true,
                         recipe: r.recipe,
                       }))

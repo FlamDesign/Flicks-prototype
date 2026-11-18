@@ -10,7 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { videoAt } from "@/components/editor/elements"
+import { videoAt, type VideoKey } from "@/components/editor/elements"
 import { cn } from "@/lib/utils"
 import type { Reference } from "@/components/prompt-composer"
 
@@ -20,9 +20,8 @@ export type Slide = {
   id: string
   prompt?: string
   refs?: Reference[]
-  video?: number
-  /** a made video's address: the lookup that holds across devices (video is where it sits here) */
-  src?: string
+  /** its video, by key (none until it's made) */
+  video?: VideoKey
   startedAt?: number
   name?: string // shown to viewers; defaults to "Variation n"
   /** permanent number given when the variation is added; never reused or renumbered */

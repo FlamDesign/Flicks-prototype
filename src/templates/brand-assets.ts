@@ -1,7 +1,7 @@
 /**
  * Media for the brand templates (GAP, Diageo, Little Caesars, General Mills, Modelo): their videos,
- * posters, strip thumbnails, logos and legibility scrims. Kept apart from the sample videos so the
- * editor can address them by index while Assets and sample flows only see the samples.
+ * posters, strip thumbnails, logos and legibility scrims. Each video's key is its name
+ * ("gap-1-denim"), which never changes.
  */
 const files = import.meta.glob("../assets/templates/brands/*.{mp4,webp,png}", { eager: true, import: "default" }) as Record<string, string>
 
@@ -23,6 +23,8 @@ const BRANDS: { prefix: string; set: BrandSet; size: string; parts: string[] }[]
   { prefix: "modelo", set: "modelo", size: "1080×1920", parts: ["oro", "negra", "especial"] },
 ]
 
+/** a brand's video keys, in order */
+export const brandVideoKeys = (set: BrandSet) => BRAND_VIDEOS.filter((v) => v.set === set).map((v) => v.name)
 export const BRAND_VIDEOS = BRANDS.flatMap((b) =>
   b.parts.map((part, i) => ({
     name: `${b.set}-${i + 1}-${part}`,

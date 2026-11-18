@@ -36,7 +36,7 @@ export function FlickRender({ flick, active, onActive, playing = true }: { flick
   return (
     <>
       <div className="absolute inset-0 overflow-hidden">
-        <FlickPlayer videos={flick.variants.map((v) => v.video)} srcs={flick.variants.map((v) => v.src)} active={active} playing={playing} />
+        <FlickPlayer videos={flick.variants.map((v) => v.video)} active={active} playing={playing} />
       </div>
       <CanvasStage
         elements={elements}

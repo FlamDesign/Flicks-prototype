@@ -833,11 +833,11 @@ function FeedsDemo() {
 
 function SlidesDemo() {
   const slides: Slide[] = [
-    { id: "main", video: 0, startedAt: 1, prompt: "Reference" },
-    { id: "s1", n: 1, name: "Ready", video: 1, startedAt: 1 },
+    { id: "main", video: GENERATED_VIDEOS[0].name, startedAt: 1, prompt: "Reference" },
+    { id: "s1", n: 1, name: "Ready", video: GENERATED_VIDEOS[1].name, startedAt: 1 },
     { id: "s2", n: 2, name: "Generating", startedAt: 2 },
     { id: "s3", n: 3, name: "Not generated" },
-    { id: "s4", n: 4, name: "Needs regen", video: 2, startedAt: 1 },
+    { id: "s4", n: 4, name: "Needs regen", video: GENERATED_VIDEOS[2].name, startedAt: 1 },
   ]
   const status = (s: Slide): SlideStatus => (s.id === "s2" ? "generating" : s.startedAt ? "done" : "empty")
   const [active, setActive] = useState("s1")

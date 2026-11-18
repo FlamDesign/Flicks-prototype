@@ -1,6 +1,6 @@
 import { AiError, bakeFlick, flickStatus, isLive, mockVideos, shareable } from "@/ai/client"
 import { library, type FlickRecord } from "@/library"
-import { videoAt, type CanvasElement } from "@/components/editor/elements"
+import { videoAt, type CanvasElement, type VideoKey } from "@/components/editor/elements"
 
 /**
  * Export on the Flicks API. With the server set up and real videos, an export sends the included
@@ -31,7 +31,7 @@ export const liveExport = () => liveExportOn() && isLive() && !mockVideos()
 export const BAKE_MS = 120_000
 
 /** the API's request for these variations: each video's public address and its thumbnail */
-export async function bakeRequest(name: string, size: string, variants: { video: number; poster?: string }[]): Promise<NonNullable<FlickRecord["remote"]>["request"]> {
+export async function bakeRequest(name: string, size: string, variants: { video: VideoKey; poster?: string }[]): Promise<NonNullable<FlickRecord["remote"]>["request"]> {
   const videos = await Promise.all(
     variants.map(async (v) => {
       const m = videoAt(v.video)

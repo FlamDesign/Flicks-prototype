@@ -1,6 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from "react"
 import type { Flick } from "@/data"
-import { videoAt } from "@/components/editor/elements"
+import { videoAt, type VideoKey } from "@/components/editor/elements"
 import { safeSnap } from "@/ai/copy-chat"
 
 /**
@@ -17,8 +17,8 @@ export type Project = {
   size: string
   editedAt: number
   image: string
-  /** its reference video (a made video's index on the device that saved it; slides keep the address) */
-  video: number
+  /** its reference video, by key (none until one is made) */
+  video?: VideoKey
   /** how the editor first opened it (prompt, size, template...), to reopen it the same way */
   base?: unknown
   /** the canvas as it was last left */
@@ -30,7 +30,7 @@ export type Project = {
 
 /** image: undefined uses the starting variation, null means no image */
 export type LinkSettings = { slug: string; title: string; description: string; image?: string | null }
-export type FlickVariant = { name: string; video: number; /** a made video's address (video is its position on the device that exported) */ src?: string; poster: string; views: number }
+export type FlickVariant = { name: string; /** its video, by key */ video: VideoKey; poster: string; views: number }
 export type FlickRecord = Flick & {
   /** the variations viewers switch between, in order, with their views */
   variants: FlickVariant[]
@@ -57,7 +57,7 @@ export const slugify = (s: string) =>
     .slice(0, 40)
 
 /** A variation's name from its video's name ("Teal-1794900516856" → "Teal"), else "Variation n". */
-export const variantName = (video: number, i: number) => {
+export const variantName = (video: VideoKey | undefined, i: number) => {
   const name = videoAt(video)?.name ?? ""
   const part = name.split("-")[0]
   return part && part !== "missing" && part !== "made" ? part.charAt(0).toUpperCase() + part.slice(1) : `Variation ${i + 1}`
@@ -110,7 +110,7 @@ export const library = {
   saveProject(p: Partial<Project> & { id: string }) {
     set((s) => {
       const old = s.projects.find((x) => x.id === p.id)
-      const next: Project = { versions: [], exports: [], name: "Untitled project", size: "1080×1080", image: "", video: 0, ...old, ...p, editedAt: p.editedAt ?? Date.now() }
+      const next: Project = { versions: [], exports: [], name: "Untitled project", size: "1080×1080", image: "", ...old, ...p, editedAt: p.editedAt ?? Date.now() }
       return { ...s, projects: old ? s.projects.map((x) => (x.id === p.id ? next : x)) : [next, ...s.projects] }
     })
   },
@@ -134,7 +134,7 @@ export const library = {
   },
   /** export a project as it is now: a new, fixed Flick */
   /** runs in the background for `ms`; the Flick shows as exporting until then */
-  exportFlick(f: { projectId: string; name: string; size: string; image: string; video: number; variants: Omit<FlickVariant, "views">[]; start: number; snap: unknown; base: unknown; ms: number; remote?: FlickRecord["remote"] }): FlickRecord {
+  exportFlick(f: { projectId: string; name: string; size: string; image: string; video?: VideoKey; variants: Omit<FlickVariant, "views">[]; start: number; snap: unknown; base: unknown; ms: number; remote?: FlickRecord["remote"] }): FlickRecord {
     const flick: FlickRecord = {
       id: uid("f"),
       name: f.name,

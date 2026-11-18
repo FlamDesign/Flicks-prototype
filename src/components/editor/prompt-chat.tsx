@@ -2,6 +2,7 @@ import { Arrive } from "@/components/arrive"
 import { Shortcut } from "@/components/shortcut"
 import { GeneratingGradient } from "@/components/editor/generation-progress"
 import { useEffect, useRef, useState } from "react"
+import type { VideoKey } from "@/components/editor/elements"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Alert02Icon, PanelRightCloseIcon, SparklesIcon } from "@hugeicons/core-free-icons"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -22,7 +23,7 @@ export type HistoryItem = {
   /** the reference video was attached automatically (variations) */
   fromReference?: boolean
   /** the video it produced (none until it arrives), and when it started (to tell if it's still generating) */
-  video?: number
+  video?: VideoKey
   startedAt: number
   /** generated together with the reference video (Regenerate all) */
   batch?: boolean
@@ -72,7 +73,7 @@ export function PromptChat({
   history: HistoryItem[]
   /** the video's current name (names can change after the fact) */
   nameOf: (slideId: string) => string | undefined
-  posterOf: (video?: number) => string
+  posterOf: (video?: VideoKey) => string
   /** still generating this item */
   isGenerating: (h: HistoryItem) => boolean
   /** the latest video for its slide (older ones were replaced) */

@@ -2,7 +2,7 @@ import { CreditCardIcon, EnergyIcon, GameController01Icon, HandbagIcon, Headphon
 import { newStrip, type CanvasElement } from "@/components/editor/elements"
 import type { Template } from "@/data"
 import { brandTemplate, image, scrim, SQUARE, type Ids, type Product } from "@/templates/brands"
-import { realBase, realFile, REAL_BRANDS, type RealSlug } from "@/templates/real-media"
+import { realVideoKeys, realFile, REAL_BRANDS, type RealSlug } from "@/templates/real-media"
 
 /**
  * Templates from the real Flicks (OMD demo set): each opens as a complete project with the Flick's
@@ -76,7 +76,7 @@ const build = (r: Real): Template => {
   const meta = REAL_BRANDS.find((b) => b.slug === r.slug)!
   return { ...brandTemplate({
     id: `real-${r.slug}`,
-    base: realBase(r.slug),
+    videos: realVideoKeys(r.slug),
     title: r.title,
     description: r.description,
     industry: r.industry,

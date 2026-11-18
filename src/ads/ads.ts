@@ -126,7 +126,7 @@ export function tagFor(p: Placement, format: TagFormat): string {
 
 // ---------- model ----------
 
-export type FlickRef = { id: string; name: string; size: string; image: string; editedAt?: number; video?: number; /** the real Flick's share page on the Flicks API: shown in place of the prototype's player */ url?: string }
+export type FlickRef = { id: string; name: string; size: string; image: string; editedAt?: number; video?: string; /** the real Flick's share page on the Flicks API: shown in place of the prototype's player */ url?: string }
 export type HistoryEntry = { flick: FlickRef; from: number; to?: number; impressions: number; spend: number; clicks: number }
 export type Placement = {
   id: string

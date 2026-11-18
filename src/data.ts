@@ -62,8 +62,8 @@ export type Template = {
   prompt: string
   isNew?: boolean
   image?: string
-  /** which sample video the template opens with (its product set); sunglasses when unset */
-  video?: number
+  /** the video the template opens with, by key */
+  video?: string
   /** saved by the user from the editor: the full project, opened ready to edit */
   saved?: unknown
   /** video length in seconds, when the template has its own videos */
@@ -99,9 +99,9 @@ export const TEMPLATES: Template[] = [...BRAND_TEMPLATES.map((t) => ({ ...t, ...
 
 /**
  * An exported Flick: fixed once made; change it by remixing it into a new project.
- * `video`: its reference video's index on the device that exported it (variations keep addresses).
+ * `video`: its reference video's key.
  */
-export type Flick = { id: string; name: string; size: string; editedAt: number; image: string; campaign?: string; video?: number; projectId?: string }
+export type Flick = { id: string; name: string; size: string; editedAt: number; image: string; campaign?: string; video?: string; projectId?: string }
 
 const MIN = 60_000
 

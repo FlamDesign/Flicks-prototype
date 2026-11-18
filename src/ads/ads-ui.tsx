@@ -17,7 +17,7 @@ import { RatioGlyph } from "@/components/ratio-glyph"
 import { SIZES, SIZE_GROUPS } from "@/data"
 import { useLibrary } from "@/library"
 import { FlickRender, snapOf } from "@/components/flick-render"
-import { videoAt } from "@/components/editor/elements"
+import { videoAt, type VideoKey } from "@/components/editor/elements"
 import { useDevState } from "@/dev/state"
 import { cn } from "@/lib/utils"
 import { FlickPlayer } from "@/components/flick-player"
@@ -635,7 +635,7 @@ export function ServeInAds({ flick, onOpenPlacement }: { flick: FlickRef; onOpen
  * A Flick in a fixed-height stage, like the template page: the frame keeps its exact ratio and
  * fits the box whatever the size (wide, square or tall); the box shrinks on small screens.
  */
-export function FlickStage({ flick, videos, start }: { flick: FlickRef; videos?: number[]; start?: number }) {
+export function FlickStage({ flick, videos, start }: { flick: FlickRef; videos?: VideoKey[]; start?: number }) {
   return (
     <div className="h-[clamp(280px,56vh,520px)] w-full rounded-xl bg-muted p-4 ring-1 ring-foreground/10 sm:p-6">
       <div className="flex size-full items-center justify-center" style={{ containerType: "size" }}>
@@ -649,12 +649,12 @@ export function FlickStage({ flick, videos, start }: { flick: FlickRef; videos?:
  * A Flick playing as viewers get it: its videos at its size, and the thumbnail strip to tap.
  * Moves on by itself every few seconds until a thumbnail is tapped.
  */
-export function LiveFlick({ flick, tall, fit, videos: given, start = 0 }: { flick: FlickRef; tall?: boolean; videos?: number[]; start?: number; /** fill the parent container (FlickStage) at its ratio */ fit?: boolean }) {
+export function LiveFlick({ flick, tall, fit, videos: given, start = 0 }: { flick: FlickRef; tall?: boolean; videos?: VideoKey[]; start?: number; /** fill the parent container (FlickStage) at its ratio */ fit?: boolean }) {
   // an exported Flick keeps its canvas: it plays with its layout, thumbnails and feed values
   const record = useLibrary().flicks.find((f) => f.id === flick.id)
   const snap = record ? snapOf(record) : null
   // the Flick's own variations: given by the caller, else from its record
-  const videos = given?.length ? given : record?.variants.length ? record.variants.map((v) => v.video) : [flick.video ?? 0]
+  const videos = given?.length ? given : record?.variants.length ? record.variants.map((v) => v.video) : [flick.video ?? ""]
   const [active, setActive] = useState(Math.min(start, videos.length - 1))
   const [auto, setAuto] = useState(true)
   useEffect(() => {
@@ -680,7 +680,7 @@ export function LiveFlick({ flick, tall, fit, videos: given, start = 0 }: { flic
           <iframe src={flick.url} title={flick.name} allow="autoplay" className="absolute inset-0 size-full border-0" />
         ) : (
           <>
-        <FlickPlayer videos={videos} srcs={given?.length ? record?.variants.map((v) => v.src) : undefined} active={active} />
+        <FlickPlayer videos={videos} active={active} />
         <div role="radiogroup" aria-label="Variations" className="absolute inset-x-0 bottom-[5%] flex justify-center gap-[3cqmin]">
           {videos.map((v, k) => (
             <button

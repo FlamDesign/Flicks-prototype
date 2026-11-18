@@ -2,10 +2,8 @@
  * The real Flicks (recorded from the OMD demo Flicks: 16 brands, 3 variations each). Their files
  * are served from public/real/<brand>/ (not bundled): v1–v3.mp4 videos, v1–v3.webp posters,
  * swatch-1–3.webp tap thumbnails, logo and the template card (thumb.webp, made in Higgsfield).
- * Videos are addressed from REAL_BASE in the video list, so they never move the positions of
- * videos made with AI (see videoAt in editor/elements).
+ * Each video's key is its name ("coach-1"), which never changes (see videoAt in editor/elements).
  */
-export const REAL_BASE = 100_000
 
 export const REAL_BRANDS = [
   { slug: "coach", size: "1080×1080", seconds: 11, logo: "logo.webp" },
@@ -34,5 +32,5 @@ export const realFile = (slug: RealSlug, name: string) => `${import.meta.env.BAS
 export const REAL_VIDEOS = REAL_BRANDS.flatMap((b) =>
   [1, 2, 3].map((n) => ({ name: `${b.slug}-${n}`, set: `real-${b.slug}` as const, size: b.size, mp4: realFile(b.slug, `v${n}.mp4`), poster: realFile(b.slug, `v${n}.webp`) })),
 )
-/** the first video of a brand, as an index in the video list */
-export const realBase = (slug: RealSlug) => REAL_BASE + REAL_BRANDS.findIndex((b) => b.slug === slug) * 3
+/** a brand's three videos' keys, variations 1 to 3 */
+export const realVideoKeys = (slug: RealSlug) => [1, 2, 3].map((n) => `${slug}-${n}`)

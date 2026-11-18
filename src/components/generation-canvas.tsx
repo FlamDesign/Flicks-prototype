@@ -39,7 +39,7 @@ import { GeneratingGradient } from "@/components/editor/generation-progress"
 import { AgentComposer, ApprovalDock, isDocked, QuestionDeck, QuickReplies, threadGroups, type AgentCtx } from "@/components/editor/agent-chat"
 import { PlanningView, PlanSteps } from "@/components/editor/planning-view"
 import { renderFlickShot } from "@/components/editor/flick-shot"
-import { addMadeVideo, videoOf, videoIndexOf, PLACEHOLDER_FRAMES, canRotate, SHAPES, SHAPE_GREY, isBox, isMadeVideo, MISSING_POSTER, BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, defaultFill, defaultInk, clampStrip, fitStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload, videoAt } from "@/components/editor/elements"
+import { addMadeVideo, PLACEHOLDER_FRAMES, canRotate, SHAPES, SHAPE_GREY, isBox, isMadeVideo, MISSING_POSTER, BUTTON_STYLES, BUTTON_TEXT, DEFAULT_ICON, defaultFill, defaultInk, clampStrip, fitStrip, newStrip, type Feed, TEXT_STYLES, type CanvasElement, type Upload, type VideoKey, videoAt } from "@/components/editor/elements"
 
 export type Generation = {
   id: string
@@ -50,7 +50,8 @@ export type Generation = {
   references: number
   refs?: Reference[]
   startedAt: number
-  video: number
+  /** its reference video, by key (none until one is made) */
+  video?: VideoKey
   /** started from a template with Use as reference: what the chat is told about it */
   fromTemplate?: TemplateRef
   /** a duplicate of another Flick: its name and everything on its canvas */
@@ -135,13 +136,7 @@ export function GenerationCanvas({
       const going = (x: Slide) => !!x.job?.id || x.job?.status === "waiting"
       // started but closed before the server took it (no job id): nothing was charged, so it starts again
       const lost = (x: Slide) => !!generation.agent && !!x.job && !going(x) && !isMadeVideo(x.video) && !!x.used?.prompt
-      // a made video is found by its address (positions shift between devices); an older slide
-      // without one learns it from the list as it stands here
-      const placed = (x: Slide): Slide => {
-        const src = x.src ?? (isMadeVideo(x.video) ? videoAt(x.video!).mp4 : undefined)
-        return { ...x, src, video: videoIndexOf({ video: x.video, src }) }
-      }
-      return savedSnap.slides.map(placed).map((x, i) => (lost(x) ? { ...x, n: x.n ?? (i || undefined), job: undefined, startedAt: Date.now() } : { ...x, n: x.n ?? (i || undefined), job: going(x) ? x.job : undefined, startedAt: x.startedAt ? (going(x) ? x.startedAt : 1) : undefined }))
+      return savedSnap.slides.map((x, i) => (lost(x) ? { ...x, n: x.n ?? (i || undefined), job: undefined, startedAt: Date.now() } : { ...x, n: x.n ?? (i || undefined), job: going(x) ? x.job : undefined, startedAt: x.startedAt ? (going(x) ? x.startedAt : 1) : undefined }))
     }
     return [main, { id: crypto.randomUUID(), n: 1 }, { id: crypto.randomUUID(), n: 2 }]
   })
@@ -828,7 +823,7 @@ export function GenerationCanvas({
       if (!sl) throw new Error("No variation to show.")
       const shown = list.filter((x) => x.id === "main" || x.startedAt)
       const made = status(sl) === "done" && sl.video !== undefined
-      const v = sl.video !== undefined || sl.src ? videoOf(sl) : undefined
+      const v = sl.video !== undefined ? videoAt(sl.video) : undefined
       // the canvas's own player for this variation, when it's loaded: its frame needs no fetch
       const playing = made && v?.mp4 ? [...document.querySelectorAll<HTMLVideoElement>("video")].find((el) => el.currentSrc === v.mp4 || [...el.querySelectorAll("source")].some((x) => x.src === v.mp4)) : null
       const shot = await renderFlickShot({
@@ -883,7 +878,6 @@ export function GenerationCanvas({
       }
       setDev((d) => ({ credits: d.credits - cost }))
       const now = Date.now()
-      const base = generation.video ?? 0
       const design = { ...(plan.design ?? {}) }
       // a field becomes a feed when variations give it values: label, price and link whenever set;
       // headline, subheading and button text only when they actually differ
@@ -908,12 +902,12 @@ export function GenerationCanvas({
       // the user's own video: in the Flick straight away, ready (and, as Variation 1, already approved)
       const given = (v: (typeof vars)[number], name: string) => {
         const video = addMadeVideo({ name: `${name}-${now}`, size: generation.size, mp4: v.own!.video!, poster: v.own?.poster ?? MISSING_POSTER })
-        return { video, src: v.own!.video!, startedAt: now - ms - 1, used: { prompt: "The user's own video", refs: [], fromReference: false } }
+        return { video, startedAt: now - ms - 1, used: { prompt: "The user's own video", refs: [], fromReference: false } }
       }
       const thumbOf = (v: (typeof vars)[number]) => (v.own?.thumb ? { thumb: v.own.thumb } : {})
       const mainName = vars[0].name.trim() || "Variation 1"
       const main: Slide = made(vars[0])
-        ? { id: "main", name: vars[0].name.trim() || undefined, prompt: "", refs: [], video: base, startedAt: now, used: { prompt: plan.reference.prompt, refs: generation.refs ?? [], fromReference: false, media: plan.reference.media }, feeds: valuesFor(vars[0]), ...thumbOf(vars[0]) }
+        ? { id: "main", name: vars[0].name.trim() || undefined, prompt: "", refs: [], video: undefined, startedAt: now, used: { prompt: plan.reference.prompt, refs: generation.refs ?? [], fromReference: false, media: plan.reference.media }, feeds: valuesFor(vars[0]), ...thumbOf(vars[0]) }
         : (() => {
             const g = given(vars[0], mainName)
             return { id: "main", name: vars[0].name.trim() || undefined, prompt: "", refs: [], ...g, approvedRef: g.startedAt, feeds: valuesFor(vars[0]), ...thumbOf(vars[0]) }
@@ -1417,7 +1411,7 @@ export function GenerationCanvas({
     const now = Date.now()
     commitSlides(
       slidesNow.current.map((x, i) =>
-        i === 0 ? { ...x, approvedRef: x.startedAt } : again.some((a) => a.id === x.id) ? { ...x, video: undefined, src: undefined, startedAt: now + i, job: { status: "waiting", since: now }, failed: undefined } : x,
+        i === 0 ? { ...x, approvedRef: x.startedAt } : again.some((a) => a.id === x.id) ? { ...x, video: undefined, startedAt: now + i, job: { status: "waiting", since: now }, failed: undefined } : x,
       ),
     )
     if (!byChat) {
@@ -1460,7 +1454,7 @@ export function GenerationCanvas({
       const fromRef = sl.id !== "main" && sl.used.fromReference
       const main = slides[0]
       // ...and for the user to approve it: always the latest version of the reference
-      const refVideo = isMadeVideo(main.video) && !main.job && main.approvedRef === main.startedAt ? videoOf(main).mp4 : undefined
+      const refVideo = isMadeVideo(main.video) && !main.job && main.approvedRef === main.startedAt ? videoAt(main.video).mp4 : undefined
       if (fromRef && !refVideo && !sl.job?.id) {
         if (!sl.job) patchJob({ job: { status: "waiting", since: Date.now() } })
         continue
@@ -1480,7 +1474,7 @@ export function GenerationCanvas({
       const keep = "Keep everything else exactly the same: people, product, camera, framing, motion, timing, setting and lighting."
       // a change that comes later in the video: the opening is pinned with timecodes and the reference's first frame
       const keepS = fromRef ? media.keep_seconds : undefined
-      const refPoster = fromRef && isMadeVideo(main.video) ? videoOf(main).poster : undefined
+      const refPoster = fromRef && isMadeVideo(main.video) ? videoAt(main.video).poster : undefined
       const pinned = keepS && refPoster ? refPoster : undefined
       const openingLine = keepS
         ? ` From 0 to ${keepS} s the video stays exactly as it is, frame for frame: same shot, same motion, nothing added or changed${pinned ? `; ${named(pics.length + 1, "Image").split(" to ").pop()} is its first frame, and the edited video must open on exactly that frame` : ""}. The change happens only after ${keepS} s.`
@@ -1516,8 +1510,7 @@ export function GenerationCanvas({
           // never another video's still: a frame of this one, else the gray stand-in
           const still = poster ?? (await posterOf(url)) ?? MISSING_POSTER
           const video = addMadeVideo({ name: `${slideName(sl, slidesNow.current.indexOf(sl))}-${sl.startedAt}`, size: generation.size, mp4: url, poster: still })
-          // the address is what holds across devices and reloads; the index is where it sits here
-          patchJob({ video, src: url, job: undefined, failed: undefined })
+          patchJob({ video, job: undefined, failed: undefined })
         },
         (e) => {
           if (!slidesNow.current.some(mine)) return
@@ -1615,7 +1608,7 @@ export function GenerationCanvas({
     videos: () =>
       slides.map((s) => {
         const st = status(s)
-        const v = st === "done" && (s.video !== undefined || s.src) ? videoOf(s) : undefined
+        const v = st === "done" && s.video !== undefined ? videoAt(s.video) : undefined
         // can be stopped until it starts: waiting for the OK, or still in the queue
         const stoppable = !!s.job && (s.job.status === "waiting" || s.job.status === "starting" || s.job.status === "queued")
         const failed = !s.job && !isMadeVideo(s.video) && s.failed ? s.failed.reason : undefined
@@ -1705,10 +1698,8 @@ export function GenerationCanvas({
   const { copy: _copy, resume: _resume, back: _back, remixOf: _remixOf, ...base } = generation
   const startSlide = slides.find((x) => x.id === start) ?? slides[1] ?? slides[0]
   // a chat project's picture is only ever its own: a thumbnail or a finished video's still; until then, none (the card shows a placeholder)
-  const ownPoster = (x?: Slide) => x?.thumb ?? (isMadeVideo(x?.video) || x?.src ? videoOf(x!).poster : undefined)
-  const poster = agentMode
-    ? (ownPoster(startSlide) ?? slides.map(ownPoster).find(Boolean) ?? "")
-    : (startSlide.thumb ?? videoOf(startSlide.video !== undefined || startSlide.src ? startSlide : { video: generation.video })?.poster ?? videoAt(generation.video).poster)
+  const ownPoster = (x?: Slide) => x?.thumb ?? (isMadeVideo(x?.video) ? videoAt(x!.video).poster : undefined)
+  const poster = agentMode ? (ownPoster(startSlide) ?? slides.map(ownPoster).find(Boolean) ?? "") : (startSlide.thumb ?? videoAt(startSlide.video ?? generation.video).poster)
   const saveProject = (extra?: { versions?: Checkpoint<Snap>[] }) =>
     library.saveProject({ id: generation.id, name: title || "Untitled project", size: generation.size, image: poster, video: generation.video, base, snap: snapNow(), versions: extra?.versions ?? versions })
   const deleted = useRef(false)
@@ -1736,7 +1727,7 @@ export function GenerationCanvas({
   // Export: a new Flick from the canvas as it is now, made in the background; marked in Version history
   const exportFlick = (name: string) => {
     const snap = snapNow()
-    const variants = included.map((x) => ({ name: nameOf(x), video: x.video ?? generation.video, src: x.src, poster: x.thumb ?? videoOf(x.video !== undefined || x.src ? x : { video: generation.video }).poster }))
+    const variants = included.map((x) => ({ name: nameOf(x), video: x.video ?? generation.video ?? "", poster: x.thumb ?? videoAt(x.video ?? generation.video).poster }))
     saveProject()
     // with the server set up and real videos, the Flicks API bakes the Flick (the watcher in App
     // follows it to its share page); with Sample videos on it's the prototype's timer
@@ -1899,7 +1890,7 @@ export function GenerationCanvas({
               videos={included.map((v) => ({
                 id: v.id,
                 name: nameOf(v),
-                poster: v.video !== undefined && status(v) === "done" ? videoOf(v).poster : undefined,
+                poster: v.video !== undefined && status(v) === "done" ? videoAt(v.video).poster : undefined,
                 values: v.feeds ?? {},
               }))}
               activeId={activeSlide.id}
@@ -2093,7 +2084,7 @@ export function GenerationCanvas({
                   {/* media is clipped to the frame; the element layer is not, so toolbars can sit above the frame edge */}
                   <div className={cn("absolute inset-0 overflow-hidden transition-opacity", stale(activeSlide) && "opacity-50")}>
                     {/* every finished variation is loaded; a switch carries the playhead over */}
-                    <FlickPlayer videos={ready.map((x) => x.video!)} srcs={ready.map((x) => x.src)} active={Math.max(0, ready.findIndex((x) => x.id === activeSlide.id))} playing={videoPlaying} />
+                    <FlickPlayer videos={ready.map((x) => x.video!)} active={Math.max(0, ready.findIndex((x) => x.id === activeSlide.id))} playing={videoPlaying} />
                   </div>
                   <CanvasStage elements={elements} setElements={setElements} selected={selected} setSelected={setSelected} editing={editing} setEditing={setEditing} ratio={ratio} thumbs={thumbs} activeThumb={activeThumb} feedOf={feedOf} onEditFeed={editFeed} onFeedValue={setFeedValue} feeds={feeds} onAddFeed={addFeed} onSeedFeed={seedFeed} onRenameFeed={renameFeed} onDeleteFeed={deleteFeed} hovered={hovered} selectedThumb={thumbSel} onSelectThumb={pickThumb} readOnly={previewing} onThumb={(n) => included[n] && select(included[n].id)} />
                 </>
@@ -2114,7 +2105,7 @@ export function GenerationCanvas({
                   </button>
                   {/* not generated yet: the reference video, faded, under this variation's elements */}
                   <div className="absolute inset-0 overflow-hidden bg-muted">
-                    <img loading="lazy" decoding="async" src={videoOf(slides[0]).poster} alt="" className="absolute inset-0 size-full object-cover opacity-30 blur-[2px]" />
+                    <img loading="lazy" decoding="async" src={videoAt(slides[0].video).poster} alt="" className="absolute inset-0 size-full object-cover opacity-30 blur-[2px]" />
                   </div>
                   <CanvasStage elements={elements} setElements={setElements} selected={selected} setSelected={setSelected} editing={editing} setEditing={setEditing} ratio={ratio} thumbs={thumbs} activeThumb={activeThumb} feedOf={feedOf} onEditFeed={editFeed} onFeedValue={setFeedValue} feeds={feeds} onAddFeed={addFeed} onSeedFeed={seedFeed} onRenameFeed={renameFeed} onDeleteFeed={deleteFeed} hovered={hovered} selectedThumb={thumbSel} onSelectThumb={pickThumb} readOnly={previewing} onThumb={(n) => included[n] && select(included[n].id)} />
                 </>
@@ -2173,7 +2164,6 @@ export function GenerationCanvas({
           nameOf={nameOf}
           size={generation.size}
           ratio={ratio}
-          referencePoster={videoOf(slides[0]).poster}
         />
 
         {/* regenerating the reference video: variations will need regenerating too */}
@@ -2222,7 +2212,7 @@ export function GenerationCanvas({
             }}
             isCurrent={(h) => slides.find((x) => x.id === h.slideId)?.startedAt === h.startedAt}
             onSelect={select}
-            target={{ id: activeSlide.id, name: nameOf(activeSlide), poster: activeStatus === "done" ? videoOf(activeSlide).poster : undefined, isReference: activeIndex === 0 }}
+            target={{ id: activeSlide.id, name: nameOf(activeSlide), poster: activeStatus === "done" ? videoAt(activeSlide.video).poster : undefined, isReference: activeIndex === 0 }}
             busy={chatting ? false : busy}
             collapsed={chatHidden}
             onCollapse={() => setChatHidden(true)}
@@ -2236,13 +2226,13 @@ export function GenerationCanvas({
             composer={
               chatting ? (
                 <div className="flex flex-col gap-2">
-                  <ApprovalDock agent={agent} ctx={agentCtx} poster={isMadeVideo(slides[0].video) || slides[0].src ? videoOf(slides[0]).poster : undefined} />
+                  <ApprovalDock agent={agent} ctx={agentCtx} poster={isMadeVideo(slides[0].video) ? videoAt(slides[0].video).poster : undefined} />
                   <QuestionDeck agent={agent} ctx={agentCtx} />
                   <QuickReplies agent={agent} ctx={agentCtx} />
                   <AgentComposer
                     agent={agent}
                     placeholder={agent.items.some((x) => x.kind === "question" && agent.pendingIds.includes(x.id)) ? "Answer in your own words…" : slides[0].startedAt ? "Ask for a change. @ picks a photo or variation" : undefined}
-                    variations={slides[0].startedAt ? slides.map((x) => ({ name: nameOf(x), poster: x.video !== undefined || x.src ? videoOf(x)?.poster : undefined })) : undefined}
+                    variations={slides[0].startedAt ? slides.map((x) => ({ name: nameOf(x), poster: x.video !== undefined ? videoAt(x.video).poster : undefined })) : undefined}
                     brand={!!brand}
                   />
                 </div>

@@ -3,7 +3,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Download04Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { importToLibrary, isLive, library, useAiConfig, type LibraryItem } from "@/ai/client"
-import { GENERATED_VIDEOS } from "@/components/editor/elements"
+import { madeVideos } from "@/components/editor/elements"
 
 /**
  * Everything made through the AI server, kept on Flam's side (Higgsfield deletes its copies after
@@ -46,7 +46,7 @@ export function AiLibrary() {
   // real videos made in this browser (their Higgsfield links last 7 days)
   const fromBrowser = async () => {
     setBusy(true)
-    const made = GENERATED_VIDEOS.filter((v) => v.set === "made" && /^https:\/\//.test(v.mp4))
+    const made = madeVideos().filter((v) => /^https:\/\//.test(v.mp4))
     try {
       let n = 0
       for (let i = 0; i < made.length; i += 10) n += await importToLibrary(made.slice(i, i + 10).map((v) => ({ url: v.mp4, kind: "video" as const, name: v.name })))

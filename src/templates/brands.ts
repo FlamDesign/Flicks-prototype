@@ -1,8 +1,8 @@
 import { PizzaIcon, ShirtIcon, SpoonAndForkIcon, BeerIcon, DrinkIcon } from "@hugeicons/core-free-icons"
-import { GENERATED_VIDEOS, newStrip, type CanvasElement, type Feed } from "@/components/editor/elements"
+import { newStrip, type CanvasElement, type Feed, type VideoKey } from "@/components/editor/elements"
 import type { Slide } from "@/components/editor/slides-strip"
 import type { Template } from "@/data"
-import { asset, type BrandSet } from "@/templates/brand-assets"
+import { asset, brandVideoKeys, type BrandSet } from "@/templates/brand-assets"
 
 /**
  * Brand templates built from real campaign assets (Omnicom pitch Flicks): each opens as a complete
@@ -48,9 +48,9 @@ export const scrim = (id: string, file: string, top: boolean, h: number, ratio: 
 
 export function brandTemplate(o: {
   id: string
-  /** the brand's first video: by its set (bundled brand videos), or `base` (real Flicks) */
+  /** the brand's videos, one per product: by its set (bundled brand videos), or their keys (real Flicks) */
   set?: BrandSet
-  base?: number
+  videos?: VideoKey[]
   cardRatio?: string
   cardInk?: "light" | "dark"
   title: string
@@ -68,7 +68,7 @@ export function brandTemplate(o: {
   products: Product[]
   layout: Layout
 }): Template {
-  const base = o.base ?? GENERATED_VIDEOS.findIndex((v) => v.set === o.set)
+  const videos = o.videos ?? brandVideoKeys(o.set!)
   const ids = Object.fromEntries(FEED_NAMES.map(([k]) => [k, `${o.id}-${k}`])) as Ids
   const feeds: Feed[] = FEED_NAMES.map(([k, name, type]) => ({ id: ids[k], name, type }))
   const values = (p: Product) => ({ [ids.title]: p.title, [ids.subtitle]: p.subtitle, [ids.price]: p.price, [ids.cta]: p.cta, [ids.link]: p.link })
@@ -78,7 +78,7 @@ export function brandTemplate(o: {
     name: p.name,
     prompt: "",
     refs: [],
-    video: base + i,
+    video: videos[i],
     startedAt: 1,
     thumb: p.thumb,
     feeds: values(p),
@@ -100,7 +100,7 @@ export function brandTemplate(o: {
     variants: o.products.map((p) => ({ label: p.name, color: p.color })),
     prompt: o.prompt,
     image: o.card,
-    video: base,
+    video: videos[0],
     duration: o.duration,
     ...(o.cardRatio ? { cardRatio: o.cardRatio } : {}),
     ...(o.cardInk ? { cardInk: o.cardInk } : {}),

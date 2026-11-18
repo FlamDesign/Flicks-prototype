@@ -1,104 +1,54 @@
-import gen1mp4 from "@/assets/video/gen-1.mp4"
 import socialIcon from "@/assets/social-icon.png"
-import gen2mp4 from "@/assets/video/gen-2.mp4"
-import gen3mp4 from "@/assets/video/gen-3.mp4"
-import gen4mp4 from "@/assets/video/gen-4.mp4"
-import gen5mp4 from "@/assets/video/gen-5.mp4"
-import gen1webm from "@/assets/video/gen-1.webm"
-import gen2webm from "@/assets/video/gen-2.webm"
-import gen3webm from "@/assets/video/gen-3.webm"
-import gen4webm from "@/assets/video/gen-4.webm"
-import gen5webm from "@/assets/video/gen-5.webm"
-import poster1 from "@/assets/video/poster-1.jpg"
-import poster2 from "@/assets/video/poster-2.jpg"
-import poster3 from "@/assets/video/poster-3.jpg"
-import poster4 from "@/assets/video/poster-4.jpg"
-import poster5 from "@/assets/video/poster-5.jpg"
 import { BRAND_VIDEOS, type BrandSet } from "@/templates/brand-assets"
-import { REAL_BASE, REAL_VIDEOS, type RealSlug } from "@/templates/real-media"
+import { REAL_VIDEOS, type RealSlug } from "@/templates/real-media"
 
-export type SampleVideo = { name: string; set: "sample" | "made" | BrandSet | `real-${RealSlug}`; size: string; mp4: string; webm?: string; poster: string }
 /**
- * Videos that come with the app: five stand-ins for the Sample videos dev switch (used nowhere
- * else), then the brand templates' videos. Made videos are appended at run time.
+ * Every video is known by one key that never changes: a video that comes with the app (a brand
+ * template's, a real Flick's) by its name, a video made or uploaded through the AI server by its
+ * address. Slides, Flicks and templates keep the key; nothing is ever addressed by a position.
  */
-export const GENERATED_VIDEOS: SampleVideo[] = [
-  { name: "sample-1", set: "sample", size: "1080×1920", webm: gen1webm, mp4: gen1mp4, poster: poster1 },
-  { name: "sample-2", set: "sample", size: "1080×1920", webm: gen2webm, mp4: gen2mp4, poster: poster2 },
-  { name: "sample-3", set: "sample", size: "1080×1920", webm: gen3webm, mp4: gen3mp4, poster: poster3 },
-  { name: "sample-4", set: "sample", size: "1080×1920", webm: gen4webm, mp4: gen4mp4, poster: poster4 },
-  { name: "sample-5", set: "sample", size: "1080×1920", webm: gen5webm, mp4: gen5mp4, poster: poster5 },
-  // brand templates' videos come after the samples (see templates/brand-assets.ts)
-  ...BRAND_VIDEOS,
-]
-/**
- * Real videos made with the AI server join the list (set "made", so samples never pick them) and are
- * remembered on this device, so a project that uses one still finds it after a reload.
- */
-/** A plain gray frame for a video this device no longer has (see videoAt). */
+export type VideoKey = string
+export type SampleVideo = { key: VideoKey; name: string; set: "made" | BrandSet | `real-${RealSlug}`; size: string; mp4: string; poster: string }
+
+/** the videos that come with the app, by name */
+const builtIn = new Map<VideoKey, SampleVideo>([...BRAND_VIDEOS, ...REAL_VIDEOS].map((v) => [v.name, { ...v, key: v.name }]))
+/** videos made or uploaded through the AI server, by address: what's known about them here (name, size, still) */
+const made = new Map<VideoKey, SampleVideo>()
+
+/** A plain gray frame for a video whose still isn't known here. */
 export const MISSING_POSTER = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="16" height="16" fill="#d6d3d1"/></svg>')
 /** neutral frames for a mock-up before any video exists (storyboard previews): three soft tones */
 export const PLACEHOLDER_FRAMES = ["#d6d3d1", "#a8a29e", "#78716c"].map((c) => "data:image/svg+xml;utf8," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="16" height="16" fill="${c}"/></svg>`))
-const MADE_KEY = "flam.videos"
-/** how many videos come with the app (samples and the brand templates'); made videos follow */
-export const BUILT_IN_VIDEOS = GENERATED_VIDEOS.length
-try {
-  const saved = JSON.parse(localStorage.getItem(MADE_KEY) ?? "[]") as SampleVideo[]
-  saved.forEach((v) => GENERATED_VIDEOS.push({ ...v, set: "made", poster: v.poster || MISSING_POSTER }))
-} catch {
-  /* storage unavailable */
+const MISSING: SampleVideo = { key: "", name: "missing", set: "made", size: "1080×1080", mp4: "", poster: MISSING_POSTER }
+
+const isAddress = (k: string) => /^(https?:|blob:)/.test(k)
+
+/** a video made or uploaded through the server joins the list; its key is its address */
+export function addMadeVideo(v: { name: string; size: string; mp4: string; poster: string }): VideoKey {
+  const old = made.get(v.mp4)
+  made.set(v.mp4, { ...v, set: "made", key: v.mp4, poster: v.poster || old?.poster || MISSING_POSTER })
+  return v.mp4
 }
-export function addMadeVideo(v: { name: string; size: string; mp4: string; poster: string }) {
-  GENERATED_VIDEOS.push({ ...v, set: "made" })
-  const made = GENERATED_VIDEOS.filter((x) => x.set === "made")
-  try {
-    localStorage.setItem(MADE_KEY, JSON.stringify(made))
-  } catch {
-    // storage full (stills are large): keep every video's link, and stills for the newest 10 only,
-    // so a project still finds its videos after a reload (older ones show a gray frame)
-    try {
-      localStorage.setItem(MADE_KEY, JSON.stringify(made.map((x, i) => (i < made.length - 10 ? { ...x, poster: "" } : x))))
-    } catch {
-      /* still full: kept for this visit */
-    }
-  }
-  return GENERATED_VIDEOS.length - 1
+/** the made videos known here, for saving (newest last) */
+export const madeVideos = () => [...made.values()].map(({ key: _k, ...v }) => v)
+/** made videos another device saved: added here (a known still is never replaced by a missing one) */
+export function mergeMadeVideos(list: { name: string; size: string; mp4: string; poster?: string }[] = []) {
+  for (const v of list) if (typeof v?.mp4 === "string" && v.mp4) addMadeVideo({ ...v, poster: v.poster ?? "" })
 }
-/**
- * A sample video index kept in range (sample sets cycle). A made video's index is never wrapped:
- * made videos are addressed by position in a list that differs per device, so an index past the end
- * means "not loaded here", never "some sample instead".
- */
-export const wrapVideo = (i: number) => (i >= REAL_BASE || i >= BUILT_IN_VIDEOS ? i : i % BUILT_IN_VIDEOS)
-/** a made video by its address, wherever it sits in this device's list (-1 when it isn't here) */
-export const madeIndex = (src?: string) => (src ? GENERATED_VIDEOS.findIndex((v) => v.set === "made" && v.mp4 === src) : -1)
-/**
- * The video of something that remembers both its index and its address (a slide, a Flick's
- * variation): the address wins, because positions shift between devices and reloads; the index is
- * the fallback for samples and older records. A made video known by address but not in this
- * device's list still plays from its address.
- */
-export const videoOf = (x: { video?: number; src?: string }): SampleVideo => {
-  if (x.src) {
-    const k = madeIndex(x.src)
-    if (k >= 0) return GENERATED_VIDEOS[k]
-    return { name: "made", set: "made", size: "", mp4: x.src, poster: (x.video !== undefined && GENERATED_VIDEOS[x.video]?.mp4 === x.src && GENERATED_VIDEOS[x.video].poster) || MISSING_POSTER }
-  }
-  return videoAt(x.video !== undefined ? wrapVideo(x.video) : undefined)
-}
-/** the index to keep for something known by address: where it sits here, else what it had */
-export const videoIndexOf = (x: { video?: number; src?: string }) => {
-  const k = madeIndex(x.src)
-  return k >= 0 ? k : x.video
-}
-export const isMadeVideo = (i?: number) => i !== undefined && GENERATED_VIDEOS[i]?.set === "made"
+/** a made video (one with an address), as opposed to a template's or none at all */
+export const isMadeVideo = (key?: VideoKey): key is VideoKey => typeof key === "string" && isAddress(key)
 
 /**
- * The video at `i`, or a gray stand-in when it's gone: a made video can be missing after a reload
- * if this device couldn't keep it (storage full or cleared), and a project must still open.
+ * The video for a key. A made video not listed here still plays from its address (its still is a
+ * gray frame); a missing key gives a gray stand-in, so a project always opens.
  */
-export const videoAt = (i?: number): SampleVideo =>
-  (i !== undefined && (i >= REAL_BASE ? REAL_VIDEOS[i - REAL_BASE] : GENERATED_VIDEOS[i])) || { name: "missing", set: "made", size: "1080×1080", mp4: "", poster: MISSING_POSTER }
+export const videoAt = (key?: VideoKey): SampleVideo => {
+  // a number is a position from before keys (an old tab still open): never someone else's video
+  if (!key || typeof key !== "string") return MISSING
+  const v = builtIn.get(key) ?? made.get(key)
+  if (v) return v
+  return isAddress(key) ? { key, name: "made", set: "made", size: "", mp4: key, poster: MISSING_POSTER } : MISSING
+}
 
 export type Align = "left" | "center" | "right"
 
