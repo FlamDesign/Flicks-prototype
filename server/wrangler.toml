@@ -8,7 +8,7 @@ workers_dev = true
 # browsers on other sites are refused; the passcode is still required from everywhere
 ALLOWED_ORIGINS = "https://flam-flicks.pages.dev,https://*.flam-flicks.pages.dev,http://localhost:5173,http://localhost:4173"
 DAILY_IMAGE_CAP = "200"
-DAILY_CHAT_CAP = "500"
+DAILY_CHAT_CAP = "1500"
 # Flam's Flicks API: where exports are baked into real Flicks (dev until production is ready)
 FLICKS_API_BASE = "https://fi.development.flamapis.com/flix-svc/api/v1"
 DAILY_FLICK_CAP = "50"

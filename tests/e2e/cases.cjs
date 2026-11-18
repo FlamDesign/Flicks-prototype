@@ -278,7 +278,14 @@ async function runCase(id) {
   })
   p.on("console", (m) => m.type() === "error" && !/favicon|ERR_ABORTED|net::ERR/.test(m.text()) && record.notes.push(`console: ${m.text().slice(0, 200)}`))
 
-  await start(run, c)
+  // RESUME=<project id>: a case whose page was lost midway carries on from the saved project
+  if (process.env.RESUME) {
+    run.state.projectId = process.env.RESUME
+    await p.goto(new URL(`/p/${process.env.RESUME}`, p.url()).href, { waitUntil: "networkidle" })
+    await p.waitForTimeout(10000)
+    log("RESUMED project", process.env.RESUME)
+    record.notes.push("resumed after the test browser lost the page")
+  } else await start(run, c)
   let redirected = !c.redirect, stopped = !c.stop, busy = 0, sbSaid = 0, changed = !c.changeFirst, approved = false, reload1 = !c.reloads, reload2 = !c.reloads
   const policy = {
     onQuestion: answerer(run, c, record),
