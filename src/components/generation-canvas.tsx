@@ -1508,8 +1508,11 @@ export function GenerationCanvas({
       )).then(
         async ({ url, poster }) => {
           // never another video's still: a frame of this one, else the gray stand-in
-          const still = poster ?? (await posterOf(url)) ?? MISSING_POSTER
-          const video = addMadeVideo({ name: `${slideName(sl, slidesNow.current.indexOf(sl))}-${sl.startedAt}`, size: generation.size, mp4: url, poster: still })
+          const name = slideName(sl, slidesNow.current.indexOf(sl))
+          let still = poster ?? (await posterOf(url)) ?? MISSING_POSTER
+          // a frame drawn here is kept on the server as a file, so the saved library stays small
+          if (still.startsWith("data:image/jpeg") || still.startsWith("data:image/png")) still = await shareable(still, { name: `${name} still`, project: title }).catch(() => still)
+          const video = addMadeVideo({ name: `${name}-${sl.startedAt}`, size: generation.size, mp4: url, poster: still })
           patchJob({ video, job: undefined, failed: undefined })
         },
         (e) => {
