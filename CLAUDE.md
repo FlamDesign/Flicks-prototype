@@ -4,7 +4,7 @@ Prototype of Flam's Flicks "Create" web app: React + Vite + Tailwind v4 + shadcn
 
 ## Branches and deploys
 
-- Work on `dev`. `main` is production; fast-forward `main` to `dev` only when asked. Experiments go on their own short-lived branch off `dev`, deleted when merged or dropped.
+- Work on `dev`. `main` is production: push to it only when the owner says so explicitly in that message ("push to main", "deploy to production"); a standing "push everything to main" from earlier never carries over. Experiments go on their own short-lived branch off `dev`, deleted when merged or dropped.
 - After each change: commit, `git push origin dev`. Pushing is fine; GitHub API writes (deleting branches, etc.) are blocked by the proxy.
 - Commit trailer on every commit:
   ```
