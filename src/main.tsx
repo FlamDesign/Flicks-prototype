@@ -8,6 +8,7 @@ import { startSampleData } from "@/sample-data"
 import { watchKeptFiles } from "@/lib/kept"
 import { SmallScreenNotice } from "@/components/small-screen"
 import { MotionRoot } from "@/components/arrive"
+import { CrashScreen } from "@/components/crash-screen"
 
 // After a new deploy, a tab opened earlier asks for page files that no longer exist and would
 // hang on a skeleton. Reload once to pick up the new build (not again within 30 seconds).
@@ -68,8 +69,10 @@ watchKeptFiles()
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <MotionRoot>
-      <Root />
-    </MotionRoot>
+    <CrashScreen>
+      <MotionRoot>
+        <Root />
+      </MotionRoot>
+    </CrashScreen>
   </StrictMode>,
 )

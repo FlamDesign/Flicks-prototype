@@ -112,7 +112,10 @@ export function toEvents(msgs: Message[], state: unknown): Ev[] {
     if (e.type === "user.custom_tool_result") lastResult = folded.push(e) - 1
     else if (e.type === "user.message" && lastResult >= 0) {
       const r = folded[lastResult]
-      folded[lastResult] = { ...r, content: [...(r.content as Block[]), { type: "text", text: "The user's own message, written in the chat box (act on it as their request):" }, ...(e.content as Block[])] }
+      const blocks = e.content as Block[]
+      // the app's own notes ("(App: …)") ride along as they are; anything else is the user's words
+      const theirs = blocks.some((x) => x.type !== "text" || !x.text.startsWith("(App:"))
+      folded[lastResult] = { ...r, content: [...(r.content as Block[]), ...(theirs ? [{ type: "text" as const, text: "The user's own message, written in the chat box (act on it as their request):" }] : []), ...blocks] }
     } else folded.push(e)
   }
   out.length = 0

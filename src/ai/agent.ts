@@ -2021,6 +2021,14 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           ready.current = results
           break
         }
+        // after a change to the layout, what it broke comes back with the result (an overlap, an
+        // element off the frame, a button that can't be read), so it's fixed in the same turn
+        const LAYOUT = new Set(["add_element", "edit_element", "arrange_elements", "update_design", "vary_field", "same_for_all", "set_format"])
+        if (uses.some((u) => LAYOUT.has(u.name)) && apiRef.current.state().planned) {
+          await new Promise((r) => setTimeout(r, 80))
+          const broke = apiRef.current.review().fail.filter((f) => /^(Overlapping|Outside the frame|Button .* contrast|Headline is)/.test(f))
+          if (broke.length) results.push({ type: "text", text: `(App: after these changes the canvas has: ${broke.join(" ")} Fix it now, before you reply.)` })
+        }
         msgs.current.push({ role: "user", content: results })
         checkpoint()
         // the user sent something while this step ran: stop here, with every step's result in place

@@ -1046,7 +1046,9 @@ function ApprovedPlan({ item, agent, ctx }: { item: Extract<Item, { kind: "plan"
 }
 
 /** a variation's direction: its own line, else (older storyboards) its first frame or nothing; never the prompt */
-function directionOf(v: PlanVariation, i: number, plan: Plan) {
+function directionOf(v: PlanVariation | undefined, i: number, plan: Plan) {
+  // a variation added after the storyboard has no entry in it
+  if (!v) return ""
   return v.direction ?? (i === 0 ? (plan.reference.storyboard?.map((f) => f.action).join(", then ") ?? "") : "")
 }
 function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>; agent: Agent; ctx: AgentCtx }) {
