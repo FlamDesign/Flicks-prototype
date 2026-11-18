@@ -1995,7 +1995,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         // the same call again in one reply means it's going round in circles: stop it
         // (looking again after a change isn't a repeat: once the Flick changes, earlier calls are forgotten)
         const sigs = uses.map((u) => u.name + JSON.stringify(u.input))
-        const repeated = sigs.some((x) => seen.has(x))
+        // a reply that changes something may look or review again in the same breath (fix, then check)
+        const repeated = !uses.some((u) => CHANGES.has(u.name)) && sigs.some((x) => seen.has(x))
         sigs.forEach((x) => seen.add(x))
         if (repeated && step > 0) {
           msgs.current.push({ role: "user", content: uses.map((u) => ({ type: "tool_result" as const, tool_use_id: u.id, content: "Not run: this repeats an earlier call. Stop and tell the user, in a line or two, what you did and what's left." })) })

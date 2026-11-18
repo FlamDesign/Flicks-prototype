@@ -158,7 +158,10 @@ export function startSync() {
     // saving merges with the server's copy first, so tabs and devices add to each other instead of replacing
     // the server's copy as last seen: a closing page merges with it (it can't wait to fetch a fresh one)
     let lastTheirs: Saved | null = null
-    const put = saver("state", 8000, 45000, async (mine, closing) => {
+    // 3 s after the last change and at least every 12 s while changes keep coming: a reload in the
+    // middle of the chat's work must find the project as it was a moment ago (the library is too
+    // big to send as the page closes, so it can't wait for that)
+    const put = saver("state", 3000, 12000, async (mine, closing) => {
       // never save over the server's copy without merging with it: a tab that can't fetch it waits
       // for the next change, and a closing tab merges with the copy it last saw (the server keeps
       // deletions either way, so an old copy can't bring deleted projects back)

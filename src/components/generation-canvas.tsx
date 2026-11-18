@@ -1786,7 +1786,10 @@ export function GenerationCanvas({
   // new generation from Create are the user's work from the start.
   const startSig = useRef<string | null>(null)
   if (startSig.current === null && !firstRun) startSig.current = sig
-  const dirtyFromStart = fresh
+  // a chat project reopened before its first video exists (a reload while it's planned or just
+  // approved) is still being made by the chat: everything it sets (name, size, the build's start)
+  // must save, or a second reload loses it
+  const dirtyFromStart = fresh || (agentMode && firstRun)
   const dirty = dirtyFromStart || (startSig.current !== null && sig !== startSig.current)
   useEffect(() => {
     // an unnamed project saves too ("Untitled project" until the chat names it): a chat that stops before the storyboard must still be in Projects

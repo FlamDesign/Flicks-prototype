@@ -221,6 +221,21 @@ async function exportFlick(run, record, mark) {
     log("export dialog:", record.exportDialog)
     await run.shot("export-dialog")
     let go = dialog.getByRole("button", { name: /^Export( anyway)?$/ })
+    // a video that didn't generate: the user presses Try again on its tile (one press, as a user would)
+    if ((await go.isDisabled()) && /Generate videos for every variation/.test(record.exportDialog)) {
+      await dialog.getByRole("button", { name: "Cancel" }).click()
+      const again = p.getByRole("button", { name: "Try again" }).first()
+      if (await again.isVisible().catch(() => false)) {
+        await again.click()
+        log("pressed Try again on a video that didn't generate")
+        record.notes.push("a video didn't generate; pressed Try again once before export")
+      }
+      await p.waitForTimeout(8000)
+      await p.getByRole("button", { name: /^Export$/ }).click()
+      await dialog.waitFor({ timeout: 15000 })
+      record.exportDialog = (await dialog.innerText()).replace(/\s+/g, " ").slice(0, 500)
+      go = dialog.getByRole("button", { name: /^Export( anyway)?$/ })
+    }
     // a video still on its way blocks export: close, wait and look again (up to 20 minutes)
     for (let i = 0; i < 80 && (await go.isDisabled()) && /Generate videos for every variation/.test(record.exportDialog); i++) {
       if (i % 8 === 0) log("export: waiting for a video still being made")
@@ -287,9 +302,12 @@ async function runCase(id) {
     await p.goto(new URL(`/p/${process.env.RESUME}`, p.url()).href, { waitUntil: "networkidle" })
     await p.waitForTimeout(10000)
     log("RESUMED project", process.env.RESUME)
+    await run.shot("resumed")
     record.notes.push("resumed after the test browser lost the page")
   } else await start(run, c)
-  let redirected = !c.redirect, stopped = !c.stop, busy = 0, sbSaid = 0, changed = !c.changeFirst, approved = false, reload1 = !c.reloads, reload2 = !c.reloads
+  // a resumed case has already had its early interruptions
+  const resumed = !!process.env.RESUME
+  let redirected = resumed || !c.redirect, stopped = resumed || !c.stop, busy = 0, sbSaid = 0, changed = !c.changeFirst, approved = false, reload1 = !c.reloads, reload2 = !c.reloads
   const policy = {
     onQuestion: answerer(run, c, record),
     pick: pickFor(c, record, run),
