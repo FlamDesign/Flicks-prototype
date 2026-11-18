@@ -45,6 +45,8 @@ export interface Env {
   /** its base, e.g. https://fi.development.flamapis.com/flix-svc/api/v1 (dev by default) */
   FLICKS_API_BASE?: string
   DAILY_FLICK_CAP?: string
+  /** files added in a day: the user's photos and clips, and the app's own stills and frames */
+  DAILY_UPLOAD_CAP?: string
   PASSCODE?: string
   /** comma-separated origins allowed to call from a browser */
   ALLOWED_ORIGINS?: string
@@ -247,7 +249,7 @@ export default {
       }
 
       if (req.method === "POST" && url.pathname === "/upload") {
-        if (!(await take(env, `up:${day}`, 300))) return json({ error: "daily_limit", what: "uploads" }, 429, cors)
+        if (!(await take(env, `up:${day}`, num(env.DAILY_UPLOAD_CAP, 1500)))) return json({ error: "daily_limit", what: "uploads" }, 429, cors)
         const type = (req.headers.get("content-type") ?? "").split(";")[0]
         // photos, and videos (trimmed to 15 s in the browser, so they're small)
         const video = /^video\/(mp4|webm|quicktime)$/.test(type)
