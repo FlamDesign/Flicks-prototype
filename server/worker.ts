@@ -113,11 +113,12 @@ export default {
       }
       // the kept copy of a file the maker no longer serves (their CDN keeps files a week): public,
       // so an <img> or <video> that fails can fall back to it by the original address
-      if ((req.method === "GET" || req.method === "HEAD") && url.pathname === "/kept") {
-        const u = url.searchParams.get("u") ?? ""
+      const reqUrl = new URL(req.url)
+      if ((req.method === "GET" || req.method === "HEAD") && reqUrl.pathname === "/kept") {
+        const u = reqUrl.searchParams.get("u") ?? ""
         const hit = u ? keptFor(await libraryItems(env, ctx), u) : undefined
         if (!hit) return json({ error: "not_kept" }, 404, cors)
-        return new Response(null, { status: 302, headers: { ...cors, location: `${url.origin}/file/${hit}`, "cache-control": "public, max-age=3600" } })
+        return new Response(null, { status: 302, headers: { ...cors, location: `${reqUrl.origin}/file/${hit}`, "cache-control": "public, max-age=3600" } })
       }
       if (!env.PASSCODE) return json({ error: "server_not_set_up", message: "PASSCODE is not set" }, 500, cors)
       if (!same(req.headers.get("x-flicks-pass") ?? "", env.PASSCODE)) return json({ error: "wrong_passcode" }, 401, cors)
@@ -487,6 +488,8 @@ export default {
         // deleted projects back whole, so the server keeps every tombstone it has seen and drops
         // anything an older tombstone covers, whatever a client sends.
         if (st[1] === "state" && value && typeof value === "object") {
+          // only a library is saved as the library (a stray error object or an empty body never replaces it)
+          if (!Array.isArray((value as { projects?: unknown }).projects) || !Array.isArray((value as { flicks?: unknown }).flicks)) return json({ error: "not_a_library" }, 400, cors)
           const v = value as { projects?: { id: string; editedAt?: number }[]; flicks?: { id: string; editedAt?: number }[]; deleted?: Record<string, number> }
           const prev = JSON.parse((await env.USAGE?.get("store:state")) ?? "null") as { deleted?: Record<string, number> } | null
           const tomb: Record<string, number> = { ...(prev?.deleted ?? {}) }
