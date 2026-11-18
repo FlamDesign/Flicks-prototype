@@ -5,7 +5,8 @@
  * Without one, everything stays in this page, as before.
  */
 import { aiConfig, isLive, shareable } from "@/ai/client"
-import { GENERATED_VIDEOS, type SampleVideo } from "@/components/editor/elements"
+import { BUILT_IN_VIDEOS, GENERATED_VIDEOS, type SampleVideo } from "@/components/editor/elements"
+import { REAL_BASE } from "@/templates/real-media"
 import { library, watchLibrary, type LibraryState } from "@/library"
 import { elements, type FlickElement } from "@/lib/elements"
 
@@ -104,7 +105,38 @@ export function saver(key: string, ms = 8000, maxMs = 45000, prepare?: (value: u
 }
 
 /** `deleted`: when each project or Flick was deleted, so another tab's older list can't bring it back */
-type Saved = Omit<LibraryState, "synced"> & { made?: SampleVideo[]; deleted?: Record<string, number> }
+type Saved = Omit<LibraryState, "synced"> & { made?: SampleVideo[]; deleted?: Record<string, number>; /** how many videos came with the app that saved this (made videos follow); older copies were saved with 25 */ builtIn?: number }
+/** the built-in count before it was recorded: 10 generic samples (5 kept, at the same places) and 15 brand videos */
+const LEGACY_BUILT_IN = 25
+const LEGACY_SAMPLES = 10
+const SAMPLE_COUNT = 5
+/** a built-in index as another copy numbered it, as this app numbers it */
+const builtInAt = (i: number, theirBase: number) => {
+  if (theirBase === BUILT_IN_VIDEOS) return i
+  if (theirBase === LEGACY_BUILT_IN) return i < LEGACY_SAMPLES ? i : i - (LEGACY_SAMPLES - SAMPLE_COUNT)
+  return i
+}
+/**
+ * Another copy's video indices, as this app numbers them: its built-ins by position, its made
+ * videos by address (which the merged list holds). A slide or variation that points at a made
+ * video also learns the address, so no later renumbering can send it elsewhere.
+ */
+function renumberFrom<T>(x: T, theirs: Saved): T {
+  const theirBase = theirs.builtIn ?? LEGACY_BUILT_IN
+  const at = (i: number) => {
+    if (i >= REAL_BASE) return i
+    if (i < theirBase) return builtInAt(i, theirBase)
+    const v = theirs.made?.[i - theirBase]
+    const k = v ? GENERATED_VIDEOS.findIndex((g) => g.mp4 === v.mp4) : -1
+    return k < 0 ? i : k
+  }
+  return JSON.parse(JSON.stringify(x), (key, val) => {
+    if (key === "video" && typeof val === "number") return at(val)
+    if (key === "videos" && Array.isArray(val)) return val.map((n) => (typeof n === "number" ? at(n) : n))
+    if (val && typeof val === "object" && !Array.isArray(val) && typeof val.video === "number" && val.src === undefined && GENERATED_VIDEOS[val.video]?.set === "made") return { ...val, src: GENERATED_VIDEOS[val.video].mp4 }
+    return val
+  })
+}
 
 const MONTH = 30 * 24 * 3600 * 1000
 /** projects and Flicks deleted here (by id, when): sent with every save */
@@ -126,22 +158,7 @@ export function merge(mine: Saved, theirs: Saved | null): { merged: Saved; chang
   const ours = GENERATED_VIDEOS.slice(base)
   const extras = (theirs.made ?? []).filter((v) => !ours.some((o) => o.mp4 === v.mp4))
   if (extras.length) GENERATED_VIDEOS.push(...extras.map((v) => ({ ...v, set: "made" as const })))
-  // a server index -> the same video's index here
-  const at = (i: number) => {
-    if (i < base) return i
-    const v = theirs.made?.[i - base]
-    const k = v ? GENERATED_VIDEOS.findIndex((g) => g.mp4 === v.mp4) : -1
-    return k < 0 ? i : k
-  }
-  // indices become this tab's; a slide or variation that points at a made video also learns the
-  // video's address, so any later renumbering can't send it to the wrong video
-  const renumber = <T,>(x: T): T =>
-    JSON.parse(JSON.stringify(x), (key, val) => {
-      if (key === "video" && typeof val === "number") return at(val)
-      if (key === "videos" && Array.isArray(val)) return val.map((n) => (typeof n === "number" ? at(n) : n))
-      if (val && typeof val === "object" && !Array.isArray(val) && typeof val.video === "number" && val.src === undefined && GENERATED_VIDEOS[val.video]?.set === "made") return { ...val, src: GENERATED_VIDEOS[val.video].mp4 }
-      return val
-    })
+  const renumber = <T,>(x: T): T => renumberFrom(x, theirs)
   let changedHere = false
   const pick = <T extends { id: string; editedAt?: number }>(a: T[], b: T[]) => {
     const out: T[] = []
@@ -163,7 +180,7 @@ export function merge(mine: Saved, theirs: Saved | null): { merged: Saved; chang
   const projects = pick(mine.projects, theirs.projects)
   const flicks = pick(mine.flicks, theirs.flicks)
   if (projects.length !== mine.projects.length || flicks.length !== mine.flicks.length) changedHere = true
-  return { merged: { projects, flicks, made: GENERATED_VIDEOS.filter((v) => v.set === "made"), deleted: { ...deleted } }, changedHere }
+  return { merged: { projects, flicks, made: GENERATED_VIDEOS.filter((v) => v.set === "made"), deleted: { ...deleted }, builtIn: BUILT_IN_VIDEOS }, changedHere }
 }
 
 /** real videos made anywhere: the server's list comes first, so saved projects find theirs by position */
@@ -204,7 +221,7 @@ export function startSync() {
         for (const id of now) delete deleted[id]
       }
       ids = now
-      if (ready && !silent) put({ projects: s.projects, flicks: s.flicks, made: GENERATED_VIDEOS.filter((v) => v.set === "made"), deleted: { ...deleted } } satisfies Saved)
+      if (ready && !silent) put({ projects: s.projects, flicks: s.flicks, made: GENERATED_VIDEOS.filter((v) => v.set === "made"), deleted: { ...deleted }, builtIn: BUILT_IN_VIDEOS } satisfies Saved)
     })
     // elements (named products, characters, logos) follow the user too
     let elementsReady = false
@@ -223,8 +240,10 @@ export function startSync() {
       if (saved?.projects) {
         mergeMade(saved.made)
         Object.assign(deleted, saved.deleted ?? {})
+        // the server's indices as this app numbers them (its built-in count may differ from the one that saved)
+        const mine: Saved = { ...saved, projects: renumberFrom(saved.projects, saved), flicks: renumberFrom(saved.flicks, saved), builtIn: BUILT_IN_VIDEOS }
         lastTheirs = saved
-        library.load(saved)
+        library.load(mine)
       }
     } catch (e) {
       console.warn("Couldn't load saved projects", e)
