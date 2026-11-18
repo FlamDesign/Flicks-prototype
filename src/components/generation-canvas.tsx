@@ -1716,7 +1716,8 @@ export function GenerationCanvas({
   }, [])
 
   // what to fix before publishing (blocking) or worth a look (warnings)
-  const variationsDone = slides.slice(1).filter((s) => status(s) === "done").length
+  // the videos that go into the Flick (Variation 1 is one of them): two are enough
+  const variationsDone = included.filter((s) => status(s) === "done").length
   const publishIssues: Issue[] = [
     // one plain message, not one per variation
     ...(variationsDone < 2

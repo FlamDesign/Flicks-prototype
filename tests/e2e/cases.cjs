@@ -213,13 +213,6 @@ const handedOver = (v) => v.suggestions && !v.busy && !v.drawing
 /** Export: the Flick page, and its share page when the Flicks API bakes it. Waits out videos still being made. */
 async function exportFlick(run, record, mark) {
   const { p, log } = run
-  // a video still on its way blocks export: wait for it (up to 15 minutes)
-  for (let i = 0; i < 180; i++) {
-    const making = await p.evaluate(() => /Generating|Up next|Waiting for your OK|Making /.test([...document.querySelectorAll("figcaption, [data-slide-status], aside")].map((e) => e.innerText).join(" ")) || !!document.querySelector('button[aria-label="Stop"]'))
-    if (!making) break
-    if (i % 12 === 0) log("export: waiting for videos still being made")
-    await p.waitForTimeout(5000)
-  }
   try {
     await p.getByRole("button", { name: /^Export$/ }).click()
     const dialog = p.getByRole("dialog", { name: "Export Flick" })
@@ -227,7 +220,17 @@ async function exportFlick(run, record, mark) {
     record.exportDialog = (await dialog.innerText()).replace(/\s+/g, " ").slice(0, 500)
     log("export dialog:", record.exportDialog)
     await run.shot("export-dialog")
-    const go = dialog.getByRole("button", { name: /^Export( anyway)?$/ })
+    let go = dialog.getByRole("button", { name: /^Export( anyway)?$/ })
+    // a video still on its way blocks export: close, wait and look again (up to 20 minutes)
+    for (let i = 0; i < 80 && (await go.isDisabled()) && /Generate videos for every variation/.test(record.exportDialog); i++) {
+      if (i % 8 === 0) log("export: waiting for a video still being made")
+      await dialog.getByRole("button", { name: "Cancel" }).click()
+      await p.waitForTimeout(15000)
+      await p.getByRole("button", { name: /^Export$/ }).click()
+      await dialog.waitFor({ timeout: 15000 })
+      record.exportDialog = (await dialog.innerText()).replace(/\s+/g, " ").slice(0, 500)
+      go = dialog.getByRole("button", { name: /^Export( anyway)?$/ })
+    }
     if (await go.isDisabled()) throw new Error("Export is blocked: " + record.exportDialog)
     await go.click()
     mark("export_pressed")
