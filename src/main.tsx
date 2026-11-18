@@ -5,6 +5,7 @@ import App from "./App"
 import { DevStateProvider } from "@/dev/state"
 import { startSync } from "@/ai/sync"
 import { startSampleData } from "@/sample-data"
+import { watchKeptFiles } from "@/lib/kept"
 import { SmallScreenNotice } from "@/components/small-screen"
 import { MotionRoot } from "@/components/arrive"
 
@@ -62,6 +63,8 @@ function Root() {
 startSync()
 // campaigns, embeds and analytics: a sample built from the account's own Flicks once they arrive
 startSampleData()
+// a picture or video the maker's CDN no longer serves comes from the server's kept copy
+watchKeptFiles()
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

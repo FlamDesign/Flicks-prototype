@@ -111,6 +111,14 @@ export default {
         }
         return new Response(req.method === "HEAD" ? null : all, { headers: { ...head, "content-length": String(all.byteLength) } })
       }
+      // the kept copy of a file the maker no longer serves (their CDN keeps files a week): public,
+      // so an <img> or <video> that fails can fall back to it by the original address
+      if ((req.method === "GET" || req.method === "HEAD") && url.pathname === "/kept") {
+        const u = url.searchParams.get("u") ?? ""
+        const hit = u ? keptFor(await libraryItems(env, ctx), u) : undefined
+        if (!hit) return json({ error: "not_kept" }, 404, cors)
+        return new Response(null, { status: 302, headers: { ...cors, location: `${url.origin}/file/${hit}`, "cache-control": "public, max-age=3600" } })
+      }
       if (!env.PASSCODE) return json({ error: "server_not_set_up", message: "PASSCODE is not set" }, 500, cors)
       if (!same(req.headers.get("x-flicks-pass") ?? "", env.PASSCODE)) return json({ error: "wrong_passcode" }, 401, cors)
 
@@ -486,6 +494,14 @@ export default {
           const old = Date.now() - 90 * 24 * 3600 * 1000
           for (const [id, at] of Object.entries(tomb)) if (at < old) delete tomb[id]
           // the app's built-in samples (sample projects, Flicks f1, f2…) come with the app, not the server
+          // the maker's addresses (their CDN keeps files a week) become our kept copies' wherever they appear
+          const index = await libraryItems(env, ctx)
+          const kept = new Map<string, string>()
+          for (const it of index) if (it.saved && typeof it.source === "string" && /^https:\/\//.test(it.source)) kept.set(it.source, `${url.origin}/file/${it.id}${keptExt(it)}`)
+          if (kept.size) {
+            const rewritten = JSON.stringify(v).replace(/https:\/\/[^"\\]+/g, (m) => kept.get(m) ?? m)
+            Object.assign(v, JSON.parse(rewritten))
+          }
           const keep = (x: { id: string; editedAt?: number; sample?: boolean }) => !(tomb[x.id] && tomb[x.id] >= (x.editedAt ?? 0)) && !x.sample && !/^(f\d+|p\d+|sample-p)$/.test(x.id)
           const dropped = (v.projects?.length ?? 0) + (v.flicks?.length ?? 0)
           if (Array.isArray(v.projects)) v.projects = v.projects.filter(keep)
@@ -719,6 +735,15 @@ async function logFlicks(env: Env, path: string, payload: unknown, status: numbe
   const entry = { at: t0, ms: Date.now() - t0, path: `flicks:${path}`, payload, status, request_id: out?.id ? String(out.id) : undefined, error: status < 400 ? undefined : text.slice(0, 600) }
   await put(env, `req:${String(9e12 - t0).padStart(13, "0")}:${crypto.randomUUID().slice(0, 6)}`, JSON.stringify(entry), { expirationTtl: 60 * 60 * 24 * 30 })
 }
+
+/** the kept copy's id for a file by its original address (the maker's CDN), if we have one */
+function keptFor(index: LibraryRecord[], u: string): string | undefined {
+  const bare = u.split("?")[0]
+  const hit = index.find((it) => it.saved && typeof it.source === "string" && (it.source === u || it.source.split("?")[0] === bare))
+  return hit ? `${hit.id}${keptExt(hit)}` : undefined
+}
+/** an extension on a kept file's address, so services that name a download after it get one */
+const keptExt = (it: LibraryRecord) => (it.kind === "video" ? ".mp4" : typeof it.type === "string" && /jpe?g/.test(it.type) ? ".jpg" : typeof it.type === "string" && /webp/.test(it.type) ? ".webp" : ".png")
 
 /** a job's outcome, saved on its library entry the first time it's known */
 async function settle(env: Env, id: string, status: string, raw: string) {
