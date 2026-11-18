@@ -210,6 +210,56 @@ const pickFor = (c, record, run) => (q) => {
 const idle = (v) => !v.busy && !v.question && !v.approve && !v.review && !v.make && !v.assets
 const handedOver = (v) => v.suggestions && !v.busy && !v.drawing
 
+/** Export: the Flick page, and its share page when the Flicks API bakes it. Waits out videos still being made. */
+async function exportFlick(run, record, mark) {
+  const { p, log } = run
+  // a video still on its way blocks export: wait for it (up to 15 minutes)
+  for (let i = 0; i < 180; i++) {
+    const making = await p.evaluate(() => /Generating|Up next|Waiting for your OK|Making /.test([...document.querySelectorAll("figcaption, [data-slide-status], aside")].map((e) => e.innerText).join(" ")) || !!document.querySelector('button[aria-label="Stop"]'))
+    if (!making) break
+    if (i % 12 === 0) log("export: waiting for videos still being made")
+    await p.waitForTimeout(5000)
+  }
+  try {
+    await p.getByRole("button", { name: /^Export$/ }).click()
+    const dialog = p.getByRole("dialog", { name: "Export Flick" })
+    await dialog.waitFor({ timeout: 15000 })
+    record.exportDialog = (await dialog.innerText()).replace(/\s+/g, " ").slice(0, 500)
+    log("export dialog:", record.exportDialog)
+    await run.shot("export-dialog")
+    const go = dialog.getByRole("button", { name: /^Export( anyway)?$/ })
+    if (await go.isDisabled()) throw new Error("Export is blocked: " + record.exportDialog)
+    await go.click()
+    mark("export_pressed")
+    const until = Date.now() + (process.env.LIVE_EXPORT === "1" ? 6 * 60_000 : 60_000)
+    let text = ""
+    while (Date.now() < until) {
+      await p.waitForTimeout(5000)
+      text = await p.evaluate(() => document.body.innerText)
+      if (/flamapp\.live|Export failed|couldn’t be made/.test(text)) break
+      if (process.env.LIVE_EXPORT !== "1" && /flamapp\.ai\/f\//.test(text) && !/Preparing/.test(text)) break
+    }
+    mark("export_done")
+    await run.shot("flick-page")
+    record.flickUrl = p.url()
+    const link = text.match(/\S*flamapp\.live\S*/)?.[0]
+    record.share = link ? `https://${link.replace(/^https?:\/\//, "")}` : null
+    record.exportFailed = /Export failed|couldn’t be made/.test(text) ? (text.match(/(Export failed|This Flick couldn’t be made)[\s\S]{0,300}/)?.[0] ?? "").replace(/\s+/g, " ") : null
+    log(record.share ? `SHARE PAGE ${record.share}` : `no share page (${record.exportFailed ?? "in-app export"})`)
+    if (record.share) {
+      const share = await run.ctx.newPage()
+      await share.goto(record.share, { waitUntil: "networkidle" }).catch(() => {})
+      await share.waitForTimeout(6000)
+      await share.screenshot({ path: path.join(run.out, "share-page.png") })
+      record.sharePageText = (await share.evaluate(() => document.body.innerText).catch(() => "")).replace(/\s+/g, " ").slice(0, 300)
+      await share.close()
+    }
+  } catch (e) {
+    record.notes.push(`export: ${String(e).slice(0, 300)}`)
+    log("EXPORT problem", String(e).slice(0, 200))
+  }
+}
+
 async function runCase(id) {
   const c = CASES[id]
   if (!c) throw new Error(`no case ${id}`)
@@ -335,7 +385,7 @@ async function runCase(id) {
     log("AFTER BUILD typed:", msg)
     await say(p, msg)
     await p.waitForTimeout(4000)
-    const r = await drive(run, policy, (x) => idle(x) && !x.building.some((b) => /Generating|Up next|Waiting/.test(b)), { timeout: 20 * 60_000, label: `after ${i + 1}` })
+    const r = await drive(run, policy, (x) => idle(x) && !x.drawing, { timeout: 20 * 60_000, label: `after ${i + 1}` })
     record.notes.push(`after-build "${msg}": ${r ? `ok, reply: ${(r.lastReply ?? "").replace(/\s+/g, " ").slice(0, 200)}` : "timed out"}`)
     await run.shot(`after-${i + 1}`)
   }
@@ -350,46 +400,7 @@ async function runCase(id) {
   }
 
   // export: the Flick page, and its share page when the Flicks API bakes it
-  if (v) {
-    try {
-      await p.getByRole("button", { name: /^Export$/ }).click()
-      const dialog = p.getByRole("dialog", { name: "Export Flick" })
-      await dialog.waitFor({ timeout: 15000 })
-      record.exportDialog = (await dialog.innerText()).replace(/\s+/g, " ").slice(0, 500)
-      log("export dialog:", record.exportDialog)
-      await run.shot("export-dialog")
-      const go = dialog.getByRole("button", { name: /^Export( anyway)?$/ })
-      if (await go.isDisabled()) throw new Error("Export is blocked: " + record.exportDialog)
-      await go.click()
-      mark("export_pressed")
-      const until = Date.now() + (process.env.LIVE_EXPORT === "1" ? 6 * 60_000 : 60_000)
-      let text = ""
-      while (Date.now() < until) {
-        await p.waitForTimeout(5000)
-        text = await p.evaluate(() => document.body.innerText)
-        if (/flamapp\.live|Export failed|couldn’t be made/.test(text)) break
-        if (process.env.LIVE_EXPORT !== "1" && /flamapp\.ai\/f\//.test(text) && !/Preparing/.test(text)) break
-      }
-      mark("export_done")
-      await run.shot("flick-page")
-      record.flickUrl = p.url()
-      const link = text.match(/\S*flamapp\.live\S*/)?.[0]
-      record.share = link ? `https://${link.replace(/^https?:\/\//, "")}` : null
-      record.exportFailed = /Export failed|couldn’t be made/.test(text) ? (text.match(/(Export failed|This Flick couldn’t be made)[\s\S]{0,300}/)?.[0] ?? "").replace(/\s+/g, " ") : null
-      log(record.share ? `SHARE PAGE ${record.share}` : `no share page (${record.exportFailed ?? "in-app export"})`)
-      if (record.share) {
-        const share = await run.ctx.newPage()
-        await share.goto(record.share, { waitUntil: "networkidle" }).catch(() => {})
-        await share.waitForTimeout(6000)
-        await share.screenshot({ path: path.join(run.out, "share-page.png") })
-        record.sharePageText = (await share.evaluate(() => document.body.innerText).catch(() => "")).replace(/\s+/g, " ").slice(0, 300)
-        await share.close()
-      }
-    } catch (e) {
-      record.notes.push(`export: ${String(e).slice(0, 300)}`)
-      log("EXPORT problem", String(e).slice(0, 200))
-    }
-  }
+  if (v) await exportFlick(run, record, mark)
 
   // a fresh load of the project: the chat and the videos are still there
   try {
@@ -418,7 +429,24 @@ async function runCase(id) {
   return finish(run, { case: id, label: c.label, stages: record.stages, share: record.share ?? null, flickUrl: record.flickUrl ?? null, notes: record.notes, net: record.net.length })
 }
 
+/** EXPORT_ONLY=<project id>: opens a project already built, waits for its videos and exports it */
+async function exportOnly(projectId, name) {
+  const run = await open(name, { real: true })
+  const { p, log } = run
+  const record = { stages: {}, notes: [], net: [] }
+  const mark = (k) => record.stages[k] === undefined && ((record.stages[k] = Math.round((Date.now() - run.t0) / 1000)), log(`STAGE ${k}`))
+  run.state.projectId = projectId
+  await p.goto(new URL(`/p/${projectId}`, p.url()).href, { waitUntil: "networkidle" })
+  await p.waitForTimeout(10000)
+  await run.shot("opened")
+  await exportFlick(run, record, mark)
+  fs.writeFileSync(path.join(run.out, "export.json"), JSON.stringify(record, null, 2))
+  console.log("EXPORTED", name, JSON.stringify({ share: record.share, flickUrl: record.flickUrl, failed: record.exportFailed, notes: record.notes }))
+  await run.b.close()
+}
+
 ;(async () => {
+  if (process.env.EXPORT_ONLY) return exportOnly(process.env.EXPORT_ONLY, process.argv[2] || "export-only")
   const ids = process.argv.slice(2)
   for (const id of ids) {
     try {

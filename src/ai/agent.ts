@@ -1905,7 +1905,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       const seen = new Set<string>()
       let stopped = false
       let nudged = false
-      for (let step = 0; step < 8; step++) {
+      for (let step = 0; step < 14; step++) {
         // let the editor re-render after the last tools, so the state sent is current
         await new Promise((r) => setTimeout(r, 60))
         dropOldImages(msgs.current)
@@ -2034,7 +2034,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         // the user sent something while this step ran: stop here, with every step's result in place
         if (redirect.current) break
         // out of steps with results still unanswered: say so, and offer to carry on
-        if (step === 7) add({ kind: "resume", text: "That was a long one; I paused here." } as Item)
+        if (step === 13) add({ kind: "resume", text: "That was a long one; I paused here." } as Item)
       }
     } catch (e) {
       // a cut-off stream can surface as a network error: what counts is whether it was stopped here
