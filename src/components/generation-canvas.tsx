@@ -1725,7 +1725,7 @@ export function GenerationCanvas({
       : included.some((s) => status(s) !== "done")
       ? [{ text: "Generate videos for every variation before export.", blocking: true }]
       : []),
-    ...(includeRef && !slides[0].thumb ? [{ text: "Add a thumbnail for Variation 1 to export.", blocking: true }] : []),
+    ...(includeRef && !slides[0].thumb ? [{ text: `Add a thumbnail for ${nameOf(slides[0])} to export.`, blocking: true }] : []),
     // the Flicks API bakes at most four videos into one Flick
     ...(liveExport() && included.length > 4 ? [{ text: `A Flick holds up to four variations; this has ${included.length}. Leave some out of the Flick to export.`, blocking: true }] : []),
     ...included.filter(stale).map((s) => ({ text: `${nameOf(s)} was made from an older Variation 1` })),

@@ -224,11 +224,23 @@ async function exportFlick(run, record, mark) {
     // a video that didn't generate: the user presses Try again on its tile (one press, as a user would)
     if ((await go.isDisabled()) && /Generate videos for every variation/.test(record.exportDialog)) {
       await dialog.getByRole("button", { name: "Cancel" }).click()
-      const again = p.getByRole("button", { name: "Try again" }).first()
-      if (await again.isVisible().catch(() => false)) {
+      // an open dialog hides the page behind it from role lookups: wait for it to go
+      await dialog.waitFor({ state: "hidden", timeout: 10000 }).catch(() => {})
+      await p.waitForTimeout(800)
+      const again = p.getByRole("button", { name: "Try again" }).last()
+      const others = p.getByRole("button", { name: /^Make the others/ })
+      if (!(await others.count()) && (await again.count())) {
+        await again.scrollIntoViewIfNeeded()
         await again.click()
         log("pressed Try again on a video that didn't generate")
         record.notes.push("a video didn't generate; pressed Try again once before export")
+        await p.waitForTimeout(6000)
+      }
+      // on a Flick still at the Variation 1 gate, Try again only queues the video: the approval bar asks again
+      if (await others.count()) {
+        log("approval bar after Try again:", (await others.first().innerText()).replace(/\s+/g, " "))
+        await others.first().click()
+        record.notes.push("Try again asked for a second OK on the approval bar (Make the others)")
       }
       await p.waitForTimeout(8000)
       await p.getByRole("button", { name: /^Export$/ }).click()
