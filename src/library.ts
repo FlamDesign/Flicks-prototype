@@ -11,6 +11,19 @@ import { safeSnap } from "@/ai/copy-chat"
 /** A saved point in a project's history: autosaved, or an export (which names the Flick it made). */
 export type Checkpoint<S = unknown> = { n: number; at: number; sig: string; snap: S; name?: string; exported?: { flickId: string; name: string } }
 
+/**
+ * A project keeps its named and exported versions and the latest five others. Every change makes
+ * a version, and each holds the whole canvas, so without a limit one project grew past 500 KB and
+ * the saved library past 4 MB.
+ */
+export const KEPT_VERSIONS = 5
+export function trimVersions<S>(list: Checkpoint<S>[]): Checkpoint<S>[] {
+  const plain = list.filter((v) => !v.name && !v.exported)
+  if (plain.length <= KEPT_VERSIONS) return list
+  const drop = new Set(plain.slice(0, plain.length - KEPT_VERSIONS).map((v) => v.n))
+  return list.filter((v) => !drop.has(v.n))
+}
+
 export type Project = {
   id: string
   name: string
@@ -100,7 +113,7 @@ export const library = {
   },
   /** what the server saved replaces what's here */
   load(saved: { projects: Project[]; flicks: FlickRecord[] }) {
-    set(() => ({ projects: saved.projects, flicks: saved.flicks, synced: true }), true)
+    set(() => ({ projects: saved.projects.map((p) => (p.versions?.length > KEPT_VERSIONS ? { ...p, versions: trimVersions(p.versions) } : p)), flicks: saved.flicks, synced: true }), true)
   },
   /** the server couldn't be reached: what's here is what there is */
   syncFailed() {
@@ -111,6 +124,7 @@ export const library = {
     set((s) => {
       const old = s.projects.find((x) => x.id === p.id)
       const next: Project = { versions: [], exports: [], name: "Untitled project", size: "1080×1080", image: "", ...old, ...p, editedAt: p.editedAt ?? Date.now() }
+      next.versions = trimVersions(next.versions)
       return { ...s, projects: old ? s.projects.map((x) => (x.id === p.id ? next : x)) : [next, ...s.projects] }
     })
   },

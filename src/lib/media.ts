@@ -131,6 +131,26 @@ export async function cutClip(url: string, name: string, start: number, end: num
   }
 }
 
+/**
+ * A video this browser can't play as it is (an iPhone's HEVC, mostly), re-encoded to H.264 MP4 in
+ * the browser when its video hardware can decode it (Safari and Chrome on recent Macs and phones
+ * can; other browsers can't, and this throws). Same frames, same length, no sound.
+ */
+export async function toH264(file: File): Promise<File> {
+  const mb = await import("mediabunny")
+  const input = new mb.Input({ source: new mb.BlobSource(file), formats: mb.ALL_FORMATS })
+  const track = await input.getPrimaryVideoTrack()
+  if (!track || !(await track.canDecode())) throw new Error("This browser can't decode the video.")
+  if (!(await mb.canEncodeVideo("avc"))) throw new Error("This browser can't encode H.264.")
+  const target = new mb.BufferTarget()
+  const output = new mb.Output({ format: new mb.Mp4OutputFormat({ fastStart: "in-memory" }), target })
+  const big = Math.max(track.displayWidth, track.displayHeight) > 1920
+  const conversion = await mb.Conversion.init({ input, output, audio: { discard: true }, video: { codec: "avc", ...(big ? (track.displayWidth >= track.displayHeight ? { width: 1920 } : { height: 1920 }) : {}), bitrate: mb.QUALITY_HIGH } })
+  if (!conversion.isValid) throw new Error("This video can't be converted.")
+  await conversion.execute()
+  return new File([target.buffer!], `${file.name.replace(/\.[^.]+$/, "")}.mp4`, { type: "video/mp4" })
+}
+
 async function fastCut(url: string, name: string, start: number, end: number, onProgress?: (done: number) => void): Promise<File> {
   const mb = await import("mediabunny")
   const blob = await (await fetch(url)).blob()

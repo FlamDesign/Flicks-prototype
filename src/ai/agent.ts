@@ -11,7 +11,7 @@ import type { TemplateRef } from "@/data"
 import { contrast, shotPrompt, type Brand, type Design, type Plan, type PlanVariation, type Shot, type VideoMode } from "@/ai/design"
 import { findSkill, SKILLS } from "@/ai/skills"
 import { loadSaved, save, saver, saveWaitingNow, webSource } from "@/ai/sync"
-import { blobUrl, probeVideo, sameUrl, stillsAt } from "@/lib/media"
+import { blobUrl, probeVideo, sameUrl, stillsAt, toH264 } from "@/lib/media"
 import { compareMotion, motionOfVideo, type Motion } from "@/lib/motion"
 import { elements as elementStore, elementsIn, plainMentions, type FlickElement } from "@/lib/elements"
 const elementsList = () => elementStore.get()
@@ -1098,8 +1098,16 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     // ids in the order added, photos and videos counted apart (for @Image 1, @Video 1)
     const photoIds: string[] = []
     const videoIds: string[] = []
-    for (const f of files) {
-      const url = blobUrl(f)
+    for (let f of files) {
+      let url = blobUrl(f)
+      // a video this browser can't play (an iPhone's HEVC): converted to H.264 here when the browser can
+      if (f.type.startsWith("video/") && !(await probeVideo(url).catch(() => undefined))) {
+        const converted = await toH264(f).catch(() => undefined)
+        if (converted && (await probeVideo(blobUrl(converted)).catch(() => undefined))) {
+          f = converted
+          url = blobUrl(f)
+        }
+      }
       if (!f.type.startsWith("video/")) {
         const it = keep(url, f.name, "upload", kind)
         blocks.push(await imageBlock(f))
@@ -1122,7 +1130,7 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         shows.push(it.poster!)
         videoIds.push(it.id)
       } catch {
-        names.push(`${f.name} (a video this browser can't play, probably HEVC: it is NOT in the project. Tell the user to export it as an H.264 MP4 and add it again; don't plan around it)`)
+        names.push(`${f.name} (a video this browser can't play or convert, probably HEVC: it is NOT in the project. Tell the user to export it as an H.264 MP4 and add it again; don't plan around it)`)
       }
     }
     // two or more of the user's videos in the project: say at once when they can't share a Flick
@@ -2151,11 +2159,23 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   /** a message sent while the chat worked: goes once the turn reaches a safe point */
   const redirect = useRef<{ text: string; files: File[]; mentioned: FlickElement[]; itemId: string } | null>(null)
   const sendRef = useRef<(text: string, files?: File[], mentioned?: FlickElement[], itemId?: string) => Promise<void>>(async () => {})
+  const longTold = useRef("")
   const flushRef = useRef(() => {})
   flushRef.current = () => {
     if (busyRef.current || pending.current.length || !notes.current.some((n) => n.wake)) return
-    const text = notes.current.map((n) => n.text).join("\n")
+    let text = notes.current.map((n) => n.text).join("\n")
     notes.current = []
+    // the last reply ran long or as a list: said once, with the next thing the app tells it
+    const lastSaid = [...itemsRef.current].reverse().find((x) => x.kind === "assistant" && x.text.trim())
+    if (lastSaid && lastSaid.kind === "assistant" && longTold.current !== lastSaid.id) {
+      const body = lastSaid.text.replace(/^Try:.*$/m, "")
+      const sentences = (body.match(/[^.!?\n]+[.!?]+/g) ?? []).length
+      const listed = (body.match(/^\s*(?:[-*•]|\d+\.)\s/gm) ?? []).length
+      if (sentences > 4 || listed > 1) {
+        longTold.current = lastSaid.id
+        text += `\n(App: your last message ran ${sentences} sentences${listed > 1 ? " with a list" : ""}. The voice rule is 3 short sentences at most, no lists, nothing about your own steps. Keep to it from here.)`
+      }
+    }
     msgs.current.push({ role: "user", content: [{ type: "text", text }] })
     void turn()
   }

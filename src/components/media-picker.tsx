@@ -43,7 +43,7 @@ const save = (id: string, url: string, name: string, project?: string) =>
   shareable(url, { name, purpose: "upload", project })
     .then((saved) => sessionUploads.update(id, { saved }))
     .catch(() => {})
-import { MAX_REF_SECONDS, MAX_VIDEO_MB, blobUrl, clock, cutClip, length, isVideoFile, probeVideo, sessionUploads, stillsAt, useSessionUploads, type MediaItem, type PickedMedia } from "@/lib/media"
+import { MAX_REF_SECONDS, MAX_VIDEO_MB, blobUrl, clock, cutClip, length, isVideoFile, probeVideo, sessionUploads, stillsAt, toH264, useSessionUploads, type MediaItem, type PickedMedia } from "@/lib/media"
 import { cn } from "@/lib/utils"
 
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"]
@@ -86,14 +86,24 @@ export function useMediaAdd(onAdd: (items: PickedMedia[]) => void, opts: { proje
     const ok = list.filter((f) => !bad.includes(f) && !big.includes(f))
     const items: MediaItem[] = []
     for (const f of ok) {
-      const url = blobUrl(f)
-      const it: MediaItem = { id: crypto.randomUUID(), kind: isVideoFile(f) ? "video" : "image", name: f.name, url, source: "upload", project: opts.project, created: Date.now(), file: f }
+      let file = f
+      let url = blobUrl(file)
+      // a video this browser can't play as it is (an iPhone's HEVC): converted to H.264 here when the browser can
+      if (isVideoFile(f) && !(await probeVideo(url).catch(() => undefined))) {
+        toast({ title: `Converting ${f.name}`, description: "It isn't H.264, so it's converted here first." })
+        const converted = await toH264(f).catch(() => undefined)
+        if (converted) {
+          file = converted
+          url = blobUrl(file)
+        }
+      }
+      const it: MediaItem = { id: crypto.randomUUID(), kind: isVideoFile(file) ? "video" : "image", name: file.name, url, source: "upload", project: opts.project, created: Date.now(), file }
       if (it.kind === "video") {
         try {
           it.duration = (await probeVideo(url)).duration
           it.poster = URL.createObjectURL((await stillsAt(url, [Math.min(0.5, it.duration / 2)], 480))[0])
         } catch {
-          toast({ kind: "error", title: `${f.name} can’t be played here`, description: "Export it as an H.264 MP4 (not HEVC) and add it again." })
+          toast({ kind: "error", title: `${f.name} can’t be played here`, description: "This browser couldn’t convert it either. Export it as an H.264 MP4 (not HEVC) and add it again." })
           continue
         }
       }

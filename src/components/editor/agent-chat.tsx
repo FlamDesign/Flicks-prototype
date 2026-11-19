@@ -595,7 +595,27 @@ function ImageTile({ item, agent, ctx }: { item: Extract<Item, { kind: "image" }
  * suggestion chips above the composer, never as text.
  */
 const TRY = /\n*^Try:[ \t]*(.+)$/m
-export const withoutTry = (text: string) => text.replace(TRY, "").trimEnd()
+/**
+ * Lines about the chat's own process ("Next I'm reading the storyboard rules", "I'll wake when it
+ * lands", "Confirming with a look") say nothing the user needs: whole sentences that open that way
+ * are dropped from what's shown. Never the only sentence, and never one with a question.
+ */
+const PROCESS = /^(?:next,? i(?:'m|’m| am|'ll|’ll| will)\b|now i(?:'m|’m| am|'ll|’ll| will)\b|i(?:'ll|’ll| will) wake\b|confirming with a look\b|let me (?:check|look|read|confirm|verify)\b|(?:i(?:'m|’m| am) )?(?:reading|loading|opening) the [a-z ]*(?:skill|rules)\b|i(?:'ll|’ll| will) (?:now )?(?:read|load|check|look at|confirm|verify) (?:the|it|that|this)\b)/i
+export const withoutProcess = (text: string) => {
+  const kept = text
+    .split("\n")
+    .map((line) => {
+      if (/^\s*(?:[-*•]|\d+\.|#|\||```)/.test(line)) return line
+      const parts = line.match(/[^.!?]+(?:[.!?]+["”’)]*\s*|$)/g) ?? [line]
+      const left = parts.filter((p) => p.includes("?") || !PROCESS.test(p.trim()))
+      return left.join("").trimEnd()
+    })
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
+  return kept || text
+}
+export const withoutTry = (text: string) => withoutProcess(text.replace(TRY, "").trimEnd())
 export const triesOf = (text: string) => (TRY.exec(text)?.[1] ?? "").split("|").map((t) => t.trim().replace(/\.$/, "")).filter((t) => t.length > 2 && t.length <= 48).slice(0, 2)
 
 /** the chat's own words: paragraphs, bullets and **bold** */
