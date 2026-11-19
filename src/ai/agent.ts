@@ -12,6 +12,7 @@ import { contrast, shotPrompt, type Brand, type Design, type Plan, type PlanVari
 import { findSkill, SKILLS } from "@/ai/skills"
 import { loadSaved, save, saver, saveWaitingNow, webSource } from "@/ai/sync"
 import { blobUrl, probeVideo, sameUrl, stillsAt } from "@/lib/media"
+import { compareMotion, motionOfVideo, type Motion } from "@/lib/motion"
 import { elements as elementStore, elementsIn, plainMentions, type FlickElement } from "@/lib/elements"
 const elementsList = () => elementStore.get()
 
@@ -55,7 +56,7 @@ export type EditorApi = {
   /** a picture of the Flick as viewers see it, for one variation (Variation 1 when not named) */
   shot(variation?: string): Promise<{ blob: Blob; name: string; note: string }>
   /** where it runs, as a size (width×height) and optionally a length */
-  setFormat(size: string, seconds?: number): string
+  setFormat(size: string, seconds?: number, remake?: boolean): string
   updateDesign(d: Design): string
   setBrand(b: Brand): void
   /** one variation: its name, prompt (regenerate), any on-screen field, or values by feed name */
@@ -352,8 +353,8 @@ export const TOOLS: Tool[] = [
   },
   {
     name: "set_format",
-    description: "Set the Flick's size (width×height in pixels) and, only if the user asked, its length. Use it when the user names a size in their own words; a size question (purpose 'size') applies the answer by itself. Videos are made in the closest available shape and cover the frame, centered.",
-    input_schema: { type: "object", properties: { size: { type: "string", description: "e.g. '300×250' or '728×90'" }, seconds: { type: "number", description: "The total length, 4 to 15; only when the user asked for a length. 'Make it 5 seconds long' means 5 in total, not 5 more; add to the current length only when the user says 'longer by' or 'add'." } }, required: ["size"] },
+    description: "Set the Flick's size (width×height in pixels) and, only if the user asked, its length. Works at any time. Before any video exists it just sets them. After videos exist: a new LENGTH always means every video is made again (the app puts a Make card above the composer and changes nothing until the user presses it; tell the user plainly that the videos, the variations too, need to be created again and what it costs). A new SIZE is applied at once and the app tells you whether the videos already made fit it; if they don't clearly fit, look at each variation (view_flick), then tell the user whether they fit or need to be made again, and let them choose. Videos are made in the closest available shape and cover the frame, centered.",
+    input_schema: { type: "object", properties: { size: { type: "string", description: "e.g. '300×250' or '728×90'. To change only the length, give the current size." }, seconds: { type: "number", description: "The total length, 4 to 15; only when the user asked for a length. 'Make it 5 seconds long' means 5 in total, not 5 more; add to the current length only when the user says 'longer by' or 'add'." }, remake: { type: "boolean", description: "Only after a size change whose videos don't fit, when the user chose to make the videos again in the new shape" } }, required: ["size"] },
   },
   {
     name: "request_assets",
@@ -426,7 +427,8 @@ export const TOOLS: Tool[] = [
         source_video_id: { type: "string", description: "'edit' only: the user's video to change" },
         first_frame_id: { type: "string", description: "'animate' only: the user's image (or your edit of it) that the video opens on exactly" },
         last_frame_id: { type: "string", description: "'animate' only, optional: an image the video ends on" },
-        videos_mismatch_ok: { type: "boolean", description: "Only after the user said to go on with their videos even though their sizes or lengths differ" },
+        videos_crop_ok: { type: "boolean", description: "Only after the user, who asked for this Flick size, agreed that their own videos are cropped to fill it" },
+        motion_checked: { type: "boolean", description: "Only after the app said the frames can't settle whether the user's videos move the same way, and you compared their start, middle and end stills and they match" },
         ...variationsFrom,
         variations: { type: "array", items: variationSchema, minItems: 2, maxItems: 5, description: "Every variation in the Flick, in order. The first is the reference video itself (Variation 1): give its name, label, price and link; its prompt can repeat reference_prompt. The others say only what changes from it." },
         design: designSchema,
@@ -1123,7 +1125,11 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         names.push(`${f.name} (a video this browser can't play, probably HEVC: it is NOT in the project. Tell the user to export it as an H.264 MP4 and add it again; don't plan around it)`)
       }
     }
-    return { blocks, line: names.length ? `[Added: ${names.join(", ")}]` : "", shows, photoIds, videoIds }
+    // two or more of the user's videos in the project: say at once when they can't share a Flick
+    let differ = ""
+    const vids = images.current.filter((x) => x.kind === "video" && x.from === "upload")
+    if (videoIds.length && vids.length > 1) differ = clipsDiffer(await clipsOf(vids.map((it) => ({ name: it.name, it }))))
+    return { blocks, line: names.length ? `[Added: ${names.join(", ")}]${differ ? `\n(App: ${differ} This matters only if these videos are meant to be the Flick's variations.)` : ""}` : "", shows, photoIds, videoIds }
   }
 
   /**
@@ -1461,30 +1467,65 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   }
 
   /**
-   * The user's own videos, checked against each other and the Flick: same frame shape and the same
-   * length (half a second either way). Returns what doesn't match, in plain words, or nothing.
+   * The user's own videos for one Flick must be the same size and the same length (a variation switch
+   * is an instant cut at the same moment of every video). Clips are grouped by exact frame size and
+   * by length (a tenth of a second either way, for how files round it); more than one group means
+   * they differ, and the user picks the group to go on with. The rest are left out.
    */
-  const videoMismatch = async (list: { name: string; it: ProjectImage }[]) => {
-    const got = await Promise.all(
+  type Clip = { name: string; id: string; w: number; h: number; s: number; it: ProjectImage }
+  const clipsOf = async (list: { name: string; it: ProjectImage }[]): Promise<Clip[]> =>
+    Promise.all(
       list.map(async ({ name, it }) => {
         if (!it.width || !it.duration) {
           const p = await probeVideo(it.url).catch(() => undefined)
           if (p) Object.assign(it, { width: p.width, height: p.height, duration: p.duration })
         }
-        return { name, w: it.width ?? 0, h: it.height ?? 0, s: it.duration ?? 0 }
+        return { name, id: it.id, w: it.width ?? 0, h: it.height ?? 0, s: it.duration ?? 0, it }
       }),
     )
-    const say = (x: (typeof got)[number]) => `${x.name} is ${x.w}×${x.h}, ${x.s.toFixed(1)} s`
-    const shape = (x: (typeof got)[number]) => (x.h ? x.w / x.h : 0)
-    const problems: string[] = []
-    const [fw, fh] = state().flick_size.split(/[×x]/).map(Number)
-    const flick = fw && fh ? fw / fh : 0
-    if (got.some((x) => Math.abs(shape(x) - shape(got[0])) > 0.02 * shape(got[0]))) problems.push("their frame shapes differ")
-    else if (flick && Math.abs(shape(got[0]) - flick) > 0.02 * flick) problems.push(`they're ${got[0].w}×${got[0].h} but the Flick is ${state().flick_size}`)
-    const lens = got.map((x) => x.s)
-    if (Math.max(...lens) - Math.min(...lens) > 0.5) problems.push("their lengths differ")
-    const text = problems.join("; ")
-    return problems.length ? `${text.charAt(0).toUpperCase()}${text.slice(1)} (${got.map(say).join("; ")}).` : ""
+  const clipGroups = (clips: Clip[]): Clip[][] => {
+    const groups: Clip[][] = []
+    for (const c of clips) {
+      const g = groups.find((g) => g[0].w === c.w && g[0].h === c.h && Math.abs(g[0].s - c.s) <= 0.1)
+      if (g) g.push(c)
+      else groups.push([c])
+    }
+    return groups.sort((a, b) => b.length - a.length)
+  }
+  const groupLine = (g: Clip[]) => `${g[0].w}×${g[0].h}, ${g[0].s.toFixed(1)} s: ${g.map((c) => `${c.name} (${c.id})`).join(", ")}`
+  /** what to tell the user when their clips differ, or nothing when they all match */
+  const clipsDiffer = (clips: Clip[]) => {
+    const groups = clipGroups(clips)
+    if (groups.length < 2) return ""
+    const sizes = new Set(clips.map((c) => `${c.w}×${c.h}`)).size > 1
+    const lens = Math.max(...clips.map((c) => c.s)) - Math.min(...clips.map((c) => c.s)) > 0.1
+    const what = sizes && lens ? "sizes and lengths" : sizes ? "sizes" : "lengths"
+    return `The user's videos have different ${what}, and one Flick takes only videos of the same size and the same length. They fall into ${groups.length} sets: ${groups.map((g, i) => `(${i + 1}) ${groupLine(g)}`).join("; ")}. Tell the user exactly this in plain words (which video is which size and length), then ask which set to go forward with (ask_user, one option per set, labelled by its size and length and the videos in it). The videos outside the chosen set are left out of this Flick: say which. A set of one can still be a Flick: the other variations are then made from it (a storyboard with that video as Variation 1), or the user adds matching videos.`
+  }
+  /** each video's motion, read once from its frames */
+  const motions = new Map<string, Promise<Motion>>()
+  const motionFor = (it: ProjectImage) => {
+    if (!motions.has(it.id)) motions.set(it.id, motionOfVideo(it.url))
+    return motions.get(it.id)!
+  }
+  /**
+   * Same size and length: do they also move the same way? Checked from the frames against the first.
+   * "different" blocks the Flick; "unclear" hands the stills to Claude to judge.
+   */
+  const motionCheck = async (clips: Clip[]) => {
+    const different: string[] = []
+    const unclear: string[] = []
+    try {
+      const first = await motionFor(clips[0].it)
+      for (const c of clips.slice(1)) {
+        const m = compareMotion(first, await motionFor(c.it))
+        if (m.verdict === "different") different.push(c.name)
+        else if (m.verdict === "unclear") unclear.push(c.name)
+      }
+    } catch {
+      return { different, unclear: clips.slice(1).map((c) => c.name) }
+    }
+    return { different, unclear }
   }
 
   /**
@@ -1599,8 +1640,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           return WAIT
         }
         case "set_format": {
-          const r = apiRef.current.setFormat(String(input.size ?? ""), typeof input.seconds === "number" ? input.seconds : undefined)
-          if (!r.startsWith("Error")) add({ kind: "note", text: `Sized the frame to ${String(input.size ?? "")}` })
+          const r = apiRef.current.setFormat(String(input.size ?? "") || state().flick_size, typeof input.seconds === "number" ? input.seconds : undefined, input.remake === true)
+          if (r.startsWith("Size set")) add({ kind: "note", text: `Sized the frame to ${String(input.size ?? "")}` })
           return r
         }
         case "propose_concepts": {
@@ -1643,9 +1684,23 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
           }
           const given = raw.variations.filter((v) => v.video_id)
           if (given.length) {
-            const mismatch = await videoMismatch(given.map((v) => ({ name: v.name, it: byId(v.video_id)! })))
-            if (mismatch && !input.videos_mismatch_ok)
-              return `Not shown: the user's videos don't match. ${mismatch} Tell the user this plainly and ask how to go on (ask_user): replace the odd one(s) with a matching video, or go on anyway (videos are cropped to fill the Flick's frame; a shorter one ends sooner). If they go on, propose the plan again with videos_mismatch_ok true.`
+            const clips = await clipsOf(given.map((v) => ({ name: v.name, it: byId(v.video_id)! })))
+            // same size and same length, or the user picks which set goes forward (no way around it)
+            const differ = clipsDiffer(clips)
+            if (differ) return `Not shown: ${differ} Then propose the plan again with only the chosen set's videos.`
+            // the Flick takes the videos' own size unless the user asked for another
+            const [fw, fh] = state().flick_size.split(/[×x]/).map(Number)
+            const c0 = clips[0]
+            if (c0.w && c0.h && fw && fh && Math.abs(c0.w / c0.h - fw / fh) > 0.02 * (fw / fh) && !input.videos_crop_ok)
+              return `Not shown: the videos are ${c0.w}×${c0.h} and the Flick is ${state().flick_size}. If the user didn't ask for that size, set the Flick to the videos' size (set_format ${c0.w}×${c0.h}) and propose again. If they did ask for it, tell them the videos will be cropped to fill ${state().flick_size} (centered; say what is lost at the sides or top and bottom), get their OK, then propose again with videos_crop_ok true.`
+            // same motion in all of them: the switch is an instant cut at the same moment
+            if (clips.length > 1) {
+              const { different, unclear } = await motionCheck(clips)
+              if (different.length)
+                return `Not shown: the motion differs. ${different.join(", ")} ${different.length > 1 ? "don't" : "doesn't"} move the same way as ${c0.name} (the camera or the subject does something else at the same moment), so switching between them would jump. One Flick needs the same motion in every video, so these can't go into the same Flick. Tell the user which video(s) and why, in plain words, and ask how to go on (ask_user): leave ${different.length > 1 ? "them" : "it"} out, add a replacement that moves like ${c0.name}, or have the app make that variation from ${c0.name} (a storyboard with ${c0.name} as Variation 1 and a prompt for the others; that costs video credits). Don't propose a plan with them as they are.`
+              if (unclear.length && !input.motion_checked)
+                return `Not shown yet: the frames alone can't settle whether ${unclear.join(", ")} move${unclear.length > 1 ? "" : "s"} the same way as ${c0.name}. Look at their stills (start, middle, end; view_image shows them again): at each of the three moments, is the framing the same and the subject in the same place and pose? If yes for all three, propose the plan again with motion_checked true. If not, the motion differs: tell the user which video and at which moment, and ask how to go on as for a motion mismatch (leave it out, replace it, or have the app make that variation). Never pass motion_checked without looking.`
+            }
           }
           // the reference video and what it's made from matter only when Variation 1 is generated
           if (raw.variations[0].video_id) {

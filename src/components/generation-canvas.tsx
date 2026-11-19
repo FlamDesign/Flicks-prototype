@@ -505,11 +505,14 @@ export function GenerationCanvas({
     setUploads((u) => (u.some((x) => x.src === src) ? u : [{ id: crypto.randomUUID(), name: `${name.slice(0, 40)}.jpg`, src, loading: false }, ...u]))
   /** starts one video now (or right after the reference video), charged and logged like the prompt box does */
   /** videos the chat has asked to make: nothing starts until the user presses Make on the docked card */
+  // the size and length videos are made at: the project's, or the one a pressed Make just set
+  const formatNow = useRef({ size: generation.size, duration: generation.duration })
+  formatNow.current = { size: generation.size, duration: generation.duration }
   const [proposals, setProposals] = useState<VideoProposal[]>([])
   const proposalsNow = useRef(proposals)
   proposalsNow.current = proposals
-  const propose = (p: Omit<VideoProposal, "id" | "cost" | "at">) => {
-    const next: VideoProposal = { ...p, id: crypto.randomUUID(), cost: VIDEO_COST, at: Date.now() }
+  const propose = (p: Omit<VideoProposal, "id" | "cost" | "at"> & { cost?: number }) => {
+    const next: VideoProposal = { ...p, id: crypto.randomUUID(), cost: p.cost ?? VIDEO_COST, at: Date.now() }
     // one proposal per variation: a newer one replaces it
     setProposals((list) => ((proposalsNow.current = [...list.filter((x) => x.slideId !== p.slideId), next]), proposalsNow.current))
     return next
@@ -517,7 +520,12 @@ export function GenerationCanvas({
   const makeProposed = (id: string) => {
     const p = proposalsNow.current.find((x) => x.id === id)
     if (!p) return false
-    const ok = startVideo(p.slideId, p.prompt, { keep_seconds: p.keep_seconds })
+    // a new length (or size) asked for after videos exist takes effect here, with the user's press
+    if (p.format) {
+      formatNow.current = { size: p.format.size ?? formatNow.current.size, duration: p.format.duration ?? formatNow.current.duration }
+      onFormat?.(formatNow.current.size, p.format.duration)
+    }
+    const ok = startVideo(p.slideId, p.prompt, { keep_seconds: p.keep_seconds, cost: p.cost })
     if (!ok) return false
     setProposals((list) => ((proposalsNow.current = list.filter((x) => x.id !== id)), proposalsNow.current))
     if (agentMode) agent.notify(`(App: the user pressed Make: ${p.name} is being made with the change you proposed. Nothing to reply.)`, false)
@@ -528,9 +536,10 @@ export function GenerationCanvas({
     setProposals((list) => ((proposalsNow.current = list.filter((x) => x.id !== id)), proposalsNow.current))
     if (p && agentMode) agent.notify(`(App: the user chose Not now for the ${p.name} video; it stays as it is. Nothing to reply.)`, false)
   }
-  const startVideo = (id: string, prompt: string, opts?: { keep_seconds?: number }) => {
-    if (dev.credits < VIDEO_COST) return void onGetCredits()
-    setDev((d) => ({ credits: d.credits - VIDEO_COST }))
+  const startVideo = (id: string, prompt: string, opts?: { keep_seconds?: number; cost?: number }) => {
+    const cost = opts?.cost ?? VIDEO_COST
+    if (dev.credits < cost) return void onGetCredits()
+    setDev((d) => ({ credits: d.credits - cost }))
     const now = Date.now()
     const main = slidesNow.current[0]
     const startedAt = id === "main" ? now : main.startedAt && now < main.startedAt + ms ? main.startedAt + ms + 1 : now
@@ -847,15 +856,59 @@ export function GenerationCanvas({
           : `${name}: the video's frame couldn't be read just now, so the frame behind the design is its thumbnail or a stand-in, not the video`
       return { blob: shot.blob, name, note }
     },
-    setFormat(size, seconds) {
+    setFormat(size, seconds, remake) {
       const m = size.match(/^\s*(\d{2,4})\s*[x×]\s*(\d{2,4})\s*$/i)
       if (!m) return "Error: give the size as width×height in pixels, e.g. 300×250."
       const [w, h] = [Number(m[1]), Number(m[2])]
       if (w < 50 || h < 50 || w > 4000 || h > 4000) return "Error: each side must be 50 to 4000 pixels."
-      if (slidesNow.current[0].startedAt) return "Error: the videos are already made; the size can't change now."
       const len = seconds ? Math.max(4, Math.min(15, Math.round(seconds))) : undefined
-      onFormat?.(`${w}×${h}`, len)
-      return `Size set to ${w}×${h}${len ? `, ${len} s` : ""}. Videos are made in ${videoAspectOf(`${w}×${h}`)} (the closest shape the video model makes) and cover the frame, centered; a little may be cropped at the edges.`
+      const next = `${w}×${h}`
+      const list = slidesNow.current
+      const made = list.filter((x) => x.startedAt || x.job)
+      // nothing made yet: the size and length are free
+      if (!made.length) {
+        onFormat?.(next, len)
+        return `Size set to ${next}${len ? `, ${len} s` : ""}. Videos are made in ${videoAspectOf(next)} (the closest shape the video model makes) and cover the frame, centered; a little may be cropped at the edges.`
+      }
+      if (list.some((x) => x.job)) return "Error: a video is being made right now; change the size or length once it has landed."
+      const wasLen = generation.duration ?? 8
+      const lenChanged = len !== undefined && len !== wasLen
+      const sizeChanged = next !== generation.size
+      if (!lenChanged && !sizeChanged) return `Already ${next}, ${wasLen} s.`
+      // the user's own videos can't be made again by the app
+      const own = list.filter((x) => x.startedAt && (!x.used?.prompt || /^The user's own video/.test(x.used.prompt)))
+      const canMake = list[0].used?.prompt && !own.some((x) => x.id === "main")
+      const others = list.slice(1).filter((x) => isMadeVideo(x.video)).length
+      // what one video costs at the new size and length
+      const each = videoCost(next, len ?? wasLen)
+      const total = (1 + others) * each
+      const proposeAgain = (why: string, format: { size?: string; duration?: number }) => {
+        propose({ slideId: "main", name: nameOfSlide(list[0]), prompt: list[0].used!.prompt, cost: each, change: `${why} The video needs to be made again${others ? ", and so do the variations" : ""}.`, format })
+        agent.note(`${why} The videos need to be made again`)
+      }
+      // a new length always means new videos: nothing changes until the user presses Make
+      if (lenChanged) {
+        if (!canMake) return `Not changed: the length can't change from ${wasLen} s to ${len} s here, because ${own.length === made.length ? "these are the user's own videos" : "Variation 1 is the user's own video"} and the app can't make it again. Tell the user plainly: a different length needs videos of that length. They can add new clips of ${len} s, or keep ${wasLen} s.${sizeChanged ? " The size was not changed either; call set_format again with only the size if they still want it." : ""}`
+        proposeAgain(`Length ${wasLen} s → ${len} s${sizeChanged ? `, size ${generation.size} → ${next}` : ""}.`, { duration: len, ...(sizeChanged ? { size: next } : {}) })
+        return `Not changed yet: a new length means every video is made again (${1 + others} video${others ? "s" : ""}, ${total} credits in all: ${nameOfSlide(list[0])} first for ${each}, then the other${others > 1 ? "s" : ""} after the user approves it). A Make card is now above the composer; the length${sizeChanged ? " and size change" : " changes"} and the first video starts only when the user presses Make there. Tell the user exactly this in one or two short sentences: the videos will need to be created again, the variations too, what it costs, and that nothing changes until they press Make. Don't ask them to confirm in words.`
+      }
+      // a new size: do the videos already made fit it?
+      const ratio = (a: string) => { const [x, y] = a.split(":").map(Number); return x / y }
+      const was = videoAspectOf(generation.size)
+      const now = videoAspectOf(next)
+      const visible = Math.min(ratio(was) / (w / h), (w / h) / ratio(was))
+      const cut = ratio(was) > w / h ? "left and right" : "top and bottom"
+      const lost = Math.round((1 - visible) * 100)
+      if (remake) {
+        if (!canMake) return "Error: these are the user's own videos; the app can't make them again in another shape. They stay cropped, or the user adds videos in the new shape."
+        onFormat?.(next)
+        proposeAgain(`Size ${generation.size} → ${next}: the videos are remade in ${now}.`, { size: next })
+        return `Size set to ${next}. A Make card is above the composer: every video is made again in ${now} (${total} credits in all, ${nameOfSlide(list[0])} first) only when the user presses Make. Say so in one line.`
+      }
+      onFormat?.(next)
+      if (was === now || lost <= 10)
+        return `Size set to ${next}. The videos already made fit it: they are ${was}, the same shape the video model would make for ${next}${lost > 0 ? ` (about ${lost}% is cropped at the ${cut})` : ""}. Nothing needs to be made again. Tell the user that in one line. The design may need re-arranging for the new frame: check it.`
+      return `Size set to ${next}, and the videos are NOT made again yet. They were made in ${was}; the new frame shows about ${100 - lost}% of each, cropped at the ${cut} (${lost}% is cut off). Evaluate before you answer: look at every variation in the new frame (view_flick). If the subject, the product and the action are fully inside and it reads well, tell the user the videos fit the new size, say what the crop loses, and that nothing needs to be made again. If something that matters is cut off or cramped, tell the user what is lost and ask (ask_user): keep the videos cropped (no cost), make them again in ${now} (${canMake ? `${total} credits, ${nameOfSlide(list[0])} first; then call set_format with the same size and remake true` : "not possible for the user's own videos: they would add new ones"}), or go back to ${generation.size}. The design also needs re-arranging for the new frame.`
     },
     approveReference() {
       const main = slidesNow.current[0]
@@ -1576,7 +1629,7 @@ export function GenerationCanvas({
       // images that only live in this page go to the server first, so the video model can open them
       const share = (u?: string) => (u ? shareable(u).catch(() => undefined) : Promise.resolve(undefined))
       Promise.all([share(plan.image), share(plan.endImage), Promise.all((plan.images ?? []).map(share)), Promise.all((plan.videos ?? []).map(share)), share(plan.video)]).then(([image, endImage, images, videos, video]) =>
-      generateVideo({ ...plan, image, endImage, video, images: images.filter((x): x is string => !!x), videos: videos.filter((x): x is string => !!x), aspect: videoAspectOf(generation.size), seconds: generation.duration ?? 8, resume, onId: (id) => commitSlides(slidesNow.current.map((x) => (mine(x) && x.job ? { ...x, job: { ...x.job, id } } : x))), meta: { project: title, variation: slideName(sl, slidesNow.current.indexOf(sl)), purpose: "video", chat: agentMode } }, (status) =>
+      generateVideo({ ...plan, image, endImage, video, images: images.filter((x): x is string => !!x), videos: videos.filter((x): x is string => !!x), aspect: videoAspectOf(formatNow.current.size), seconds: formatNow.current.duration ?? 8, resume, onId: (id) => commitSlides(slidesNow.current.map((x) => (mine(x) && x.job ? { ...x, job: { ...x.job, id } } : x))), meta: { project: title, variation: slideName(sl, slidesNow.current.indexOf(sl)), purpose: "video", chat: agentMode } }, (status) =>
         commitSlides(slidesNow.current.map((x) => (mine(x) && x.job ? { ...x, job: { ...x.job, status } } : x))),
       )).then(
         async ({ url, poster }) => {
@@ -1696,7 +1749,7 @@ export function GenerationCanvas({
       proposals.map((p) => {
         const first = p.slideId === "main"
         const rest = first ? slidesNow.current.slice(1).filter((x) => isMadeVideo(x.video) || x.job) : []
-        return { id: p.id, name: p.name, change: p.change ?? p.prompt, cost: p.cost, make: () => void makeProposed(p.id), dismiss: () => dropProposed(p.id), first, others: rest.length ? listNames(rest.map(nameOfSlide)) : undefined, othersCost: rest.length * VIDEO_COST }
+        return { id: p.id, name: p.name, change: p.change ?? p.prompt, cost: p.cost, make: () => void makeProposed(p.id), dismiss: () => dropProposed(p.id), first, others: rest.length ? listNames(rest.map(nameOfSlide)) : undefined, othersCost: rest.length * p.cost }
       }),
     issues: () => publishIssues.filter((x) => !x.blocking).map((x) => x.text),
     progress: () => {
@@ -2355,7 +2408,7 @@ function ZoomTool({ label, onClick, disabled, children }: { label: string; onCli
 }
 
 /** a video the chat asked for, waiting for the user's Make */
-type VideoProposal = { id: string; slideId: string; name: string; prompt: string; change?: string; keep_seconds?: number; cost: number; at: number }
+type VideoProposal = { id: string; slideId: string; name: string; prompt: string; change?: string; keep_seconds?: number; cost: number; at: number; /** a new size or length that takes effect when the user presses Make */ format?: { size?: string; duration?: number } }
 
 
 function useClock(deadlines: number[]) {
