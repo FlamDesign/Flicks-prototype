@@ -1102,6 +1102,10 @@ function ChatCardsDemo() {
       label: "Docked approvals (above the composer): Variation 1 review, a proposed remake",
       node: <ApprovalDock agent={fakeAgent} ctx={{ ...chatCtx, review: { needed: true, approve: () => {}, change: () => {}, name: "Lime", others: "Mango and Berry", count: 2, cost: 96 }, proposals: () => [{ id: "p1", name: "Lime", change: "Darker background, the can lit from the side", cost: 48, make: () => {}, dismiss: () => {}, first: true, others: "Mango and Berry", othersCost: 96 }] }} poster={GENERATED_VIDEOS[1].poster} />,
     },
+    {
+      label: "Docked: a video that didn’t generate (Try again), and a new length that needs the videos made again",
+      node: <ApprovalDock agent={fakeAgent} ctx={{ ...chatCtx, videos: () => [{ name: "Paris", state: "empty", failed: "The video is taking too long. Try again checks whether it has finished.", retry: () => {} }], proposals: () => [{ id: "p2", name: "Lime", change: "Length 8 s → 6 s. The video needs to be made again, and so do the variations.", cost: 36, make: () => {}, dismiss: () => {}, first: true, others: "Mango and Berry", othersCost: 72 }] }} />,
+    },
     { label: "Carry on (after a reload, or a long reply)", node: <AgentItemView item={it({ kind: "resume", text: "That was a long one; I paused here." })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Brand", node: <AgentItemView item={it({ kind: "brand", brand: { name: "Lumen", primary_color: "#ea580c", text_color: "#ffffff", font: "Montserrat", tone: "Bold" } })} agent={fakeAgent} ctx={chatCtx} /> },
     { label: "Storyboard (frames)", node: <AgentItemView item={it({ kind: "plan", toolId: "p", plan: demoPlan, state: "open", frames: [4, 5, 6].map((i) => GENERATED_VIDEOS[i].poster) })} agent={fakeAgent} ctx={chatCtx} /> },

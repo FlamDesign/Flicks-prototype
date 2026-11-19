@@ -21,6 +21,7 @@ export function ExportControl({
   last,
   busy,
   onExport,
+  onFix,
 }: {
   title: string
   issues: Issue[]
@@ -34,6 +35,8 @@ export function ExportControl({
   /** an export from this project is still running */
   busy?: boolean
   onExport: (name: string) => void
+  /** hands the listed issues to the chat to fix (closes the dialog) */
+  onFix?: (issues: string[]) => void
 }) {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState(title)
@@ -79,6 +82,11 @@ export function ExportControl({
           </div>
 
           {issues.length > 0 && <Issues issues={issues} />}
+          {issues.length > 0 && onFix && (
+            <Button variant="outline" size="sm" className="self-start" onClick={() => (setOpen(false), onFix(issues.map((x) => x.text)))}>
+              Fix in chat
+            </Button>
+          )}
           {liveExport() && <p className="text-xs text-muted-foreground">The share page plays the videos with the variation switch. The headline, buttons, labels and prices from the canvas aren’t on it yet.</p>}
           
           <DialogFooter>

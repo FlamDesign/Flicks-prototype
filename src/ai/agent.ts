@@ -1675,6 +1675,13 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         }
         case "request_assets": {
           const kinds = (input.kinds as string[]) ?? []
+          // the user skipped a request for files and hasn't written since: asking again reads as not listening
+          {
+            const list = itemsRef.current
+            const lastUser = list.map((x) => x.kind).lastIndexOf("user")
+            const skipped = list.slice(lastUser + 1).some((x) => x.kind === "assets" && x.done === "skipped")
+            if (skipped) return "Not shown: the user skipped adding files a moment ago. Don't ask again in this stretch: go on without them (say in one line what you'll use instead)."
+          }
           const ways = (input.ways as AssetWay[] | undefined) ?? (kinds.includes("product") ? ["photos", "links", "names"] : ["photos"])
           const itemId = add({ kind: "assets", toolId: u.id, message: String(input.message ?? "Add images"), kinds, ways })
           pending.current.push({ toolId: u.id, itemId })

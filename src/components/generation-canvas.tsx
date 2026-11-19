@@ -1405,9 +1405,17 @@ export function GenerationCanvas({
         for (let j = i + 1; j < boxes.length; j++) {
           const A = boxes[i].b
           const B = boxes[j].b
-          if (A.l < B.r - 0.5 && A.r > B.l + 0.5 && A.t < B.b - 0.5 && A.b > B.t + 0.5) hits.push(`${label(boxes[i].e)} and ${label(boxes[j].e)}`)
+          if (A.l < B.r - 0.5 && A.r > B.l + 0.5 && A.t < B.b - 0.5 && A.b > B.t + 0.5) {
+            // where each one is, and the smallest move that clears it: enough to fix every clash in one pass
+            const at = (b: typeof A) => `x ${Math.round(b.l)} to ${Math.round(b.r)}, y ${Math.round(b.t)} to ${Math.round(b.b)}`
+            const lower = B.t >= A.t ? boxes[j] : boxes[i]
+            const upper = lower === boxes[j] ? boxes[i] : boxes[j]
+            const down = Math.ceil(upper.b.b - lower.b.t + 1.5)
+            const room = lower.b.b + down <= 100
+            hits.push(`${label(boxes[i].e)} [${at(A)}] and ${label(boxes[j].e)} [${at(B)}]: ${room ? `move ${label(lower.e)} down ${down}` : `move ${label(upper.e)} up ${Math.ceil(upper.b.b - lower.b.t + 1.5)}, or make one smaller`} (% of the frame)`)
+          }
         }
-      check(!hits.length, "Nothing overlaps", `Overlapping: ${hits.slice(0, 4).join("; ")}.`)
+      check(!hits.length, "Nothing overlaps", `Overlapping (${hits.length}; fix them all in one reply, then review once): ${hits.slice(0, 8).join("; ")}.`)
       const out = boxes.filter(({ e, b }) => e.kind !== "strip" && (b.l < -0.5 || b.r > 100.5 || b.t < -0.5 || b.b > 100.5)).map(({ e }) => label(e))
       check(!out.length, "Everything is inside the frame", `Outside the frame: ${out.join(", ")}.`)
       // buttons: readable and going somewhere
@@ -2015,6 +2023,7 @@ export function GenerationCanvas({
             last={lastFlick && { name: lastFlick.name, at: lastFlick.editedAt }}
             busy={exportBusy}
             onExport={exportFlick}
+            onFix={agentMode && live ? (list) => agent.send(`Fix these before I export: ${list.join(" ")}`) : undefined}
           />
         </div>
       </header>

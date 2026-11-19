@@ -1259,7 +1259,9 @@ function BuildCard({ ctx, agent }: { ctx: AgentCtx; agent: Agent }) {
 export function ApprovalDock({ agent, ctx, poster }: { agent: Agent; ctx: AgentCtx; poster?: string }) {
   const proposals = ctx.proposals?.() ?? []
   const review = !!ctx.review?.needed
-  if (!review && !proposals.length) return null
+  // a video that didn't generate: its Try again stays in reach here, however far up the build card has scrolled
+  const failed = (ctx.videos?.() ?? []).filter((v) => v.failed && v.retry && v.state !== "done")
+  if (!review && !proposals.length && !failed.length) return null
   return (
     <div role="region" aria-label="Waiting for you" className="flex flex-col gap-1.5">
       {review && (
@@ -1289,6 +1291,17 @@ export function ApprovalDock({ agent, ctx, poster }: { agent: Agent; ctx: AgentC
           </div>
         </div>
       )}
+      {failed.map((v) => (
+        <div key={v.name} role="group" aria-label={`${v.name} didn’t generate`} className="flex items-center gap-2 rounded-xl bg-destructive/10 p-2.5 ring-1 ring-destructive/30 animate-in fade-in-0 slide-in-from-bottom-1">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium leading-snug">{v.name} didn’t generate</p>
+            <p className="truncate text-xs leading-snug text-muted-foreground" title={v.failed}>{v.failed} Credits refunded.</p>
+          </div>
+          <Button size="sm" variant="outline" onClick={v.retry}>
+            Try again · {ctx.videoCost.toLocaleString("en-US")}
+          </Button>
+        </div>
+      ))}
       {proposals.map((p) => (
         <div key={p.id} role="group" aria-label={`Make ${p.name}`} className="flex flex-col gap-2 rounded-xl bg-brand/10 p-2.5 ring-1 ring-brand/30 animate-in fade-in-0 slide-in-from-bottom-1">
           <div className="min-w-0">
