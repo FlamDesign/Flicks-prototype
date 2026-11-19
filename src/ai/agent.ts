@@ -2450,11 +2450,15 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   // files that only live in this browser are saved by their server address, so they still open after a reload
   const lasting = (i: ProjectImage): ProjectImage => ({ ...i, url: /^blob:/.test(i.url) ? (sharedNow(i.url) ?? i.url) : i.url, ...(i.poster && /^blob:/.test(i.poster) ? { poster: sharedNow(i.poster) ?? i.poster } : {}) })
   /** an image job from before a reload: when it's done it shows and joins the project's images */
-  const resumeImage = (itemId: string, job: string, target?: string) =>
+  const resumeImage = (itemId: string, job: string, target?: string, purpose?: string) =>
     pollImage(job, undefined, (status) => patch(itemId, { status } as Partial<Item>)).then(
       (url) => {
         keep(url, target ? `${target} image` : "Image", "generated")
-        patch(itemId, { state: "done", url } as Partial<Item>)
+        // it lands where it was headed, as it would have without the reload: a thumbnail on its variation, a canvas image on the canvas
+        let placed = false
+        if (purpose === "thumbnail" && target) placed = !apiRef.current.setThumbnail(target, url).startsWith("Error")
+        if (purpose === "canvas") placed = !apiRef.current.addImageToCanvas(url).startsWith("Error")
+        patch(itemId, { state: "done", url, placed } as Partial<Item>)
       },
       (e) => patch(itemId, e instanceof AiError && e.code === "stopped" ? ({ state: "stopped" } as Partial<Item>) : ({ state: "failed", error: e instanceof Error ? e.message : "The image failed." } as Partial<Item>)),
     )
@@ -2542,7 +2546,14 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
               if (r !== undefined && x.kind === "plan" && x.state === "open") return { ...x, state: /^Approved/.test(r) ? ("approved" as const) : ("skipped" as const) }
               return x.kind === "image" && x.state === "working" && !x.job ? { ...x, state: "stopped" as const } : x
             })
-            for (const x of list) if (x.kind === "image" && x.state === "working" && x.job) resumeImage(x.id, x.job, x.target)
+            for (const x of list) if (x.kind === "image" && x.state === "working" && x.job) resumeImage(x.id, x.job, x.target, x.purpose)
+            // a thumbnail that was drawn but never reached its variation (the page closed in between): placed now
+            setTimeout(() => {
+              const blank = new Set(apiRef.current.state().videos.filter((v) => !v.has_thumbnail).map((v) => v.name.trim().toLowerCase()))
+              const latest = new Map<string, string>()
+              for (const x of list) if (x.kind === "image" && x.state === "done" && x.purpose === "thumbnail" && x.target && x.url) latest.set(x.target.trim().toLowerCase(), x.url)
+              for (const [name, url] of latest) if (blank.has(name)) apiRef.current.setThumbnail(name, url)
+            }, 1500)
             // the page closed mid-turn, with the user's message (or a step's results) unanswered
             resumeDismissed.current = !!saved.resumeDismissed
             const midReply = saved.msgs.at(-1)?.role === "user" && !pending.current.length

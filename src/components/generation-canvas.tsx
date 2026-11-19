@@ -30,7 +30,7 @@ import { CanvasStage } from "@/components/editor/canvas-stage"
 import { ElementToolbar, ToolbarGrip } from "@/components/editor/element-toolbar"
 import { useAgent, type EditorApi, type ElementSpec } from "@/ai/agent"
 import { boxOf, buildDesign, color as colorOf, contrast, describeDesign, elementFor, fontName, freeY, headlineLimit, feedOfField, FIELD_FEED, FIELDS, patchDesign, restack, type Brand, type Field } from "@/ai/design"
-import { cancelJob, generateVideo, isLive, posterOf, shareable, useAiConfig, videoAspectOf, type VideoInput } from "@/ai/client"
+import { AiError, cancelJob, generateVideo, isLive, posterOf, shareable, useAiConfig, videoAspectOf, type VideoInput } from "@/ai/client"
 import { BAKE_MS, bakeRequest, durableElements, liveExport, startBake } from "@/ai/export"
 import { loadLibrary, nameOf as libraryName } from "@/lib/library"
 import { listNames } from "@/lib/format"
@@ -161,6 +161,9 @@ export function GenerationCanvas({
   // a new project is "Untitled project" until the chat names it (with the storyboard)
   const [title, setTitle] = useState(() => generation.copy?.title ?? generation.resume?.title ?? "")
   useEffect(() => void (document.title = `${title || "Untitled project"} · Flicks`), [title])
+  // until the storyboard names it, a chat project carries the first words of its brief, so one that
+  // stops early is still findable in Projects
+  const briefTitle = useRef(false)
   // Preview hides every panel and plays the Flick on the canvas as viewers get it
   const [mode, setMode] = useState<"design" | "preview">("design")
   const previewing = mode === "preview"
@@ -1572,9 +1575,18 @@ export function GenerationCanvas({
       const key = `${sl.id}:${sl.startedAt}`
       if (jobs.current.has(key)) continue
       // a job from before a reload: keep checking it (one that never got an id is lost)
-      if (sl.job && !sl.job.id && sl.job.status !== "waiting") continue
       const mine = (x: Slide) => x.id === sl.id && x.startedAt === sl.startedAt
       const patchJob = (p: Partial<Slide>) => commitSlides(slidesNow.current.map((x) => (mine(x) ? { ...x, ...p } : x)))
+      if (sl.job && !sl.job.id && sl.job.status !== "waiting") {
+        // started, then the page closed before the video service answered: after two minutes it's
+        // not coming, so it goes back to not started (refunded) with Try again, instead of spinning forever
+        if (Date.now() - sl.job.since > 120_000) {
+          jobs.current.add(key)
+          setDev((d) => ({ credits: d.credits + VIDEO_COST }))
+          patchJob({ job: undefined, startedAt: undefined, video: undefined, prompt: sl.used.prompt, used: undefined, failed: { reason: "It didn't start before the page closed.", tries: sl.failed?.tries ?? 0 } })
+        }
+        continue
+      }
       // variations are made from the finished reference video (they copy its motion, camera and timing),
       // so they wait for it
       const fromRef = sl.id !== "main" && sl.used.fromReference
@@ -1647,7 +1659,9 @@ export function GenerationCanvas({
           const name = slideName(sl, slidesNow.current.findIndex(mine))
           const reason = e instanceof Error ? e.message : "The video failed."
           const tries = (sl.failed?.tries ?? 0) + 1
-          patchJob({ job: undefined, startedAt: undefined, video: undefined, prompt: sl.used?.prompt, used: undefined, failed: { reason, tries } })
+          // a wait that ran out isn't a failed video: its job may still finish, so its id stays and Try again picks it up
+          const late = e instanceof AiError && e.code === "video_timeout" ? slidesNow.current.find(mine)?.job?.id : undefined
+          patchJob({ job: undefined, startedAt: undefined, video: undefined, prompt: sl.used?.prompt, used: undefined, failed: { reason, tries, ...(late ? { jobId: late } : {}) } })
           // in the chat the build card's tile says it (with Try again); a toast would say it twice
           if (!agentMode) toast({ title: `${name} didn’t generate`, description: `${reason} Credits refunded.` })
           // the chat hears about it: a variation's first failure, it retries once with a gentler change; after that it asks
@@ -1701,28 +1715,52 @@ export function GenerationCanvas({
     const sl = slidesNow.current.find((x) => x.id === slideId)
     if (!sl?.failed || sl.job) return
     // the failure stays noted until a try succeeds, so the chat's retry count carries on
-    startVideo(slideId, sl.prompt ?? "")
+    const late = sl.failed.jobId
+    // other variations were already made from this Variation 1, so it was approved: Try again is the press, no second OK
+    const main = slidesNow.current[0]
+    if (slideId !== "main" && isMadeVideo(main.video) && !main.job && main.approvedRef !== main.startedAt && slidesNow.current.some((x) => x.id !== "main" && isMadeVideo(x.video) && (x.startedAt ?? 0) > (main.startedAt ?? 0)))
+      commitSlides(slidesNow.current.map((x, i) => (i === 0 ? { ...x, approvedRef: x.startedAt } : x)))
+    if (!startVideo(slideId, sl.prompt ?? "")) return
+    // its earlier video ran past the wait: that job is checked first (it may be finished), no new one started
+    if (late) commitSlides(slidesNow.current.map((x) => (x.id === slideId ? { ...x, job: { status: "in_progress", since: Date.now(), id: late }, failed: x.failed ? { reason: x.failed.reason, tries: x.failed.tries } : undefined } : x)))
   }
-  // every variation is made (this session watched them being made): wake the chat once, for a final
-  // check of every variation and the hand-over
-  const sawVariations = useRef("")
+  // every variation is made: wake the chat once for a final check of every variation and the
+  // hand-over. Once per set of videos, remembered on the project, so it still happens when the tab
+  // was closed while the last video landed (it runs on the next open). Projects finished before
+  // this was remembered (Nov 20, 2026) are left alone.
+  const CHECK_FROM = Date.UTC(2026, 10, 20)
   const toldDone = useRef("")
   const batch = slides.map((x) => x.startedAt ?? 0).join(",")
-  if (agentMode && slides.slice(1).some((x) => x.job && x.job.status !== "waiting")) sawVariations.current = batch
   const allMade = slides.length > 1 && slides.every((x) => !x.job && isMadeVideo(x.video)) && mainNow.approvedRef === mainNow.startedAt
+  const checkDue = agentMode && live && allMade && mainNow.checked !== batch && Math.max(...slides.map((x) => x.startedAt ?? 0)) > CHECK_FROM
+  const exportIssues = useRef<string[]>([])
   useEffect(() => {
-    if (!agentMode || !live || !allMade || toldDone.current === batch || sawVariations.current !== batch) return
+    // the chat must be back from the server first (a project with no chat has no one to check it)
+    if (!checkDue || toldDone.current === batch || !agent.items.length || agent.busy) return
     toldDone.current = batch
-    agent.notify("(App: every variation is made. Check them once: view_flick with variation 'all' (one call), fix only real clashes (text over faces or the product, the strip over the action), and make sure each has its label and link. Then hand over in two short lines at most: what's ready and the one thing still worth doing, nothing about what was checked.)")
+    commitSlides(slidesNow.current.map((x, i) => (i === 0 ? { ...x, checked: batch } : x)))
+    const found = exportIssues.current
+    agent.notify(
+      `(App: every variation is made. Check them once: view_flick with variation 'all' (one call), fix only real clashes (text over faces or the product, the strip over the action), and make sure each has its label, link and thumbnail. ${found.length ? `The export check finds these right now, so fix what you can and name what's left: ${found.join("; ")}.` : "The export check finds nothing wrong right now."} Then hand over in two short lines at most: what's ready and the one thing still worth doing, nothing about what was checked. Say only what is true on the canvas now: never "ready" for something the export check still lists.)`,
+    )
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allMade, batch])
+  }, [checkDue, batch, agent.items.length > 0, agent.busy])
   // the composer in chat mode: talk to the chat, or write a video's prompt yourself
   const chatting = true
   // planning: nothing generated yet, so no editor tools; just the chat and a live preview
   const planning = agentMode && !slides[0].startedAt
   // storyboard mock-ups before any video exists: the project's reference pictures, else neutral frames
   const samplePosters = [...(generation.refs ?? []).filter((r) => !r.failed).map((r) => r.url), ...PLACEHOLDER_FRAMES]
+  const firstSaid = agentMode && !title ? agent.items.find((x) => x.kind === "user")?.text : undefined
+  useEffect(() => {
+    if (!firstSaid || briefTitle.current) return
+    briefTitle.current = true
+    const words = firstSaid.replace(/https?:\/\/\S+/g, "").replace(/[^\p{L}\p{N}\s'&-]/gu, " ").trim().split(/\s+/).filter(Boolean).slice(0, 6).join(" ")
+    if (words.length > 2) setTitle(words.charAt(0).toUpperCase() + words.slice(1, 48))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firstSaid])
   const agentCtx: AgentCtx = {
+    settled: !slides.some((x) => x.job) && !checkDue,
     videoCost: VIDEO_COST,
     credits: dev.credits,
     addToCanvas: (u) => void agentApi.addImageToCanvas(u),
@@ -1776,9 +1814,9 @@ export function GenerationCanvas({
     ...(variationsDone < 2
       ? [{ text: "Create at least two variations to export.", blocking: true }]
       : included.some((s) => status(s) !== "done")
-      ? [{ text: "Generate videos for every variation before export.", blocking: true }]
+      ? [{ text: `${listNames(included.filter((s) => status(s) !== "done").map(nameOf))} ${included.filter((s) => status(s) !== "done").length > 1 ? "have" : "has"} no video yet. Make ${included.filter((s) => status(s) !== "done").length > 1 ? "them" : "it"}, or leave ${included.filter((s) => status(s) !== "done").length > 1 ? "them" : "it"} out of the Flick, to export.`, blocking: true }]
       : []),
-    ...(includeRef && !slides[0].thumb ? [{ text: `Add a thumbnail for ${nameOf(slides[0])} to export.`, blocking: true }] : []),
+    ...(included.some((s) => !s.thumb) ? [{ text: `Add a thumbnail for ${listNames(included.filter((s) => !s.thumb).map(nameOf))} to export.`, blocking: true }] : []),
     // the Flicks API bakes at most four videos into one Flick
     ...(liveExport() && included.length > 4 ? [{ text: `A Flick holds up to four variations; this has ${included.length}. Leave some out of the Flick to export.`, blocking: true }] : []),
     ...included.filter(stale).map((s) => ({ text: `${nameOf(s)} was made from an older Variation 1` })),
@@ -1790,6 +1828,8 @@ export function GenerationCanvas({
       .filter((e) => e.kind === "button" && e.variant !== "icon" && !(e.linkFeed ? included.every((x) => x.feeds?.[e.linkFeed!]?.trim()) : e.link?.trim()))
       .map((e) => ({ text: `The “${(e as { text?: string }).text?.trim() || "button"}” button has no link${(e as { linkFeed?: string }).linkFeed ? " on some variations" : ""}, so tapping it goes nowhere.` })),
   ]
+  // the chat's final check reads the same list the export dialog shows
+  exportIssues.current = publishIssues.map((x) => x.text)
   // everything viewers see; the name isn't part of it
   const sig = JSON.stringify({ elements, feeds, start, includeRef, slides: slides.map(({ refs, ...s }) => ({ ...s, refs: refs?.map((r) => r.id) })) })
   const snapNow = (): Snap => ({ elements, slides, feeds, start, includeRef })

@@ -1,3 +1,4 @@
+import { liveExport } from "@/ai/export"
 import { useState } from "react"
 import { Spinner } from "@/components/ui/spinner"
 import { Button } from "@/components/ui/button"
@@ -78,6 +79,7 @@ export function ExportControl({
           </div>
 
           {issues.length > 0 && <Issues issues={issues} />}
+          {liveExport() && <p className="text-xs text-muted-foreground">The share page plays the videos with the variation switch. The headline, buttons, labels and prices from the canvas aren’t on it yet.</p>}
           
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>

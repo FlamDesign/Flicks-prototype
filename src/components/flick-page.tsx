@@ -186,6 +186,7 @@ export function FlickPage({
               {/* a real Flick's link is its share page; in the prototype the link opens the viewer here (phones too) */}
               <IconAction label="Visit link" icon={ArrowUpRight01Icon} href={f.remote?.url ?? `${location.origin}${location.pathname}#f/${f.link.slug}`} />
             </div>
+            {f.remote?.url && <p className="text-xs text-muted-foreground">The share page plays the videos with the variation switch. The design from the canvas isn’t on it yet.</p>}
             {/* how it unfurls in messages and posts */}
             <div className="flex items-center gap-3">
               <span className="aspect-[1200/630] w-24 shrink-0 overflow-hidden rounded-lg bg-muted">

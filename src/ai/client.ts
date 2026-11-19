@@ -450,20 +450,23 @@ export async function generateVideo(input: VideoInput & { aspect: string; second
   ).json()) as { id: string })
   input.onId?.(id)
   onStatus?.("queued")
-  const until = Date.now() + 15 * 60_000
+  // most videos land in 4 to 12 minutes; some take over 20. After 15 the tile says it's slow; the
+  // wait ends at 45, and the job's id stays with the variation so a late video isn't lost
+  const slowAt = Date.now() + 15 * 60_000
+  const until = Date.now() + 45 * 60_000
   let wait = 5000
   while (Date.now() < until) {
     await new Promise((r) => setTimeout(r, wait))
     if (signal?.aborted) throw new AiError("aborted", "Stopped.")
     const s = (await (await steady(`/video/${id}`, { signal })).json()) as { status: string; url?: string; poster?: string }
-    onStatus?.(s.status)
+    onStatus?.(s.status === "in_progress" && Date.now() > slowAt ? "slow" : s.status)
     if (s.status === "completed" && s.url) return { url: s.url, poster: s.poster }
     if (s.status === "completed") throw new AiError("video_failed", "The video finished but no file came back. Try again.")
     if (s.status === "failed" || s.status === "canceled") throw new AiError("video_failed", "The video didn't generate. Try again.")
     if (s.status === "nsfw") throw new AiError("video_blocked", "This video was blocked. Try a different description.")
     wait = Math.min(wait * 1.3, 15000)
   }
-  throw new AiError("video_timeout", "The video is taking too long. Try again.")
+  throw new AiError("video_timeout", "The video is taking too long. Try again checks whether it has finished.")
 }
 
 /* ---------- Flicks (the Flicks API) ---------- */

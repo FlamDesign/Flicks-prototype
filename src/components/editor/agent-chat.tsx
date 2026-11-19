@@ -34,6 +34,8 @@ export type AgentCtx = {
   /** Variation 1 is ready and waiting for the user's OK before the variations are made */
   review?: { needed: boolean; approve: () => void; change: () => void; /** the variations waiting on it, and what they cost together */ count?: number; cost?: number; /** a remake: the variations were made from the earlier Variation 1 */ remade?: boolean; /** Variation 1's name, and the waiting variations' names ("Black and Sand") */ name?: string; others?: string }
   /** videos the chat proposed, waiting for the user's Make (nothing is made without it) */
+  /** false while videos are being made or the final check hasn't run: no next-step suggestions yet */
+  settled?: boolean
   proposals?: () => { id: string; name: string; change: string; cost: number; make: () => void; dismiss: () => void; /** a Variation 1 remake: the variations made from it, and what they cost */ first?: boolean; others?: string; othersCost?: number }[]
   /** the build's steps, read live */
   progress: () => { label: string; state: "done" | "working" | "waiting" }[]
@@ -1320,7 +1322,7 @@ function BuildTile({ video: v, still, ratio, waiting, direction }: { video: Buil
             <span className={cn("absolute inset-x-1.5 bottom-1.5 flex min-w-0 items-center gap-1 truncate rounded-md bg-background/90 px-1.5 py-0.5 text-xs tabular-nums text-muted-foreground backdrop-blur", v.retry && "hidden")}>
               {v.state === "generating" ? (
                 <>
-                  {v.status === "waiting" ? "Waiting for your OK" : pct !== undefined ? `Generating · ${pct}%` : v.status === "queued" ? "Up next" : `${STATUS[v.status ?? ""] ?? "Generating"} · ${secs < 60 ? `${secs}s` : `${Math.floor(secs / 60)}m`}`}
+                  {v.status === "waiting" ? "Needs your OK" : v.status === "slow" ? "Taking longer than usual" : pct !== undefined ? `Generating · ${pct}%` : v.status === "queued" ? "Up next" : `${STATUS[v.status ?? ""] ?? "Generating"} · ${secs < 60 ? `${secs}s` : `${Math.floor(secs / 60)}m`}`}
                 </>
               ) : v.failed ? (
                 <span className="truncate text-destructive" title={v.failed}>
@@ -1356,7 +1358,7 @@ function BuildTile({ video: v, still, ratio, waiting, direction }: { video: Buil
 /** the user asked the system for less motion: finished videos wait for a press instead of playing on their own */
 const reducedMotion = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches
 /** one ladder of words for a video being made, used on the build tile, the canvas and the chat: Up next, Waiting for your OK, Generating, Ready, Didn't generate */
-const STATUS: Record<string, string> = { starting: "Generating", queued: "Up next", in_progress: "Generating", completed: "Generating" }
+const STATUS: Record<string, string> = { starting: "Generating", queued: "Up next", in_progress: "Generating", slow: "Taking longer than usual", completed: "Generating" }
 /** seconds since an image started, ticking */
 function Elapsed({ since }: { since: number }) {
   const [, tick] = useState(0)
@@ -1446,9 +1448,9 @@ export function QuickReplies({ agent, ctx }: { agent: Agent; ctx: AgentCtx }) {
     ...failed.slice(0, 2).map((v) => `Make ${v.name} again`),
     ...(issue ? [`Fix: ${issue.length > 60 ? `${issue.slice(0, 57).trimEnd()}…` : issue}`] : []),
     ...(links ? ["Set the missing links"] : []),
-    // the chat's own suggestions for this Flick (the last line of its hand-over)
-    ...triesOf(last.text),
-    ...(videos.length < 5 ? ["Add another variation"] : []),
+    // the chat's own suggestions for this Flick (the last line of its hand-over): only once the Flick is handed over
+    ...(ctx.settled === false ? [] : triesOf(last.text)),
+    ...(ctx.settled !== false && videos.length < 5 ? ["Add another variation"] : []),
   ]
     .filter((t) => !asked.includes(t.toLowerCase()))
     .slice(0, 4)

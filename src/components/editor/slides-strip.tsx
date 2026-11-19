@@ -34,8 +34,10 @@ export type Slide = {
   job?: { status: string; since: number; id?: string }
   /** the reference video: the startedAt of the version the user approved (variations are made only from an approved one) */
   approvedRef?: number
+  /** on Variation 1: the set of videos (their start times) the chat's final check was asked for, so it runs once even across reloads */
+  checked?: string
   /** the last try at its video failed (why, and how many tries in a row): the build card offers Try again */
-  failed?: { reason: string; tries: number }
+  failed?: { reason: string; tries: number; /** its job outlasted the wait: checked again before a new video starts */ jobId?: string }
 }
 /**
  * A slide's name when the user hasn't named it. The reference video is Variation 1 (it's in the
