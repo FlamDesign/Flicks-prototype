@@ -2172,7 +2172,9 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
       } else {
         // the request is still the last message: Retry sends it again
         setItems((list) => list.filter((x) => !(x.kind === "assistant" && x.streaming && !x.text)))
-        add({ kind: "error", text: e instanceof Error ? e.message : "Something went wrong." })
+        // a dropped connection reads as the browser's own words ("network error", "Failed to fetch"): say it the app's way
+        const raw = e instanceof Error ? e.message : "Something went wrong."
+        add({ kind: "error", text: /^(network error|failed to fetch|load failed|networkerror)/i.test(raw.trim()) ? MESSAGES.not_connected : raw })
       }
     } finally {
       phase.current = null
