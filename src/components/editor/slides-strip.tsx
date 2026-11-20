@@ -124,8 +124,10 @@ export function SlidesStrip({
   const [main, ...variations] = slides
   // a small move before a drag starts, so clicks and double-clicks still work
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
-  const w = Math.max(THUMB_MIN_W, Math.round(THUMB_H * ratio))
-  const h = Math.max(THUMB_H, Math.round(w / ratio))
+  // banner shapes (728×90, 970×250) would make tiles several hundred pixels wide and push the strip
+  // off screen: a tile is at most 2.4 times as wide as it is tall, and the still fills it (cropped)
+  const w = Math.min(Math.round(THUMB_H * 2.4), Math.max(THUMB_MIN_W, Math.round(THUMB_H * ratio)))
+  const h = Math.min(THUMB_H * 2, Math.max(THUMB_H, Math.round(w / ratio)))
   const canRemove = variations.length > MIN_VARIATIONS
 
   return (

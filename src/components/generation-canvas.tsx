@@ -909,8 +909,11 @@ export function GenerationCanvas({
         return `Size set to ${next}. A Make card is above the composer: every video is made again in ${now} (${total} credits in all, ${nameOfSlide(list[0])} first) only when the user presses Make. Say so in one line.`
       }
       onFormat?.(next)
+      // how much the frame it had already cut off: the same crop as before is no news
+      const [ow, oh] = generation.size.split("×").map(Number)
+      const lostBefore = Math.round((1 - Math.min(ratio(was) / (ow / oh), ow / oh / ratio(was))) * 100)
       if (was === now || lost <= 10)
-        return `Size set to ${next}. The videos already made fit it: they are ${was}, the same shape the video model would make for ${next}${lost > 0 ? ` (about ${lost}% is cropped at the ${cut})` : ""}. Nothing needs to be made again. Tell the user that in one line. The design may need re-arranging for the new frame: check it.`
+        return `Size set to ${next}. The videos already made fit it: they are ${was}, the same shape the video model would make for ${next}${Math.abs(lost - lostBefore) <= 5 ? (lost > 5 ? " (they are cropped the same as before)" : "") : lost > 0 ? ` (about ${lost}% is cropped at the ${cut}; it was ${lostBefore}% before)` : ""}. Nothing needs to be made again. Tell the user that in one line. The design may need re-arranging for the new frame: check it.`
       return `Size set to ${next}, and the videos are NOT made again yet. They were made in ${was}; the new frame shows about ${100 - lost}% of each, cropped at the ${cut} (${lost}% is cut off). Evaluate before you answer: look at every variation in the new frame (view_flick). If the subject, the product and the action are fully inside and it reads well, tell the user the videos fit the new size, say what the crop loses, and that nothing needs to be made again. If something that matters is cut off or cramped, tell the user what is lost and ask (ask_user): keep the videos cropped (no cost), make them again in ${now} (${canMake ? `${total} credits, ${nameOfSlide(list[0])} first; then call set_format with the same size and remake true` : "not possible for the user's own videos: they would add new ones"}), or go back to ${generation.size}. The design also needs re-arranging for the new frame.`
     },
     approveReference() {
@@ -1735,8 +1738,8 @@ export function GenerationCanvas({
   // every variation is made: wake the chat once for a final check of every variation and the
   // hand-over. Once per set of videos, remembered on the project, so it still happens when the tab
   // was closed while the last video landed (it runs on the next open). Projects finished before
-  // this was remembered (Nov 20, 2026) are left alone.
-  const CHECK_FROM = Date.UTC(2026, 10, 20)
+  // this was remembered (Nov 19, 2026) are left alone.
+  const CHECK_FROM = Date.UTC(2026, 10, 19, 20)
   const toldDone = useRef("")
   const batch = slides.map((x) => x.startedAt ?? 0).join(",")
   const allMade = slides.length > 1 && slides.every((x) => !x.job && isMadeVideo(x.video)) && mainNow.approvedRef === mainNow.startedAt
