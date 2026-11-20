@@ -1392,7 +1392,7 @@ export function ApprovalDock({ agent, ctx, poster }: { agent: Agent; ctx: AgentC
           <div className="min-w-0">
             <p className="text-sm font-medium leading-snug">Remake {p.name}?</p>
             <p className="text-xs leading-snug text-muted-foreground">{p.change}</p>
-            {p.first && p.others && <p className="mt-1 text-xs text-muted-foreground">{p.others} are remade from it after you approve it · {p.cost} now, {p.othersCost} then</p>}
+            {p.first && p.others && <p className="mt-1 text-xs text-muted-foreground">{p.others} {/ and |,/.test(p.others) ? "are" : "is"} remade from it after you approve it · {p.cost} now, {p.othersCost} then</p>}
           </div>
           <div className="flex flex-wrap justify-end gap-1.5">
             <Button size="sm" variant="ghost" onClick={p.dismiss}>

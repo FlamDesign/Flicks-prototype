@@ -1808,7 +1808,8 @@ export function GenerationCanvas({
   // the composer in chat mode: talk to the chat, or write a video's prompt yourself
   const chatting = true
   // planning: nothing generated yet, so no editor tools; just the chat and a live preview
-  const planning = agentMode && !slides[0].startedAt
+  // (a Flick whose Variation 1 is being remade or failed on a remake is built, not planned: its other videos exist)
+  const planning = agentMode && !slides[0].startedAt && !slides.slice(1).some((x) => isMadeVideo(x.video) || x.job)
   // storyboard mock-ups before any video exists: the project's reference pictures, else neutral frames
   const samplePosters = [...(generation.refs ?? []).filter((r) => !r.failed).map((r) => r.url), ...PLACEHOLDER_FRAMES]
   const firstSaid = agentMode && !title ? agent.items.find((x) => x.kind === "user")?.text : undefined
