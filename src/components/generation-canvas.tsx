@@ -1963,6 +1963,8 @@ export function GenerationCanvas({
     saveProject()
     saveProjectNow(generation.id)
     saveWaitingNow()
+    // the chat's own first save (the brief) follows a moment later: sent as soon as it's there
+    setTimeout(saveWaitingNow, 1200)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [title])
   const lib = useLibrary()
