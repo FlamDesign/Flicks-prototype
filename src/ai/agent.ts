@@ -1510,6 +1510,13 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     const what = sizes && lens ? "sizes and lengths" : sizes ? "sizes" : "lengths"
     return `The user's videos have different ${what}, and one Flick takes only videos of the same size and the same length. They fall into ${groups.length} sets: ${groups.map((g, i) => `(${i + 1}) ${groupLine(g)}`).join("; ")}. Tell the user exactly this in plain words (which video is which size and length), then ask which set to go forward with (ask_user, one option per set, labelled by its size and length and the videos in it). The videos outside the chosen set are left out of this Flick: say which. A set of one can still be a Flick: the other variations are then made from it (a storyboard with that video as Variation 1), or the user adds matching videos.`
   }
+  /** the same, as the user reads it: said by the app in the chat, so it's never left out */
+  const clipsDifferSaid = (clips: Clip[]) => {
+    const groups = clipGroups(clips)
+    const names = (g: Clip[]) => listOf(g.map((c) => c.name))
+    return `These videos can't all go into one Flick: a Flick switches between videos at the same moment, so they need the same size and the same length. ${groups.map((g) => `${names(g)} ${g.length > 1 ? "are" : "is"} ${g[0].w}×${g[0].h}, ${g[0].s.toFixed(1)} s`).join("; ")}.`
+  }
+  const listOf = (names: string[]) => (names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`)
   /** each video's motion, read once from its frames */
   const motions = new Map<string, Promise<Motion>>()
   const motionFor = (it: ProjectImage) => {
@@ -1702,7 +1709,11 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
             const clips = await clipsOf(given.map((v) => ({ name: v.name, it: byId(v.video_id)! })))
             // same size and same length, or the user picks which set goes forward (no way around it)
             const differ = clipsDiffer(clips)
-            if (differ) return `Not shown: ${differ} Then propose the plan again with only the chosen set's videos.`
+            if (differ) {
+              const said = clipsDifferSaid(clips)
+              if (toldClips.current !== said) add({ kind: "assistant", text: (toldClips.current = said) })
+              return `Not shown: ${differ} The app has just shown the user this, word for word: "${said}" Don't repeat it; ask which set to go forward with (ask_user). Then propose the plan again with only the chosen set's videos.`
+            }
             // the Flick takes the videos' own size unless the user asked for another
             const [fw, fh] = state().flick_size.split(/[×x]/).map(Number)
             const c0 = clips[0]
@@ -1711,11 +1722,21 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
             // same motion in all of them: the switch is an instant cut at the same moment
             if (clips.length > 1) {
               const { different, unclear } = await motionCheck(clips)
+              if (different.length) {
+                const said = `${listOf(different)} ${different.length > 1 ? "don't" : "doesn't"} move the same way as ${c0.name}: the camera or the subject does something else at the same moment, so switching between them would jump. One Flick needs the same motion in every video, so ${different.length > 1 ? "they" : "it"} can't go in as ${different.length > 1 ? "they are" : "it is"}.`
+                if (toldClips.current !== said) add({ kind: "assistant", text: (toldClips.current = said) })
+              }
               if (different.length)
-                return `Not shown: the motion differs. ${different.join(", ")} ${different.length > 1 ? "don't" : "doesn't"} move the same way as ${c0.name} (the camera or the subject does something else at the same moment), so switching between them would jump. One Flick needs the same motion in every video, so these can't go into the same Flick. Tell the user which video(s) and why, in plain words, and ask how to go on (ask_user): leave ${different.length > 1 ? "them" : "it"} out, add a replacement that moves like ${c0.name}, or have the app make that variation from ${c0.name} (a storyboard with ${c0.name} as Variation 1 and a prompt for the others; that costs video credits). Don't propose a plan with them as they are.`
+                return `Not shown: the motion differs. The app has just shown the user this, word for word: "${listOf(different)} ${different.length > 1 ? "don't" : "doesn't"} move the same way as ${c0.name}…" Don't repeat it; go straight to the question. ${different.join(", ")} ${different.length > 1 ? "don't" : "doesn't"} move the same way as ${c0.name} (the camera or the subject does something else at the same moment), so switching between them would jump. One Flick needs the same motion in every video, so these can't go into the same Flick. Tell the user which video(s) and why, in plain words, and ask how to go on (ask_user): leave ${different.length > 1 ? "them" : "it"} out, add a replacement that moves like ${c0.name}, or have the app make that variation from ${c0.name} (a storyboard with ${c0.name} as Variation 1 and a prompt for the others; that costs video credits). Don't propose a plan with them as they are.`
               if (unclear.length && !input.motion_checked)
                 return `Not shown yet: the frames alone can't settle whether ${unclear.join(", ")} move${unclear.length > 1 ? "" : "s"} the same way as ${c0.name}. Look at their stills (start, middle, end; view_image shows them again): at each of the three moments, is the framing the same and the subject in the same place and pose? If yes for all three, propose the plan again with motion_checked true. If not, the motion differs: tell the user which video and at which moment, and ask how to go on as for a motion mismatch (leave it out, replace it, or have the app make that variation). Never pass motion_checked without looking.`
             }
+          }
+          // a Flick made of the user's own videos is as long as they are
+          if (given.length === raw.variations.length && given.length) {
+            const it = byId(given[0].video_id)
+            const secs = Math.max(4, Math.min(15, Math.round(it?.duration ?? 0)))
+            if (it?.duration && secs !== state().video_seconds) apiRef.current.setFormat(state().flick_size, secs)
           }
           // the reference video and what it's made from matter only when Variation 1 is generated
           if (raw.variations[0].video_id) {
@@ -2167,6 +2188,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   const redirect = useRef<{ text: string; files: File[]; mentioned: FlickElement[]; itemId: string } | null>(null)
   const sendRef = useRef<(text: string, files?: File[], mentioned?: FlickElement[], itemId?: string) => Promise<void>>(async () => {})
   const longTold = useRef("")
+  /** what the app last told the user about their own videos not matching (said once) */
+  const toldClips = useRef("")
   const flushRef = useRef(() => {})
   flushRef.current = () => {
     if (busyRef.current || pending.current.length || !notes.current.some((n) => n.wake)) return
