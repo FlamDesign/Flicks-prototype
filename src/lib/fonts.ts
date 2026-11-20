@@ -14,6 +14,8 @@ export function ensureFont(name?: string) {
   if (!FONTS.find((f) => f.name === name)?.google) return
   const link = document.createElement("link")
   link.rel = "stylesheet"
+  // readable by the still capture (it copies the fonts' rules); without this every capture logs a cssRules error
+  link.crossOrigin = "anonymous"
   link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(name).replace(/%20/g, "+")}:ital,wght@0,400;0,700;1,400;1,700&display=swap`
   document.head.appendChild(link)
 }

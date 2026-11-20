@@ -44,3 +44,4 @@ lumen.com"). Use it for every later Flick of that brand; ask before changing it.
 ## What to say
 Two or three lines at most on what you found, then only what's still missing. The brief card shows
 the brand table; don't repeat it. Only read addresses the user gave or a search returned.
+- Where a fact came from goes with it. A price, offer or product photo that is not from the brand's own site is named with its site in the same sentence ("$5.99, from a price tracker, not Little Caesars' own site"), the site goes into the brand's sources (set_brand), and you ask before a third-party price goes on the canvas.

@@ -235,7 +235,8 @@ async function savedChat(run) {
 async function projectName(run) {
   const id = run.state.projectId
   return run.p.evaluate(async ({ id, pc }) => {
-    const s = await (await fetch("https://flicks-ai.flick-prototype.workers.dev/store/state", { headers: { "x-flicks-pass": pc } })).json()
+    const get = async (k) => (await fetch(`https://flicks-ai.flick-prototype.workers.dev/store/${k}`, { headers: { "x-flicks-pass": pc } })).json()
+    const s = (await get("library")) ?? (await get("state"))
     return s.projects.find((x) => x.id === id)?.name ?? null
   }, { id, pc: process.env.FP })
 }

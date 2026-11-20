@@ -435,6 +435,20 @@ async function mockVideo(input: { prompt: string; resume?: string; onId?: (id: s
     /* no storage: no failures */
   }
   if (fail > 0) throw new AiError("video_failed", "The video didn't generate. Try again.")
+  // a test of the slow path (dev tools: localStorage flam.mockTimeout = N): the next N sample videos
+  // run past the wait as a real one can, keeping a job id that Try again then picks up
+  let late = 0
+  try {
+    late = input.resume ? 0 : Number(localStorage.getItem("flam.mockTimeout") ?? 0)
+    if (late > 0) localStorage.setItem("flam.mockTimeout", String(late - 1))
+  } catch {
+    /* no storage: no slow videos */
+  }
+  if (late > 0) {
+    input.onId?.(`mock-late-${Date.now()}`)
+    await new Promise((r) => setTimeout(r, 400))
+    throw new AiError("video_timeout", "The video is taking too long. Try again checks whether it has finished.")
+  }
   let h = 0
   for (const c of input.prompt) h = (h * 31 + c.charCodeAt(0)) >>> 0
   const v = SAMPLE_CLIPS[h % SAMPLE_CLIPS.length]

@@ -35,6 +35,10 @@ designer would, not from a template; the user changes it in the editor afterward
 - Place text where the video is calm and empty, never over the product or faces; the strip is never
   covered; safe margins and sizes per format (formats skill); contrast 4.5:1 for text and 3:1 for the
   button against the video, a soft shade behind text on busy footage.
+- A shade is never a hard box. It is one rect with no stroke, sent to the back, filled with a
+  linear gradient that runs from black (or the brand's dark color) at about 55% strength on the
+  text's side to fully transparent well past the text, and it reaches the frame's edge on the
+  text's side, top to bottom (or side to side for text along the top or bottom). No visible edge.
 - Type: one family, at most two weights; display headlines at least 16 px; sentence case. Color: the
   brand's colors plus white or black, at most two accents; the button in the brand's main color.
 - Copy in the brand's voice: a headline of 2 to 6 words (a benefit, promise or hook), a button verb of

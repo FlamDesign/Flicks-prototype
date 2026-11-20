@@ -475,7 +475,7 @@ export default {
       }
 
       // saved app data, so projects and chats survive a reload and follow you to other devices
-      const st = url.pathname.match(/^\/store\/(state|elements|agent-config|chat-[\w-]{4,80})$/)
+      const st = url.pathname.match(/^\/store\/(state|library|elements|agent-config|chat-[\w-]{4,80}|proj-[\w-]{4,80})$/)
       if (st && req.method === "GET") return new Response((await env.USAGE?.get(`store:${st[1]}`)) ?? "null", { headers: { ...cors, "content-type": "application/json", "cache-control": "no-store" } })
       if (st && req.method === "PUT") {
         let text = await req.text()
@@ -489,11 +489,19 @@ export default {
         // the library: deletions stick. A tab that last synced before a deletion would send the
         // deleted projects back whole, so the server keeps every tombstone it has seen and drops
         // anything an older tombstone covers, whatever a client sends.
-        if (st[1] === "state" && value && typeof value === "object") {
+        // one project's canvas and versions ("proj-<id>"): the maker's addresses become our kept copies', as in the library
+        if (st[1].startsWith("proj-") && value && typeof value === "object") {
+          const index = await libraryItems(env, ctx)
+          const kept = new Map<string, string>()
+          for (const it of index) if (it.saved && typeof it.source === "string" && /^https:\/\//.test(it.source)) kept.set(it.source, `${url.origin}/file/${it.id}${keptExt(it)}`)
+          if (kept.size) text = text.replace(/https:\/\/[^"\\]+/g, (m) => kept.get(m) ?? m)
+        }
+        // "library" is the list of projects and Flicks (each project's canvas is its own record); "state" is the earlier single record
+        if ((st[1] === "state" || st[1] === "library") && value && typeof value === "object") {
           // only a library is saved as the library (a stray error object or an empty body never replaces it)
           if (!Array.isArray((value as { projects?: unknown }).projects) || !Array.isArray((value as { flicks?: unknown }).flicks)) return json({ error: "not_a_library" }, 400, cors)
           const v = value as { projects?: { id: string; editedAt?: number }[]; flicks?: { id: string; editedAt?: number }[]; deleted?: Record<string, number> }
-          const prev = JSON.parse((await env.USAGE?.get("store:state")) ?? "null") as { deleted?: Record<string, number> } | null
+          const prev = JSON.parse((await env.USAGE?.get(`store:${st[1]}`)) ?? "null") as { deleted?: Record<string, number> } | null
           const tomb: Record<string, number> = { ...(prev?.deleted ?? {}) }
           for (const [id, at] of Object.entries(v.deleted ?? {})) if (typeof at === "number") tomb[id] = Math.max(tomb[id] ?? 0, at)
           const old = Date.now() - 90 * 24 * 3600 * 1000

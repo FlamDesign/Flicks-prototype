@@ -94,7 +94,7 @@ export function MetricsPanel() {
       const res = await fetch(`${base}/store`, { headers: { "x-flicks-pass": aiConfig.get().passcode.trim() } })
       if (!res.ok) throw new Error(`list ${res.status}`)
       const { chats } = (await res.json()) as { chats: string[] }
-      const state = await loadSaved<SavedState>("state")
+      const state = (await loadSaved<SavedState>("library")) ?? (await loadSaved<SavedState>("state"))
       const names = new Map((state?.projects ?? []).map((p) => [p.id, p.name ?? ""]))
       // only chats whose project still exists (deleted ones are gone from the list)
       const ids = chats.filter((id) => names.has(id)).slice(0, 150)

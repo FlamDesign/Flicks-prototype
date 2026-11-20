@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react"
+import { isLive } from "@/ai/client"
+import { foreign, keptUrl } from "@/lib/kept"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { PlayIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
@@ -66,7 +68,8 @@ export function FlickPlayer({ videos, active, playing = true, className }: { /**
             onPlay={() => k === active && setBlocked(false)}
             className={cn("absolute inset-0 size-full object-cover", k === active ? "opacity-100" : "pointer-events-none opacity-0")}
           >
-            <source src={m.mp4} type="video/mp4" />
+            {/* a made video still at the maker's address goes through our server: its CDN doesn't always answer cross-origin requests */}
+            <source src={m.set === "made" && foreign(m.mp4) && isLive() ? keptUrl(m.mp4) : m.mp4} type="video/mp4" />
           </video>
         )
       })}

@@ -1,12 +1,13 @@
 /**
- * Saving to the AI server: projects, Flicks and the real videos they use (key "state"), and each
+ * Saving to the AI server: the list of projects and Flicks and the real videos they use (key
+ * "library"), each project's canvas and versions (key "proj-<id>"), and each
  * AI chat (key "chat-<project id>"). With a passcode set, what's saved loads on start and every
  * change is saved a moment later, so work survives a reload and follows you to other devices.
  * Without one, everything stays in this page, as before.
  */
 import { aiConfig, isLive, shareable } from "@/ai/client"
 import { madeVideos, mergeMadeVideos } from "@/components/editor/elements"
-import { library, watchLibrary, type LibraryState } from "@/library"
+import { library, watchLibrary, type LibraryState, type Project } from "@/library"
 import { elements, type FlickElement } from "@/lib/elements"
 
 const base = () => aiConfig.get().url.trim().replace(/\/+$/, "")
@@ -148,6 +149,59 @@ export function merge(mine: Saved, theirs: Saved | null): { merged: Saved; chang
   return { merged: { projects, flicks, made: madeVideos(), deleted: { ...deleted } }, changedHere }
 }
 
+/**
+ * One record per project. The library record ("library") is the list: every project without its
+ * canvas and versions, marked `body` (when that part was last saved). Each project's canvas and
+ * versions live in their own record ("proj-<id>"), written only when that project changes. So a
+ * save sends the list and one project, not every project's canvas (the whole library had grown
+ * past 4 MB in one record, re-sent on every change).
+ */
+const LIBRARY = "library"
+type Body = { snap?: unknown; versions: Project["versions"] }
+type Listed = Project & { body?: number }
+const bodyKey = (id: string) => `proj-${id}`
+const bodyOf = (p: Project): Body => ({ snap: p.snap, versions: p.versions ?? [] })
+
+/** fills in the canvas and versions of projects that came from the list without them */
+async function hydrate(projects: Listed[], have: Project[] = []): Promise<Project[]> {
+  const out: Project[] = new Array(projects.length)
+  let next = 0
+  const work = async () => {
+    while (next < projects.length) {
+      const i = next++
+      const { body, ...p } = projects[i]
+      if (body === undefined) {
+        out[i] = p
+        continue
+      }
+      // already here, as new as the server's: no need to fetch it again
+      const mine = have.find((x) => x.id === p.id)
+      if (mine && (mine.editedAt ?? 0) >= (p.editedAt ?? 0) && mine.snap !== undefined) {
+        out[i] = { ...p, snap: mine.snap, versions: mine.versions }
+        continue
+      }
+      const b = await loadSaved<Body>(bodyKey(p.id)).catch(() => null)
+      if (b) lastSaved.set(bodyKey(p.id), JSON.stringify({ snap: b.snap, versions: b.versions ?? [] }))
+      out[i] = { ...p, snap: b?.snap, versions: b?.versions ?? [] }
+    }
+  }
+  await Promise.all(Array.from({ length: 8 }, work))
+  return out
+}
+
+/** saves each project's own record (only the changed ones are sent), then returns the list without them */
+async function split(saved: Saved, closing: boolean): Promise<Saved> {
+  const listed: Listed[] = []
+  for (const p of saved.projects) {
+    // a project whose canvas isn't loaded here (the list came from the server): its record stays as it is
+    const known = p.snap !== undefined || (p.versions?.length ?? 0) > 0
+    if (known && !closing) await save(bodyKey(p.id), bodyOf(p))
+    else if (known) void save(bodyKey(p.id), bodyOf(p), true).catch(() => {})
+    listed.push({ ...p, snap: undefined, versions: [], body: p.editedAt ?? 0 })
+  }
+  return { ...saved, projects: listed }
+}
+
 let started = false
 /** starts the sync once a passcode is set (now or later) */
 export function startSync() {
@@ -161,16 +215,19 @@ export function startSync() {
     // 3 s after the last change and at least every 12 s while changes keep coming: a reload in the
     // middle of the chat's work must find the project as it was a moment ago (the library is too
     // big to send as the page closes, so it can't wait for that)
-    const put = saver("state", 3000, 12000, async (mine, closing) => {
+    const put = saver(LIBRARY, 3000, 12000, async (mine, closing) => {
       // never save over the server's copy without merging with it: a tab that can't fetch it waits
       // for the next change, and a closing tab merges with the copy it last saw (the server keeps
       // deletions either way, so an old copy can't bring deleted projects back)
-      const theirs = closing ? lastTheirs : await loadSaved<Saved>("state")
+      const theirs = closing ? lastTheirs : ((await loadSaved<Saved>(LIBRARY)) ?? lastTheirs)
       if (!theirs) throw new Error("no server copy to merge with")
       const { merged, changedHere } = merge(mine as Saved, theirs)
+      // a project that's newer on the server came from the list: its canvas is fetched before it shows here
+      if (!closing) merged.projects = await hydrate(merged.projects as Listed[], (mine as Saved).projects)
+      else merged.projects = merged.projects.map((p) => (mine as Saved).projects.find((x) => x.id === p.id && (x.editedAt ?? 0) >= (p.editedAt ?? 0)) ?? p)
       lastTheirs = merged
-      if (changedHere) library.load(merged)
-      return merged
+      if (changedHere && !closing) library.load(merged)
+      return split(merged, closing)
     })
     // deletions are remembered (and forgotten again on Undo)
     let ids = new Set<string>()
@@ -196,10 +253,22 @@ export function startSync() {
         if (elements.get().length) putElements(elements.get())
       })
     try {
-      const saved = await loadSaved<Saved>("state")
+      let saved = await loadSaved<Saved>(LIBRARY)
+      // the earlier single record: where the library lived before it was split, and where a build
+      // from before the split (production, until it's deployed again) still saves. Read on start
+      // and merged in, so nothing made there is missing here; never written from here.
+      const before = await loadSaved<Saved>("state").catch(() => null)
+      if (before?.projects) {
+        if (saved?.projects) {
+          Object.assign(deleted, saved.deleted ?? {})
+          saved.projects = await hydrate(saved.projects as Listed[])
+          saved = merge(saved, before).merged
+        } else saved = before
+      }
       if (saved?.projects) {
         mergeMadeVideos(saved.made)
         Object.assign(deleted, saved.deleted ?? {})
+        saved.projects = await hydrate(saved.projects as Listed[])
         lastTheirs = saved
         library.load(saved)
       }

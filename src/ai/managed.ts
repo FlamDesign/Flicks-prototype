@@ -89,7 +89,7 @@ export async function createSession(cfg: AgentConfig, title: string, model?: str
 type Ev = Record<string, unknown> & { type: string }
 
 /** The app's messages since the last send, as session events (one user turn: text, images, tool results, then the project state) */
-export function toEvents(msgs: Message[], state: unknown): Ev[] {
+export function toEvents(msgs: Message[], state: unknown, stateUnchanged = false): Ev[] {
   const out: Ev[] = []
   for (const m of msgs) {
     if (m.role !== "user") continue
@@ -120,8 +120,10 @@ export function toEvents(msgs: Message[], state: unknown): Ev[] {
   }
   out.length = 0
   out.push(...folded)
-  // the project state rides with every turn as privileged context, so it never reads as the user's words
-  out.push({ type: "system.message", content: [{ type: "text", text: `Current project (JSON):\n${JSON.stringify(state)}` }] })
+  // the project state rides with a turn as privileged context, so it never reads as the user's words.
+  // Only when it changed since it was last sent: the session keeps every copy, and an identical one
+  // each turn was most of what made a long chat's context grow
+  if (!stateUnchanged) out.push({ type: "system.message", content: [{ type: "text", text: `Current project (JSON):\n${JSON.stringify(state)}` }] })
   return out
 }
 

@@ -59,6 +59,20 @@ jobs:
         run: |
           hash=$(printf '%s %s' "$GITHUB_SHA" "$GITHUB_REF_NAME" | sha1sum | cut -c1-40)
           npx -y wrangler@4 pages deploy dist-pages --project-name "$PROJECT" --branch "${{ github.ref_name }}" --commit-hash "$hash" --commit-message "${{ github.ref_name }} @ ${GITHUB_SHA::7}" --commit-dirty=true
+      - name: Check what the address serves
+        # the site must be the routed build: a small index.html for every path. A second builder once
+        # replaced it with a 24 MB single file with no routing; this fails the run if that happens again
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then SITE="https://$PROJECT.pages.dev"; else SITE="https://${{ github.ref_name }}.$PROJECT.pages.dev"; fi
+          sleep 45
+          for path in / /projects /flicks; do
+            size=$(curl -s -m 60 -o /tmp/page.html -w '%{size_download}' "$SITE$path")
+            if [ "$size" -gt 200000 ] || ! grep -q 'id="root"' /tmp/page.html; then
+              echo "::error::$SITE$path serves $size bytes and is not the routed app. Another builder may be deploying to this project."
+              exit 1
+            fi
+            echo "$SITE$path: $size bytes"
+          done
       - name: Show the address
         run: |
           HOST=$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PROJECT" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.parse(s).result.subdomain||""))')

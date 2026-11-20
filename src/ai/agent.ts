@@ -661,7 +661,7 @@ export const TOOLS: Tool[] = [
       type: "object",
       properties: {
         ids: { type: "array", items: { type: "string" }, minItems: 1 },
-        action: { type: "string", enum: ["move", "align", "distribute", "front", "back", "duplicate", "delete"] },
+        action: { type: "string", enum: ["move", "align", "distribute", "front", "back", "duplicate", "delete", "clear"], description: "'clear' solves every overlap on the canvas in one call (ids: any one element id; all elements are considered): each element is pushed just past what it overlaps, order and left edges kept, the strip never moved. Use it instead of moving elements one at a time after a review reports overlaps." },
         dx: { type: "number" },
         dy: { type: "number" },
         to: { type: "string", enum: ["left", "center", "right", "top", "middle", "bottom", "horizontal", "vertical"] },
@@ -2045,7 +2045,9 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
                 else if (got === "stalled") msgs.current.push({ role: "user", content: [{ type: "text", text: "(The app is back after a reload. Carry on from where you were.)" }] })
                 else return got
               }
-              const events = toEvents(msgs.current.slice(sent.current), now)
+              const stateText = JSON.stringify(now)
+              const events = toEvents(msgs.current.slice(sent.current), now, stateSent.current === `${sess}:${stateText}`)
+              stateSent.current = `${sess}:${stateText}`
               sent.current = msgs.current.length
               checkpoint()
               return sessionTurn(sess, events, cb)
@@ -2057,7 +2059,11 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
         // what this project has cost in tokens so far (shown on the Dev metrics page)
         usage.current = { calls: usage.current.calls + (res.calls ?? 1), input: usage.current.input + res.usage.input, cached: usage.current.cached + res.usage.cached, written: usage.current.written + res.usage.written, output: usage.current.output + res.usage.output }
         const text = res.content.flatMap((b) => (b.type === "text" && !b.text.startsWith("(Started a web") ? [b.text] : [])).join("\n\n")
-        if (text.trim()) patch(itemId, { text, streaming: false } as Partial<Item>)
+        // the same thing said twice in a row (most often when Variation 1 lands): the second is not shown
+        const norm = (t: string) => t.replace(/^Try:.*$/m, "").toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim()
+        const before = [...itemsRef.current].reverse().find((x) => x.id !== itemId && (x.kind === "assistant" || x.kind === "user"))
+        const repeat = !!text.trim() && before?.kind === "assistant" && norm(before.text).length > 30 && (norm(before.text) === norm(text) || norm(before.text).startsWith(norm(text)) || norm(text).startsWith(norm(before.text).slice(0, 80)) && norm(text).length < norm(before.text).length * 1.2)
+        if (text.trim() && !repeat) patch(itemId, { text, streaming: false } as Partial<Item>)
         else setItems((list) => list.filter((x) => x.id !== itemId))
         msgs.current.push({ role: "assistant", content: res.content })
         // what it looked up on the web, shown as quiet lines
@@ -2201,6 +2207,8 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
   /** a message sent while the chat worked: goes once the turn reaches a safe point */
   const redirect = useRef<{ text: string; files: File[]; mentioned: FlickElement[]; itemId: string } | null>(null)
   const sendRef = useRef<(text: string, files?: File[], mentioned?: FlickElement[], itemId?: string) => Promise<void>>(async () => {})
+  /** the project state as last sent to the managed session (it's sent again only when it changes) */
+  const stateSent = useRef("")
   const longTold = useRef("")
   /** what the app last told the user about their own videos not matching (said once) */
   const toldClips = useRef("")

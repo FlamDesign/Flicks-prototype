@@ -43,6 +43,8 @@ export type AgentCtx = {
   videos?: () => BuildVideo[]
   /** what Export would flag now (empty links, empty feeds), read live */
   issues?: () => string[]
+  /** what stops an export right now (shown once the Flick is handed over, so "ready" is never said over them) */
+  blockers?: () => string[]
   /** the Flick's size ("1080×1080") and length in seconds, for the brief */
   size: string
   seconds: number
@@ -87,7 +89,7 @@ export function AgentItemView({ item, agent, ctx }: { item: Item; agent: Agent; 
     case "assistant":
       return (
         <div className="flex flex-col gap-2">
-          {item.text && <Said text={withoutTry(item.text)} streaming={item.streaming} />}
+          {item.text && <Brief text={withoutTry(item.text)} streaming={item.streaming} />}
           {!item.text && !item.streaming && !item.stopped && <Said text={item.text} streaming={item.streaming} />}
           {item.stopped && (
             <span className="flex flex-wrap items-center gap-1.5 px-1 text-xs text-muted-foreground">
@@ -484,6 +486,11 @@ function stepRows(items: Item[]): StepRow[] {
  * plain-worded steps; one with more to see (a website's images, a look at the Flick) opens in place.
  * Open while it's working, folded once it's done.
  */
+/** what the stretch of work ended on, short, so the folded line says what was done and not only how much */
+const lastStep = (rows: StepRow[]) => {
+  const label = rows.at(-1)?.label ?? ""
+  return label.length > 44 ? `${label.slice(0, 42).trimEnd()}…` : label
+}
 function Steps({ items, live }: { items: Item[]; live: boolean }) {
   const rows = stepRows(items)
   const [open, setOpen] = useState<boolean | null>(null)
@@ -494,7 +501,7 @@ function Steps({ items, live }: { items: Item[]; live: boolean }) {
   return (
     <div className="mr-2 flex flex-col gap-2">
       <button type="button" onClick={() => setOpen(!shown)} aria-expanded={shown} className="flex items-center gap-1.5 self-start rounded-md px-1 text-sm text-muted-foreground hover:text-foreground focus-ring">
-        <span className={cn(live && "text-shimmer")}>{live ? `Working · ${n} step${n === 1 ? "" : "s"} so far` : n === 1 ? rows[0].label : `Took ${n} steps`}</span>
+        <span className={cn(live && "text-shimmer")}>{live ? `Working · ${n} step${n === 1 ? "" : "s"} so far` : n === 1 ? rows[0].label : `Took ${n} steps · ${lastStep(rows)}`}</span>
         <HugeiconsIcon icon={ArrowDown01Icon} className={cn("size-3.5 transition-transform", shown && "rotate-180")} />
       </button>
       {shown && (
@@ -596,6 +603,55 @@ function ImageTile({ item, agent, ctx }: { item: Extract<Item, { kind: "image" }
  */
 const TRY = /\n*^Try:[ \t]*(.+)$/m
 /**
+ * The storyboard's approve button waits for its frames: approving a storyboard whose pictures are
+ * still being drawn means approving something not yet seen. After 45 seconds it opens anyway, so a
+ * frame that never arrives can't hold the build.
+ */
+function ApproveStoryboard({ drawing, disabled, onClick, children }: { drawing: boolean; disabled?: boolean; onClick: () => void; children: React.ReactNode }) {
+  const [waited, setWaited] = useState(false)
+  useEffect(() => {
+    if (!drawing) return
+    const t = setTimeout(() => setWaited(true), 45_000)
+    return () => clearTimeout(t)
+  }, [drawing])
+  const hold = drawing && !waited
+  return (
+    <Button size="sm" className="ml-auto gap-1.5" disabled={disabled || hold} onClick={onClick} title={hold ? "The frames are still being drawn" : undefined}>
+      <HugeiconsIcon icon={SparklesIcon} className="size-4" />
+      {hold ? "Drawing the frames…" : children}
+    </Button>
+  )
+}
+
+/**
+ * A reply that runs long is shown by its first three sentences with "Show more": the voice rule is
+ * three short sentences, and the app holds to it even when the chat doesn't. Lists, tables and
+ * code are shown whole (they are the answer, not chatter).
+ */
+function Brief({ text, streaming }: { text: string; streaming?: boolean }) {
+  const [open, setOpen] = useState(false)
+  const structured = /^\s*(?:[-*•]|\d+\.|#|\||```)/m.test(text)
+  const parts = text.match(/[^.!?\n]+(?:[.!?]+["”’)]*|\n+|$)\s*/g) ?? [text]
+  const sentences = parts.filter((p) => p.trim())
+  if (streaming || open || structured || sentences.length <= 5) return <Said text={text} streaming={streaming} />
+  let n = 0
+  let cut = 0
+  for (const p of parts) {
+    if (p.trim()) n++
+    cut += p.length
+    if (n >= 3) break
+  }
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <Said text={text.slice(0, cut).trimEnd()} />
+      <Button size="xs" variant="ghost" className="-ml-2 text-muted-foreground" onClick={() => setOpen(true)}>
+        Show more
+      </Button>
+    </div>
+  )
+}
+
+/**
  * Lines about the chat's own process ("Next I'm reading the storyboard rules", "I'll wake when it
  * lands", "Confirming with a look") say nothing the user needs: whole sentences that open that way
  * are dropped from what's shown. Never the only sentence, and never one with a question.
@@ -615,7 +671,17 @@ export const withoutProcess = (text: string) => {
     .trim()
   return kept || text
 }
-export const withoutTry = (text: string) => withoutProcess(text.replace(TRY, "").trimEnd())
+export const withoutTry = (text: string) => {
+  const shown = withoutProcess(text.replace(TRY, "").trimEnd())
+  if (!TRY.test(text)) return shown
+  // the next steps are on the chips: a sentence that says them again ("Next, add a real photo…") goes
+  const kept = shown
+    .split("\n")
+    .map((line) => (line.match(/[^.!?]+(?:[.!?]+["”’)]*\s*|$)/g) ?? [line]).filter((p) => p.includes("?") || !/^(?:next(?:,| up| step)|as a next step|from here,? (?:you|i) (?:can|could))/i.test(p.trim())).join("").trimEnd())
+    .join("\n")
+    .trim()
+  return kept || shown
+}
 export const triesOf = (text: string) => (TRY.exec(text)?.[1] ?? "").split("|").map((t) => t.trim().replace(/\.$/, "")).filter((t) => t.length > 2 && t.length <= 48).slice(0, 2)
 
 /** the chat's own words: paragraphs, bullets and **bold** */
@@ -1156,10 +1222,9 @@ function PlanCard({ item, agent, ctx }: { item: Extract<Item, { kind: "plan" }>;
                 : `First video · ${cost.toLocaleString("en-US")} credits`}
           {ctx.credits < cost && <span className="text-destructive"> · you have {ctx.credits.toLocaleString("en-US")}</span>}
         </span>
-        <Button size="sm" className="ml-auto gap-1.5" disabled={agent.busy} onClick={() => agent.decidePlan(item.id, plan)}>
-          <HugeiconsIcon icon={SparklesIcon} className="size-4" />
+        <ApproveStoryboard drawing={!!making && !own && (plan.reference.storyboard?.length ?? 0) > (item.frames?.filter(Boolean).length ?? 0)} disabled={agent.busy} onClick={() => agent.decidePlan(item.id, plan)}>
           {!making ? "Build the Flick" : own ? `Approve and make ${making === 1 ? "it" : `${making} videos`}` : "Approve and make it"}
-        </Button>
+        </ApproveStoryboard>
       </div>
     </Card>
   )
@@ -1237,6 +1302,12 @@ function BuildCard({ ctx, agent }: { ctx: AgentCtx; agent: Agent }) {
           </div>
         </div>
       )}
+      {/* videos render on the server: said plainly, so a reload or a closed tab doesn't read as lost work */}
+      {videos.some((v) => v.state === "generating" && v.status !== "waiting") && (
+        <p className="text-xs text-muted-foreground">
+          Making {listNames(videos.filter((v) => v.state === "generating" && v.status !== "waiting").map((v) => v.name))}. This carries on if you reload or close the tab.
+        </p>
+      )}
       <ol className="flex flex-col gap-1.5">
         {(videos.length ? others : steps).map((x) => (
           <li key={x.label} className="flex items-center gap-2 text-xs">
@@ -1261,7 +1332,10 @@ export function ApprovalDock({ agent, ctx, poster }: { agent: Agent; ctx: AgentC
   const review = !!ctx.review?.needed
   // a video that didn't generate: its Try again stays in reach here, however far up the build card has scrolled
   const failed = (ctx.videos?.() ?? []).filter((v) => v.failed && v.retry && v.state !== "done")
-  if (!review && !proposals.length && !failed.length) return null
+  // the Flick is handed over but can't be exported yet: said by the app, whatever the chat's last line claimed
+  const made = (ctx.videos?.() ?? []).filter((v) => v.state === "done").length
+  const blockers = ctx.settled !== false && made > 1 && !agent.busy && !failed.length ? (ctx.blockers?.() ?? []) : []
+  if (!review && !proposals.length && !failed.length && !blockers.length) return null
   return (
     <div role="region" aria-label="Waiting for you" className="flex flex-col gap-1.5">
       {review && (
@@ -1289,6 +1363,17 @@ export function ApprovalDock({ agent, ctx, poster }: { agent: Agent; ctx: AgentC
               {ctx.review!.remade ? "Make the others again" : "Make the others"}{ctx.review!.cost ? ` · ${ctx.review!.cost.toLocaleString("en-US")}` : ""}
             </Button>
           </div>
+        </div>
+      )}
+      {blockers.length > 0 && (
+        <div role="group" aria-label="Not ready to export" className="flex items-center gap-2 rounded-xl bg-muted p-2.5 ring-1 ring-foreground/10 animate-in fade-in-0 slide-in-from-bottom-1">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium leading-snug">Not ready to export yet</p>
+            <p className="text-xs leading-snug text-muted-foreground">{blockers.join(" ")}</p>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => agent.send(`Fix these before I export: ${blockers.join(" ")}`)}>
+            Fix in chat
+          </Button>
         </div>
       )}
       {failed.map((v) => (

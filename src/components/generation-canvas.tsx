@@ -4,6 +4,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Copy01Icon, Delete02Icon, MinusSignIcon, PlusSignIcon, SparklesIcon, BubbleChatIcon } from "@hugeicons/core-free-icons"
 import { useCanvasView, MIN_ZOOM, MAX_ZOOM } from "@/components/editor/use-canvas-view"
 import { videoCost } from "@/components/credits-card"
+import { saveWaitingNow } from "@/ai/sync"
 import type { Reference } from "@/components/prompt-composer"
 import type { TemplateRef } from "@/data"
 import { MAX_VARIATIONS, SlidesStrip, slideName, type Slide, type SlideStatus } from "@/components/editor/slides-strip"
@@ -1265,6 +1266,54 @@ export function GenerationCanvas({
       return `Changed the ${el.kind === "text" ? `text “${el.text || el.role || "text"}”` : el.kind}.${notes.length ? ` Note: ${notes.join("; ")}.` : ""}`
     },
     arrangeElements(ids, action, o) {
+      // "clear": every clash on the canvas solved in one go. Elements keep their order from the top
+      // and their left edge; each is pushed down just past what it overlaps (the thumbnail strip
+      // never moves), and if the stack then runs off the bottom it is lifted back in as a whole.
+      if (action === "clear") {
+        const frame = document.querySelector<HTMLElement>("[data-frame]")?.getBoundingClientRect()
+        if (!frame) return "Error: Couldn't read the canvas; open the editor and try again."
+        const box = (e: CanvasElement) => {
+          const b = document.querySelector<HTMLElement>(`[data-frame] [data-el="${e.id}"]`)?.getBoundingClientRect()
+          return b ? { l: ((b.left - frame.left) / frame.width) * 100, r: ((b.right - frame.left) / frame.width) * 100, t: ((b.top - frame.top) / frame.height) * 100, b: ((b.bottom - frame.top) / frame.height) * 100 } : undefined
+        }
+        type B = NonNullable<ReturnType<typeof box>>
+        const hit = (A: B, C: B) => A.l < C.r - 0.5 && A.r > C.l + 0.5 && A.t < C.b - 0.5 && A.b > C.t + 0.5
+        const all = elementsNow.current.filter((e) => !e.hidden && e.kind !== "shape")
+        const fixed = all.filter((e) => e.kind === "strip").map(box).filter((b): b is B => !!b)
+        const items: { e: CanvasElement; b: B }[] = []
+        for (const e of all) {
+          const b = e.kind === "strip" ? undefined : box(e)
+          if (b) items.push({ e, b })
+        }
+        items.sort((p, q) => p.b.t - q.b.t)
+        const placed: B[] = [...fixed]
+        const dy = new Map<string, number>()
+        for (const it of items) {
+          let b = { ...it.b }
+          for (let guard = 0; guard < 12; guard++) {
+            const c = placed.find((p) => hit(b, p))
+            if (!c) break
+            const d = c.b - b.t + 1.5
+            b = { ...b, t: b.t + d, b: b.b + d }
+          }
+          dy.set(it.e.id, b.t - it.b.t)
+          it.b = b
+          placed.push(b)
+        }
+        // off the bottom: the whole stack comes up by that much (never past the top margin)
+        const over = Math.max(0, ...items.map((x) => x.b.b)) - 97
+        const top = Math.min(...items.map((x) => x.b.t))
+        const lift = over > 0 ? Math.min(over, Math.max(0, top - 3)) : 0
+        const moved = new Map<string, CanvasElement>()
+        for (const it of items) {
+          const d = (dy.get(it.e.id) ?? 0) - lift
+          if (Math.abs(d) > 0.2) moved.set(it.e.id, { ...it.e, y: it.e.y + d } as CanvasElement)
+        }
+        if (!moved.size) return "Nothing overlaps: nothing was moved."
+        commitElements(elementsNow.current.map((e) => moved.get(e.id) ?? e))
+        const left = over > 0 && lift < over
+        return `Cleared the overlaps: moved ${moved.size} element${moved.size === 1 ? "" : "s"} (${[...moved.values()].map((e) => `${e.id.slice(0, 6)} to y ${Math.round(e.y)}`).join(", ")}).${left ? " The stack is too tall for this frame even so: shorten the text, make something smaller, or remove an element." : ""} Run review_flick once to confirm.`
+      }
       const els = ids.map((x) => findEl(x))
       const missing = ids.filter((_, k) => !els[k])
       if (missing.length) return `Error: No element with id ${missing.join(", ")}. Ids: ${elementsNow.current.map((e) => `${e.id.slice(0, 6)} (${e.kind})`).join(", ")}.`
@@ -1418,7 +1467,7 @@ export function GenerationCanvas({
             hits.push(`${label(boxes[i].e)} [${at(A)}] and ${label(boxes[j].e)} [${at(B)}]: ${room ? `move ${label(lower.e)} down ${down}` : `move ${label(upper.e)} up ${Math.ceil(upper.b.b - lower.b.t + 1.5)}, or make one smaller`} (% of the frame)`)
           }
         }
-      check(!hits.length, "Nothing overlaps", `Overlapping (${hits.length}; fix them all in one reply, then review once): ${hits.slice(0, 8).join("; ")}.`)
+      check(!hits.length, "Nothing overlaps", `Overlapping (${hits.length}; arrange_elements with action 'clear' solves them all in one call, or move them yourself as listed; then review once): ${hits.slice(0, 8).join("; ")}.`)
       const out = boxes.filter(({ e, b }) => e.kind !== "strip" && (b.l < -0.5 || b.r > 100.5 || b.t < -0.5 || b.b > 100.5)).map(({ e }) => label(e))
       check(!out.length, "Everything is inside the frame", `Outside the frame: ${out.join(", ")}.`)
       // buttons: readable and going somewhere
@@ -1768,6 +1817,8 @@ export function GenerationCanvas({
     briefTitle.current = true
     const words = firstSaid.replace(/https?:\/\/\S+/g, "").replace(/[^\p{L}\p{N}\s'&-]/gu, " ").trim().split(/\s+/).filter(Boolean).slice(0, 6).join(" ")
     if (words.length > 2) setTitle(words.charAt(0).toUpperCase() + words.slice(1, 48))
+    // the project is on the server within a second of the first message, so a reload right away finds it
+    setTimeout(saveWaitingNow, 800)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firstSaid])
   const agentCtx: AgentCtx = {
@@ -1801,6 +1852,7 @@ export function GenerationCanvas({
         return { id: p.id, name: p.name, change: p.change ?? p.prompt, cost: p.cost, make: () => void makeProposed(p.id), dismiss: () => dropProposed(p.id), first, others: rest.length ? listNames(rest.map(nameOfSlide)) : undefined, othersCost: rest.length * p.cost }
       }),
     issues: () => publishIssues.filter((x) => !x.blocking).map((x) => x.text),
+    blockers: () => publishIssues.filter((x) => x.blocking).map((x) => x.text),
     progress: () => {
       const vs = slides.slice(1)
       return [
