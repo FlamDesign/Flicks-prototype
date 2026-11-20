@@ -7,7 +7,7 @@
  */
 import { aiConfig, isLive, shareable } from "@/ai/client"
 import { madeVideos, mergeMadeVideos } from "@/components/editor/elements"
-import { library, watchLibrary, type LibraryState, type Project } from "@/library"
+import { getLibrary, library, watchLibrary, type LibraryState, type Project } from "@/library"
 import { elements, type FlickElement } from "@/lib/elements"
 
 const base = () => aiConfig.get().url.trim().replace(/\/+$/, "")
@@ -157,10 +157,33 @@ export function merge(mine: Saved, theirs: Saved | null): { merged: Saved; chang
  * past 4 MB in one record, re-sent on every change).
  */
 const LIBRARY = "library"
-type Body = { snap?: unknown; versions: Project["versions"] }
+type Body = { snap?: unknown; versions: Project["versions"]; /** the project's own line in the list, so the record alone is enough to open it (a project a second old, not in the list yet) */ meta?: Omit<Project, "snap" | "versions"> }
 type Listed = Project & { body?: number }
 const bodyKey = (id: string) => `proj-${id}`
-const bodyOf = (p: Project): Body => ({ snap: p.snap, versions: p.versions ?? [] })
+const bodyOf = (p: Project): Body => {
+  const { snap, versions, ...meta } = p
+  return { snap, versions: versions ?? [], meta }
+}
+/** each project's record as last saved or loaded (by its edit time): only a changed project is written */
+const bodySaved = new Map<string, number>()
+
+/**
+ * One project's record, written now and by itself (no list, no merge): right after a new project's
+ * first message, so a reload a moment later still finds it by its address.
+ */
+export function saveProjectNow(id: string) {
+  const p = getLibrary().projects.find((x) => x.id === id)
+  if (!p || !isLive()) return
+  bodySaved.set(id, p.editedAt ?? 0)
+  void save(bodyKey(id), bodyOf(p), true).catch(() => bodySaved.delete(id))
+}
+
+/** a project opened by its address that the list doesn't have yet: taken from its own record */
+async function adopt(id: string) {
+  if (getLibrary().projects.some((x) => x.id === id) || deleted[id]) return
+  const b = await loadSaved<Body>(bodyKey(id)).catch(() => null)
+  if (b?.meta?.id === id) library.saveProject({ ...b.meta, snap: b.snap, versions: b.versions ?? [] })
+}
 
 /** fills in the canvas and versions of projects that came from the list without them */
 async function hydrate(projects: Listed[], have: Project[] = []): Promise<Project[]> {
@@ -181,7 +204,7 @@ async function hydrate(projects: Listed[], have: Project[] = []): Promise<Projec
         continue
       }
       const b = await loadSaved<Body>(bodyKey(p.id)).catch(() => null)
-      if (b) lastSaved.set(bodyKey(p.id), JSON.stringify({ snap: b.snap, versions: b.versions ?? [] }))
+      if (b) bodySaved.set(p.id, p.editedAt ?? 0)
       out[i] = { ...p, snap: b?.snap, versions: b?.versions ?? [] }
     }
   }
@@ -195,8 +218,11 @@ async function split(saved: Saved, closing: boolean): Promise<Saved> {
   for (const p of saved.projects) {
     // a project whose canvas isn't loaded here (the list came from the server): its record stays as it is
     const known = p.snap !== undefined || (p.versions?.length ?? 0) > 0
-    if (known && !closing) await save(bodyKey(p.id), bodyOf(p))
-    else if (known) void save(bodyKey(p.id), bodyOf(p), true).catch(() => {})
+    const changed = known && bodySaved.get(p.id) !== (p.editedAt ?? 0)
+    if (changed && !closing) {
+      await save(bodyKey(p.id), bodyOf(p))
+      bodySaved.set(p.id, p.editedAt ?? 0)
+    } else if (changed) void save(bodyKey(p.id), bodyOf(p), true).catch(() => {})
     listed.push({ ...p, snap: undefined, versions: [], body: p.editedAt ?? 0 })
   }
   return { ...saved, projects: listed }
@@ -279,6 +305,9 @@ export function startSync() {
       window.dispatchEvent(new CustomEvent("flam:sync-failed"))
     }
     ready = true
+    // opened on a project's address that the list doesn't have (made a moment before a reload): its own record has it
+    const at = typeof location !== "undefined" ? /^\/p\/([\w-]{8,80})/.exec(location.pathname)?.[1] : undefined
+    if (at) await adopt(at).catch(() => {})
     // the saved projects are in: a page opened by address can find its project now
     window.dispatchEvent(new CustomEvent("flam:sync-ready"))
   }

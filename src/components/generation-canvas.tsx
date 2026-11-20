@@ -4,7 +4,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Copy01Icon, Delete02Icon, MinusSignIcon, PlusSignIcon, SparklesIcon, BubbleChatIcon } from "@hugeicons/core-free-icons"
 import { useCanvasView, MIN_ZOOM, MAX_ZOOM } from "@/components/editor/use-canvas-view"
 import { videoCost } from "@/components/credits-card"
-import { saveWaitingNow } from "@/ai/sync"
+import { saveProjectNow, saveWaitingNow } from "@/ai/sync"
 import type { Reference } from "@/components/prompt-composer"
 import type { TemplateRef } from "@/data"
 import { MAX_VARIATIONS, SlidesStrip, slideName, type Slide, type SlideStatus } from "@/components/editor/slides-strip"
@@ -1817,8 +1817,6 @@ export function GenerationCanvas({
     briefTitle.current = true
     const words = firstSaid.replace(/https?:\/\/\S+/g, "").replace(/[^\p{L}\p{N}\s'&-]/gu, " ").trim().split(/\s+/).filter(Boolean).slice(0, 6).join(" ")
     if (words.length > 2) setTitle(words.charAt(0).toUpperCase() + words.slice(1, 48))
-    // the project is on the server within a second of the first message, so a reload right away finds it
-    setTimeout(saveWaitingNow, 800)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firstSaid])
   const agentCtx: AgentCtx = {
@@ -1955,6 +1953,17 @@ export function GenerationCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     // the size and length are the project's too (the chat sets them before anything is on the canvas)
   }, [title, sig, versions, dirty, generation.size, generation.duration])
+  // a new chat project goes to the server as soon as it has its first message (and so its working
+  // name): its own record at once, the list and the chat right behind, so a reload a moment later finds it
+  const savedFirst = useRef(false)
+  useEffect(() => {
+    if (!agentMode || !firstRun || !title || savedFirst.current || deleted.current) return
+    savedFirst.current = true
+    saveProject()
+    saveProjectNow(generation.id)
+    saveWaitingNow()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title])
   const lib = useLibrary()
   const project = lib.projects.find((p) => p.id === generation.id)
   const lastFlick = project?.exports[0] ? lib.flicks.find((f) => f.id === project.exports[0]) : undefined
