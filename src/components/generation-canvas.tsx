@@ -550,7 +550,7 @@ export function GenerationCanvas({
     // no stand-in while it's made: the slide has no video until its own arrives
     const video = undefined
     // a regenerate keeps what the video is made from (first frame, images, method)
-    commitSlides(slidesNow.current.map((x) => (x.id === id ? { ...x, video, src: undefined, startedAt, prompt: "", refs: [], used: { prompt, refs: [], fromReference: id !== "main", media: { ...(x.used?.media ?? {}), ...(opts?.keep_seconds !== undefined ? { keep_seconds: opts.keep_seconds } : {}) } } } : x)))
+    commitSlides(slidesNow.current.map((x) => (x.id === id ? { ...x, video, src: undefined, startedAt, prompt: "", refs: [], used: { prompt, refs: [], fromReference: id !== "main", media: { ...(x.used?.media ?? x.failed?.media ?? {}), ...(opts?.keep_seconds !== undefined ? { keep_seconds: opts.keep_seconds } : {}) } } } : x)))
     setHistory((h) => [...h, { id: crypto.randomUUID(), slideId: id, prompt, refs: [], fromReference: id !== "main", video, startedAt, at: now }])
     return true
   }
@@ -1643,7 +1643,7 @@ export function GenerationCanvas({
         if (Date.now() - sl.job.since > 120_000) {
           jobs.current.add(key)
           setDev((d) => ({ credits: d.credits + VIDEO_COST }))
-          patchJob({ job: undefined, startedAt: undefined, video: undefined, prompt: sl.used.prompt, used: undefined, failed: { reason: "It didn't start before the page closed.", tries: sl.failed?.tries ?? 0 } })
+          patchJob({ job: undefined, startedAt: undefined, video: undefined, prompt: sl.used.prompt, used: undefined, failed: { reason: "It didn't start before the page closed.", tries: sl.failed?.tries ?? 0, media: sl.used.media ?? sl.failed?.media } })
         }
         continue
       }
@@ -1693,7 +1693,7 @@ export function GenerationCanvas({
         jobs.current.delete(key)
         setDev((d) => ({ credits: d.credits + VIDEO_COST }))
         const name = slideName(sl, slidesNow.current.indexOf(sl))
-        patchJob({ job: undefined, startedAt: undefined, video: undefined, prompt: sl.used?.prompt, used: undefined, failed: { reason: "No reference images or video for it.", tries: sl.failed?.tries ?? 0 } })
+        patchJob({ job: undefined, startedAt: undefined, video: undefined, prompt: sl.used?.prompt, used: undefined, failed: { reason: "No reference images or video for it.", tries: sl.failed?.tries ?? 0, media: sl.failed?.media } })
         if (live) agent.notify(`(App: ${name} wasn't started: it has no reference images or video to stay true to, and a video from words alone would invent a new product or person. Refunded. Tell the user in one line and fix the inputs: set the reference images (the product photos, a look or a sheet) with a new storyboard or set_variation, or ask for photos with request_assets.)`)
         continue
       }
@@ -1721,7 +1721,7 @@ export function GenerationCanvas({
           const tries = (sl.failed?.tries ?? 0) + 1
           // a wait that ran out isn't a failed video: its job may still finish, so its id stays and Try again picks it up
           const late = e instanceof AiError && e.code === "video_timeout" ? slidesNow.current.find(mine)?.job?.id : undefined
-          patchJob({ job: undefined, startedAt: undefined, video: undefined, prompt: sl.used?.prompt, used: undefined, failed: { reason, tries, ...(late ? { jobId: late } : {}) } })
+          patchJob({ job: undefined, startedAt: undefined, video: undefined, prompt: sl.used?.prompt, used: undefined, failed: { reason, tries, ...(late ? { jobId: late } : {}), media: sl.used?.media ?? sl.failed?.media } })
           // in the chat the build card's tile says it (with Try again); a toast would say it twice
           if (!agentMode) toast({ title: `${name} didn’t generate`, description: `${reason} Credits refunded.` })
           // the chat hears about it: a variation's first failure, it retries once with a gentler change; after that it asks
@@ -1782,7 +1782,7 @@ export function GenerationCanvas({
       commitSlides(slidesNow.current.map((x, i) => (i === 0 ? { ...x, approvedRef: x.startedAt } : x)))
     if (!startVideo(slideId, sl.prompt ?? "")) return
     // its earlier video ran past the wait: that job is checked first (it may be finished), no new one started
-    if (late) commitSlides(slidesNow.current.map((x) => (x.id === slideId ? { ...x, job: { status: "in_progress", since: Date.now(), id: late }, failed: x.failed ? { reason: x.failed.reason, tries: x.failed.tries } : undefined } : x)))
+    if (late) commitSlides(slidesNow.current.map((x) => (x.id === slideId ? { ...x, job: { status: "in_progress", since: Date.now(), id: late }, failed: x.failed ? { reason: x.failed.reason, tries: x.failed.tries, media: x.failed.media } : undefined } : x)))
   }
   // every variation is made: wake the chat once for a final check of every variation and the
   // hand-over. Once per set of videos, remembered on the project, so it still happens when the tab
