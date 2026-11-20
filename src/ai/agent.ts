@@ -1136,7 +1136,19 @@ export function useAgent(api: EditorApi, opts: { prompt?: string; imageUrls?: { 
     // two or more of the user's videos in the project: say at once when they can't share a Flick
     let differ = ""
     const vids = images.current.filter((x) => x.kind === "video" && x.from === "upload")
-    if (videoIds.length && vids.length > 1) differ = clipsDiffer(await clipsOf(vids.map((it) => ({ name: it.name, it }))))
+    if (videoIds.length && vids.length > 1) {
+      const clips = await clipsOf(vids.map((it) => ({ name: it.name, it })))
+      differ = clipsDiffer(clips)
+      if (differ) {
+        // the user reads it from the app, right under their message, whatever the chat then says
+        const said = clipsDifferSaid(clips)
+        if (toldClips.current !== said) {
+          toldClips.current = said
+          setTimeout(() => add({ kind: "assistant", text: said }), 400)
+        }
+        differ += ` The app has just shown the user this, word for word: "${said}" Don't repeat it.`
+      }
+    }
     return { blocks, line: names.length ? `[Added: ${names.join(", ")}]${differ ? `\n(App: ${differ} This matters only if these videos are meant to be the Flick's variations.)` : ""}` : "", shows, photoIds, videoIds }
   }
 

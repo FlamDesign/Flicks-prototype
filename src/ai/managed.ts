@@ -149,6 +149,21 @@ export async function sessionTurn(sessionId: string, events: Ev[], cb: Callbacks
   const reader = await openStream(sessionId, cb.signal)
   if (events.length) {
     await post(`/v1/sessions/${sessionId}/events`, { events }).catch(async (e) => {
+      // a result the session already has (sent just before a reload, then counted as unsent when the
+      // saved chat was a moment older): it goes without that result; words that rode inside it go as a message
+      if (e instanceof AiError && /already resolved/i.test(e.message)) {
+        const rest: Ev[] = []
+        for (const x of events) {
+          if (x.type !== "user.custom_tool_result") rest.push(x)
+          else {
+            const blocks = x.content as Block[]
+            const at = blocks.findIndex((b) => b.type === "text" && (b.text.startsWith("(App:") || b.text.startsWith("The user's own message")))
+            if (at >= 0) rest.unshift({ type: "user.message", content: blocks.slice(at) })
+          }
+        }
+        if (!rest.some((x) => x.type === "user.message")) rest.unshift({ type: "user.message", content: [{ type: "text", text: "(App: the app is back after a reload. Carry on from where you were; if nothing is left to do, end the turn without writing anything.)" }] })
+        return post(`/v1/sessions/${sessionId}/events`, { events: rest })
+      }
       await reader.cancel().catch(() => {})
       // the state as a system note isn't taken: send it as the app's own words instead
       if (e instanceof AiError && /system/i.test(e.message)) return post(`/v1/sessions/${sessionId}/events`, { events: events.map((x) => (x.type === "system.message" ? { type: "user.message", content: [{ type: "text", text: `(From the app, not the user.) ${(x.content as { text: string }[])[0].text}` }] } : x)) })
